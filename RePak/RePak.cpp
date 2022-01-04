@@ -81,10 +81,10 @@ void AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* ps
         hdr->Format = (uint8_t)TXTRFormat::DXT1;
 
         ///
-        // ddsh.size is the size of the primary header after the "DDS "
+        // ddsh.size is the size of the primary rpakHeader after the "DDS "
         ///
-        // NOTE: when adding support for other formats, there may be a "secondary" header after this point
-        //       this header is ONLY used when ddsh.pixelfmt.fourCC is "DX10"
+        // NOTE: when adding support for other formats, there may be a "secondary" rpakHeader after this point
+        //       this rpakHeader is ONLY used when ddsh.pixelfmt.fourCC is "DX10"
         input.seek(ddsh.size + 4);
     }
 
@@ -123,21 +123,19 @@ void AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* ps
 }
 
 template <typename T>
-void WriteVector(BinaryIO& out, std::vector<T>& dataVector, uint64_t& rpakSize)
+void WriteVector(BinaryIO& out, std::vector<T>& dataVector)
 {
     for (auto it = dataVector.begin(); it != dataVector.end(); ++it)
     {
         out.write(*it);
-        rpakSize += sizeof(*it);
     }
 }
 
-void WriteRPakRawDataBlock(BinaryIO& out, std::vector<RPakRawDataBlock>& rawDataBlock, uint64_t& rpakSize)
+void WriteRPakRawDataBlock(BinaryIO& out, std::vector<RPakRawDataBlock>& rawDataBlock)
 {
     for (auto it = rawDataBlock.begin(); it != rawDataBlock.end(); ++it)
     {
         out.getWriter()->write((char*)it->dataPtr, it->dataSize);
-        rpakSize += it->dataSize;
     }
 }
 
@@ -151,9 +149,7 @@ int main(int argc, char** argv)
 
     printf("==================\nbuilding rpak %s.rpak\n\n", argv[1]);
 
-    std::string sMapFilePath = argv[2];
-
-    std::ifstream ifs(sMapFilePath);
+    std::ifstream ifs(argv[2]);
 
     if (!ifs.is_open())
     {
@@ -163,12 +159,11 @@ int main(int argc, char** argv)
 
     IStreamWrapper isw{ ifs };
 
-    Document doc{};
+    Document doc{ };
 
     doc.ParseStream(isw);
 
-    RPakFileHeaderV8 header{};
-    std::string assetsDir;
+    std::string assetsDir = std::string();
 
     if (!doc.HasMember("assetsDir"))
     {
@@ -192,39 +187,33 @@ int main(int argc, char** argv)
             AddTextureAsset(&assetEntries, std::string(assetsDir + file["path"].GetStdString() + ".dds").c_str());
     }
 
-    //AddTextureAsset(argv[2]); // hardcoded test case
-    //AddTextureAsset("D:\\rpaktest\\test_2.dds");
+    std::filesystem::create_directory("build"); // create directory if it does not exist yet.
 
-    std::filesystem::create_directory("build");
+    BinaryIO out{ };
+    RPakFileHeaderV8 rpakHeader{ };
+    out.open("build/" + std::string(argv[1]) + ".rpak", BinaryIOMode::BinaryIOMode_Write); // open a new stream to the new file.
+    out.write(rpakHeader); // write a placeholder rpakHeader that will be updated later with all the right values
 
-    BinaryIO out;
-    out.open("build/" + std::string(argv[1]) + ".rpak", BinaryIOMode::BinaryIOMode_Write);
+    WriteVector(out, g_vvSegments);
+    WriteVector(out, g_vvSegmentBlocks);
+    WriteVector(out, g_vUnkThree);
+    WriteVector(out, assetEntries);
+    WriteVector(out, g_vUnkFive);
+    WriteVector(out, g_vUnkSix);
+    //WriteRPakRawDataBlock(out, g_vSubHeaderBlocks);
+    WriteRPakRawDataBlock(out, g_vRawDataBlocks);
 
-    out.getWriter()->write((char*)&header, sizeof(RPakFileHeaderV8));
-    //out.write(header); // write a placeholder header that will be updated later with all the right values
+    out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 
-    uint64_t nDataSize = sizeof(RPakFileHeaderV8);
+    FILETIME ft = GetFileTimeBySystem(); // Get system time as filetime.
 
-    WriteVector(out, g_vvSegments, nDataSize);
-    WriteVector(out, g_vvSegmentBlocks, nDataSize);
-    WriteVector(out, g_vUnkThree, nDataSize);
-    WriteVector(out, assetEntries, nDataSize);
-    WriteVector(out, g_vUnkFive, nDataSize);
-    WriteVector(out, g_vUnkSix, nDataSize);
-    //WriteRPakRawDataBlock(out, g_vSubHeaderBlocks, nDataSize);
-    WriteRPakRawDataBlock(out, g_vRawDataBlocks, nDataSize);
+    rpakHeader.CreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // File time to uint64_t for the created time.
+    rpakHeader.CompressedSize = out.tell(); // Since we can't compress rpaks at the moment set both compressed and decompressed size as the full rpak size.
+    rpakHeader.DecompressedSize = out.tell();
+    rpakHeader.VirtualSegmentCount = g_vvSegments.size();
+    rpakHeader.VirtualSegmentBlockCount = g_vvSegmentBlocks.size();
+    rpakHeader.AssetEntryCount = assetEntries.size();
 
-    out.seek(0);
-
-    FILETIME ft = GetFileTimeBySystem();
-
-    header.CreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime;
-    header.CompressedSize = nDataSize;
-    header.DecompressedSize = nDataSize;
-    header.VirtualSegmentCount = g_vvSegments.size();
-    header.VirtualSegmentBlockCount = g_vvSegmentBlocks.size();
-    header.AssetEntryCount = assetEntries.size();
-
-    out.write(header);
+    out.write(rpakHeader); // Re-write rpak header.
     return EXIT_SUCCESS;
 }
