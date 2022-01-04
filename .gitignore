@@ -332,4 +332,7 @@ ASALocalRun/
 
 # Local History for Visual Studio
 .localhistory/
+
+# Generated Assets (we really don't want these to end up on git)
 *.rpak
+*.starpak
