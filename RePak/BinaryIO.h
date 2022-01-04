@@ -243,7 +243,15 @@ public:
 
 	size_t tell()
 	{
-		return reader.tellg();
+		switch (currentMode)
+		{
+		case BinaryIOMode::BinaryIOMode_Write:
+			return writer.tellp();
+		case BinaryIOMode::BinaryIOMode_Read:
+			return reader.tellg();
+		default:
+			return -1;
+		}
 	}
 
 	void seek(size_t off, std::ios::seekdir dir = std::ios::beg)

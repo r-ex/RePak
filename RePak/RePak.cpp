@@ -203,7 +203,6 @@ int main(int argc, char** argv)
     //WriteRPakRawDataBlock(out, g_vSubHeaderBlocks);
     WriteRPakRawDataBlock(out, g_vRawDataBlocks);
 
-    out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 
     FILETIME ft = GetFileTimeBySystem(); // Get system time as filetime.
 
@@ -213,6 +212,8 @@ int main(int argc, char** argv)
     rpakHeader.VirtualSegmentCount = g_vvSegments.size();
     rpakHeader.VirtualSegmentBlockCount = g_vvSegmentBlocks.size();
     rpakHeader.AssetEntryCount = assetEntries.size();
+
+    out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 
     out.write(rpakHeader); // Re-write rpak header.
     return EXIT_SUCCESS;
