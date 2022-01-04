@@ -36,6 +36,13 @@ uint32_t CreateNewSegment(uint64_t size, SegmentType type, RPakVirtualSegment& s
     return idx;
 }
 
+FILETIME GetFileTimeBySystem()
+{
+    FILETIME ft;
+    GetSystemTimeAsFileTime(&ft);
+    return ft;
+}
+
 void AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* pszFilePath)
 {
     TextureHeader* hdr = new TextureHeader();
@@ -184,10 +191,6 @@ int main(int argc, char** argv)
         if (file["$type"].GetStdString() == std::string("txtr"))
             AddTextureAsset(&assetEntries, std::string(assetsDir + file["path"].GetStdString() + ".dds").c_str());
     }
-    
-
-    FILETIME ft;
-    GetSystemTimeAsFileTime(&ft);
 
     //AddTextureAsset(argv[2]); // hardcoded test case
     //AddTextureAsset("D:\\rpaktest\\test_2.dds");
@@ -212,6 +215,8 @@ int main(int argc, char** argv)
     WriteRPakRawDataBlock(out, g_vRawDataBlocks, nDataSize);
 
     out.seek(0);
+
+    FILETIME ft = GetFileTimeBySystem();
 
     header.CreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime;
     header.CompressedSize = nDataSize;
