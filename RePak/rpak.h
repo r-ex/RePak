@@ -95,13 +95,36 @@ struct RPakRelationBlock
 
 struct RPakAssetEntryV8
 {
-	uint64_t NameHash;
+	RPakAssetEntryV8() = default;
+
+	void InitAsset(uint64_t nNameHash,
+		uint32_t nSubHeaderBlockIdx,
+		uint32_t nSubHeaderBlockOffset,
+		uint32_t nSubHeaderSize,
+		uint32_t nRawDataBlockIdx,
+		uint32_t nRawDataBlockOffset,
+		uint64_t nStarpakOffset,
+		uint64_t nOptStarpakOffset,
+		uint32_t Type)
+	{
+		this->NameHash = nNameHash;
+		this->SubHeaderDataBlockIndex = nSubHeaderBlockIdx;
+		this->SubHeaderDataBlockOffset = nSubHeaderBlockOffset;
+		this->RawDataBlockIndex = nRawDataBlockIdx;
+		this->RawDataBlockOffset = nRawDataBlockOffset;
+		this->StarpakOffset = nStarpakOffset;
+		this->OptionalStarpakOffset = nOptStarpakOffset;
+		this->SubHeaderSize = nSubHeaderSize;
+		this->Magic = Type;
+	}
+
+	uint64_t NameHash = 0;
 	uint64_t Padding = 0;
 
-	uint32_t SubHeaderDataBlockIndex;
-	uint32_t SubHeaderDataBlockOffset;
-	uint32_t RawDataBlockIndex;
-	uint32_t RawDataBlockOffset;
+	uint32_t SubHeaderDataBlockIndex = 0;
+	uint32_t SubHeaderDataBlockOffset = 0;
+	uint32_t RawDataBlockIndex = 0;
+	uint32_t RawDataBlockOffset = 0;
 
 	uint64_t StarpakOffset = -1;
 	uint64_t OptionalStarpakOffset = -1;
@@ -115,9 +138,9 @@ struct RPakAssetEntryV8
 	uint32_t Un5 = 0;
 	uint32_t Un6 = 0;
 
-	uint32_t SubHeaderSize;
+	uint32_t SubHeaderSize = 0;
 	uint32_t Flags = 0;
-	uint32_t Magic;
+	uint32_t Magic = 0;
 };
 #pragma pack(pop)
 

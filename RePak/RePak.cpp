@@ -8,8 +8,7 @@ std::vector<RPakVirtualSegment> g_vvSegments{};
 std::vector<RPakVirtualSegmentBlock> g_vvSegmentBlocks{};
 std::vector<RPakUnknownBlockThree> g_vUnkThree{};
 std::vector<RPakUnknownBlockFive> g_vUnkFive{};
-std::vector<RPakRelationBlock> g_vUnkSix{};
-std::vector<RPakAssetEntryV8> g_vAssets{};
+std::vector<RPakRelationBlock> g_vUnkSix{};;
 std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
 std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
 
@@ -30,7 +29,6 @@ uint32_t CreateNewSegment(uint64_t size, SegmentType type, RPakVirtualSegment& s
     RPakVirtualSegment vseg{0, (uint32_t)type, size};
     RPakVirtualSegmentBlock vsegblock{g_vvSegments.size(), (uint32_t)type, size};
 
-
     g_vvSegments.emplace_back(vseg);
     g_vvSegmentBlocks.emplace_back(vsegblock);
 
@@ -38,23 +36,7 @@ uint32_t CreateNewSegment(uint64_t size, SegmentType type, RPakVirtualSegment& s
     return idx;
 }
 
-void AddAssetEntry(std::string sName, uint32_t nSubHeaderBlockIdx, uint32_t nSubHeaderBlockOffset, uint32_t nSubHeaderSize, uint32_t nRawDataBlockIdx, uint32_t nRawDataBlockOffset, uint64_t nStarpakOffset, uint64_t nOptStarpakOffset, AssetType Type)
-{
-    RPakAssetEntryV8 asset;
-    asset.NameHash = StringToGuid(sName.c_str());
-    asset.SubHeaderDataBlockIndex = nSubHeaderBlockIdx;
-    asset.SubHeaderDataBlockOffset = nSubHeaderBlockOffset;
-    asset.RawDataBlockIndex = nRawDataBlockIdx;
-    asset.RawDataBlockOffset = nRawDataBlockOffset;
-    asset.StarpakOffset = nStarpakOffset;
-    asset.OptionalStarpakOffset = nOptStarpakOffset;
-    asset.SubHeaderSize = nSubHeaderSize;
-    asset.Magic = (uint32_t)Type;
-
-    g_vAssets.push_back(asset);
-}
-
-void AddTextureAsset(const char* pszFilePath)
+void AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* pszFilePath)
 {
     TextureHeader* hdr = new TextureHeader();
 
@@ -128,9 +110,29 @@ void AddTextureAsset(const char* pszFilePath)
     g_vRawDataBlocks.push_back(rdb);
 
     // now time to add the higher level asset entry
-    AddAssetEntry(sAssetName, shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, AssetType::TEXTURE);
+    RPakAssetEntryV8 asset;
+    asset.InitAsset(StringToGuid(sAssetName.c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::TEXTURE);
+    assetEntries->push_back(asset);
 }
 
+template <typename T>
+void WriteVector(BinaryIO& out, std::vector<T>& dataVector, uint64_t& rpakSize)
+{
+    for (auto it = dataVector.begin(); it != dataVector.end(); ++it)
+    {
+        out.write(*it);
+        rpakSize += sizeof(*it);
+    }
+}
+
+void WriteRPakRawDataBlock(BinaryIO& out, std::vector<RPakRawDataBlock>& rawDataBlock, uint64_t& rpakSize)
+{
+    for (auto it = rawDataBlock.begin(); it != rawDataBlock.end(); ++it)
+    {
+        out.getWriter()->write((char*)it->dataPtr, it->dataSize);
+        rpakSize += it->dataSize;
+    }
+}
 
 int main(int argc, char** argv)
 {
@@ -145,8 +147,6 @@ int main(int argc, char** argv)
     std::string sMapFilePath = argv[2];
 
     std::ifstream ifs(sMapFilePath);
-    //ifs.open(sMapFilePath);
-
 
     if (!ifs.is_open())
     {
@@ -159,7 +159,6 @@ int main(int argc, char** argv)
     Document doc{};
 
     doc.ParseStream(isw);
-
 
     RPakFileHeaderV8 header{};
     std::string assetsDir;
@@ -178,10 +177,12 @@ int main(int argc, char** argv)
         }
     }
 
+    std::vector<RPakAssetEntryV8> assetEntries{ };
+
     for (auto& file : doc["files"].GetArray())
     {
         if (file["$type"].GetStdString() == std::string("txtr"))
-            AddTextureAsset(std::string(assetsDir + file["path"].GetStdString() + ".dds").c_str());
+            AddTextureAsset(&assetEntries, std::string(assetsDir + file["path"].GetStdString() + ".dds").c_str());
     }
     
 
@@ -201,55 +202,14 @@ int main(int argc, char** argv)
 
     uint64_t nDataSize = sizeof(RPakFileHeaderV8);
 
-    for (int i = 0; i < g_vvSegments.size(); ++i)
-    {
-        out.write(g_vvSegments[i]);
-        nDataSize += sizeof(g_vvSegments[i]);
-    }
-
-    for (int i = 0; i < g_vvSegmentBlocks.size(); ++i)
-    {
-        out.write(g_vvSegmentBlocks[i]);
-        nDataSize += sizeof(g_vvSegmentBlocks[i]);
-    }
-
-    for (int i = 0; i < g_vUnkThree.size(); ++i)
-    {
-        out.write(g_vUnkThree[i]);
-        nDataSize += sizeof(g_vUnkThree[i]);
-    }
-
-    for (int i = 0; i < g_vAssets.size(); ++i)
-    {
-        out.write(g_vAssets[i]);
-        nDataSize += sizeof(g_vAssets[i]);
-    }
-
-    for (int i = 0; i < g_vUnkFive.size(); ++i)
-    {
-        out.write(g_vUnkFive[i]);
-        nDataSize += sizeof(g_vUnkFive[i]);
-    }
-
-    for (int i = 0; i < g_vUnkSix.size(); ++i)
-    {
-        out.write(g_vUnkSix[i]);
-        nDataSize += sizeof(g_vUnkSix[i]);
-    }
-
-    //for(int i = 0; i < g_vSubHeaderBlocks.size(); ++i)
-    //{
-    //    RPakRawDataBlock block = g_vSubHeaderBlocks[i];
-    //    out.getWriter()->write((char*)block.dataPtr, block.dataSize);
-    //    nDataSize += block.dataSize;
-    //}
-
-    for (int i = 0; i < g_vRawDataBlocks.size(); ++i)
-    {
-        RPakRawDataBlock block = g_vRawDataBlocks[i];
-        out.getWriter()->write((char*)block.dataPtr, block.dataSize);
-        nDataSize += block.dataSize;
-    }
+    WriteVector(out, g_vvSegments, nDataSize);
+    WriteVector(out, g_vvSegmentBlocks, nDataSize);
+    WriteVector(out, g_vUnkThree, nDataSize);
+    WriteVector(out, assetEntries, nDataSize);
+    WriteVector(out, g_vUnkFive, nDataSize);
+    WriteVector(out, g_vUnkSix, nDataSize);
+    //WriteRPakRawDataBlock(out, g_vSubHeaderBlocks, nDataSize);
+    WriteRPakRawDataBlock(out, g_vRawDataBlocks, nDataSize);
 
     out.seek(0);
 
@@ -258,7 +218,7 @@ int main(int argc, char** argv)
     header.DecompressedSize = nDataSize;
     header.VirtualSegmentCount = g_vvSegments.size();
     header.VirtualSegmentBlockCount = g_vvSegmentBlocks.size();
-    header.AssetEntryCount = g_vAssets.size();
+    header.AssetEntryCount = assetEntries.size();
 
     out.write(header);
     return EXIT_SUCCESS;
