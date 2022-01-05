@@ -1,5 +1,10 @@
 #pragma once
 
+struct Vector3
+{
+	float x, y, z;
+};
+
 #pragma pack(push, 1)
 struct RPakFileHeaderV8
 {
@@ -189,5 +194,54 @@ struct TextureHeader
 	uint8_t MipLevelsStreamed = 0;
 
 	uint8_t UnknownPad[0x15];
+};
+
+struct DataTableColumn
+{
+	uint32_t NameIndex;
+	uint32_t NameOffset;
+	uint32_t Type;
+	uint32_t RowOffset;
+};
+
+struct DataTableHeader
+{
+	uint32_t ColumnCount;
+	uint32_t RowCount;
+
+	uint32_t ColumnHeaderBlock;
+	uint32_t ColumnHeaderOffset;
+	uint32_t RowHeaderBlock;
+	uint32_t RowHeaderOffset;
+	uint32_t UnkHash;
+
+	uint16_t Un1 = 0;
+	uint16_t Un2 = 0;
+
+	uint32_t RowStride;	// Number of bytes per row
+	uint32_t Padding;
+};
+
+enum DataTableColumnDataType
+{
+	Bool,
+	Int,
+	Float,
+	Vector,
+	StringT,
+	Asset,
+	AssetNoPrecache
+};
+
+struct DataTableColumnData
+{
+	DataTableColumnDataType Type;
+	bool bValue = 0;
+	int iValue = -1;
+	float fValue = -1;
+	Vector3 vValue;
+	std::string stringValue;
+	std::string assetValue;
+	std::string assetNPValue;
 };
 #pragma pack(pop)
