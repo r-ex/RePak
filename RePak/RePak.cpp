@@ -12,6 +12,8 @@ std::vector<RPakRelationBlock> g_vUnkSix{};;
 std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
 std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
 
+std::string g_sAssetsDir = "";
+
 using namespace rapidjson;
 
 ///
@@ -44,15 +46,18 @@ FILETIME GetFileTimeBySystem()
 }
 
 void AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* pszFilePath)
+void AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath)
 {
     TextureHeader* hdr = new TextureHeader();
 
+    std::string filePath = g_sAssetsDir + assetPath + ".dds";
+
     BinaryIO input;
-    input.open(pszFilePath, BinaryIOMode::BinaryIOMode_Read);
+    input.open(filePath, BinaryIOMode::BinaryIOMode_Read);
 
-    uint64_t nInputFileSize = Utils::GetFileSize(pszFilePath);
+    uint64_t nInputFileSize = Utils::GetFileSize(filePath);
 
-    std::string sAssetName = pszFilePath; // todo: this needs to be changed to the actual name
+    std::string sAssetName = assetPath; // todo: this needs to be changed to the actual name
 
     {
         int magic;
@@ -60,7 +65,7 @@ void AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* ps
         
         if (magic != 0x20534444) // b'DDS '
         {
-            printf("WARNING: Attempted to add txtr asset '%s' that was not a valid DDS file (invalid magic). Skipping asset...\n", pszFilePath);
+            printf("WARNING: Attempted to add txtr asset '%s' that was not a valid DDS file (invalid magic). Skipping asset...\n", assetPath);
             return;
         }
 
@@ -69,7 +74,7 @@ void AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* ps
 
         if (ddsh.pixelfmt.fourCC != '1TXD')
         {
-            printf("WARNING: Attempted to add txtr asset '%s' that was not using a supported DDS type (currently only DXT1). Skipping asset...\n", pszFilePath);
+            printf("WARNING: Attempted to add txtr asset '%s' that was not using a supported DDS type (currently only DXT1). Skipping asset...\n", assetPath);
             return;
         }
 
@@ -88,7 +93,7 @@ void AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* ps
         input.seek(ddsh.size + 4);
     }
 
-    hdr->NameHash = StringToGuid(sAssetName.c_str());
+    hdr->NameHash = StringToGuid((sAssetName + ".rpak").c_str());
     // rspn doesn't use named textures so why should we
     hdr->NameIndex = 0;
     hdr->NameOffset = 0;
@@ -118,7 +123,7 @@ void AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* ps
 
     // now time to add the higher level asset entry
     RPakAssetEntryV8 asset;
-    asset.InitAsset(StringToGuid(sAssetName.c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::TEXTURE);
+    asset.InitAsset(StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::TEXTURE);
     assetEntries->push_back(asset);
 }
 
@@ -163,19 +168,17 @@ int main(int argc, char** argv)
 
     doc.ParseStream(isw);
 
-    std::string assetsDir = std::string();
-
     if (!doc.HasMember("assetsDir"))
     {
         printf("!!! - No assets dir found. Assuming that everything is relative to the working directory.\n");
-        assetsDir = ".\\";
+        g_sAssetsDir = ".\\";
     }
     else {
-        assetsDir = doc["assetsDir"].GetStdString();
-        char lchar = assetsDir[assetsDir.size() - 1];
+        g_sAssetsDir = doc["assetsDir"].GetStdString();
+        char lchar = g_sAssetsDir[g_sAssetsDir.size() - 1];
         if (lchar != '\\' && lchar != '/')
         {
-            assetsDir.append("/");
+            g_sAssetsDir.append("/");
         }
     }
 
@@ -184,7 +187,7 @@ int main(int argc, char** argv)
     for (auto& file : doc["files"].GetArray())
     {
         if (file["$type"].GetStdString() == std::string("txtr"))
-            AddTextureAsset(&assetEntries, std::string(assetsDir + file["path"].GetStdString() + ".dds").c_str());
+            AddTextureAsset(&assetEntries, file["path"].GetString());
     }
 
     std::filesystem::create_directory("build"); // create directory if it does not exist yet.
