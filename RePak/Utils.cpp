@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Utils.h"
 
 uintmax_t Utils::GetFileSize(std::string filename)
 {
@@ -8,15 +9,6 @@ uintmax_t Utils::GetFileSize(std::string filename)
 	catch (std::filesystem::filesystem_error& e) {
 		std::cout << e.what() << '\n';
 		exit(0);
-	}
-}
-
-template <typename T>
-void Utils::WriteVector(BinaryIO& out, std::vector<T>& dataVector)
-{
-	for (auto it = dataVector.begin(); it != dataVector.end(); ++it)
-	{
-		out.write(*it);
 	}
 }
 

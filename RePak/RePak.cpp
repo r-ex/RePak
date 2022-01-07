@@ -8,7 +8,7 @@ std::vector<RPakVirtualSegment> g_vvSegments{};
 std::vector<RPakVirtualSegmentBlock> g_vvSegmentBlocks{};
 std::vector<RPakUnknownBlockThree> g_vUnkThree{};
 std::vector<RPakUnknownBlockFive> g_vUnkFive{};
-std::vector<RPakRelationBlock> g_vUnkSix{};;
+std::vector<RPakRelationBlock> g_vUnkSix{};
 std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
 std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
 
@@ -29,7 +29,7 @@ uint32_t RePak::CreateNewSegment(uint64_t size, SegmentType type, RPakVirtualSeg
     return idx;
 }
 
-inline void RePak::AddRawDataBlock(RPakRawDataBlock block)
+void RePak::AddRawDataBlock(RPakRawDataBlock block)
 {
     g_vRawDataBlocks.push_back(block);
     return;
@@ -70,14 +70,14 @@ int main(int argc, char** argv)
     if (!doc.HasMember("assetsDir"))
     {
         printf("!!! - No assets dir found. Assuming that everything is relative to the working directory.\n");
-        g_sAssetsDir = ".\\";
+        Assets::g_sAssetsDir = ".\\";
     }
     else {
-        g_sAssetsDir = doc["assetsDir"].GetStdString();
-        char lchar = g_sAssetsDir[g_sAssetsDir.size() - 1];
+        Assets::g_sAssetsDir = doc["assetsDir"].GetStdString();
+        char lchar = Assets::g_sAssetsDir[Assets::g_sAssetsDir.size() - 1];
         if (lchar != '\\' && lchar != '/')
         {
-            g_sAssetsDir.append("/");
+            Assets::g_sAssetsDir.append("/");
         }
     }
 

@@ -40,6 +40,15 @@ struct DDS_HEADER {
 } dds_header;
 
 
+/*
+LNK 2005 if included in pch.h
+
+This error can occur when a header file defines a function that isn't inline.
+If you include this header file in more than one source file, you get multiple definitions of the function in the executable.
+
+How to fix? Make a namespace.
+*/
+
 std::uint64_t __fastcall StringToGuid(const char* pData)
 {
 	std::uint32_t* v1; // r8

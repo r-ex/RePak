@@ -1,5 +1,11 @@
 #include "pch.h"
 #include "Assets.h"
+#include "rtech.h"
+
+namespace Assets
+{
+    std::string g_sAssetsDir;
+}
 
 DataTableColumnDataType GetDataTableTypeFromString(std::string sType)
 {
