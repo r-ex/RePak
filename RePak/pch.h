@@ -13,6 +13,8 @@
 #include <rapidcsv/rapidcsv.h>
 
 #include "rpak.h"
+#include "rtech.h"
+
 #include "BinaryIO.h"
 #include "RePak.h"
 #include "Utils.h"

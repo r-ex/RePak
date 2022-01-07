@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "Assets.h"
-#include "rtech.h"
 
 namespace Assets
 {
@@ -108,7 +107,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
         input.seek(ddsh.size + 4);
     }
 
-    hdr->NameHash = 0;//StringToGuid((sAssetName + ".rpak").c_str());
+    hdr->NameHash = RTech::StringToGuid((sAssetName + ".rpak").c_str());
     // rspn doesn't use named textures so why should we
     hdr->NameIndex = 0;
     hdr->NameOffset = 0;
@@ -138,6 +137,6 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     // now time to add the higher level asset entry
     RPakAssetEntryV8 asset;
-    asset.InitAsset(StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::TEXTURE);
+    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::TEXTURE);
     assetEntries->push_back(asset);
 }
