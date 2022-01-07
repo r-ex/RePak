@@ -147,6 +147,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Assets.cpp" />
     <ClCompile Include="RePak.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -157,6 +158,7 @@
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Assets.h" />
     <ClInclude Include="BinaryIO.h" />
     <ClInclude Include="include\rapidcsv\rapidcsv.h" />
     <ClInclude Include="include\rapidjson\allocators.h" />
@@ -197,6 +199,7 @@
     <ClInclude Include="include\rapidjson\stringbuffer.h" />
     <ClInclude Include="include\rapidjson\uri.h" />
     <ClInclude Include="include\rapidjson\writer.h" />
+    <ClInclude Include="RePak.h" />
     <ClInclude Include="rpak.h" />
     <ClInclude Include="rtech.h" />
     <ClInclude Include="pch.h" />

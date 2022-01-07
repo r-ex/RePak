@@ -10,3 +10,19 @@ uintmax_t Utils::GetFileSize(std::string filename)
 		exit(0);
 	}
 }
+
+template <typename T>
+void Utils::WriteVector(BinaryIO& out, std::vector<T>& dataVector)
+{
+	for (auto it = dataVector.begin(); it != dataVector.end(); ++it)
+	{
+		out.write(*it);
+	}
+}
+
+FILETIME Utils::GetFileTimeBySystem()
+{
+	FILETIME ft;
+	GetSystemTimeAsFileTime(&ft);
+	return ft;
+}
