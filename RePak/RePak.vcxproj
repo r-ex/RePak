@@ -158,6 +158,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BinaryIO.h" />
+    <ClInclude Include="include\rapidcsv\rapidcsv.h" />
     <ClInclude Include="include\rapidjson\allocators.h" />
     <ClInclude Include="include\rapidjson\cursorstreamwrapper.h" />
     <ClInclude Include="include\rapidjson\document.h" />

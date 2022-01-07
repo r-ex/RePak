@@ -3,6 +3,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
 #include <sstream>
+#include <rapidcsv/rapidcsv.h>
 
 std::vector<RPakVirtualSegment> g_vvSegments{};
 std::vector<RPakVirtualSegmentBlock> g_vvSegmentBlocks{};

@@ -28,6 +28,9 @@
     <Filter Include="Header Files\thirdparty\rapidjson\msinttypes">
       <UniqueIdentifier>{6df58b4f-ccac-47a4-b30b-72738108cb6a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\thirdparty\rapidcsv">
+      <UniqueIdentifier>{330e470c-2f99-44a3-a5d0-c81150c0caf6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RePak.cpp">
@@ -169,6 +172,9 @@
     </ClInclude>
     <ClInclude Include="include\rapidjson\msinttypes\inttypes.h">
       <Filter>Header Files\thirdparty\rapidjson\msinttypes</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rapidcsv\rapidcsv.h">
+      <Filter>Header Files\thirdparty\rapidcsv</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
