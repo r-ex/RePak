@@ -123,29 +123,29 @@ struct RPakAssetEntryV8
 		this->Magic = Type;
 	}
 
-	uint64_t NameHash = 0;
-	uint64_t Padding = 0;
+	uint64_t NameHash;
+	uint64_t Padding;
 
-	uint32_t SubHeaderDataBlockIndex = 0;
-	uint32_t SubHeaderDataBlockOffset = 0;
-	uint32_t RawDataBlockIndex = 0;
-	uint32_t RawDataBlockOffset = 0;
+	uint32_t SubHeaderDataBlockIndex;
+	uint32_t SubHeaderDataBlockOffset;
+	uint32_t RawDataBlockIndex;
+	uint32_t RawDataBlockOffset;
 
-	uint64_t StarpakOffset = -1;
-	uint64_t OptionalStarpakOffset = -1;
+	uint64_t StarpakOffset;
+	uint64_t OptionalStarpakOffset;
 
-	uint16_t Un1 = 0;
-	uint16_t Un2 = 0;
+	uint16_t Un1;
+	uint16_t Un2;
 
-	uint32_t DataSpliceIndex = 0; // what?
+	uint32_t RelationsStartIndex;
 
-	uint32_t Un4 = 0;
-	uint32_t Un5 = 0;
-	uint32_t Un6 = 0;
+	uint32_t UsesStartIndex;
+	uint32_t RelationsCount;
+	uint32_t UsesCount;
 
-	uint32_t SubHeaderSize = 0;
-	uint32_t Flags = 0;
-	uint32_t Magic = 0;
+	uint32_t SubHeaderSize;
+	uint32_t Version;
+	uint32_t Magic;
 };
 #pragma pack(pop)
 
@@ -169,6 +169,17 @@ enum class AssetType : uint32_t
 	UIMG = 0x676d6975
 };
 
+enum class DataTableColumnDataType : uint32_t
+{
+	Bool,
+	Int,
+	Float,
+	Vector,
+	StringT,
+	Asset,
+	AssetNoPrecache
+};
+
 //
 //	Assets
 //
@@ -184,8 +195,7 @@ struct TextureHeader
 
 	uint8_t Un1 = 0;
 	uint8_t Un2 = 0;
-	uint8_t Format = 0;		// Maps to a DXGI format
-	uint8_t Un3 = 0;
+	uint16_t Format = 0;		// Maps to a DXGI format
 
 	uint32_t DataSize;	// This is the total amount of image data across all banks
 	uint32_t Unknown2 = 0;
@@ -200,7 +210,7 @@ struct DataTableColumn
 {
 	uint32_t NameIndex;
 	uint32_t NameOffset;
-	uint32_t Type;
+	DataTableColumnDataType Type;
 	uint32_t RowOffset;
 };
 
@@ -220,17 +230,6 @@ struct DataTableHeader
 
 	uint32_t RowStride;	// Number of bytes per row
 	uint32_t Padding;
-};
-
-enum DataTableColumnDataType
-{
-	Bool,
-	Int,
-	Float,
-	Vector,
-	StringT,
-	Asset,
-	AssetNoPrecache
 };
 
 struct DataTableColumnData

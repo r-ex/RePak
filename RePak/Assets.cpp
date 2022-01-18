@@ -97,7 +97,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
         hdr->Height = ddsh.height;
 
         // TODO: support other texture formats
-        hdr->Format = (uint8_t)TXTRFormat::DXT1;
+        hdr->Format = (uint8_t)TXTRFormat::_DXT1;
 
         ///
         // ddsh.size is the size of the primary rpakHeader after the "DDS "
@@ -138,5 +138,6 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     // now time to add the higher level asset entry
     RPakAssetEntryV8 asset;
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::TEXTURE);
+    asset.Version = TXTR_VERSION;
     assetEntries->push_back(asset);
 }

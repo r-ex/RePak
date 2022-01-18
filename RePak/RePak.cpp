@@ -12,7 +12,6 @@ std::vector<RPakRelationBlock> g_vUnkSix{};
 std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
 std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
 
-
 using namespace rapidjson;
 
 uint32_t RePak::CreateNewSegment(uint64_t size, SegmentType type, RPakVirtualSegment& seg)
