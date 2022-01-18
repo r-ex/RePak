@@ -123,29 +123,29 @@ struct RPakAssetEntryV8
 		this->Magic = Type;
 	}
 
-	uint64_t NameHash;
-	uint64_t Padding;
+	uint64_t NameHash = 0;
+	uint64_t Padding = 0;
 
-	uint32_t SubHeaderDataBlockIndex;
-	uint32_t SubHeaderDataBlockOffset;
-	uint32_t RawDataBlockIndex;
-	uint32_t RawDataBlockOffset;
+	uint32_t SubHeaderDataBlockIndex = 0;
+	uint32_t SubHeaderDataBlockOffset = 0;
+	uint32_t RawDataBlockIndex = 0;
+	uint32_t RawDataBlockOffset = 0;
 
-	uint64_t StarpakOffset;
-	uint64_t OptionalStarpakOffset;
+	uint64_t StarpakOffset = -1;
+	uint64_t OptionalStarpakOffset = -1;
 
-	uint16_t Un1;
-	uint16_t Un2;
+	uint16_t Un1 = 0;
+	uint16_t Un2 = 0;
 
-	uint32_t RelationsStartIndex;
+	uint32_t RelationsStartIndex = 0;
 
-	uint32_t UsesStartIndex;
-	uint32_t RelationsCount;
-	uint32_t UsesCount;
+	uint32_t UsesStartIndex = 0;
+	uint32_t RelationsCount = 0;
+	uint32_t UsesCount = 0;
 
-	uint32_t SubHeaderSize;
-	uint32_t Version;
-	uint32_t Magic;
+	uint32_t SubHeaderSize = 0;
+	uint32_t Version = 0;
+	uint32_t Magic = 0;
 };
 #pragma pack(pop)
 
