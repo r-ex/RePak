@@ -21,7 +21,7 @@ DataTableColumnDataType GetDataTableTypeFromString(std::string sType)
     return DataTableColumnDataType::StringT;
 }
 
-void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath)
+void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     rapidcsv::Document doc(g_sAssetsDir + assetPath + ".csv");
 
@@ -60,7 +60,117 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
     // i dont wanna finish this
 }
 
-void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath)
+void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+{
+    UIImageHeader* hdr = new UIImageHeader();
+
+    std::string sAssetName = assetPath;
+
+    // get the info for the ui atlas image
+    std::string sAtlasFilePath = g_sAssetsDir + mapEntry["atlas"].GetStdString() + ".dds";
+    std::string sAtlasAssetName = mapEntry["atlas"].GetStdString() + ".rpak";
+
+    uint32_t nTexturesCount = mapEntry["textures"].GetArray().Size();
+
+    // open the atlas and read its header to find out
+    // what its dimensions are so they can be set in the header
+    BinaryIO atlas;
+    atlas.open(sAtlasFilePath, BinaryIOMode::BinaryIOMode_Read);
+
+    DDS_HEADER ddsh = atlas.read<DDS_HEADER>();
+
+    atlas.close();
+
+    hdr->Width = ddsh.width;
+    hdr->Height = ddsh.height;
+
+    hdr->TextureOffsetsCount = nTexturesCount;
+    hdr->TextureCount = nTexturesCount;
+    
+    //
+    // calculate data sizes so we can allocate a page and segment
+    uint32_t textureOffsetsDataSize = sizeof(float) * 8 * nTexturesCount;
+    uint32_t textureDimensionsDataSize = sizeof(uint16_t) * 2 * nTexturesCount;
+    uint32_t textureHashesDataSize = sizeof(uint32_t) * nTexturesCount;
+
+    // get total size
+    uint32_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize;
+
+    // allocate the page and segment
+    RPakVirtualSegment SubHeaderSegment;
+    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(UIImageHeader), SegmentType::AssetSubHeader, SubHeaderSegment);
+
+    RPakVirtualSegment TextureInfoSegment;
+    uint32_t tisIdx = RePak::CreateNewSegment(textureInfoPageSize, SegmentType::Unknown1, TextureInfoSegment);
+
+    // register our descriptors so they get converted properly
+    RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, TextureOffsetsIndex));
+    RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, TextureDimsIndex));
+    RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, TextureHashesIndex));
+
+    // buffer for texture info data
+    char* buf = new char[textureInfoPageSize];
+    char* yea = buf;
+
+    // set texture offset page index and offset
+    hdr->TextureOffsetsIndex = tisIdx;
+    hdr->TextureOffsetsOffset = 0; // start of the page
+
+    for (auto& it : mapEntry["textures"].GetArray())
+    {
+        // todo: deal with this later
+        memset(buf, 0, sizeof(float) * 8);
+        buf += sizeof(float) * 8;
+    }
+
+    // set texture dimensions page index and offset
+    hdr->TextureDimsIndex = tisIdx;
+    hdr->TextureDimsOffset = textureOffsetsDataSize;
+
+    for (auto& it : mapEntry["textures"].GetArray())
+    {
+        *(uint16_t*)buf = it["width"].GetInt();
+        buf += 2;
+        *(uint16_t*)buf = it["height"].GetInt();
+        buf += 2;
+    }
+
+    // set texture hashes page index and offset
+    hdr->TextureHashesIndex = tisIdx;
+    hdr->TextureHashesOffset = textureOffsetsDataSize + textureHashesDataSize;
+
+    for (auto& it : mapEntry["textures"].GetArray())
+    {
+        *(uint32_t*)buf = RTech::StringToUIMGHash(it["path"].GetString());
+        buf += sizeof(uint32_t);
+    }
+
+    // move our pointer back in
+    buf = yea;
+
+    hdr->TextureGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
+
+    // add the data blocks so they can be written properly
+    RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)hdr };
+    RePak::AddRawDataBlock(shdb);
+
+    RPakRawDataBlock tib{ tisIdx, TextureInfoSegment.DataSize, (uint8_t*)buf };
+    RePak::AddRawDataBlock(tib);
+
+    // create and init the asset entry
+    RPakAssetEntryV8 asset;
+    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, 0 /* todo: rawdatablock */, 0, -1, -1, (std::uint32_t)AssetType::UIMG);
+    asset.Version = UIMG_VERSION;
+    
+    // \_('_')_/
+    asset.Un1 = 2;
+    asset.Un2 = 1;
+
+    // add the asset entry
+    assetEntries->push_back(asset);
+}
+
+void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     TextureHeader* hdr = new TextureHeader();
 
@@ -137,7 +247,14 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     // now time to add the higher level asset entry
     RPakAssetEntryV8 asset;
+    
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::TEXTURE);
     asset.Version = TXTR_VERSION;
+    // i have literally no idea what these are
+    asset.Un1 = 2;
+    asset.Un2 = 1;
+
     assetEntries->push_back(asset);
+
+    input.close();
 }

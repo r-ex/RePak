@@ -1,12 +1,9 @@
 #include "pch.h"
 #include "Assets.h"
 
-#include <rapidjson/document.h>
-#include <rapidjson/istreamwrapper.h>
-
 std::vector<RPakVirtualSegment> g_vvSegments{};
 std::vector<RPakVirtualSegmentBlock> g_vvSegmentBlocks{};
-std::vector<RPakUnknownBlockThree> g_vUnkThree{};
+std::vector<RPakDescriptor> g_vDescriptors{};
 std::vector<RPakUnknownBlockFive> g_vUnkFive{};
 std::vector<RPakRelationBlock> g_vUnkSix{};
 std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
@@ -26,6 +23,12 @@ uint32_t RePak::CreateNewSegment(uint64_t size, SegmentType type, RPakVirtualSeg
 
     seg = vseg;
     return idx;
+}
+
+void RePak::RegisterDescriptor(uint32_t pageIdx, uint32_t pageOffset)
+{
+    g_vDescriptors.push_back({ pageIdx, pageOffset });
+    return;
 }
 
 void RePak::AddRawDataBlock(RPakRawDataBlock block)
@@ -82,39 +85,50 @@ int main(int argc, char** argv)
 
     std::vector<RPakAssetEntryV8> assetEntries{ };
 
+    // loop through all assets defined in the map json
     for (auto& file : doc["files"].GetArray())
     {
         if (file["$type"].GetStdString() == std::string("txtr"))
-            Assets::AddTextureAsset(&assetEntries, file["path"].GetString());
+            Assets::AddTextureAsset(&assetEntries, file["path"].GetString(), file);
+        if (file["$type"].GetStdString() == std::string("uimg"))
+            Assets::AddUIImageAsset(&assetEntries, file["path"].GetString(), file);
     }
 
     std::filesystem::create_directory("build"); // create directory if it does not exist yet.
 
     BinaryIO out{ };
     RPakFileHeaderV8 rpakHeader{ };
+
+    // todo: custom output directory support?
     out.open("build/" + std::string(argv[1]) + ".rpak", BinaryIOMode::BinaryIOMode_Write); // open a new stream to the new file.
     out.write(rpakHeader); // write a placeholder rpakHeader that will be updated later with all the right values
 
     Utils::WriteVector(out, g_vvSegments);
     Utils::WriteVector(out, g_vvSegmentBlocks);
-    Utils::WriteVector(out, g_vUnkThree);
+    Utils::WriteVector(out, g_vDescriptors);
     Utils::WriteVector(out, assetEntries);
     Utils::WriteVector(out, g_vUnkFive);
     Utils::WriteVector(out, g_vUnkSix);
-    //WriteRPakRawDataBlock(out, g_vSubHeaderBlocks);
     WriteRPakRawDataBlock(out, g_vRawDataBlocks);
 
     FILETIME ft = Utils::GetFileTimeBySystem(); // Get system time as filetime.
 
+    // set our header values since now we should have all the required info
     rpakHeader.CreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // File time to uint64_t for the created time.
     rpakHeader.CompressedSize = out.tell(); // Since we can't compress rpaks at the moment set both compressed and decompressed size as the full rpak size.
     rpakHeader.DecompressedSize = out.tell();
     rpakHeader.VirtualSegmentCount = g_vvSegments.size();
     rpakHeader.VirtualSegmentBlockCount = g_vvSegmentBlocks.size();
+    rpakHeader.DescriptorCount = g_vDescriptors.size();
+    rpakHeader.UnknownFifthBlockCount = g_vUnkFive.size();
+    rpakHeader.RelationsCount = g_vUnkSix.size();
     rpakHeader.AssetEntryCount = assetEntries.size();
 
     out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 
     out.write(rpakHeader); // Re-write rpak header.
+    
+    out.close();
+
     return EXIT_SUCCESS;
 }

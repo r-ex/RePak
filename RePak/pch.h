@@ -11,6 +11,8 @@
 #include <string>
 #include <fstream>
 #include <rapidcsv/rapidcsv.h>
+#include <rapidjson/document.h>
+#include <rapidjson/istreamwrapper.h>
 
 #include "rpak.h"
 #include "rtech.h"

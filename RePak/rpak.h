@@ -1,11 +1,12 @@
 #pragma once
-
 struct Vector3
 {
 	float x, y, z;
 };
 
 #pragma pack(push, 1)
+
+// Apex Legends RPak file header
 struct RPakFileHeaderV8
 {
 	uint32_t Magic = 0x6b615052;
@@ -14,11 +15,14 @@ struct RPakFileHeaderV8
 	uint64_t CreatedTime; // this is actually FILETIME, but if we don't make it uint64_t here, it'll break the struct when writing
 
 	uint64_t WhoKnows = 0;
+
+	// size of the rpak file on disk before decompression
 	uint64_t CompressedSize;
 
 	uint64_t EmbeddedStarpakOffset = 0;
 	uint64_t Padding1 = 0;
 
+	// actual data size of the rpak file after decompression
 	uint64_t DecompressedSize;
 	uint64_t EmbeddedStarpakSize = 0;
 
@@ -29,14 +33,15 @@ struct RPakFileHeaderV8
 	uint16_t VirtualSegmentBlockCount;		// * 0xC
 	uint32_t PatchIndex = 0;
 
-	uint32_t UnknownThirdBlockCount = 0;
-	uint32_t AssetEntryCount;
+	uint32_t DescriptorCount = 0;
+	uint32_t AssetEntryCount = 0;
 	uint32_t UnknownFifthBlockCount = 0;
 	uint32_t RelationsCount = 0;
 
 	uint8_t Unk[0x1c];
 };
 
+// Titanfall 2 RPak file header
 struct RPakFileHeaderV7
 {
 	uint32_t Magic = 0x6b615052;
@@ -58,7 +63,7 @@ struct RPakFileHeaderV7
 
 	uint16_t PatchIndex = 0;
 
-	uint32_t UnknownThirdBlockCount = 0;
+	uint32_t DescriptorCount = 0;
 	uint32_t AssetEntryCount = 0;
 	uint32_t UnknownFifthBlockCount = 0;
 	uint32_t UnknownSixedBlockCount = 0;
@@ -67,6 +72,7 @@ struct RPakFileHeaderV7
 	uint32_t UnknownEighthBlockCount = 0;
 };
 
+// segment
 struct RPakVirtualSegment
 {
 	uint32_t DataFlag = 0; // some flags
@@ -74,6 +80,7 @@ struct RPakVirtualSegment
 	uint64_t DataSize;	// seg data size
 };
 
+// mem page
 struct RPakVirtualSegmentBlock
 {
 	uint32_t VirtualSegmentIndex; // which vseg is this pointing to
@@ -81,10 +88,12 @@ struct RPakVirtualSegmentBlock
 	uint32_t DataSize; // vseg data size
 };
 
-struct RPakUnknownBlockThree
+// defines the location of a data "pointer" within the pak's mem pages
+// allows the engine to read the index/offset pair and replace it with an actual memory pointer at runtime
+struct RPakDescriptor
 {
-	uint32_t DataEntryIndex;	// Corrosponds to a data entry
-	uint32_t Offset;			// Offset in the data entry, never > DataEntry.DataSize, possibly a 48bit integer packed....
+	uint32_t PageIdx;	 // page index
+	uint32_t PageOffset; // offset within page
 };
 
 struct RPakUnknownBlockFive
@@ -98,11 +107,12 @@ struct RPakRelationBlock
 	uint32_t FileID;
 };
 
+// defines a bunch of values for registering/using an asset from the rpak
 struct RPakAssetEntryV8
 {
 	RPakAssetEntryV8() = default;
 
-	void InitAsset(uint64_t nNameHash,
+	void InitAsset(uint64_t nGUID,
 		uint32_t nSubHeaderBlockIdx,
 		uint32_t nSubHeaderBlockOffset,
 		uint32_t nSubHeaderSize,
@@ -112,7 +122,7 @@ struct RPakAssetEntryV8
 		uint64_t nOptStarpakOffset,
 		uint32_t Type)
 	{
-		this->NameHash = nNameHash;
+		this->GUID = nGUID;
 		this->SubHeaderDataBlockIndex = nSubHeaderBlockIdx;
 		this->SubHeaderDataBlockOffset = nSubHeaderBlockOffset;
 		this->RawDataBlockIndex = nRawDataBlockIdx;
@@ -123,14 +133,33 @@ struct RPakAssetEntryV8
 		this->Magic = Type;
 	}
 
-	uint64_t NameHash = 0;
+	// hashed version of the asset path
+	// used for referencing the asset from elsewhere
+	//
+	// - when referenced from other assets, the GUID is used directly
+	// - when referenced from scripts, the GUID is calculated from the original asset path
+	//   by a function such as RTech::StringToGuid
+	uint64_t GUID = 0;
 	uint64_t Padding = 0;
 
+	// page index and offset for where this asset's header is located
 	uint32_t SubHeaderDataBlockIndex = 0;
 	uint32_t SubHeaderDataBlockOffset = 0;
+
+	// page index and offset for where this asset's data is located
+	// note: this may not always be used for finding the data:
+	//		 some assets use their own idx/offset pair from within the subheader
+	//		 when adding pairs like this, you MUST register it as a descriptor
+	//		 otherwise the pointer won't be converted
 	uint32_t RawDataBlockIndex = 0;
 	uint32_t RawDataBlockOffset = 0;
 
+	// offset to any available streamed data
+	// StarpakOffset         = "mandatory" starpak file offset
+	// OptionalStarpakOffset = "optional" starpak file offset
+	// 
+	// in reality both are mandatory but respawn likes to do a little trolling
+	// so "opt" starpaks are a thing
 	uint64_t StarpakOffset = -1;
 	uint64_t OptionalStarpakOffset = -1;
 
@@ -141,10 +170,16 @@ struct RPakAssetEntryV8
 
 	uint32_t UsesStartIndex = 0;
 	uint32_t RelationsCount = 0;
-	uint32_t UsesCount = 0;
+	uint32_t UsesCount = 0; // number of other assets that this asset uses
 
+	// size of the asset header
 	uint32_t SubHeaderSize = 0;
-	uint32_t Version = 0;
+
+	// this isn't always changed when the asset gets changed
+	// but respawn calls it a version so i will as well
+	uint32_t Version = 0; 
+
+
 	uint32_t Magic = 0;
 };
 #pragma pack(pop)
@@ -159,14 +194,15 @@ struct RPakRawDataBlock
 enum class SegmentType : uint32_t
 {
 	AssetSubHeader = 0x8,
-	AssetRawData   = 0x10,
+	AssetRawData = 0x10,
+	Unknown1 = 0x20,
 };
 
 enum class AssetType : uint32_t
 {
-	TEXTURE = 0x72747874,
-	MODEL = 0x5f6c646d,
-	UIMG = 0x676d6975
+	TEXTURE = 0x72747874, // b'txtr'
+	MODEL = 0x5f6c646d,   // b'mdl_'
+	UIMG = 0x676d6975     // b'uimg'
 };
 
 enum class DataTableColumnDataType : uint32_t
@@ -204,6 +240,25 @@ struct TextureHeader
 	uint8_t MipLevelsStreamed = 0;
 
 	uint8_t UnknownPad[0x15];
+};
+
+struct UIImageHeader
+{
+	uint64_t Unk0 = 0;
+	uint16_t Width = 1;
+	uint16_t Height = 1;
+	uint16_t TextureOffsetsCount = 0;
+	uint16_t TextureCount = 0;
+	uint32_t TextureOffsetsIndex = 0;
+	uint32_t TextureOffsetsOffset = 0;
+	uint32_t TextureDimsIndex = 0;
+	uint32_t TextureDimsOffset = 0;
+	uint32_t Unk20 = 0;
+	uint32_t Unk24 = 0;
+	uint32_t TextureHashesIndex = 0;
+	uint32_t TextureHashesOffset = 0;
+	uint64_t Unk30 = 0;
+	uint64_t TextureGuid = 0;
 };
 
 struct DataTableColumn
