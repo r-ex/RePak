@@ -6,6 +6,12 @@ struct Vector3
 
 #pragma pack(push, 1)
 
+struct RPakPtr
+{
+	uint32_t Index;
+	uint32_t Offset;
+};
+
 // Apex Legends RPak file header
 struct RPakFileHeaderV8
 {
@@ -35,7 +41,7 @@ struct RPakFileHeaderV8
 
 	uint32_t DescriptorCount = 0;
 	uint32_t AssetEntryCount = 0;
-	uint32_t UnknownFifthBlockCount = 0;
+	uint32_t GuidDescriptorCount = 0;
 	uint32_t RelationsCount = 0;
 
 	uint8_t Unk[0x1c];
@@ -95,6 +101,10 @@ struct RPakDescriptor
 	uint32_t PageIdx;	 // page index
 	uint32_t PageOffset; // offset within page
 };
+
+// same kinda thing as RPakDescriptor, but this one tells the engine where
+// guid references to other assets are within mem pages
+typedef RPakDescriptor RPakGuidDescriptor;
 
 struct RPakUnknownBlockFive
 {
@@ -193,16 +203,18 @@ struct RPakRawDataBlock
 
 enum class SegmentType : uint32_t
 {
+	Unknown1 = 0x4,
 	AssetSubHeader = 0x8,
 	AssetRawData = 0x10,
-	Unknown1 = 0x20,
+	Unknown2 = 0x20,
 };
 
 enum class AssetType : uint32_t
 {
 	TEXTURE = 0x72747874, // b'txtr'
 	MODEL = 0x5f6c646d,   // b'mdl_'
-	UIMG = 0x676d6975     // b'uimg'
+	UIMG = 0x676d6975,    // b'uimg'
+	PTCH = 0x68637450,	  // b'Ptch'
 };
 
 enum class DataTableColumnDataType : uint32_t
@@ -222,12 +234,12 @@ enum class DataTableColumnDataType : uint32_t
 #pragma pack(push, 1)
 struct TextureHeader
 {
-	uint64_t NameHash;
-	uint32_t NameIndex;
-	uint32_t NameOffset;
+	uint64_t NameHash = 0;
+	uint32_t NameIndex = 0;
+	uint32_t NameOffset = 0;
 
-	uint16_t Width;
-	uint16_t Height;
+	uint16_t Width = 0;
+	uint16_t Height = 0;
 
 	uint8_t Un1 = 0;
 	uint8_t Un2 = 0;
@@ -236,7 +248,7 @@ struct TextureHeader
 	uint32_t DataSize;	// This is the total amount of image data across all banks
 	uint32_t Unknown2 = 0;
 	uint8_t Unknown3 = 0;
-	uint8_t MipLevels;
+	uint8_t MipLevels = 0;
 	uint8_t MipLevelsStreamed = 0;
 
 	uint8_t UnknownPad[0x15];
@@ -257,8 +269,46 @@ struct UIImageHeader
 	uint32_t Unk24 = 0;
 	uint32_t TextureHashesIndex = 0;
 	uint32_t TextureHashesOffset = 0;
-	uint64_t Unk30 = 0;
+	uint32_t TextureNamesIndex = 0;
+	uint32_t TextureNamesOffset = 0;
 	uint64_t TextureGuid = 0;
+};
+
+struct UIImageUV
+{
+	// maybe the uv coords for top left?
+	// just leave these as 0 and it should be fine
+	float uv0x = 0;
+	float uv0y = 0;
+
+	// these two seem to be the uv coords for the bottom right corner
+	// examples:
+	// uv1x = 10;
+	// | | | | | | | | | |
+	// uv1x = 5;
+	// | | | | |
+	float uv1x = 1.f;
+	float uv1y = 1.f;
+};
+
+// examples of changes from these values: https://imgur.com/a/l1YDXaz
+struct UIImageOffset
+{
+	// these don't seem to matter all that much as long as they are a valid float number
+	float f0 = 0.f;
+	float f1 = 0.f;
+	
+	// endX and endY define where the edge of the image is, with 1.f being the full length of the image and 0.5f being half of the image
+	float endX = 1.f;
+	float endY = 1.f;
+
+	// startX and startY define where the top left corner is in proportion to the full image dimensions
+	float startX = 0.f;
+	float startY = 0.f;
+
+	// changing these 2 values causes the image to be distorted on each axis
+	float unkX = 1.f;
+	float unkY = 1.f;
 };
 
 struct DataTableColumn
@@ -298,4 +348,21 @@ struct DataTableColumnData
 	std::string assetValue;
 	std::string assetNPValue;
 };
+
+struct PtchHeader
+{
+	uint32_t Unk0 = 255; // always FF 00 00 00?
+	uint32_t EntryCount = 0;
+
+	RPakPtr EntryNames;
+
+	RPakPtr EntryPatchNums;
+};
 #pragma pack(pop)
+
+struct PtchEntry
+{
+	std::string FileName = "";
+	uint8_t PatchNum = 0;
+	uint32_t FileNamePageOffset = 0;
+};

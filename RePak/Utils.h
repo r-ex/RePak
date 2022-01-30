@@ -15,3 +15,9 @@ namespace Utils
 	FILETIME GetFileTimeBySystem();
 };
 
+// non-fatal errors/issues
+void Warning(const char* fmt, ...);
+// general prints for Release
+void Log(const char* fmt, ...);
+// any prints that shouldnt be used in Release
+void Debug(const char* fmt, ...);

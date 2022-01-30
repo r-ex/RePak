@@ -4,18 +4,20 @@
 std::vector<RPakVirtualSegment> g_vvSegments{};
 std::vector<RPakVirtualSegmentBlock> g_vvSegmentBlocks{};
 std::vector<RPakDescriptor> g_vDescriptors{};
-std::vector<RPakUnknownBlockFive> g_vUnkFive{};
-std::vector<RPakRelationBlock> g_vUnkSix{};
+std::vector<RPakGuidDescriptor> g_vGuidDescriptors{};
+std::vector<RPakRelationBlock> g_vFileRelations{};
 std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
 std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
 
 using namespace rapidjson;
 
-uint32_t RePak::CreateNewSegment(uint64_t size, SegmentType type, RPakVirtualSegment& seg)
+// flags_maybe is used because it's required for some segments but i have no way of knowing how it's supposed to be set
+// idrk if it's even used for flags tbh
+uint32_t RePak::CreateNewSegment(uint64_t size, uint32_t flags_maybe, SegmentType type, RPakVirtualSegment& seg)
 {
     uint32_t idx = g_vvSegments.size();
 
-    RPakVirtualSegment vseg{0, (uint32_t)type, size};
+    RPakVirtualSegment vseg{flags_maybe, (uint32_t)type, size};
     RPakVirtualSegmentBlock vsegblock{g_vvSegments.size(), (uint32_t)type, size};
 
     g_vvSegments.emplace_back(vseg);
@@ -25,17 +27,45 @@ uint32_t RePak::CreateNewSegment(uint64_t size, SegmentType type, RPakVirtualSeg
     return idx;
 }
 
+void RePak::AddRawDataBlock(RPakRawDataBlock block)
+{
+    g_vRawDataBlocks.push_back(block);
+    return;
+};
+
 void RePak::RegisterDescriptor(uint32_t pageIdx, uint32_t pageOffset)
 {
     g_vDescriptors.push_back({ pageIdx, pageOffset });
     return;
 }
 
-void RePak::AddRawDataBlock(RPakRawDataBlock block)
+void RePak::RegisterGuidDescriptor(uint32_t pageIdx, uint32_t pageOffset)
 {
-    g_vRawDataBlocks.push_back(block);
+    g_vGuidDescriptors.push_back({ pageIdx, pageOffset });
     return;
-};
+}
+
+size_t RePak::AddFileRelation(uint32_t assetIdx)
+{
+    g_vFileRelations.push_back({ assetIdx });
+    return g_vFileRelations.size()-1; // return the index of the file relation
+}
+
+RPakAssetEntryV8* RePak::GetAssetByGuid(std::vector<RPakAssetEntryV8>* assets, uint64_t guid, uint32_t* idx)
+{
+    uint32_t i = 0;
+    for (auto& it : *assets)
+    {
+        if (it.GUID == guid)
+        {
+            if (idx)
+                *idx = i;
+            return &it;
+        }
+        i++;
+    }
+    return nullptr;
+}
 
 void WriteRPakRawDataBlock(BinaryIO& out, std::vector<RPakRawDataBlock>& rawDataBlock)
 {
@@ -53,9 +83,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    printf("==================\nbuilding rpak %s.rpak\n\n", argv[1]);
-
-    std::ifstream ifs(argv[2]);
+    std::ifstream ifs(argv[1]);
 
     if (!ifs.is_open())
     {
@@ -69,9 +97,17 @@ int main(int argc, char** argv)
 
     doc.ParseStream(isw);
 
+    std::string sRpakName = DEFAULT_RPAK_NAME;
+
+    if (doc.HasMember("name") && doc["name"].IsString())
+        sRpakName = doc["name"].GetStdString();
+    else
+        Warning("Map file should have a 'name' field containing the string name for the new rpak, but none was provided. Defaulting to '%s.rpak' and continuing...\n", DEFAULT_RPAK_NAME);
+
+
     if (!doc.HasMember("assetsDir"))
     {
-        printf("!!! - No assets dir found. Assuming that everything is relative to the working directory.\n");
+        Warning("No assetsDir field provided. Assuming that everything is relative to the working directory.\n");
         Assets::g_sAssetsDir = ".\\";
     }
     else {
@@ -81,7 +117,23 @@ int main(int argc, char** argv)
         {
             Assets::g_sAssetsDir.append("/");
         }
+        Debug("assetsDir: %s\n", Assets::g_sAssetsDir.c_str());
     }
+
+    std::string sOutputDir = "build/";
+
+    if (doc.HasMember("outputDir"))
+    {
+        sOutputDir = doc["outputDir"].GetStdString();
+        char lchar = sOutputDir[sOutputDir.size() - 1];
+        if (lchar != '\\' && lchar != '/')
+        {
+            sOutputDir.append("/");
+        }
+    }
+
+    Log("building rpak %s.rpak\n\n", sRpakName.c_str());
+
 
     std::vector<RPakAssetEntryV8> assetEntries{ };
 
@@ -92,23 +144,24 @@ int main(int argc, char** argv)
             Assets::AddTextureAsset(&assetEntries, file["path"].GetString(), file);
         if (file["$type"].GetStdString() == std::string("uimg"))
             Assets::AddUIImageAsset(&assetEntries, file["path"].GetString(), file);
+        if (file["$type"].GetStdString() == std::string("Ptch"))
+            Assets::AddPatchAsset(&assetEntries, file["path"].GetString(), file);
     }
 
-    std::filesystem::create_directory("build"); // create directory if it does not exist yet.
+    std::filesystem::create_directories(sOutputDir); // create directory if it does not exist yet.
 
     BinaryIO out{ };
     RPakFileHeaderV8 rpakHeader{ };
 
-    // todo: custom output directory support?
-    out.open("build/" + std::string(argv[1]) + ".rpak", BinaryIOMode::BinaryIOMode_Write); // open a new stream to the new file.
+    out.open(sOutputDir + sRpakName + ".rpak", BinaryIOMode::BinaryIOMode_Write); // open a new stream to the new file.
     out.write(rpakHeader); // write a placeholder rpakHeader that will be updated later with all the right values
 
     Utils::WriteVector(out, g_vvSegments);
     Utils::WriteVector(out, g_vvSegmentBlocks);
     Utils::WriteVector(out, g_vDescriptors);
     Utils::WriteVector(out, assetEntries);
-    Utils::WriteVector(out, g_vUnkFive);
-    Utils::WriteVector(out, g_vUnkSix);
+    Utils::WriteVector(out, g_vGuidDescriptors);
+    Utils::WriteVector(out, g_vFileRelations);
     WriteRPakRawDataBlock(out, g_vRawDataBlocks);
 
     FILETIME ft = Utils::GetFileTimeBySystem(); // Get system time as filetime.
@@ -120,8 +173,8 @@ int main(int argc, char** argv)
     rpakHeader.VirtualSegmentCount = g_vvSegments.size();
     rpakHeader.VirtualSegmentBlockCount = g_vvSegmentBlocks.size();
     rpakHeader.DescriptorCount = g_vDescriptors.size();
-    rpakHeader.UnknownFifthBlockCount = g_vUnkFive.size();
-    rpakHeader.RelationsCount = g_vUnkSix.size();
+    rpakHeader.GuidDescriptorCount = g_vGuidDescriptors.size();
+    rpakHeader.RelationsCount = g_vFileRelations.size();
     rpakHeader.AssetEntryCount = assetEntries.size();
 
     out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
