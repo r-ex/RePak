@@ -12,6 +12,17 @@ uintmax_t Utils::GetFileSize(std::string filename)
 	}
 }
 
+size_t Utils::WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVector)
+{
+	size_t length = 0;
+	for (auto it = dataVector.begin(); it != dataVector.end(); ++it)
+	{
+		length += (*it).length() + 1;
+		out.writeString(*it);
+	}
+	return length;
+}
+
 FILETIME Utils::GetFileTimeBySystem()
 {
 	FILETIME ft;

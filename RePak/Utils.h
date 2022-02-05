@@ -12,6 +12,8 @@ namespace Utils
 		}
 	}
 
+	size_t WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVector);
+
 	FILETIME GetFileTimeBySystem();
 };
 

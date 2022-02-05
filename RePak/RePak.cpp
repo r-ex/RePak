@@ -8,16 +8,18 @@ std::vector<RPakGuidDescriptor> g_vGuidDescriptors{};
 std::vector<RPakRelationBlock> g_vFileRelations{};
 std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
 std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
+std::vector<std::string> g_vsStarpakPaths{};
+std::vector<std::string> g_vsOptStarpakPaths{};
 
 using namespace rapidjson;
 
 // flags_maybe is used because it's required for some segments but i have no way of knowing how it's supposed to be set
 // idrk if it's even used for flags tbh
-uint32_t RePak::CreateNewSegment(uint64_t size, uint32_t flags_maybe, SegmentType type, RPakVirtualSegment& seg)
+uint32_t RePak::CreateNewSegment(uint64_t size, uint32_t flags_maybe, SegmentType type, RPakVirtualSegment& seg, uint32_t vsegTypeOverride)
 {
     uint32_t idx = g_vvSegments.size();
 
-    RPakVirtualSegment vseg{flags_maybe, (uint32_t)type, size};
+    RPakVirtualSegment vseg{flags_maybe, vsegTypeOverride == -1 ? (uint32_t)type : vsegTypeOverride, size};
     RPakVirtualSegmentBlock vsegblock{g_vvSegments.size(), (uint32_t)type, size};
 
     g_vvSegments.emplace_back(vseg);
@@ -146,6 +148,8 @@ int main(int argc, char** argv)
             Assets::AddUIImageAsset(&assetEntries, file["path"].GetString(), file);
         if (file["$type"].GetStdString() == std::string("Ptch"))
             Assets::AddPatchAsset(&assetEntries, file["path"].GetString(), file);
+        if (file["$type"].GetStdString() == std::string("dtbl"))
+            Assets::AddDataTableAsset(&assetEntries, file["path"].GetString(), file);
     }
 
     std::filesystem::create_directories(sOutputDir); // create directory if it does not exist yet.
@@ -155,6 +159,10 @@ int main(int argc, char** argv)
 
     out.open(sOutputDir + sRpakName + ".rpak", BinaryIOMode::BinaryIOMode_Write); // open a new stream to the new file.
     out.write(rpakHeader); // write a placeholder rpakHeader that will be updated later with all the right values
+
+
+    size_t StarpakRefLength = Utils::WriteStringVector(out, g_vsStarpakPaths);
+    size_t OptStarpakRefLength = Utils::WriteStringVector(out, g_vsOptStarpakPaths);
 
     Utils::WriteVector(out, g_vvSegments);
     Utils::WriteVector(out, g_vvSegmentBlocks);
@@ -176,6 +184,8 @@ int main(int argc, char** argv)
     rpakHeader.GuidDescriptorCount = g_vGuidDescriptors.size();
     rpakHeader.RelationsCount = g_vFileRelations.size();
     rpakHeader.AssetEntryCount = assetEntries.size();
+    rpakHeader.StarpakReferenceSize = StarpakRefLength;
+    rpakHeader.StarpakOptReferenceSize = OptStarpakRefLength;
 
     out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 

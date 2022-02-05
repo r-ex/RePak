@@ -173,7 +173,7 @@ struct RPakAssetEntryV8
 	uint64_t StarpakOffset = -1;
 	uint64_t OptionalStarpakOffset = -1;
 
-	uint16_t Un1 = 0;
+	uint16_t HighestPageNum = 0;
 	uint16_t Un2 = 0;
 
 	uint32_t RelationsStartIndex = 0;
@@ -215,6 +215,7 @@ enum class AssetType : uint32_t
 	MODEL = 0x5f6c646d,   // b'mdl_'
 	UIMG = 0x676d6975,    // b'uimg'
 	PTCH = 0x68637450,	  // b'Ptch'
+	DTBL = 0x6c627464,    // b'dtbl'
 };
 
 enum class DataTableColumnDataType : uint32_t
@@ -313,8 +314,7 @@ struct UIImageOffset
 
 struct DataTableColumn
 {
-	uint32_t NameIndex;
-	uint32_t NameOffset;
+	RPakPtr Name;
 	DataTableColumnDataType Type;
 	uint32_t RowOffset;
 };
@@ -324,10 +324,8 @@ struct DataTableHeader
 	uint32_t ColumnCount;
 	uint32_t RowCount;
 
-	uint32_t ColumnHeaderBlock;
-	uint32_t ColumnHeaderOffset;
-	uint32_t RowHeaderBlock;
-	uint32_t RowHeaderOffset;
+	RPakPtr ColumnHeaderPtr;
+	RPakPtr RowHeaderPtr;
 	uint32_t UnkHash;
 
 	uint16_t Un1 = 0;

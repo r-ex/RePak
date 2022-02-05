@@ -4,7 +4,7 @@
 
 namespace RePak
 {
-	uint32_t CreateNewSegment(uint64_t size, uint32_t flags_maybe, SegmentType type, RPakVirtualSegment& seg);
+	uint32_t CreateNewSegment(uint64_t size, uint32_t flags_maybe, SegmentType type, RPakVirtualSegment& seg, uint32_t vsegType=-1);
 	void AddRawDataBlock(RPakRawDataBlock block);
 	void RegisterDescriptor(uint32_t pageIdx, uint32_t pageOffset);
 	void RegisterGuidDescriptor(uint32_t pageIdx, uint32_t pageOffset);
