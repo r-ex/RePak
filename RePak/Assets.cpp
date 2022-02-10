@@ -6,17 +6,26 @@ namespace Assets
     std::string g_sAssetsDir;
 }
 
+std::unordered_map<std::string, DataTableColumnDataType> DataTableColumnMap =
+{
+    { "bool",   DataTableColumnDataType::Bool },
+    { "int",    DataTableColumnDataType::Int },
+    { "float",  DataTableColumnDataType::Float },
+    { "vector", DataTableColumnDataType::Vector },
+    { "string", DataTableColumnDataType::StringT },
+    { "asset",  DataTableColumnDataType::Asset },
+    { "assetnoprecache", DataTableColumnDataType::AssetNoPrecache }
+};
+
 DataTableColumnDataType GetDataTableTypeFromString(std::string sType)
 {
     std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
 
-    if (sType == "bool") return DataTableColumnDataType::Bool;
-    if (sType == "int") return DataTableColumnDataType::Int;
-    if (sType == "float") return DataTableColumnDataType::Float;
-    if (sType == "vector") return DataTableColumnDataType::Vector;
-    if (sType == "string") return DataTableColumnDataType::StringT;
-    if (sType == "asset") return DataTableColumnDataType::Asset;
-    if (sType == "assetnoprecache") return DataTableColumnDataType::AssetNoPrecache;
+    for (const auto& [key, value] : DataTableColumnMap) // Iterate through unordered_map.
+    {
+        if (sType.compare(key) == 0) // Do they equal?
+            return value;
+    }
 
     return DataTableColumnDataType::StringT;
 }
@@ -248,8 +257,8 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderPage.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
     asset.Version = DTBL_VERSION;
-    // i have literally no idea what these are
-    asset.HighestPageNum = sesIdx+1;
+
+    asset.HighestPageNum = sesIdx+1; // number of the highest page that the asset references pageidx + 1
     asset.Un2 = 1;
 
     assetEntries->push_back(asset);
@@ -295,7 +304,6 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     hdr->TextureGuid = atlasGuid;
     
-    //
     // calculate data sizes so we can allocate a page and segment
     uint32_t textureOffsetsDataSize = sizeof(float) * 8 * nTexturesCount;
     uint32_t textureDimensionsDataSize = sizeof(uint16_t) * 2 * nTexturesCount;
@@ -362,7 +370,6 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     // move our pointer back in
     buf = yea;
 
-    //
     // add the file relation from this uimg asset to the atlas txtr
     size_t fileRelationIdx = RePak::AddFileRelation(assetEntries->size());
 
@@ -396,8 +403,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::UIMG);
     asset.Version = UIMG_VERSION;
     
-    // \_('_')_/
-    asset.HighestPageNum = rdsIdx+1;
+    asset.HighestPageNum = rdsIdx+1; // number of the highest page that the asset references pageidx + 1
     asset.Un2 = 2;
 
     asset.UsesStartIndex = fileRelationIdx;
@@ -484,8 +490,8 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::TEXTURE);
     asset.Version = TXTR_VERSION;
-    // i have literally no idea what these are
-    asset.HighestPageNum = rdsIdx+1;
+    
+    asset.HighestPageNum = rdsIdx+1; // number of the highest page that the asset references pageidx + 1
     asset.Un2 = 1;
 
     assetEntries->push_back(asset);
@@ -528,7 +534,6 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
 
     RePak::RegisterDescriptor(shsIdx, offsetof(PtchHeader, EntryNames));
     RePak::RegisterDescriptor(shsIdx, offsetof(PtchHeader, EntryPatchNums));
-
 
     char* buf = new char[nDataPageSize];
     char* temp = buf;

@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include <iostream>
+#include <unordered_map>
 #include <sysinfoapi.h>
 #include <vector>
 #include <cstdint>
