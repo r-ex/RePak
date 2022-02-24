@@ -4,6 +4,8 @@ namespace Utils
 {
 	uintmax_t GetFileSize(std::string filename);
 	
+	size_t PadBuffer(char** buf, size_t size, size_t alignment);
+
 	template <typename T> void WriteVector(BinaryIO& out, std::vector<T>& dataVector)
 	{
 		for (auto it = dataVector.begin(); it != dataVector.end(); ++it)

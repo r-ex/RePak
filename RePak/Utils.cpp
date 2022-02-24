@@ -12,6 +12,22 @@ uintmax_t Utils::GetFileSize(std::string filename)
 	}
 }
 
+// i know this is bad
+// "im just gonna use this until someone complains and replaces it with something better"
+size_t Utils::PadBuffer(char** buf, size_t size, size_t alignment)
+{
+	size_t extra = alignment - (size % alignment);
+	size_t newSize = size + extra;
+
+	char* newbuf = new char[newSize]{};
+	memcpy_s(newbuf, size, *buf, size);
+
+	delete[] *buf;
+
+	*buf = newbuf;
+	return newSize;
+}
+
 size_t Utils::WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVector)
 {
 	size_t length = 0;
