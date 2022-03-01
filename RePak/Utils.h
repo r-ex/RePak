@@ -17,6 +17,8 @@ namespace Utils
 	size_t WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVector);
 
 	FILETIME GetFileTimeBySystem();
+
+	void AppendSlash(std::string& in);
 };
 
 // non-fatal errors/issues

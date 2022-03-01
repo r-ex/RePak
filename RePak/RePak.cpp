@@ -8,8 +8,11 @@ std::vector<RPakGuidDescriptor> g_vGuidDescriptors{};
 std::vector<RPakRelationBlock> g_vFileRelations{};
 std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
 std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
+std::vector<SRPkDataEntry> g_vSRPkDataEntries{};
 std::vector<std::string> g_vsStarpakPaths{};
 std::vector<std::string> g_vsOptStarpakPaths{};
+
+uint64_t nextStarpakOffset = 0x1000;
 
 using namespace rapidjson;
 
@@ -27,6 +30,31 @@ uint32_t RePak::CreateNewSegment(uint64_t size, uint32_t flags_maybe, SegmentTyp
 
     seg = vseg;
     return idx;
+}
+
+void RePak::AddStarpakReference(std::string path)
+{
+    for (auto& it : g_vsStarpakPaths)
+    {
+        if (it == path)
+            return;
+    }
+    g_vsStarpakPaths.push_back(path);
+}
+
+// returns offset in starpak
+uint64_t RePak::AddStarpakDataEntry(SRPkDataEntry block)
+{
+    size_t ns = Utils::PadBuffer((char**)&block.dataPtr, block.dataSize, 4096);
+
+    block.dataSize = ns;
+    block.offset = nextStarpakOffset;
+
+    g_vSRPkDataEntries.push_back(block);
+
+    nextStarpakOffset += block.dataSize;
+
+    return block.offset;
 }
 
 void RePak::AddRawDataBlock(RPakRawDataBlock block)
@@ -47,10 +75,11 @@ void RePak::RegisterGuidDescriptor(uint32_t pageIdx, uint32_t pageOffset)
     return;
 }
 
-size_t RePak::AddFileRelation(uint32_t assetIdx)
+size_t RePak::AddFileRelation(uint32_t assetIdx, uint32_t count)
 {
-    g_vFileRelations.push_back({ assetIdx });
-    return g_vFileRelations.size()-1; // return the index of the file relation
+    for(int i = 0; i < count; ++i)
+        g_vFileRelations.push_back({ assetIdx });
+    return g_vFileRelations.size()-count; // return the index of the file relation(s)
 }
 
 RPakAssetEntryV8* RePak::GetAssetByGuid(std::vector<RPakAssetEntryV8>* assets, uint64_t guid, uint32_t* idx)
@@ -127,29 +156,22 @@ int main(int argc, char** argv)
     if (doc.HasMember("outputDir"))
     {
         sOutputDir = doc["outputDir"].GetStdString();
-        char lchar = sOutputDir[sOutputDir.size() - 1];
-        if (lchar != '\\' && lchar != '/')
-        {
-            sOutputDir.append("/");
-        }
+        Utils::AppendSlash(sOutputDir);
     }
 
     Log("building rpak %s.rpak\n\n", sRpakName.c_str());
-
 
     std::vector<RPakAssetEntryV8> assetEntries{ };
 
     // loop through all assets defined in the map json
     for (auto& file : doc["files"].GetArray())
     {
-        if (file["$type"].GetStdString() == std::string("txtr"))
-            Assets::AddTextureAsset(&assetEntries, file["path"].GetString(), file);
-        if (file["$type"].GetStdString() == std::string("uimg"))
-            Assets::AddUIImageAsset(&assetEntries, file["path"].GetString(), file);
-        if (file["$type"].GetStdString() == std::string("Ptch"))
-            Assets::AddPatchAsset(&assetEntries, file["path"].GetString(), file);
-        if (file["$type"].GetStdString() == std::string("dtbl"))
-            Assets::AddDataTableAsset(&assetEntries, file["path"].GetString(), file);
+        ASSET_HANDLER("txtr", file, assetEntries, Assets::AddTextureAsset);
+        ASSET_HANDLER("uimg", file, assetEntries, Assets::AddUIImageAsset);
+        ASSET_HANDLER("Ptch", file, assetEntries, Assets::AddPatchAsset);
+        ASSET_HANDLER("dtbl", file, assetEntries, Assets::AddDataTableAsset);
+        ASSET_HANDLER("rmdl", file, assetEntries, Assets::AddModelAsset);
+        ASSET_HANDLER("matl", file, assetEntries, Assets::AddMaterialAsset);
     }
 
     std::filesystem::create_directories(sOutputDir); // create directory if it does not exist yet.
@@ -159,7 +181,6 @@ int main(int argc, char** argv)
 
     out.open(sOutputDir + sRpakName + ".rpak", BinaryIOMode::BinaryIOMode_Write); // open a new stream to the new file.
     out.write(rpakHeader); // write a placeholder rpakHeader that will be updated later with all the right values
-
 
     size_t StarpakRefLength = Utils::WriteStringVector(out, g_vsStarpakPaths);
     size_t OptStarpakRefLength = Utils::WriteStringVector(out, g_vsOptStarpakPaths);
@@ -193,5 +214,47 @@ int main(int argc, char** argv)
     
     out.close();
 
+    // TODO: support multiple starpaks?
+    if (g_vsStarpakPaths.size() == 1)
+    {
+        std::string sFullPath = g_vsStarpakPaths[0];
+        std::filesystem::path path(sFullPath);
+
+        std::string filename = path.filename().u8string();
+
+        BinaryIO srpkOut;
+
+        srpkOut.open(sOutputDir + filename, BinaryIOMode::BinaryIOMode_Write);
+
+        int magic = 'kPRS';
+        int version = 1;
+        uint64_t entryCount = g_vSRPkDataEntries.size();
+
+        srpkOut.write(magic);
+        srpkOut.write(version);
+
+        // funny aligning to 4096 bytes
+        char* why = new char[4088];
+        memset(why, 0xCB, 4088);
+
+        srpkOut.getWriter()->write(why, 4088);
+
+        for (auto& it : g_vSRPkDataEntries)
+        {
+            srpkOut.getWriter()->write((const char*)it.dataPtr, it.dataSize);
+        }
+
+        for (auto& it : g_vSRPkDataEntries)
+        {
+            SRPkFileEntry fe{};
+            fe.offset = it.offset;
+            fe.size = it.dataSize;
+
+            srpkOut.write(fe);
+        }
+
+        srpkOut.write(entryCount);
+        srpkOut.close();
+    }
     return EXIT_SUCCESS;
 }

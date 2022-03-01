@@ -1,16 +1,5 @@
 #pragma once
 
-enum class TXTRFormat : uint8_t
-{
-	DXT1,
-	_DXT1, // idk what the difference is. just use DXT1
-	UNK1,
-	UNK2,
-	UNK3,
-	UNK4,
-	BC4U
-};
-
 struct DDS_PIXELFORMAT {
 	uint32_t size;
 	uint32_t flags;
@@ -38,6 +27,12 @@ struct DDS_HEADER {
 	uint32_t caps4;
 	uint32_t reserved2;
 } dds_header;
+
+struct SRPkFileEntry
+{
+	uint64_t offset;
+	uint64_t size;
+};
 
 
 namespace RTech

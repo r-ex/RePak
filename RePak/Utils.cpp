@@ -46,6 +46,14 @@ FILETIME Utils::GetFileTimeBySystem()
 	return ft;
 }
 
+void Utils::AppendSlash(std::string& in)
+{
+	char lchar = in[in.size() - 1];
+	if (lchar != '\\' && lchar != '/')
+		in.append("/");
+}
+
+
 void Warning(const char* fmt, ...)
 {
 	va_list args;

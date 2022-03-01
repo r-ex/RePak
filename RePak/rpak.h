@@ -1,4 +1,6 @@
 #pragma once
+
+#include <d3d11.h>
 struct Vector3
 {
 	float x, y, z;
@@ -8,8 +10,8 @@ struct Vector3
 
 struct RPakPtr
 {
-	uint32_t Index;
-	uint32_t Offset;
+	uint32_t Index = 0;
+	uint32_t Offset = 0;
 };
 
 // Apex Legends RPak file header
@@ -78,6 +80,7 @@ struct RPakFileHeaderV7
 	uint32_t UnknownEighthBlockCount = 0;
 };
 
+// todo: document these
 // segment
 struct RPakVirtualSegment
 {
@@ -105,12 +108,6 @@ struct RPakDescriptor
 // same kinda thing as RPakDescriptor, but this one tells the engine where
 // guid references to other assets are within mem pages
 typedef RPakDescriptor RPakGuidDescriptor;
-
-struct RPakUnknownBlockFive
-{
-	uint32_t Unk1;
-	uint32_t Flags;
-};
 
 struct RPakRelationBlock
 {
@@ -173,7 +170,7 @@ struct RPakAssetEntryV8
 	uint64_t StarpakOffset = -1;
 	uint64_t OptionalStarpakOffset = -1;
 
-	uint16_t HighestPageNum = 0;
+	uint16_t HighestPageNum = 0; // might be called pageEnd? - number of the highest mem page that is used by this asset
 	uint16_t Un2 = 0;
 
 	uint32_t RelationsStartIndex = 0;
@@ -189,7 +186,6 @@ struct RPakAssetEntryV8
 	// but respawn calls it a version so i will as well
 	uint32_t Version = 0; 
 
-
 	uint32_t Magic = 0;
 };
 #pragma pack(pop)
@@ -201,21 +197,33 @@ struct RPakRawDataBlock
 	uint8_t* dataPtr;
 };
 
+struct SRPkDataEntry
+{
+	uint64_t offset = -1; // set when added
+	uint64_t dataSize = 0;
+	uint8_t* dataPtr;
+};
+
+// im aware that this almost definitely isnt right
+// but it's good enough for now so it'll stay until i can think of something better
 enum class SegmentType : uint32_t
 {
+	Unknown = 0x1,
 	Unknown1 = 0x4,
 	AssetSubHeader = 0x8,
 	AssetRawData = 0x10,
 	Unknown2 = 0x20,
+	Unknown3 = 0x40,
 };
 
 enum class AssetType : uint32_t
 {
-	TEXTURE = 0x72747874, // b'txtr'
-	MODEL = 0x5f6c646d,   // b'mdl_'
-	UIMG = 0x676d6975,    // b'uimg'
-	PTCH = 0x68637450,	  // b'Ptch'
-	DTBL = 0x6c627464,    // b'dtbl'
+	TEXTURE = 0x72747874, // b'txtr' - texture
+	RMDL = 0x5f6c646d,    // b'mdl_' - model
+	UIMG = 0x676d6975,    // b'uimg' - ui image atlas
+	PTCH = 0x68637450,	  // b'Ptch' - patch
+	DTBL = 0x6c627464,    // b'dtbl' - datatable
+	MATL = 0x6c74616d,    // b'matl' - material
 };
 
 enum class DataTableColumnDataType : uint32_t
@@ -242,17 +250,18 @@ struct TextureHeader
 	uint16_t Width = 0;
 	uint16_t Height = 0;
 
-	uint8_t Un1 = 0;
-	uint8_t Un2 = 0;
+	uint16_t Un1 = 0;
 	uint16_t Format = 0;		// Maps to a DXGI format
 
 	uint32_t DataSize;	// This is the total amount of image data across all banks
-	uint32_t Unknown2 = 0;
-	uint8_t Unknown3 = 0;
-	uint8_t MipLevels = 0;
-	uint8_t MipLevelsStreamed = 0;
-
-	uint8_t UnknownPad[0x15];
+	uint8_t Unknown2;
+	uint8_t MipLevelsStreamedOpt;
+	uint8_t ArraySize;
+	uint8_t LayerCount;
+	uint8_t Unknown4;
+	uint8_t MipLevels;
+	uint8_t MipLevelsStreamed;
+	uint8_t UnknownPad[21];
 };
 
 struct UIImageHeader
@@ -356,6 +365,195 @@ struct PtchHeader
 
 	RPakPtr EntryPatchNums;
 };
+
+// size: 0x78 (120 bytes)
+struct ModelHeader
+{
+	// IDST data
+	// .mdl
+	RPakPtr SkeletonPtr;
+	uint64_t Padding = 0;
+
+	// model path
+	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
+	RPakPtr NamePtr;
+	uint64_t Padding2 = 0;
+
+	// .phy
+	RPakPtr PhyPtr;
+	uint64_t Padding3 = 0;
+
+	// this data is usually kept in a mandatory starpak, but there's also fallback(?) data here
+	// in rmdl v8, this is literally just .vtx and .vvd stuck together
+	// in v9+ it's an increasingly mutated version, although it contains roughly the same data
+	RPakPtr VGPtr;
+
+	// pointer to data for the model's arig guid(s?)
+	RPakPtr AnimRigRefPtr;
+
+	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
+	uint32_t AnimRigCount = 0;
+
+	// size of the data kept in starpak
+	uint32_t StreamedDataSize = 0;
+	uint32_t DataCacheSize = 0;
+	uint64_t Padding6 = 0;
+
+	// number of anim sequences directly associated with this model
+	uint32_t AnimSequenceCount = 0;
+	RPakPtr AnimSequencePtr;
+
+	uint64_t Padding7 = 0;
+	uint64_t Padding8 = 0;
+	uint64_t Padding9 = 0;
+};
+
+// only the first few members of the skeleton header struct.
+// used for verifying the input file when adding an rmdl asset
+struct BasicRMDLSkeletonHeader
+{
+	uint32_t magic; // IDST
+	uint32_t version; // 6
+	uint32_t checksum;
+	uint32_t stringTableOffset;
+	char modelName[64];
+	uint32_t dataSize;
+};
+
+struct studiohdr_t
+{
+	uint32_t Magic;
+	uint32_t Version;
+	uint32_t Hash;
+	uint32_t NameTableOffset;
+
+	char SkeletonName[0x40];
+
+	uint32_t DataSize;
+
+	float EyePosition[3];
+	float IllumPosition[3];
+	float HullMin[3];
+	float HullMax[3];
+	float ViewBBMin[3];
+	float ViewBBMax[3];
+
+	uint32_t Flags; // 0x9c
+
+	uint32_t BoneCount; // 0xa0
+	uint32_t BoneDataOffset; // 0xa4
+
+	uint32_t BoneControllerCount;
+	uint32_t BoneControllerOffset;
+
+	uint32_t HitboxCount;
+	uint32_t HitboxOffset;
+
+	uint32_t LocalAnimCount;
+	uint32_t LocalAnimOffset;
+
+	uint32_t LocalSeqCount;
+	uint32_t LocalSeqOffset;
+
+	uint32_t ActivityListVersion;
+	uint32_t EventsIndexed;
+
+	uint32_t MaterialCount;
+	uint32_t MaterialOffset;
+
+	uint32_t TextureDirCount;
+	uint32_t TextureDirOffset;
+
+	uint32_t SkinReferenceCount;	// Total number of references (submeshes)
+	uint32_t SkinFamilyCount;		// Total skins per reference
+	uint32_t SkinReferenceOffset;	// Offset to data
+
+	uint32_t BodyPartCount;
+	uint32_t BodyPartOffset;
+
+	uint32_t AttachmentCount;
+	uint32_t AttachmentOffset;
+
+	uint8_t Unknown2[0x14];
+
+	uint32_t SubmeshLodsOffset;
+
+	uint8_t Unknown3[0x64];
+	uint32_t OffsetToBoneRemapInfo;
+	uint32_t BoneRemapCount;
+};
+
+struct BasicRMDLVGHeader
+{
+	uint32_t magic;
+	uint32_t version;
+};
+
+// asset path
+// texture guids
+// unknown section with same length as texture guids
+// surface name
+
+
+struct UnknownMaterialSection
+{
+	// required but seems to follow a pattern. maybe related to "Unknown2" above?
+	// nulling these bytes makes the material stop drawing entirely
+	uint32_t Unknown5[8]{};
+
+	uint32_t Unknown6 = 0;
+
+	// both of these are required
+
+	// seems to be some kind of render/visibility flag.
+	uint16_t Flags1 = 0x17;
+	uint16_t Flags2 = 0x6; // i'm not sure about what this one does exactly
+
+	uint64_t Padding = 0;
+};
+
+struct MaterialHeader
+{
+	uint8_t Unknown[0x10]{}; // all null bytes
+	uint64_t AssetGUID = 0; // for some reason this is the material's guid
+
+	RPakPtr Name{}; // asset path
+	RPakPtr SurfaceName{}; // surface name (as defined in surfaceproperties.rson)
+	uint64_t Padding = 0;
+
+	// first 4 guids seem to be constant across most materials in the game (idx 0-3)
+	// idx 4 - colpass material guid (or blank if this is the colpass material)
+	uint64_t GUIDRefs[5]{}; // (presumably) REQUIRED - some asset guids
+	uint64_t ShaderSetGUID = 0;
+
+	RPakPtr TextureGUIDs{}; // texture guids
+
+	// points to a whole lotta nothing (null bytes)
+	// this would be a single RPakPtr but compiler says no
+	// thanks msvc!
+	uint32_t UnknownIndex = 0;
+	uint32_t UnknownOffset = 0;
+
+	uint8_t Unknown3[0x10]{}; // "optional"
+
+	uint32_t Unknown4 = 0x1F5A92BD; // REQUIRED
+
+	uint32_t Alignment = 0;
+
+	// neither of these 2 seem to be required
+	uint32_t something = 0;
+	uint32_t something2 = 0;
+
+	UnknownMaterialSection UnkSections[2]{};
+};
+
+struct MaterialCPUHeader
+{
+	RPakPtr Unknown{};
+	uint32_t DataSize = 0;
+	uint32_t VersionMaybe = 3;
+};
+
 #pragma pack(pop)
 
 struct PtchEntry
@@ -363,4 +561,69 @@ struct PtchEntry
 	std::string FileName = "";
 	uint8_t PatchNum = 0;
 	uint32_t FileNamePageOffset = 0;
+};
+
+static std::map<DXGI_FORMAT, uint16_t> TxtrFormatMap{
+	{ DXGI_FORMAT_BC1_UNORM, 0 },
+	{ DXGI_FORMAT_BC1_UNORM_SRGB, 1 },
+	{ DXGI_FORMAT_BC2_UNORM, 2 },
+	{ DXGI_FORMAT_BC2_UNORM_SRGB, 3 },
+	{ DXGI_FORMAT_BC3_UNORM, 4 },
+	{ DXGI_FORMAT_BC3_UNORM_SRGB, 5 },
+	{ DXGI_FORMAT_BC4_UNORM, 6 },
+	{ DXGI_FORMAT_BC4_SNORM, 7 },
+	{ DXGI_FORMAT_BC5_UNORM, 8 },
+	{ DXGI_FORMAT_BC5_SNORM, 9 },
+	{ DXGI_FORMAT_BC6H_UF16, 10 },
+	{ DXGI_FORMAT_BC6H_SF16, 11 },
+	{ DXGI_FORMAT_BC7_UNORM, 12 },
+	{ DXGI_FORMAT_BC7_UNORM_SRGB, 13 },
+	{ DXGI_FORMAT_R32G32B32A32_FLOAT, 14 },
+	{ DXGI_FORMAT_R32G32B32A32_UINT, 15 },
+	{ DXGI_FORMAT_R32G32B32A32_SINT, 16 },
+	{ DXGI_FORMAT_R32G32B32_FLOAT, 17 },
+	{ DXGI_FORMAT_R32G32B32_UINT, 18 },
+	{ DXGI_FORMAT_R32G32B32_SINT, 19 },
+	{ DXGI_FORMAT_R16G16B16A16_FLOAT, 20 },
+	{ DXGI_FORMAT_R16G16B16A16_UNORM, 21 },
+	{ DXGI_FORMAT_R16G16B16A16_UINT, 22 },
+	{ DXGI_FORMAT_R16G16B16A16_SNORM, 23 },
+	{ DXGI_FORMAT_R16G16B16A16_SINT, 24 },
+	{ DXGI_FORMAT_R32G32_FLOAT, 25 },
+	{ DXGI_FORMAT_R32G32_UINT, 26 },
+	{ DXGI_FORMAT_R32G32_SINT, 27 },
+	{ DXGI_FORMAT_R10G10B10A2_UNORM, 28 },
+	{ DXGI_FORMAT_R10G10B10A2_UINT, 29 },
+	{ DXGI_FORMAT_R11G11B10_FLOAT, 30 },
+	{ DXGI_FORMAT_R8G8B8A8_UNORM, 31 },
+	{ DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 32 },
+	{ DXGI_FORMAT_R8G8B8A8_UINT, 33 },
+	{ DXGI_FORMAT_R8G8B8A8_SNORM, 34 },
+	{ DXGI_FORMAT_R8G8B8A8_SINT, 35 },
+	{ DXGI_FORMAT_R16G16_FLOAT, 36 },
+	{ DXGI_FORMAT_R16G16_UNORM, 37 },
+	{ DXGI_FORMAT_R16G16_UINT, 38 },
+	{ DXGI_FORMAT_R16G16_SNORM, 39 },
+	{ DXGI_FORMAT_R16G16_SINT, 40 },
+	{ DXGI_FORMAT_R32_FLOAT, 41 },
+	{ DXGI_FORMAT_R32_UINT, 42 },
+	{ DXGI_FORMAT_R32_SINT, 43 },
+	{ DXGI_FORMAT_R8G8_UNORM, 44 },
+	{ DXGI_FORMAT_R8G8_UINT, 45 },
+	{ DXGI_FORMAT_R8G8_SNORM, 46 },
+	{ DXGI_FORMAT_R8G8_SINT, 47 },
+	{ DXGI_FORMAT_R16_FLOAT, 48 },
+	{ DXGI_FORMAT_R16_UNORM, 49 },
+	{ DXGI_FORMAT_R16_UINT, 50 },
+	{ DXGI_FORMAT_R16_SNORM, 51 },
+	{ DXGI_FORMAT_R16_SINT, 52 },
+	{ DXGI_FORMAT_R8_UNORM, 53 },
+	{ DXGI_FORMAT_R8_UINT, 54 },
+	{ DXGI_FORMAT_R8_SNORM, 55 },
+	{ DXGI_FORMAT_R8_SINT, 56 },
+	{ DXGI_FORMAT_A8_UNORM, 57 },
+	{ DXGI_FORMAT_R9G9B9E5_SHAREDEXP, 58 },
+	{ DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM, 59 },
+	{ DXGI_FORMAT_D32_FLOAT, 60 },
+	{ DXGI_FORMAT_D16_UNORM, 61 },
 };
