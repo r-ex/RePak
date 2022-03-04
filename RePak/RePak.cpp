@@ -152,11 +152,7 @@ int main(int argc, char** argv)
     }
     else {
         Assets::g_sAssetsDir = doc["assetsDir"].GetStdString();
-        char lchar = Assets::g_sAssetsDir[Assets::g_sAssetsDir.size() - 1];
-        if (lchar != '\\' && lchar != '/')
-        {
-            Assets::g_sAssetsDir.append("/");
-        }
+        Utils::AppendSlash(Assets::g_sAssetsDir);
         Debug("assetsDir: %s\n", Assets::g_sAssetsDir.c_str());
     }
 
@@ -186,6 +182,8 @@ int main(int argc, char** argv)
     std::filesystem::create_directories(sOutputDir); // create directory if it does not exist yet.
 
     BinaryIO out{ };
+
+    // todo: v7 support?
     RPakFileHeaderV8 rpakHeader{ };
 
     out.open(sOutputDir + sRpakName + ".rpak", BinaryIOMode::BinaryIOMode_Write); // open a new stream to the new file.
