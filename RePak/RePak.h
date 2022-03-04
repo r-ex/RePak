@@ -4,7 +4,7 @@
 
 namespace RePak
 {
-	uint32_t CreateNewSegment(uint64_t size, uint32_t flags_maybe, SegmentType type, RPakVirtualSegment& seg, uint32_t vsegType=-1);
+	uint32_t CreateNewSegment(uint64_t size, uint32_t flags_maybe, uint32_t alignment, RPakVirtualSegment& seg, uint32_t vsegAlignment = -1);
 	void AddStarpakReference(std::string path);
 	uint64_t AddStarpakDataEntry(SRPkDataEntry block);
 	void AddRawDataBlock(RPakRawDataBlock block);

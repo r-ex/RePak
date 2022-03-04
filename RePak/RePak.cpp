@@ -18,12 +18,12 @@ using namespace rapidjson;
 
 // flags_maybe is used because it's required for some segments but i have no way of knowing how it's supposed to be set
 // idrk if it's even used for flags tbh
-uint32_t RePak::CreateNewSegment(uint64_t size, uint32_t flags_maybe, SegmentType type, RPakVirtualSegment& seg, uint32_t vsegTypeOverride)
+uint32_t RePak::CreateNewSegment(uint64_t size, uint32_t flags_maybe, uint32_t alignment, RPakVirtualSegment& seg, uint32_t vsegAlignment)
 {
-    uint32_t idx = g_vvSegments.size();
+    uint32_t idx = g_vvSegmentBlocks.size();
 
-    RPakVirtualSegment vseg{flags_maybe, vsegTypeOverride == -1 ? (uint32_t)type : vsegTypeOverride, size};
-    RPakVirtualSegmentBlock vsegblock{g_vvSegments.size(), (uint32_t)type, size};
+    RPakVirtualSegment vseg{flags_maybe, vsegAlignment == -1 ? alignment : vsegAlignment, size};
+    RPakVirtualSegmentBlock vsegblock{g_vvSegments.size(), alignment, size};
 
     g_vvSegments.emplace_back(vseg);
     g_vvSegmentBlocks.emplace_back(vsegblock);
@@ -59,6 +59,15 @@ uint64_t RePak::AddStarpakDataEntry(SRPkDataEntry block)
 
 void RePak::AddRawDataBlock(RPakRawDataBlock block)
 {
+    // this messes with descriptor registration
+    //uint32_t alignment = g_vvSegmentBlocks[block.pageIdx].Alignment;
+    //size_t ns = Utils::PadBuffer((char**)&block.dataPtr, block.dataSize, alignment);
+    //
+    //if(block.dataSize != ns)
+    //    Debug("Aligned data block to %i bytes (%llx to %llx)\n", alignment, block.dataSize, ns);
+
+    //block.dataSize = ns;
+
     g_vRawDataBlocks.push_back(block);
     return;
 };

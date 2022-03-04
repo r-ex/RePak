@@ -96,11 +96,11 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
     // make a segment/page for the sub header
     //
     RPakVirtualSegment SubHeaderSegment{};
-    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(DataTableHeader), 0, SegmentType::AssetSubHeader, SubHeaderSegment);
+    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(DataTableHeader), 0, 8, SubHeaderSegment);
 
     // page for DataTableColumn entries
     RPakVirtualSegment ColumnHeaderSegment{};
-    uint32_t chsIdx = RePak::CreateNewSegment(sizeof(DataTableColumn)*columnCount, 1, SegmentType::AssetSubHeader, ColumnHeaderSegment, 64);
+    uint32_t chsIdx = RePak::CreateNewSegment(sizeof(DataTableColumn)*columnCount, 1, 8, ColumnHeaderSegment, 64);
 
     hdr->ColumnCount = columnCount;
     hdr->RowCount = rowCount-1;
@@ -113,7 +113,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
     // make a segment/page for the column names
     //
     RPakVirtualSegment ColumnNamesSegment{};
-    uint32_t nameSegIdx = RePak::CreateNewSegment(ColumnNameBufSize, 1, SegmentType::AssetSubHeader, ColumnNamesSegment, 64);
+    uint32_t nameSegIdx = RePak::CreateNewSegment(ColumnNameBufSize, 1, 8, ColumnNamesSegment, 64);
 
     char* columnHeaderBuf = new char[sizeof(DataTableColumn) * columnCount];
 
@@ -165,11 +165,11 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
 
     // page for Row Data
     RPakVirtualSegment RowDataSegment{};
-    uint32_t rdsIdx = RePak::CreateNewSegment(rowDataPageSize, 1, SegmentType::AssetSubHeader, RowDataSegment, 64);
+    uint32_t rdsIdx = RePak::CreateNewSegment(rowDataPageSize, 1, 8, RowDataSegment, 64);
 
     // page for string entries
     RPakVirtualSegment StringEntrySegment{};
-    uint32_t sesIdx = RePak::CreateNewSegment(stringEntriesSize, 1, SegmentType::AssetSubHeader, StringEntrySegment, 64);
+    uint32_t sesIdx = RePak::CreateNewSegment(stringEntriesSize, 1, 8, StringEntrySegment, 64);
 
     char* rowDataBuf = new char[rowDataPageSize];
 
@@ -320,13 +320,13 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     // allocate the page and segment
     RPakVirtualSegment SubHeaderSegment;
-    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(UIImageHeader), 0x40, SegmentType::AssetSubHeader, SubHeaderSegment);
+    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(UIImageHeader), 0x40, 8, SubHeaderSegment);
 
     RPakVirtualSegment TextureInfoSegment;
-    uint32_t tisIdx = RePak::CreateNewSegment(textureInfoPageSize, 0x41, SegmentType::Unknown2, TextureInfoSegment);
+    uint32_t tisIdx = RePak::CreateNewSegment(textureInfoPageSize, 0x41, 32, TextureInfoSegment);
 
     RPakVirtualSegment RawDataSegment;
-    uint32_t rdsIdx = RePak::CreateNewSegment(nTexturesCount * 0x10, 0x43, SegmentType::Unknown1, RawDataSegment);
+    uint32_t rdsIdx = RePak::CreateNewSegment(nTexturesCount * 0x10, 0x43, 4, RawDataSegment);
 
     // register our descriptors so they get converted properly
     RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, TextureOffsetsIndex));
@@ -494,11 +494,11 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     // give us a segment to use for the subheader
     RPakVirtualSegment SubHeaderSegment;
-    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(TextureHeader), 0, SegmentType::AssetSubHeader, SubHeaderSegment);
+    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(TextureHeader), 0, 8, SubHeaderSegment);
 
     // woo more segments
     RPakVirtualSegment RawDataSegment;
-    uint32_t rdsIdx = RePak::CreateNewSegment(hdr->DataSize, 3, SegmentType::AssetRawData, RawDataSegment);
+    uint32_t rdsIdx = RePak::CreateNewSegment(hdr->DataSize, 3, 16, RawDataSegment);
 
     char* databuf = new char[hdr->DataSize];
 
@@ -548,10 +548,10 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     size_t nDataPageSize = (sizeof(RPakPtr) * hdr->EntryCount) + (sizeof(uint8_t) * hdr->EntryCount) + entryNamesSectionSize;
 
     RPakVirtualSegment SubHeaderPage;
-    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(PtchHeader), 0, SegmentType::AssetSubHeader, SubHeaderPage);
+    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(PtchHeader), 0, 8, SubHeaderPage);
 
     RPakVirtualSegment DataPage;
-    uint32_t rdsIdx = RePak::CreateNewSegment(nDataPageSize, 1, SegmentType::AssetSubHeader, DataPage);
+    uint32_t rdsIdx = RePak::CreateNewSegment(nDataPageSize, 1, 8, DataPage);
 
     hdr->EntryNames.Index  = rdsIdx;
     hdr->EntryNames.Offset = 0;
@@ -677,10 +677,10 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     hdr->StreamedDataSize = vgFileSize;
 
     RPakVirtualSegment SubHeaderSegment{};
-    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(ModelHeader), 0, SegmentType::AssetSubHeader, SubHeaderSegment);
+    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(ModelHeader), 0, 8, SubHeaderSegment);
 
     RPakVirtualSegment DataSegment{};
-    uint32_t dataSegIdx = RePak::CreateNewSegment(bsh.dataSize + fileNameDataSize, 1, SegmentType::Unknown3, DataSegment);
+    uint32_t dataSegIdx = RePak::CreateNewSegment(bsh.dataSize + fileNameDataSize, 1, 64, DataSegment);
 
     //RPakVirtualSegment VGSegment{};
     //uint32_t vgIdx = RePak::CreateNewSegment(vgFileSize, 67, SegmentType::Unknown, DataSegment);
@@ -775,10 +775,10 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + (surface.length() + 1);
     
     RPakVirtualSegment SubHeaderSegment;
-    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(MaterialHeader), 0, SegmentType::AssetSubHeader, SubHeaderSegment);
+    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(MaterialHeader), 0, 8, SubHeaderSegment);
 
     RPakVirtualSegment DataSegment;
-    uint32_t dsIdx = RePak::CreateNewSegment(dataBufSize, 1, SegmentType::Unknown3, DataSegment);
+    uint32_t dsIdx = RePak::CreateNewSegment(dataBufSize, 1, 64, DataSegment);
     
     char* dataBuf = new char[dataBufSize]{};
     char* tmp = dataBuf;
@@ -968,7 +968,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     };
 
     RPakVirtualSegment CPUSegment;
-    uint32_t cpuIdx = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + 512, 3, SegmentType::AssetRawData, CPUSegment);
+    uint32_t cpuIdx = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + 512, 3, 16, CPUSegment);
 
     MaterialCPUHeader cpuhdr{};
     cpuhdr.Unknown.Index = cpuIdx;

@@ -85,7 +85,7 @@ struct RPakFileHeaderV7
 struct RPakVirtualSegment
 {
 	uint32_t DataFlag = 0; // some flags
-	uint32_t DataType;	// type of data contained in the segment
+	uint32_t Alignment;	// Thank you Respawn, very cool!
 	uint64_t DataSize;	// seg data size
 };
 
@@ -93,7 +93,7 @@ struct RPakVirtualSegment
 struct RPakVirtualSegmentBlock
 {
 	uint32_t VirtualSegmentIndex; // which vseg is this pointing to
-	uint32_t DataType; // type of the referenced vseg
+	uint32_t Alignment; // data alignment
 	uint32_t DataSize; // vseg data size
 };
 
@@ -192,7 +192,7 @@ struct RPakAssetEntryV8
 
 struct RPakRawDataBlock
 {
-	uint32_t vsegIdx;
+	uint32_t pageIdx;
 	uint64_t dataSize;
 	uint8_t* dataPtr;
 };
@@ -202,18 +202,6 @@ struct SRPkDataEntry
 	uint64_t offset = -1; // set when added
 	uint64_t dataSize = 0;
 	uint8_t* dataPtr;
-};
-
-// im aware that this almost definitely isnt right
-// but it's good enough for now so it'll stay until i can think of something better
-enum class SegmentType : uint32_t
-{
-	Unknown = 0x1,
-	Unknown1 = 0x4,
-	AssetSubHeader = 0x8,
-	AssetRawData = 0x10,
-	Unknown2 = 0x20,
-	Unknown3 = 0x40,
 };
 
 enum class AssetType : uint32_t
