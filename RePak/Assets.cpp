@@ -492,9 +492,24 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     // unfortunately i'm not a respawn engineer so 1 (unstreamed) mip level will have to do
     hdr->MipLevels = 1;
 
+    bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
+
     // give us a segment to use for the subheader
     RPakVirtualSegment SubHeaderSegment;
     uint32_t shsIdx = RePak::CreateNewSegment(sizeof(TextureHeader), 0, 8, SubHeaderSegment);
+
+    RPakVirtualSegment DebugNameSegment;
+    char* namebuf = new char[sAssetName.size() + 1];
+    uint32_t nsIdx = -1;
+
+    if (bSaveDebugName)
+    {
+        sprintf_s(namebuf, sAssetName.length() + 1, "%s", sAssetName.c_str());
+        nsIdx = RePak::CreateNewSegment(sAssetName.size() + 1, 129, 1, DebugNameSegment);
+    }
+    else {
+        delete[] namebuf;
+    }
 
     // woo more segments
     RPakVirtualSegment RawDataSegment;
@@ -506,6 +521,14 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)hdr };
     RePak::AddRawDataBlock(shdb);
+
+    if (bSaveDebugName)
+    {
+        RPakRawDataBlock ndb{ nsIdx, DebugNameSegment.DataSize, (uint8_t*)namebuf };
+        RePak::AddRawDataBlock(ndb);
+        hdr->NameIndex = nsIdx;
+        hdr->NameOffset = 0;
+    }
 
     RPakRawDataBlock rdb{ rdsIdx, RawDataSegment.DataSize, (uint8_t*)databuf };
     RePak::AddRawDataBlock(rdb);
