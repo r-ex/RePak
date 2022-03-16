@@ -917,7 +917,8 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     bool bColpass = true;
     if (mapEntry.HasMember("colpass"))
     {
-        hdr->GUIDRefs[4] = RTech::StringToGuid(mapEntry["colpass"].GetString());
+        std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + ".rpak";
+        hdr->GUIDRefs[4] = RTech::StringToGuid(colpassPath.c_str());
 
         RePak::RegisterGuidDescriptor(shsIdx, offsetof(MaterialHeader, GUIDRefs) + 32);
         RePak::AddFileRelation(assetEntries->size());
