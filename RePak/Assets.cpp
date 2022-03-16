@@ -914,7 +914,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     assetUsesCount++;
 
     // is this a colpass asset?
-    bool bColpass = true;
+    bool bColpass = false;
     if (mapEntry.HasMember("colpass"))
     {
         std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + ".rpak";
