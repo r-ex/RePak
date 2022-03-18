@@ -1033,8 +1033,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     memcpy_s(cpuData, 16, &cpuhdr, 16);
 
-    memset(cpuData + sizeof(MaterialCPUHeader), 0, 544);
-    //memcpy_s(cpuData + sizeof(MaterialCPUHeader), 544, testData, 544);
+    memcpy_s(cpuData + sizeof(MaterialCPUHeader), 544, testData, 544);
     //////////////////////////////////////////
 
     RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)hdr };
