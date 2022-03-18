@@ -522,12 +522,14 @@ struct MaterialHeader
 	RPakPtr TextureGUIDs2{}; // texture guids2
 //	uint32_t UnknownIndex = 0;
 //	uint32_t UnknownOffset = 0;
-	uint32_t UnknownOffset1 = 0;
+	uint32_t Unknown = 0;
 	uint32_t MaterialRes = 0; // Material resolution.
 
-	uint8_t Unknown3[0x8]{}; // "optional"
+	uint16_t Unknown2 = 0; // "optional"
+	uint16_t Unknown3 = 0;
+	uint32_t Unknown4 = 0;
 
-	uint32_t Unknown4 = 0x1F5A92BD; // REQUIRED
+	uint32_t Unknown5 = 0x1F5A92BD; // REQUIRED
 
 	uint32_t Alignment = 0;
 
