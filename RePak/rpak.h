@@ -502,21 +502,25 @@ struct UnknownMaterialSection
 
 struct MaterialHeader
 {
-	uint64_t VtblPtrPad = 0; // gets set to CMaterialGlue vtbl ptr
-	uint8_t Padding[0x8]{}; // idk
-	uint64_t AssetGUID = 0; // for some reason this is the material's guid
+	uint64_t VtblPtrPad = 0; // Gets set to CMaterialGlue vtbl ptr
+	uint8_t Padding[0x8]{}; // Un-used.
+	uint64_t AssetGUID = 0; // This materials GUID.
 
-	RPakPtr Name{}; // asset path
-	RPakPtr SurfaceName{}; // surface name (as defined in surfaceproperties.rson)
-	RPakPtr SurfaceName2{}; // surface name 2 
+	RPakPtr Name{}; // Asset path
+	RPakPtr SurfaceName{}; // Surface name (as defined in surfaceproperties.rson)
+	RPakPtr SurfaceName2{}; // Surface name 2 
 
-	// first 4 guids seem to be constant across most materials in the game (idx 0-3)
-	// idx 4 - colpass material guid (or blank if this is the colpass material)
-	uint64_t GUIDRefs[5]{}; // (presumably) REQUIRED - some asset guids
-	uint64_t ShaderSetGUID = 0;
+	// IDX 1: DepthShadow
+	// IDX 2: DepthPrepass
+	// IDX 3: DepthVSM
+	// IDX 4: DepthShadowTight
+	// IDX 5: ColPass
+	// They seem to be the exact same for all materials throughout the game.
+	uint64_t GUIDRefs[5]{}; // Required to have proper textures.
+	uint64_t ShaderSetGUID = 0; // Shaderset guid / CShaderGlue guid
 
-	RPakPtr TextureGUIDs{}; // texture guids
-	RPakPtr TextureGUIDs2{}; // texture guids2
+	RPakPtr TextureGUIDs{}; // TextureGUID Map 1
+	RPakPtr TextureGUIDs2{}; // TextureGUID Map 2
 
 	int16_t UnknownSignature = 0x4; //This seems to be the start of a modified VTF Header, I have no clue what this member does. 
 	int16_t Width = 2048;
@@ -527,7 +531,7 @@ struct MaterialHeader
 	uint32_t ImageFlags = 0x1D0300; 
 	uint32_t Unknown1 = 0;
 
-	uint32_t Unknown2 = 0x1F5A92BD; // REQUIRED
+	uint32_t Unknown2 = 0x1F5A92BD; // REQUIRED but why?
 
 	uint32_t Alignment = 0;
 
