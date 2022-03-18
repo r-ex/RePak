@@ -772,8 +772,14 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     hdr->AssetGUID = RTech::StringToGuid(sAssetName.c_str());
 
-    if (mapEntry.HasMember("resolution")) // Set material resolution.
-        hdr->MaterialRes = mapEntry["resolution"].GetInt();
+    if (mapEntry.HasMember("signature")) // unknown member usually 0x4 or 0x9
+        hdr->UnknownSignature = mapEntry["signature"].GetInt();
+
+    if (mapEntry.HasMember("width")) // Set material width.
+        hdr->Width = mapEntry["width"].GetInt();
+
+    if (mapEntry.HasMember("height")) // Set material width.
+        hdr->Width = mapEntry["height"].GetInt();
 
     uint32_t assetUsesCount = 0;
 
@@ -956,9 +962,8 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, TextureGUIDs));
     RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, TextureGUIDs2));
 
-    hdr->Unknown1 = 0x8000004;
-    hdr->Unknown2 = 0x300;
-    hdr->Unknown3 = 0x1D;
+    if (mapEntry.HasMember("flags")) // Set flags properly.
+        hdr->ImageFlags = mapEntry["flags"].GetUint();
 
     // these are not right
     hdr->something = 1912602624;

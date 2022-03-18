@@ -516,22 +516,18 @@ struct MaterialHeader
 	uint64_t ShaderSetGUID = 0;
 
 	RPakPtr TextureGUIDs{}; // texture guids
-
-	// points to a whole lotta nothing (null bytes)
-	// this would be a single RPakPtr but compiler says no
-	// thanks msvc!
 	RPakPtr TextureGUIDs2{}; // texture guids2
-//	uint32_t UnknownIndex = 0;
-//	uint32_t UnknownOffset = 0;
+
+	int16_t UnknownSignature = 0x4; //This seems to be the start of a modified VTF Header, I have no clue what this member does. 
+	int16_t Width = 2048;
+	int16_t Height = 2048;
+	int16_t Unknown = 0;
+
+	// Not fucking optional, its responsible for clamping and stretching aka to tile properly.
+	uint32_t ImageFlags = 0x1D0300; 
 	uint32_t Unknown1 = 0;
-	uint32_t MaterialRes = 0; // Material resolution.
 
-	// these are required to get textures to tile properly
-	uint16_t Unknown2 = 0;
-	uint16_t Unknown3 = 0;
-	uint32_t Unknown4 = 0;
-
-	uint32_t Unknown5 = 0x1F5A92BD; // REQUIRED
+	uint32_t Unknown2 = 0x1F5A92BD; // REQUIRED
 
 	uint32_t Alignment = 0;
 
