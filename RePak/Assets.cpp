@@ -845,9 +845,27 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
         textureIdx++;
     }
 
-    // ===============================
-    // there's a section after the texture refs with equal size to the texture references
-    dataBuf += textureRefSize;
+    textureIdx = 0;
+    for (auto& it : mapEntry["textures"].GetArray())
+    {
+        if (it.GetStdString() != "")
+        {
+            uint64_t guid = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str());
+            *(uint64_t*)dataBuf = guid;
+            RePak::RegisterGuidDescriptor(dsIdx, guidPageOffset + textureRefSize + (textureIdx * sizeof(uint64_t)));
+
+            RePak::AddFileRelation(assetEntries->size());
+
+            auto txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
+
+            txtrAsset->RelationsStartIndex = fileRelationIdx;
+            txtrAsset->RelationsCount++;
+
+            assetUsesCount++;
+        }
+        dataBuf += sizeof(uint64_t);
+        textureIdx++;
+    }
 
     // ===============================
     // write the surface name into the buffer
