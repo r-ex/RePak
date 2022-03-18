@@ -526,7 +526,8 @@ struct MaterialHeader
 	uint32_t Unknown1 = 0;
 	uint32_t MaterialRes = 0; // Material resolution.
 
-	uint16_t Unknown2 = 0; // "optional"
+	// these are required to get textures to tile properly
+	uint16_t Unknown2 = 0;
 	uint16_t Unknown3 = 0;
 	uint32_t Unknown4 = 0;
 
