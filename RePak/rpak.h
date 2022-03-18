@@ -502,7 +502,8 @@ struct UnknownMaterialSection
 
 struct MaterialHeader
 {
-	uint8_t Unknown[0x10]{}; // all null bytes
+	uint64_t VtblPtrPad = 0; // gets set to CMaterialGlue vtbl ptr
+	uint8_t Padding[0x8]{}; // idk
 	uint64_t AssetGUID = 0; // for some reason this is the material's guid
 
 	RPakPtr Name{}; // asset path
@@ -522,7 +523,7 @@ struct MaterialHeader
 	RPakPtr TextureGUIDs2{}; // texture guids2
 //	uint32_t UnknownIndex = 0;
 //	uint32_t UnknownOffset = 0;
-	uint32_t Unknown = 0;
+	uint32_t Unknown1 = 0;
 	uint32_t MaterialRes = 0; // Material resolution.
 
 	uint16_t Unknown2 = 0; // "optional"

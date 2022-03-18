@@ -956,7 +956,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, TextureGUIDs));
     RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, TextureGUIDs2));
 
-    hdr->Unknown = 0x8000004;
+    hdr->Unknown1 = 0x8000004;
     hdr->Unknown2 = 0x300;
     hdr->Unknown3 = 0x1D;
 
