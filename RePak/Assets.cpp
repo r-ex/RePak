@@ -772,6 +772,9 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     hdr->AssetGUID = RTech::StringToGuid(sAssetName.c_str());
 
+    if (mapEntry.HasMember("resolution")) // Set material resolution.
+        hdr->MaterialRes = mapEntry["resolution"].GetInt();
+
     uint32_t assetUsesCount = 0;
 
     // get surface name or use "default"
@@ -929,11 +932,11 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     hdr->TextureGUIDs.Index = dsIdx;
     hdr->TextureGUIDs.Offset = guidPageOffset;
 
-    hdr->UnknownIndex = dsIdx;
-    hdr->UnknownOffset = guidPageOffset + textureRefSize;
+    hdr->TextureGUIDs2.Index = dsIdx;
+    hdr->TextureGUIDs2.Offset = guidPageOffset + textureRefSize;
 
     RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, TextureGUIDs));
-    RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, UnknownIndex));
+    RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, TextureGUIDs2));
 
     // these are not right
     hdr->something = 1912602624;

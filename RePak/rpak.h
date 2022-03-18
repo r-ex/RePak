@@ -507,7 +507,7 @@ struct MaterialHeader
 
 	RPakPtr Name{}; // asset path
 	RPakPtr SurfaceName{}; // surface name (as defined in surfaceproperties.rson)
-	uint64_t Padding = 0;
+	RPakPtr SurfaceName2{}; // surface name 2 
 
 	// first 4 guids seem to be constant across most materials in the game (idx 0-3)
 	// idx 4 - colpass material guid (or blank if this is the colpass material)
@@ -519,10 +519,13 @@ struct MaterialHeader
 	// points to a whole lotta nothing (null bytes)
 	// this would be a single RPakPtr but compiler says no
 	// thanks msvc!
-	uint32_t UnknownIndex = 0;
-	uint32_t UnknownOffset = 0;
+	RPakPtr TextureGUIDs2{}; // texture guids2
+//	uint32_t UnknownIndex = 0;
+//	uint32_t UnknownOffset = 0;
+	uint32_t UnknownOffset1 = 0;
+	uint32_t MaterialRes = 0; // Material resolution.
 
-	uint8_t Unknown3[0x10]{}; // "optional"
+	uint8_t Unknown3[0x8]{}; // "optional"
 
 	uint32_t Unknown4 = 0x1F5A92BD; // REQUIRED
 
