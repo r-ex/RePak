@@ -14,6 +14,7 @@ uintmax_t Utils::GetFileSize(std::string filename)
 
 // i know this is bad
 // "im just gonna use this until someone complains and replaces it with something better"
+// So never?
 size_t Utils::PadBuffer(char** buf, size_t size, size_t alignment)
 {
 	size_t extra = alignment - (size % alignment);
