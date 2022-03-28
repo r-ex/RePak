@@ -184,6 +184,7 @@ int main(int argc, char** argv)
     BinaryIO out{ };
 
     // todo: v7 support?
+    // No fuck you we won't support titanfall if apex repak doesn't even work
     RPakFileHeaderV8 rpakHeader{ };
 
     out.open(sOutputDir + sRpakName + ".rpak", BinaryIOMode::BinaryIOMode_Write); // open a new stream to the new file.
