@@ -649,6 +649,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     if (bsh.version != 0x36)
     {
         Warning("invalid version for model asset '%s'. expected %i, found %i. skipping asset...\n", sAssetName.c_str(), 0x36, bsh.version);
+        return;
     }
 
     // go back to the beginning of the file to read all the data
