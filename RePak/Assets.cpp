@@ -681,6 +681,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     if (bvgh.version != 1)
     {
         Warning("invalid vg version for model asset '%s'. expected %i, found %i. skipping asset...\n", sAssetName.c_str(), 1, bvgh.version);
+        return;
     }
 
     vgInput.seek(0, std::ios::end);
