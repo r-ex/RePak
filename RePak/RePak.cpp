@@ -208,7 +208,7 @@ int main(int argc, char** argv)
     rpakHeader.CompressedSize = out.tell(); // Since we can't compress rpaks at the moment set both compressed and decompressed size as the full rpak size.
     rpakHeader.DecompressedSize = out.tell();
     rpakHeader.VirtualSegmentCount = g_vvSegments.size();
-    rpakHeader.VirtualSegmentBlockCount = g_vvSegmentBlocks.size();
+    rpakHeader.PageCount = g_vvSegmentBlocks.size();
     rpakHeader.DescriptorCount = g_vDescriptors.size();
     rpakHeader.GuidDescriptorCount = g_vGuidDescriptors.size();
     rpakHeader.RelationsCount = g_vFileRelations.size();
@@ -241,7 +241,8 @@ int main(int argc, char** argv)
         srpkOut.write(magic);
         srpkOut.write(version);
 
-        // funny aligning to 4096 bytes
+        // data blocks in starpaks are all aligned to 4096 bytes, including the header which gets filled with 0xCB after the magic
+        // and version
         char* why = new char[4088];
         memset(why, 0xCB, 4088);
 
@@ -252,6 +253,8 @@ int main(int argc, char** argv)
             srpkOut.getWriter()->write((const char*)it.dataPtr, it.dataSize);
         }
 
+        // starpaks have a table of sorts at the end of the file, containing the offsets and data sizes for every data block
+        // as far as i'm aware, this isn't even used by the game, so i'm not entirely sure why it exists?
         for (auto& it : g_vSRPkDataEntries)
         {
             SRPkFileEntry fe{};

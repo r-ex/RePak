@@ -35,10 +35,10 @@ struct RPakFileHeaderV8
 	uint64_t EmbeddedStarpakSize = 0;
 
 	uint64_t Padding2 = 0;
-	uint16_t StarpakReferenceSize = 0;
-	uint16_t StarpakOptReferenceSize = 0;
-	uint16_t VirtualSegmentCount;			// * 0x10
-	uint16_t VirtualSegmentBlockCount;		// * 0xC
+	uint16_t StarpakReferenceSize = 0; // size in bytes of the section containing mandatory starpak paths
+	uint16_t StarpakOptReferenceSize = 0; // size in bytes of the section containing optional starpak paths
+	uint16_t VirtualSegmentCount;
+	uint16_t PageCount; // number of "mempages" in the rpak
 	uint32_t PatchIndex = 0;
 
 	uint32_t DescriptorCount = 0;
@@ -66,8 +66,8 @@ struct RPakFileHeaderV7
 	uint64_t Padding2 = 0;
 
 	uint16_t StarpakReferenceSize = 0;
-	uint16_t VirtualSegmentCount;			// * 0x10
-	uint16_t VirtualSegmentBlockCount;		// * 0xC
+	uint16_t VirtualSegmentCount;
+	uint16_t PageCount;
 
 	uint16_t PatchIndex = 0;
 
