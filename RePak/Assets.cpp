@@ -313,7 +313,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     // calculate data sizes so we can allocate a page and segment
     uint32_t textureOffsetsDataSize = sizeof(float) * 8 * nTexturesCount;
     uint32_t textureDimensionsDataSize = sizeof(uint16_t) * 2 * nTexturesCount;
-    uint32_t textureHashesDataSize = sizeof(uint32_t) * nTexturesCount;
+    uint32_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint64_t)) * nTexturesCount;
 
     // get total size
     uint32_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize + (4*nTexturesCount); // man idk what this +4 is
@@ -367,10 +367,18 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     hdr->TextureHashesIndex = tisIdx;
     hdr->TextureHashesOffset = textureOffsetsDataSize + textureHashesDataSize;
 
+    uint32_t nextStringTableOffset = 0;
+
     for (auto& it : mapEntry["textures"].GetArray())
     {
         *(uint32_t*)buf = RTech::StringToUIMGHash(it["path"].GetString());
         buf += sizeof(uint32_t);
+
+        // all textures have an offset into the string table regardless of whether the string table actually exists
+        // this has gotta be lazy coding from respawn. no way this serves any purpose
+        *(uint64_t*)buf = nextStringTableOffset;
+        buf += sizeof(uint64_t);
+        nextStringTableOffset += it["path"].GetStringLength() + 1;
     }
 
     // move our pointer back in
