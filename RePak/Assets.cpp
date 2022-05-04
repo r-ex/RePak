@@ -367,7 +367,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     hdr->TextureHashesIndex = tisIdx;
     hdr->TextureHashesOffset = textureOffsetsDataSize + textureHashesDataSize;
 
-    uint32_t nextStringTableOffset = 0;
+    uint64_t nextStringTableOffset = 0;
 
     for (auto& it : mapEntry["textures"].GetArray())
     {
