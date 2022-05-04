@@ -365,7 +365,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     // set texture hashes page index and offset
     hdr->TextureHashesIndex = tisIdx;
-    hdr->TextureHashesOffset = textureOffsetsDataSize + textureHashesDataSize;
+    hdr->TextureHashesOffset = textureOffsetsDataSize + textureDimensionsDataSize;
 
     uint64_t nextStringTableOffset = 0;
 
