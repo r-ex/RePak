@@ -34,7 +34,6 @@ struct SRPkFileEntry
 	uint64_t size;
 };
 
-
 namespace RTech
 {
 	std::uint64_t __fastcall StringToGuid(const char* pData);

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Assets.h"
+#include <regex>
 
 namespace Assets
 {
@@ -16,6 +17,8 @@ std::unordered_map<std::string, DataTableColumnDataType> DataTableColumnMap =
     { "asset",  DataTableColumnDataType::Asset },
     { "assetnoprecache", DataTableColumnDataType::AssetNoPrecache }
 };
+
+static std::regex s_VectorStringRegex("<(.*),(.*),(.*)>");
 
 DataTableColumnDataType GetDataTableTypeFromString(std::string sType)
 {
@@ -211,10 +214,27 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
             }
             case DataTableColumnDataType::Vector:
             {
+                std::string val = doc.GetCell<std::string>(columnIdx, rowIdx);
+
+                std::smatch sm;
+
+                std::regex_search(val, sm, s_VectorStringRegex);
+
+                if (sm.size() == 4)
+                {
+                    float x = atof(sm[1].str().c_str());
+                    float y = atof(sm[2].str().c_str());
+                    float z = atof(sm[3].str().c_str());
+                    Vector3 vec(x, y, z);
+
+                    *(Vector3*)EntryPtr = vec;
+                }
+
+
                 // parse from format <x,y,z>
                 // put into float[3]
                 // then write it
-                Log("NOT IMPLEMENTED: dtbl vector type");
+                //Log("NOT IMPLEMENTED: dtbl vector type\n");
                 break;
             }
 

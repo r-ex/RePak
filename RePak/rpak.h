@@ -1,9 +1,16 @@
 #pragma once
 
 #include <d3d11.h>
+
 struct Vector3
 {
 	float x, y, z;
+
+	Vector3(float x, float y, float z) {
+		this->x = x;
+		this->y = y;
+		this->z = z;
+	}
 };
 
 #pragma pack(push, 1)
