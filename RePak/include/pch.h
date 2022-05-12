@@ -15,6 +15,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
 
+#include "rmem.h"
 #include "rpak.h"
 #include "rtech.h"
 

@@ -149,6 +149,11 @@
   <ItemGroup>
     <ClCompile Include="src\Assets.cpp" />
     <ClCompile Include="src\assets\datatable.cpp" />
+    <ClCompile Include="src\assets\material.cpp" />
+    <ClCompile Include="src\assets\model.cpp" />
+    <ClCompile Include="src\assets\patch.cpp" />
+    <ClCompile Include="src\assets\rui.cpp" />
+    <ClCompile Include="src\assets\texture.cpp" />
     <ClCompile Include="src\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">pch.h</PrecompiledHeaderFile>
