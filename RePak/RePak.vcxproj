@@ -147,21 +147,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Assets.cpp" />
-    <ClCompile Include="RePak.cpp" />
-    <ClCompile Include="pch.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">pch.h</PrecompiledHeaderFile>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">pch.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="rmem.cpp" />
-    <ClCompile Include="rtech.cpp" />
-    <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="src\Assets.cpp" />
+    <ClCompile Include="src\assets\datatable.cpp" />
+    <ClCompile Include="src\pch.cpp" />
+    <ClCompile Include="src\RePak.cpp" />
+    <ClCompile Include="src\rmem.cpp" />
+    <ClCompile Include="src\rtech.cpp" />
+    <ClCompile Include="src\Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Assets.h" />
-    <ClInclude Include="BinaryIO.h" />
+    <ClInclude Include="include\Assets.h" />
+    <ClInclude Include="include\BinaryIO.h" />
+    <ClInclude Include="include\pch.h" />
     <ClInclude Include="include\rapidcsv\rapidcsv.h" />
     <ClInclude Include="include\rapidjson\allocators.h" />
     <ClInclude Include="include\rapidjson\cursorstreamwrapper.h" />
@@ -201,12 +198,11 @@
     <ClInclude Include="include\rapidjson\stringbuffer.h" />
     <ClInclude Include="include\rapidjson\uri.h" />
     <ClInclude Include="include\rapidjson\writer.h" />
-    <ClInclude Include="RePak.h" />
-    <ClInclude Include="rmem.h" />
-    <ClInclude Include="rpak.h" />
-    <ClInclude Include="rtech.h" />
-    <ClInclude Include="pch.h" />
-    <ClInclude Include="Utils.h" />
+    <ClInclude Include="include\RePak.h" />
+    <ClInclude Include="include\rmem.h" />
+    <ClInclude Include="include\rpak.h" />
+    <ClInclude Include="include\rtech.h" />
+    <ClInclude Include="include\Utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

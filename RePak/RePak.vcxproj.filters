@@ -31,43 +31,34 @@
     <Filter Include="Header Files\thirdparty\rapidcsv">
       <UniqueIdentifier>{330e470c-2f99-44a3-a5d0-c81150c0caf6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\assets">
+      <UniqueIdentifier>{e323149f-3c50-45c7-94ad-532908ecc5e8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="RePak.cpp">
+    <ClCompile Include="src\Assets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Utils.cpp">
+    <ClCompile Include="src\pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="pch.cpp">
+    <ClCompile Include="src\RePak.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Assets.cpp">
+    <ClCompile Include="src\rmem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="rtech.cpp">
+    <ClCompile Include="src\rtech.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="rmem.cpp">
+    <ClCompile Include="src\Utils.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\datatable.cpp">
+      <Filter>Source Files\assets</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BinaryIO.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rpak.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rtech.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="pch.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\rapidjson\allocators.h">
       <Filter>Header Files\thirdparty\rapidjson</Filter>
     </ClInclude>
@@ -185,13 +176,28 @@
     <ClInclude Include="include\rapidcsv\rapidcsv.h">
       <Filter>Header Files\thirdparty\rapidcsv</Filter>
     </ClInclude>
-    <ClInclude Include="Assets.h">
+    <ClInclude Include="include\Assets.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RePak.h">
+    <ClInclude Include="include\BinaryIO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="rmem.h">
+    <ClInclude Include="include\RePak.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rmem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rpak.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rtech.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
