@@ -48,6 +48,9 @@
     <ClCompile Include="rtech.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="rmem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BinaryIO.h">
@@ -186,6 +189,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="RePak.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rmem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

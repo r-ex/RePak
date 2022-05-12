@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Assets.h"
 #include <regex>
+#include "rmem.h"
 
 namespace Assets
 {
@@ -46,8 +47,7 @@ uint32_t DataTable_GetEntrySize(DataTableColumnDataType type)
     case DataTableColumnDataType::StringT:
     case DataTableColumnDataType::Asset:
     case DataTableColumnDataType::AssetNoPrecache:
-        // these assets are variable size so they have to use a ptr to keep the entry as a static size
-        // basically the strings are moved elsewhere and then referenced here
+        // strings get placed at a separate place and have a pointer in place of the actual value
         return sizeof(RPakPtr);
     }
 }
@@ -185,6 +185,8 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
             DataTableColumn col = columns[columnIdx];
 
             char* EntryPtr = (rowDataBuf + (hdr->RowStride * rowIdx) + col.RowOffset);
+            
+            rmem valbuf(EntryPtr);
 
             switch (col.Type)
             {
@@ -195,21 +197,21 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
                 transform(val.begin(), val.end(), val.begin(), ::tolower);
 
                 if (val == "true")
-                    *(uint32_t*)EntryPtr = 1;
+                    valbuf.write<uint32_t>(true);
                 else
-                    *(uint32_t*)EntryPtr = 0;
+                    valbuf.write<uint32_t>(false);
                 break;
             }
             case DataTableColumnDataType::Int:
             {
                 uint32_t val = doc.GetCell<uint32_t>(columnIdx, rowIdx);
-                *(uint32_t*)EntryPtr = val;
+                valbuf.write(val);
                 break;
             }
             case DataTableColumnDataType::Float:
             {
                 float val = doc.GetCell<float>(columnIdx, rowIdx);
-                *(float*)EntryPtr = val;
+                valbuf.write(val);
                 break;
             }
             case DataTableColumnDataType::Vector:
@@ -227,14 +229,8 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
                     float z = atof(sm[3].str().c_str());
                     Vector3 vec(x, y, z);
 
-                    *(Vector3*)EntryPtr = vec;
+                    valbuf.write(vec);
                 }
-
-
-                // parse from format <x,y,z>
-                // put into float[3]
-                // then write it
-                //Log("NOT IMPLEMENTED: dtbl vector type\n");
                 break;
             }
 
@@ -249,7 +245,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
                 std::string val = doc.GetCell<std::string>(columnIdx, rowIdx);
                 snprintf(stringEntryBuf + nextStringEntryOffset, val.length() + 1, "%s", val.c_str());
 
-                *(RPakPtr*)EntryPtr = stringPtr;
+                valbuf.write(stringPtr);
                 RePak::RegisterDescriptor(rdsIdx, (hdr->RowStride * rowIdx) + col.RowOffset);
 
                 nextStringEntryOffset += val.length() + 1;
@@ -294,7 +290,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 {
     Debug("Adding uimg asset '%s'\n", assetPath);
 
-    UIImageHeader* hdr = new UIImageHeader();
+    UIImageHeader* pHdr = new UIImageHeader();
 
     std::string sAssetName = assetPath;
 
@@ -313,8 +309,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     uint32_t nTexturesCount = mapEntry["textures"].GetArray().Size();
 
-    // open the atlas and read its header to find out
-    // what its dimensions are so they can be set in the header
+    // grab the dimensions of the atlas
     BinaryIO atlas;
     atlas.open(sAtlasFilePath, BinaryIOMode::BinaryIOMode_Read);
     atlas.seek(4, std::ios::beg);
@@ -322,16 +317,16 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     atlas.close();
 
-    hdr->Width = ddsh.width;
-    hdr->Height = ddsh.height;
+    pHdr->Width = ddsh.width;
+    pHdr->Height = ddsh.height;
 
-    hdr->TextureOffsetsCount = nTexturesCount;
-    hdr->TextureCount = nTexturesCount == 1 ? 0 : nTexturesCount; // don't even ask
+    pHdr->TextureOffsetsCount = nTexturesCount;
+    pHdr->TextureCount = nTexturesCount == 1 ? 0 : nTexturesCount; // don't even ask
 
-    hdr->TextureGuid = atlasGuid;
+    pHdr->TextureGuid = atlasGuid;
     
     // calculate data sizes so we can allocate a page and segment
-    uint32_t textureOffsetsDataSize = sizeof(float) * 8 * nTexturesCount;
+    uint32_t textureOffsetsDataSize = sizeof(UIImageOffset) * nTexturesCount;
     uint32_t textureDimensionsDataSize = sizeof(uint16_t) * 2 * nTexturesCount;
     uint32_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint64_t)) * nTexturesCount;
 
@@ -357,52 +352,45 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     RePak::RegisterGuidDescriptor(shsIdx, offsetof(UIImageHeader, TextureGuid));
 
     // buffer for texture info data
-    char* buf = new char[textureInfoPageSize];
-    char* yea = buf;
+    char* pTextureInfoBuf = new char[textureInfoPageSize];
+    rmem tiBuf(pTextureInfoBuf);
 
     // set texture offset page index and offset
-    hdr->TextureOffsetsIndex = tisIdx;
-    hdr->TextureOffsetsOffset = 0; // start of the page
+    pHdr->TextureOffsetsIndex = tisIdx;
+    pHdr->TextureOffsetsOffset = 0; // start of the page
 
     for (auto& it : mapEntry["textures"].GetArray())
     {
         UIImageOffset uiio{};
-        *(UIImageOffset*)buf = uiio;
-        buf += sizeof(UIImageOffset);
+        tiBuf.write(uiio);
     }
 
     // set texture dimensions page index and offset
-    hdr->TextureDimsIndex = tisIdx;
-    hdr->TextureDimsOffset = textureOffsetsDataSize;
+    pHdr->TextureDimsIndex = tisIdx;
+    pHdr->TextureDimsOffset = textureOffsetsDataSize;
 
     for (auto& it : mapEntry["textures"].GetArray())
     {
-        *(uint16_t*)buf = it["width"].GetInt();
-        buf += 2;
-        *(uint16_t*)buf = it["height"].GetInt();
-        buf += 2;
+        tiBuf.write<uint16_t>(it["width"].GetInt());
+        tiBuf.write<uint16_t>(it["height"].GetInt());
     }
 
     // set texture hashes page index and offset
-    hdr->TextureHashesIndex = tisIdx;
-    hdr->TextureHashesOffset = textureOffsetsDataSize + textureDimensionsDataSize;
+    pHdr->TextureHashesIndex = tisIdx;
+    pHdr->TextureHashesOffset = textureOffsetsDataSize + textureDimensionsDataSize;
 
     uint64_t nextStringTableOffset = 0;
 
     for (auto& it : mapEntry["textures"].GetArray())
     {
-        *(uint32_t*)buf = RTech::StringToUIMGHash(it["path"].GetString());
-        buf += sizeof(uint32_t);
+        uint32_t pathHash = RTech::StringToUIMGHash(it["path"].GetString());
+        tiBuf.write(pathHash);
 
-        // all textures have an offset into the string table regardless of whether the string table actually exists
-        // this has gotta be lazy coding from respawn. no way this serves any purpose
-        *(uint64_t*)buf = nextStringTableOffset;
-        buf += sizeof(uint64_t);
+        // offset into the path table for this texture
+        // NOTE: this is set regardless of whether the path table exists in original rpaks
+        tiBuf.write(nextStringTableOffset);
         nextStringTableOffset += it["path"].GetStringLength() + 1;
     }
-
-    // move our pointer back in
-    buf = yea;
 
     // add the file relation from this uimg asset to the atlas txtr
     size_t fileRelationIdx = RePak::AddFileRelation(assetEntries->size());
@@ -410,26 +398,24 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     atlasAsset->RelationsStartIndex = fileRelationIdx;
     atlasAsset->RelationsCount++;
 
-    char* rdbuf = new char[nTexturesCount * 0x10];
-    yea = rdbuf; // this is just our temporary buf ptr var now
+    char* pUVBuf = new char[nTexturesCount * sizeof(UIImageUV)];
+    rmem uvBuf(pUVBuf);
     
     for (int i = 0; i < nTexturesCount; ++i)
     {
         UIImageUV uiiu{};
-        *(UIImageUV*)rdbuf = uiiu;
-        rdbuf += sizeof(UIImageUV);
+        uvBuf.write(uiiu);
     }
-    rdbuf = yea;
 
     //
     // add the data blocks so they can be written properly
-    RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)hdr };
+    RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)pHdr };
     RePak::AddRawDataBlock(shdb);
 
-    RPakRawDataBlock tib{ tisIdx, TextureInfoSegment.DataSize, (uint8_t*)buf };
+    RPakRawDataBlock tib{ tisIdx, TextureInfoSegment.DataSize, (uint8_t*)pTextureInfoBuf };
     RePak::AddRawDataBlock(tib);
 
-    RPakRawDataBlock rdb{ rdsIdx, RawDataSegment.DataSize, (uint8_t*)rdbuf };
+    RPakRawDataBlock rdb{ rdsIdx, RawDataSegment.DataSize, (uint8_t*)pUVBuf };
     RePak::AddRawDataBlock(rdb);
     //
     // create and init the asset entry
@@ -506,9 +492,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
         hdr->Format = (uint16_t)TxtrFormatMap[dxgiFormat];
 
-        ///
-        // ddsh.size is the size of the primary rpakHeader after the "DDS "
-        ///
+        // go to the end of the main header
         input.seek(ddsh.size + 4);
 
         if (dxgiFormat == DXGI_FORMAT_BC7_UNORM || dxgiFormat == DXGI_FORMAT_BC7_UNORM_SRGB)
@@ -517,7 +501,6 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     hdr->NameHash = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
-    // unfortunately i'm not a respawn engineer so 1 (unstreamed) mip level will have to do
     hdr->MipLevels = 1;
 
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
@@ -581,9 +564,9 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
 {
     Debug("Adding Ptch asset '%s'\n", assetPath);
 
-    PtchHeader* hdr = new PtchHeader();
+    PtchHeader* pHdr = new PtchHeader();
 
-    hdr->EntryCount = mapEntry["entries"].GetArray().Size();
+    pHdr->EntryCount = mapEntry["entries"].GetArray().Size();
 
     std::vector<PtchEntry> patchEntries{};
     uint32_t entryNamesSectionSize = 0;
@@ -592,55 +575,57 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     {
         std::string name = it["name"].GetStdString();
         uint8_t patchNum = it["patchnum"].GetInt();
+        
         patchEntries.push_back({ name, patchNum, entryNamesSectionSize });
+
         entryNamesSectionSize += name.length() + 1;
     }
 
-    size_t nDataPageSize = (sizeof(RPakPtr) * hdr->EntryCount) + (sizeof(uint8_t) * hdr->EntryCount) + entryNamesSectionSize;
+    size_t dataPageSize = (sizeof(RPakPtr) * pHdr->EntryCount) + (sizeof(uint8_t) * pHdr->EntryCount) + entryNamesSectionSize;
 
     RPakVirtualSegment SubHeaderPage;
     uint32_t shsIdx = RePak::CreateNewSegment(sizeof(PtchHeader), 0, 8, SubHeaderPage);
 
     RPakVirtualSegment DataPage;
-    uint32_t rdsIdx = RePak::CreateNewSegment(nDataPageSize, 1, 8, DataPage);
+    uint32_t rdsIdx = RePak::CreateNewSegment(dataPageSize, 1, 8, DataPage);
 
-    hdr->EntryNames.Index  = rdsIdx;
-    hdr->EntryNames.Offset = 0;
+    pHdr->EntryNames.Index  = rdsIdx;
+    pHdr->EntryNames.Offset = 0;
 
-    hdr->EntryPatchNums.Index  = rdsIdx;
-    hdr->EntryPatchNums.Offset = sizeof(RPakPtr) * hdr->EntryCount;
+    pHdr->EntryPatchNums.Index  = rdsIdx;
+    pHdr->EntryPatchNums.Offset = sizeof(RPakPtr) * pHdr->EntryCount;
 
     RePak::RegisterDescriptor(shsIdx, offsetof(PtchHeader, EntryNames));
     RePak::RegisterDescriptor(shsIdx, offsetof(PtchHeader, EntryPatchNums));
 
-    char* buf = new char[nDataPageSize];
-    char* temp = buf;
+    char* pDataBuf = new char[dataPageSize];
+    rmem dataBuf(pDataBuf);
 
     uint32_t i = 0;
     for (auto& it : patchEntries)
     {
-        uint32_t fileNameOffset = (sizeof(RPakPtr) * hdr->EntryCount) + (sizeof(uint8_t) * hdr->EntryCount) + it.FileNamePageOffset;
+        uint32_t fileNameOffset = (sizeof(RPakPtr) * pHdr->EntryCount) + (sizeof(uint8_t) * pHdr->EntryCount) + it.FileNamePageOffset;
 
         // write the ptr to the file name into the buffer
-        *(RPakPtr*)(buf + sizeof(RPakPtr) * i) = { rdsIdx, fileNameOffset };
+        dataBuf.write<RPakPtr>({ rdsIdx, fileNameOffset }, sizeof(RPakPtr) * i);
         // write the patch number for this entry into the buffer
-        *(uint8_t*)(buf + hdr->EntryPatchNums.Offset + i) = it.PatchNum;
+        dataBuf.write<uint8_t>(it.PatchNum, pHdr->EntryPatchNums.Offset + i);
 
-        snprintf(buf + fileNameOffset, it.FileName.length() + 1, "%s", it.FileName.c_str());
+        snprintf(pDataBuf + fileNameOffset, it.FileName.length() + 1, "%s", it.FileName.c_str());
 
         RePak::RegisterDescriptor(rdsIdx, sizeof(RPakPtr) * i);
         i++;
     }
 
-    RPakRawDataBlock shdb{ shsIdx, SubHeaderPage.DataSize, (uint8_t*)hdr };
+    RPakRawDataBlock shdb{ shsIdx, SubHeaderPage.DataSize, (uint8_t*)pHdr };
     RePak::AddRawDataBlock(shdb);
 
-    RPakRawDataBlock rdb{ rdsIdx, nDataPageSize, (uint8_t*)buf };
+    RPakRawDataBlock rdb{ rdsIdx, dataPageSize, (uint8_t*)pDataBuf };
     RePak::AddRawDataBlock(rdb);
 
     // create and init the asset entry
     RPakAssetEntryV8 asset;
-    // textureGUID is hardcoded here because this is the only textureGUID that is ever used for the shipped patch_master rpaks
+
     asset.InitAsset(0x6fc6fa5ad8f8bc9c, shsIdx, 0, SubHeaderPage.DataSize, -1, 0, -1, -1, (std::uint32_t)AssetType::PTCH);
     asset.Version = 1;
 
@@ -666,17 +651,17 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     BinaryIO skelInput;
     skelInput.open(rmdlFilePath, BinaryIOMode::BinaryIOMode_Read);
 
-    BasicRMDLSkeletonHeader bsh = skelInput.read<BasicRMDLSkeletonHeader>();
+    studiohdrshort_t mdlhdr = skelInput.read<studiohdrshort_t>();
 
-    if (bsh.magic != 0x54534449)
+    if (mdlhdr.id != 0x54534449)
     {
-        Warning("invalid file magic for model asset '%s'. expected %x, found %x. skipping asset...\n", sAssetName.c_str(), 0x54534449, bsh.magic);
+        Warning("invalid file magic for model asset '%s'. expected %x, found %x. skipping asset...\n", sAssetName.c_str(), 0x54534449, mdlhdr.id);
         return;
     }
 
-    if (bsh.version != 0x36)
+    if (mdlhdr.version != 0x36)
     {
-        Warning("invalid version for model asset '%s'. expected %i, found %i. skipping asset...\n", sAssetName.c_str(), 0x36, bsh.version);
+        Warning("invalid version for model asset '%s'. expected %i, found %i. skipping asset...\n", sAssetName.c_str(), 0x36, mdlhdr.version);
         return;
     }
 
@@ -685,12 +670,12 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
 
     uint32_t fileNameDataSize = sAssetName.length() + 1;
 
-    char* dataBuf = new char[fileNameDataSize + bsh.dataSize];
+    char* dataBuf = new char[fileNameDataSize + mdlhdr.dataLength];
 
     // write the model file path into the data buffer
     snprintf(dataBuf, fileNameDataSize, "%s", sAssetName.c_str());
     // write the skeleton data into the data buffer
-    skelInput.getReader()->read(dataBuf + fileNameDataSize, bsh.dataSize);
+    skelInput.getReader()->read(dataBuf + fileNameDataSize, mdlhdr.dataLength);
     skelInput.close();
 
     ///--------------------
@@ -733,7 +718,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     uint32_t shsIdx = RePak::CreateNewSegment(sizeof(ModelHeader), 0, 8, SubHeaderSegment);
 
     RPakVirtualSegment DataSegment{};
-    uint32_t dataSegIdx = RePak::CreateNewSegment(bsh.dataSize + fileNameDataSize, 1, 64, DataSegment);
+    uint32_t dataSegIdx = RePak::CreateNewSegment(mdlhdr.dataLength + fileNameDataSize, 1, 64, DataSegment);
 
     //RPakVirtualSegment VGSegment{};
     //uint32_t vgIdx = RePak::CreateNewSegment(vgFileSize, 67, SegmentType::Unknown, DataSegment);
@@ -741,11 +726,12 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     hdr->SkeletonPtr.Index = dataSegIdx;
     hdr->SkeletonPtr.Offset = fileNameDataSize;
 
+
     hdr->NamePtr.Index = dataSegIdx;
     hdr->NamePtr.Offset = 0;
 
-    //mtlHdr->VGPtr.Index = vgIdx;
-    //mtlHdr->VGPtr.Offset = 0;
+    //hdr->VGPtr.Index = vgIdx;
+    //hdr->VGPtr.Offset = 0;
 
     RePak::RegisterDescriptor(shsIdx, offsetof(ModelHeader, SkeletonPtr));
     RePak::RegisterDescriptor(shsIdx, offsetof(ModelHeader, NamePtr));
@@ -770,10 +756,10 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     asset.HighestPageNum = dataSegIdx + 1;
     asset.Un2 = 2;
 
-    // note: models use an implicit textureGUID reference to their materials
+    // note: models use an implicit guid reference to their materials
     // the guids aren't registered but are converted during the loading of the material asset
     // during (what i assume is) regular reference conversion
-    // a potential solution to the material textureGUID conversion issue could be just registering the guids?
+    // a potential solution to the material guid conversion issue could be just registering the guids?
     // 
     size_t fileRelationIdx = RePak::AddFileRelation(assetEntries->size());
     asset.UsesStartIndex = fileRelationIdx;
@@ -787,7 +773,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     Debug("Adding matl asset '%s'\n", assetPath);
 
     uint32_t assetUsesCount = 0; // Track how often the asset is used.
-    MaterialHeader* mtlHdr = new MaterialHeader(); // Create new material header aka CMaterialGlue.
+    MaterialHeader* mtlHdr = new MaterialHeader();
     std::string sAssetPath = std::string(assetPath);
 
     std::string type = "sknp";
@@ -818,15 +804,13 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     if (mapEntry.HasMember("flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
         mtlHdr->ImageFlags = mapEntry["flags"].GetUint();
 
-    // get surface name or use "default"
     std::string surface = "default";
 
-    // Surface names are defined in surfaceproperties.rson along with other properties
-    // I'm not entirely sure if this actually does anything?
+    // surfaces are defined in scripts/surfaceproperties.rson
     if (mapEntry.HasMember("surface"))
         surface = mapEntry["surface"].GetStdString();
 
-    // Get the size of the texture textureGUID section.
+    // Get the size of the texture guid section.
     size_t textureRefSize = 0;
 
     if (mapEntry.HasMember("textures"))
@@ -835,7 +819,6 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     }
     else
     {
-        // im pretty sure you *can* have a material with no textures but those are both uncommon and painful to use for anything meaningful.
         Warning("Trying to add material with no textures. Skipping asset...\n");
         return;
     }
@@ -888,7 +871,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
         textureIdx++; // Next texture index coming up.
     }
 
-    textureIdx = 0; // Reset textureID for next TextureGUID Section.
+    textureIdx = 0; // reset index for next TextureGUID Section.
     for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the second TextureGUID Map.
     {
         if (it.GetStdString() != "")
@@ -929,7 +912,6 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, SurfaceName));
 
     // Type Handling
-    // This isn't great but idk how else to do it :/
     if (type == "sknp")
     {
         // These should always be constant (per each material type)
@@ -948,7 +930,6 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
         RePak::AddFileRelation(assetEntries->size(), 4);
         assetUsesCount += 4;
 
-        // Oh you wanted custom shaders? fuck you. Not yet atleast. Till we figure out CShaderGlue.
         mtlHdr->ShaderSetGUID = 0x1D9FFF314E152725;
     }
     else if (type == "wldc")
@@ -967,7 +948,6 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
         RePak::AddFileRelation(assetEntries->size(), 4);
         assetUsesCount += 4;
 
-        // Oh you wanted custom shaders? fuck you. Not yet atleast. Till we figure out CShaderGlue.
         mtlHdr->ShaderSetGUID = 0x4B0F3B4CBD009096;
     }
 
@@ -997,10 +977,8 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, TextureGUIDs));
     RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, TextureGUIDs2));
 
-    // These are not right
-    // Figure these out then.
-    mtlHdr->something = 1912602624;
-    mtlHdr->something2 = 1048576;
+    mtlHdr->something = 0x72000000;
+    mtlHdr->something2 = 0x100000;
 
     for (int i = 0; i < 2; ++i)
     {
@@ -1017,9 +995,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     //////////////////////////////////////////
     /// cpu
 
-    // bad bad bad bad bad bad bad bad bad bad bad bad bad bad bad bad bad bad bad bad bad bad bad bad bad
-    // todo: REVERSE THIS?!
-    // CPU Segment is needed for proper color?
+    // required for accurate colour
     unsigned char testData[544] = {
         0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
@@ -1085,7 +1061,8 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     RPakRawDataBlock cdb{ cpuIdx, CPUSegment.DataSize, (uint8_t*)cpuData };
     RePak::AddRawDataBlock(cdb);
 
-    // now time to add the higher level asset entry
+    //////////////////////////////////////////
+
     RPakAssetEntryV8 asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), shsIdx, 0, SubHeaderSegment.DataSize, cpuIdx, 0, -1, -1, (std::uint32_t)AssetType::MATL);

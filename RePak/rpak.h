@@ -403,79 +403,79 @@ struct ModelHeader
 	uint64_t Padding9 = 0;
 };
 
-// only the first few members of the skeleton header struct.
-// used for verifying the input file when adding an rmdl asset
-struct BasicRMDLSkeletonHeader
+struct studiohdrshort_t
 {
-	uint32_t magic; // IDST
-	uint32_t version; // 6
-	uint32_t checksum;
-	uint32_t stringTableOffset;
-	char modelName[64];
-	uint32_t dataSize;
+	int id;
+	int version;
+	int checksum;
+	int nameTableOffset;
+
+	char name[0x40];
+
+	int dataLength;
 };
 
 struct studiohdr_t
 {
-	uint32_t Magic;
-	uint32_t Version;
-	uint32_t Hash;
-	uint32_t NameTableOffset;
+	int id;
+	int version;
+	int checksum;
+	int nameTableOffset;
 
-	char SkeletonName[0x40];
+	char name[0x40];
 
-	uint32_t DataSize;
+	int dataLength;
 
-	float EyePosition[3];
-	float IllumPosition[3];
-	float HullMin[3];
-	float HullMax[3];
-	float ViewBBMin[3];
-	float ViewBBMax[3];
+	Vector3 eyeposition;
+	Vector3 illumposition;
+	Vector3 hull_min;
+	Vector3 hull_max;
+	Vector3 view_bbmin;
+	Vector3 view_bbmax;
 
-	uint32_t Flags; // 0x9c
+	int flags; // 0x9c
 
-	uint32_t BoneCount; // 0xa0
-	uint32_t BoneDataOffset; // 0xa4
+	int bone_count; // 0xa0
+	int bone_offset; // 0xa4
 
-	uint32_t BoneControllerCount;
-	uint32_t BoneControllerOffset;
+	int bonecontroller_count;
+	int bonecontroller_offset;
 
-	uint32_t HitboxCount;
-	uint32_t HitboxOffset;
+	int hitboxset_count;
+	int hitboxset_offset;
 
-	uint32_t LocalAnimCount;
-	uint32_t LocalAnimOffset;
+	int localanim_count;
+	int localanim_offset;
 
-	uint32_t LocalSeqCount;
-	uint32_t LocalSeqOffset;
+	int localseq_count;
+	int localseq_offset;
 
-	uint32_t ActivityListVersion;
-	uint32_t EventsIndexed;
+	int activitylistversion;
+	int eventsindexed;
 
-	uint32_t MaterialCount;
-	uint32_t MaterialOffset;
+	int texture_count;
+	int texture_offset;
 
-	uint32_t TextureDirCount;
-	uint32_t TextureDirOffset;
+	int texturedir_count;
+	int texturedir_offset;
 
-	uint32_t SkinReferenceCount;	// Total number of references (submeshes)
-	uint32_t SkinFamilyCount;		// Total skins per reference
-	uint32_t SkinReferenceOffset;	// Offset to data
+	int skinref_count;	   // Total number of references (submeshes)
+	int skinfamily_count; // Total skins per reference
+	int skinref_offset;   // Offset to data
 
-	uint32_t BodyPartCount;
-	uint32_t BodyPartOffset;
+	int bodypart_count;
+	int bodypart_offset;
 
-	uint32_t AttachmentCount;
-	uint32_t AttachmentOffset;
+	int attachment_count;
+	int attachment_offset;
 
-	uint8_t Unknown2[0x14];
+	uint8_t unknown_1[0x14];
 
-	uint32_t SubmeshLodsOffset;
+	int submeshlods_count;
 
-	uint8_t Unknown3[0x64];
-	uint32_t OffsetToBoneRemapInfo;
-	uint32_t BoneRemapCount;
+	uint8_t unknown_2[0x64];
+	int OffsetToBoneRemapInfo;
+	int boneremap_count;
 };
 
 struct BasicRMDLVGHeader
@@ -507,6 +507,7 @@ struct UnknownMaterialSection
 	uint64_t Padding = 0;
 };
 
+// start of CMaterialGlue class
 struct MaterialHeader
 {
 	uint64_t VtblPtrPad = 0; // Gets set to CMaterialGlue vtbl ptr
