@@ -89,15 +89,11 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     //RPakVirtualSegment VGSegment{};
     //uint32_t vgIdx = RePak::CreateNewSegment(vgFileSize, 67, SegmentType::Unknown, DataSegment);
 
-    pHdr->SkeletonPtr.Index = dataSegIdx;
-    pHdr->SkeletonPtr.Offset = fileNameDataSize;
+    pHdr->NamePtr = { dataSegIdx, 0 };
 
+    pHdr->SkeletonPtr = { dataSegIdx, fileNameDataSize };
 
-    pHdr->NamePtr.Index = dataSegIdx;
-    pHdr->NamePtr.Offset = 0;
-
-    //hdr->VGPtr.Index = vgIdx;
-    //hdr->VGPtr.Offset = 0;
+    //pHdr->VGPtr = { vgIdx, 0 };
 
     RePak::RegisterDescriptor(shsIdx, offsetof(ModelHeader, SkeletonPtr));
     RePak::RegisterDescriptor(shsIdx, offsetof(ModelHeader, NamePtr));
@@ -113,7 +109,6 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     //RPakRawDataBlock vgdb{ vgIdx, vgFileSize, (uint8_t*)vgBuf };
     //RePak::AddRawDataBlock(vgdb);
 
-    // now time to add the higher level asset entry
     RPakAssetEntryV8 asset;
 
     asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), shsIdx, 0, SubHeaderSegment.DataSize, -1, 0, starpakOffset, -1, (std::uint32_t)AssetType::RMDL);
