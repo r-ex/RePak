@@ -184,11 +184,11 @@ int main(int argc, char** argv)
     BinaryIO out{ };
 
     // todo: v7 support?
-    // No fuck you we won't support titanfall if apex repak doesn't even work
     RPakFileHeaderV8 rpakHeader{ };
 
-    out.open(sOutputDir + sRpakName + ".rpak", BinaryIOMode::BinaryIOMode_Write); // open a new stream to the new file.
-    out.write(rpakHeader); // write a placeholder rpakHeader that will be updated later with all the right values
+
+    out.open(sOutputDir + sRpakName + ".rpak", BinaryIOMode::BinaryIOMode_Write);
+    out.write(rpakHeader);
 
     size_t StarpakRefLength = Utils::WriteStringVector(out, g_vsStarpakPaths);
     size_t OptStarpakRefLength = Utils::WriteStringVector(out, g_vsOptStarpakPaths);
@@ -221,6 +221,11 @@ int main(int argc, char** argv)
     out.write(rpakHeader); // Re-write rpak header.
     
     out.close();
+
+    for (auto& it : g_vRawDataBlocks)
+    {
+        delete it.dataPtr;
+    }
 
     // TODO: support multiple starpaks?
     if (g_vsStarpakPaths.size() == 1)
