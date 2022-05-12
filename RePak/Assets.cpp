@@ -641,7 +641,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
 
     std::string sAssetName = std::string(assetPath) + ".rmdl";
 
-    ModelHeader* hdr = new ModelHeader();
+    ModelHeader* pHdr = new ModelHeader();
 
     std::string rmdlFilePath = g_sAssetsDir + sAssetName;
     std::string vgFilePath = g_sAssetsDir + std::string(assetPath) + ".vg";
@@ -659,7 +659,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
         return;
     }
 
-    if (mdlhdr.version != 0x36)
+    if (mdlhdr.version != 54)
     {
         Warning("invalid version for model asset '%s'. expected %i, found %i. skipping asset...\n", sAssetName.c_str(), 0x36, mdlhdr.version);
         return;
@@ -670,12 +670,12 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
 
     uint32_t fileNameDataSize = sAssetName.length() + 1;
 
-    char* dataBuf = new char[fileNameDataSize + mdlhdr.dataLength];
+    char* pDataBuf = new char[fileNameDataSize + mdlhdr.dataLength];
 
     // write the model file path into the data buffer
-    snprintf(dataBuf, fileNameDataSize, "%s", sAssetName.c_str());
+    snprintf(pDataBuf, fileNameDataSize, "%s", sAssetName.c_str());
     // write the skeleton data into the data buffer
-    skelInput.getReader()->read(dataBuf + fileNameDataSize, mdlhdr.dataLength);
+    skelInput.getReader()->read(pDataBuf + fileNameDataSize, mdlhdr.dataLength);
     skelInput.close();
 
     ///--------------------
@@ -712,7 +712,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     SRPkDataEntry de{ -1, vgFileSize, (uint8_t*)vgBuf };
     uint64_t starpakOffset = RePak::AddStarpakDataEntry(de);
 
-    hdr->StreamedDataSize = vgFileSize;
+    pHdr->StreamedDataSize = vgFileSize;
 
     RPakVirtualSegment SubHeaderSegment{};
     uint32_t shsIdx = RePak::CreateNewSegment(sizeof(ModelHeader), 0, 8, SubHeaderSegment);
@@ -723,12 +723,12 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     //RPakVirtualSegment VGSegment{};
     //uint32_t vgIdx = RePak::CreateNewSegment(vgFileSize, 67, SegmentType::Unknown, DataSegment);
 
-    hdr->SkeletonPtr.Index = dataSegIdx;
-    hdr->SkeletonPtr.Offset = fileNameDataSize;
+    pHdr->SkeletonPtr.Index = dataSegIdx;
+    pHdr->SkeletonPtr.Offset = fileNameDataSize;
 
 
-    hdr->NamePtr.Index = dataSegIdx;
-    hdr->NamePtr.Offset = 0;
+    pHdr->NamePtr.Index = dataSegIdx;
+    pHdr->NamePtr.Offset = 0;
 
     //hdr->VGPtr.Index = vgIdx;
     //hdr->VGPtr.Offset = 0;
@@ -738,10 +738,10 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     //RePak::RegisterDescriptor(shsIdx, offsetof(ModelHeader, VGPtr));
 
 
-    RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)hdr };
+    RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)pHdr };
     RePak::AddRawDataBlock(shdb);
 
-    RPakRawDataBlock rdb{ dataSegIdx, DataSegment.DataSize, (uint8_t*)dataBuf };
+    RPakRawDataBlock rdb{ dataSegIdx, DataSegment.DataSize, (uint8_t*)pDataBuf };
     RePak::AddRawDataBlock(rdb);
 
     //RPakRawDataBlock vgdb{ vgIdx, vgFileSize, (uint8_t*)vgBuf };
