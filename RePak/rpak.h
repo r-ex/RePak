@@ -238,25 +238,27 @@ enum class DataTableColumnDataType : uint32_t
 #pragma pack(push, 1)
 struct TextureHeader
 {
-	uint64_t NameHash = 0;
-	uint32_t NameIndex = 0;
-	uint32_t NameOffset = 0;
+	uint64_t assetGuid = 0;
+	RPakPtr pDebugName;
 
-	uint16_t Width = 0;
-	uint16_t Height = 0;
+	uint16_t width = 0;
+	uint16_t height = 0;
 
-	uint16_t Un1 = 0;
-	uint16_t Format = 0;		// Maps to a DXGI format
+	uint16_t unknown_1 = 0;
+	uint16_t format = 0;		// Maps to a DXGI format
 
-	uint32_t DataSize;	// This is the total amount of image data across all banks
-	uint8_t Unknown2;
-	uint8_t MipLevelsStreamedOpt;
-	uint8_t ArraySize;
-	uint8_t LayerCount;
-	uint8_t Unknown4;
-	uint8_t MipLevels;
-	uint8_t MipLevelsStreamed;
-	uint8_t UnknownPad[21];
+	uint32_t dataLength;	// This is the total amount of image data across all banks
+	uint8_t unknown_2;
+	uint8_t optStreamedMipLevels;
+
+	// d3d11 texture desc params
+	uint8_t arraySize;
+	uint8_t layerCount;
+
+	uint8_t unknown_3;
+	uint8_t permanentMipLevels;
+	uint8_t streamedMipLevels;
+	uint8_t unknown_4[21];
 };
 
 struct UIImageHeader
@@ -353,12 +355,12 @@ struct DataTableColumnData
 
 struct PtchHeader
 {
-	uint32_t Unk0 = 255; // always FF 00 00 00?
-	uint32_t EntryCount = 0;
+	uint32_t unknown_1 = 255; // always FF 00 00 00?
+	uint32_t patchedPakCount = 0;
 
-	RPakPtr EntryNames;
+	RPakPtr pPakNames;
 
-	RPakPtr EntryPatchNums;
+	RPakPtr pPakPatchNums;
 };
 
 // size: 0x78 (120 bytes)

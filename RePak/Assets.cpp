@@ -50,6 +50,8 @@ uint32_t DataTable_GetEntrySize(DataTableColumnDataType type)
         // strings get placed at a separate place and have a pointer in place of the actual value
         return sizeof(RPakPtr);
     }
+
+    return 0; // should be unreachable
 }
 
 void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
@@ -255,8 +257,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
         }
     }
 
-    hdr->RowHeaderPtr.Index = rdsIdx;
-    hdr->RowHeaderPtr.Offset = 0;
+    hdr->RowHeaderPtr = { rdsIdx, 0 };
 
     RePak::RegisterDescriptor(shsIdx, offsetof(DataTableHeader, RowHeaderPtr));
 
@@ -461,9 +462,9 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
         DDS_HEADER ddsh = input.read<DDS_HEADER>();
 
-        hdr->DataSize = ddsh.pitchOrLinearSize;
-        hdr->Width = ddsh.width;
-        hdr->Height = ddsh.height;
+        hdr->dataLength = ddsh.pitchOrLinearSize;
+        hdr->width = ddsh.width;
+        hdr->height = ddsh.height;
         
         DXGI_FORMAT dxgiFormat;
 
@@ -490,7 +491,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
             return;
         }
 
-        hdr->Format = (uint16_t)TxtrFormatMap[dxgiFormat];
+        hdr->format = (uint16_t)TxtrFormatMap[dxgiFormat];
 
         // go to the end of the main header
         input.seek(ddsh.size + 4);
@@ -499,9 +500,9 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
             input.seek(20, std::ios::cur);
     }
 
-    hdr->NameHash = RTech::StringToGuid((sAssetName + ".rpak").c_str());
+    hdr->assetGuid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
-    hdr->MipLevels = 1;
+    hdr->permanentMipLevels = 1;
 
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 
@@ -524,11 +525,11 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     // woo more segments
     RPakVirtualSegment RawDataSegment;
-    uint32_t rdsIdx = RePak::CreateNewSegment(hdr->DataSize, 3, 16, RawDataSegment);
+    uint32_t rdsIdx = RePak::CreateNewSegment(hdr->dataLength, 3, 16, RawDataSegment);
 
-    char* databuf = new char[hdr->DataSize];
+    char* databuf = new char[hdr->dataLength];
 
-    input.getReader()->read(databuf, hdr->DataSize);
+    input.getReader()->read(databuf, hdr->dataLength);
 
     RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)hdr };
     RePak::AddRawDataBlock(shdb);
@@ -537,8 +538,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     {
         RPakRawDataBlock ndb{ nsIdx, DebugNameSegment.DataSize, (uint8_t*)namebuf };
         RePak::AddRawDataBlock(ndb);
-        hdr->NameIndex = nsIdx;
-        hdr->NameOffset = 0;
+        hdr->pDebugName = { nsIdx, 0 };
     }
 
     RPakRawDataBlock rdb{ rdsIdx, RawDataSegment.DataSize, (uint8_t*)databuf };
@@ -566,7 +566,7 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
 
     PtchHeader* pHdr = new PtchHeader();
 
-    pHdr->EntryCount = mapEntry["entries"].GetArray().Size();
+    pHdr->patchedPakCount = mapEntry["entries"].GetArray().Size();
 
     std::vector<PtchEntry> patchEntries{};
     uint32_t entryNamesSectionSize = 0;
@@ -581,7 +581,7 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
         entryNamesSectionSize += name.length() + 1;
     }
 
-    size_t dataPageSize = (sizeof(RPakPtr) * pHdr->EntryCount) + (sizeof(uint8_t) * pHdr->EntryCount) + entryNamesSectionSize;
+    size_t dataPageSize = (sizeof(RPakPtr) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + entryNamesSectionSize;
 
     RPakVirtualSegment SubHeaderPage;
     uint32_t shsIdx = RePak::CreateNewSegment(sizeof(PtchHeader), 0, 8, SubHeaderPage);
@@ -589,14 +589,11 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     RPakVirtualSegment DataPage;
     uint32_t rdsIdx = RePak::CreateNewSegment(dataPageSize, 1, 8, DataPage);
 
-    pHdr->EntryNames.Index  = rdsIdx;
-    pHdr->EntryNames.Offset = 0;
+    pHdr->pPakNames = { rdsIdx, 0 };
+    pHdr->pPakPatchNums = { rdsIdx, (int)sizeof(RPakPtr) * pHdr->patchedPakCount };
 
-    pHdr->EntryPatchNums.Index  = rdsIdx;
-    pHdr->EntryPatchNums.Offset = sizeof(RPakPtr) * pHdr->EntryCount;
-
-    RePak::RegisterDescriptor(shsIdx, offsetof(PtchHeader, EntryNames));
-    RePak::RegisterDescriptor(shsIdx, offsetof(PtchHeader, EntryPatchNums));
+    RePak::RegisterDescriptor(shsIdx, offsetof(PtchHeader, pPakNames));
+    RePak::RegisterDescriptor(shsIdx, offsetof(PtchHeader, pPakPatchNums));
 
     char* pDataBuf = new char[dataPageSize];
     rmem dataBuf(pDataBuf);
@@ -604,12 +601,12 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     uint32_t i = 0;
     for (auto& it : patchEntries)
     {
-        uint32_t fileNameOffset = (sizeof(RPakPtr) * pHdr->EntryCount) + (sizeof(uint8_t) * pHdr->EntryCount) + it.FileNamePageOffset;
+        uint32_t fileNameOffset = (sizeof(RPakPtr) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + it.FileNamePageOffset;
 
         // write the ptr to the file name into the buffer
         dataBuf.write<RPakPtr>({ rdsIdx, fileNameOffset }, sizeof(RPakPtr) * i);
         // write the patch number for this entry into the buffer
-        dataBuf.write<uint8_t>(it.PatchNum, pHdr->EntryPatchNums.Offset + i);
+        dataBuf.write<uint8_t>(it.PatchNum, pHdr->pPakPatchNums.Offset + i);
 
         snprintf(pDataBuf + fileNameOffset, it.FileName.length() + 1, "%s", it.FileName.c_str());
 

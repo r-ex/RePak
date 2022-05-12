@@ -86,7 +86,7 @@ void RePak::RegisterGuidDescriptor(uint32_t pageIdx, uint32_t pageOffset)
 
 size_t RePak::AddFileRelation(uint32_t assetIdx, uint32_t count)
 {
-    for(int i = 0; i < count; ++i)
+    for(uint32_t i = 0; i < count; ++i)
         g_vFileRelations.push_back({ assetIdx });
     return g_vFileRelations.size()-count; // return the index of the file relation(s)
 }
