@@ -245,11 +245,11 @@ struct TextureHeader
 	uint16_t height = 0;
 
 	uint16_t unknown_1 = 0;
-	uint16_t format = 0;		// Maps to a DXGI format
+	uint16_t format = 0;
 
-	uint32_t dataLength;	// This is the total amount of image data across all banks
+	uint32_t dataLength; // total data size across all sources
 	uint8_t unknown_2;
-	uint8_t optStreamedMipLevels;
+	uint8_t optStreamedMipLevels; // why is this here and not below? respawn moment
 
 	// d3d11 texture desc params
 	uint8_t arraySize;
@@ -532,12 +532,12 @@ struct MaterialHeader
 	RPakPtr TextureGUIDs{}; // TextureGUID Map 1
 	RPakPtr TextureGUIDs2{}; // TextureGUID Map 2
 
-	int16_t UnknownSignature = 0x4; //This seems to be the start of a modified VTF Header, I have no clue what this member does. 
+	// ????? maybe some vtf-style thing?
+	int16_t UnknownSignature = 0x4;
 	int16_t Width = 2048;
 	int16_t Height = 2048;
 	int16_t Unknown = 0;
 
-	// Not fucking optional, its responsible for clamping and stretching aka to tile properly.
 	uint32_t ImageFlags = 0x1D0300; 
 	uint32_t Unknown1 = 0;
 
@@ -554,7 +554,7 @@ struct MaterialHeader
 
 struct MaterialCPUHeader
 {
-	RPakPtr Unknown{};
+	RPakPtr Unknown{}; // points to the rest of the cpu data. maybe for colour?
 	uint32_t DataSize = 0;
 	uint32_t VersionMaybe = 3;
 };
