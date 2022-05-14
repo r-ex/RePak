@@ -66,16 +66,16 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     vgInput.seek(0, std::ios::end);
 
     uint32_t vgFileSize = vgInput.tell();
-    char* vgBuf = new char[vgFileSize];
+    char* pVGBuf = new char[vgFileSize];
 
     vgInput.seek(0);
-    vgInput.getReader()->read(vgBuf, vgFileSize);
+    vgInput.getReader()->read(pVGBuf, vgFileSize);
     vgInput.close();
 
     // static name for now
     RePak::AddStarpakReference("paks/Win64/repak.starpak");
 
-    SRPkDataEntry de{ -1, vgFileSize, (uint8_t*)vgBuf };
+    SRPkDataEntry de{ -1, vgFileSize, (uint8_t*)pVGBuf };
     uint64_t starpakOffset = RePak::AddStarpakDataEntry(de);
 
     pHdr->StreamedDataSize = vgFileSize;
