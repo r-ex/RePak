@@ -87,7 +87,8 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
         sprintf_s(namebuf, sAssetName.length() + 1, "%s", sAssetName.c_str());
         nsIdx = RePak::CreateNewSegment(sAssetName.size() + 1, 129, 1, DebugNameSegment);
     }
-    else {
+    else
+    {
         delete[] namebuf;
     }
 

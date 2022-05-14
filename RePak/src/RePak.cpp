@@ -131,6 +131,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
+    // begin json parsing
     IStreamWrapper isw{ ifs };
 
     Document doc{ };
@@ -143,7 +144,6 @@ int main(int argc, char** argv)
         sRpakName = doc["name"].GetStdString();
     else
         Warning("Map file should have a 'name' field containing the string name for the new rpak, but none was provided. Defaulting to '%s.rpak' and continuing...\n", DEFAULT_RPAK_NAME);
-
 
     if (!doc.HasMember("assetsDir"))
     {
@@ -163,11 +163,13 @@ int main(int argc, char** argv)
         sOutputDir = doc["outputDir"].GetStdString();
         Utils::AppendSlash(sOutputDir);
     }
+    // end json parsing
 
     Log("building rpak %s.rpak\n\n", sRpakName.c_str());
 
     std::vector<RPakAssetEntryV8> assetEntries{ };
 
+    // build asset data
     // loop through all assets defined in the map json
     for (auto& file : doc["files"].GetArray())
     {
@@ -183,16 +185,17 @@ int main(int argc, char** argv)
 
     BinaryIO out{ };
 
-    // todo: v7 support?
-    RPakFileHeaderV8 rpakHeader{ };
-
-
     out.open(sOutputDir + sRpakName + ".rpak", BinaryIOMode::BinaryIOMode_Write);
+
+    // write a placeholder header so we can come back and complete it
+    // when we have all the info
+    RPakFileHeaderV8 rpakHeader{ };
     out.write(rpakHeader);
 
     size_t StarpakRefLength = Utils::WriteStringVector(out, g_vsStarpakPaths);
     size_t OptStarpakRefLength = Utils::WriteStringVector(out, g_vsOptStarpakPaths);
 
+    // write the non-paged data to the file first
     Utils::WriteVector(out, g_vvSegments);
     Utils::WriteVector(out, g_vvSegmentBlocks);
     Utils::WriteVector(out, g_vDescriptors);
@@ -201,11 +204,12 @@ int main(int argc, char** argv)
     Utils::WriteVector(out, g_vFileRelations);
     WriteRPakRawDataBlock(out, g_vRawDataBlocks);
 
-    FILETIME ft = Utils::GetFileTimeBySystem(); // Get system time as filetime.
+    // get current time as FILETIME
+    FILETIME ft = Utils::GetFileTimeBySystem();
 
-    // set our header values since now we should have all the required info
-    rpakHeader.CreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // File time to uint64_t for the created time.
-    rpakHeader.CompressedSize = out.tell(); // Since we can't compress rpaks at the moment set both compressed and decompressed size as the full rpak size.
+    // set up the file header
+    rpakHeader.CreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
+    rpakHeader.CompressedSize = out.tell();
     rpakHeader.DecompressedSize = out.tell();
     rpakHeader.VirtualSegmentCount = g_vvSegments.size();
     rpakHeader.PageCount = g_vvSegmentBlocks.size();
@@ -222,12 +226,13 @@ int main(int argc, char** argv)
     
     out.close();
 
+    // free the memory
     for (auto& it : g_vRawDataBlocks)
     {
         delete it.dataPtr;
     }
 
-    // TODO: support multiple starpaks?
+    // write starpak data
     if (g_vsStarpakPaths.size() == 1)
     {
         std::string sFullPath = g_vsStarpakPaths[0];
