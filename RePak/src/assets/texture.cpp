@@ -11,7 +11,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     std::string filePath = g_sAssetsDir + assetPath + ".dds";
 
     BinaryIO input;
-    input.open(filePath, BinaryIOMode::BinaryIOMode_Read);
+    input.open(filePath, BinaryIOMode::Read);
 
     uint64_t nInputFileSize = Utils::GetFileSize(filePath);
 

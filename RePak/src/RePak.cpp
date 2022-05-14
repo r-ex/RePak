@@ -185,7 +185,7 @@ int main(int argc, char** argv)
 
     BinaryIO out{ };
 
-    out.open(sOutputDir + sRpakName + ".rpak", BinaryIOMode::BinaryIOMode_Write);
+    out.open(sOutputDir + sRpakName + ".rpak", BinaryIOMode::Write);
 
     // write a placeholder header so we can come back and complete it
     // when we have all the info
@@ -242,7 +242,7 @@ int main(int argc, char** argv)
 
         BinaryIO srpkOut;
 
-        srpkOut.open(sOutputDir + filename, BinaryIOMode::BinaryIOMode_Write);
+        srpkOut.open(sOutputDir + filename, BinaryIOMode::Write);
 
         int magic = 'kPRS';
         int version = 1;

@@ -26,7 +26,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     // grab the dimensions of the atlas
     BinaryIO atlas;
-    atlas.open(sAtlasFilePath, BinaryIOMode::BinaryIOMode_Read);
+    atlas.open(sAtlasFilePath, BinaryIOMode::Read);
     atlas.seek(4, std::ios::beg);
     DDS_HEADER ddsh = atlas.read<DDS_HEADER>();
 
@@ -116,7 +116,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     char* pUVBuf = new char[nTexturesCount * sizeof(UIImageUV)];
     rmem uvBuf(pUVBuf);
 
-    for (int i = 0; i < nTexturesCount; ++i)
+    for (uint32_t i = 0; i < nTexturesCount; ++i)
     {
         UIImageUV uiiu{};
         uvBuf.write(uiiu);

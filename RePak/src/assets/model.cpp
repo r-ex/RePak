@@ -15,7 +15,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     ///-------------------
     // Begin skeleton(.rmdl) input
     BinaryIO skelInput;
-    skelInput.open(rmdlFilePath, BinaryIOMode::BinaryIOMode_Read);
+    skelInput.open(rmdlFilePath, BinaryIOMode::Read);
 
     studiohdrshort_t mdlhdr = skelInput.read<studiohdrshort_t>();
 
@@ -47,7 +47,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     ///--------------------
     // Add VG data
     BinaryIO vgInput;
-    vgInput.open(vgFilePath, BinaryIOMode::BinaryIOMode_Read);
+    vgInput.open(vgFilePath, BinaryIOMode::Read);
 
     BasicRMDLVGHeader bvgh = vgInput.read<BasicRMDLVGHeader>();
 

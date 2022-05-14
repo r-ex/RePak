@@ -12,9 +12,9 @@ enum class FileMode
 
 enum class BinaryIOMode
 {
-	BinaryIOMode_None = 0,
-	BinaryIOMode_Read,
-	BinaryIOMode_Write
+	None = 0,
+	Read,
+	Write
 };
 
 class BinaryIO
@@ -31,7 +31,7 @@ class BinaryIO
 public:
 	BinaryIO()
 	{
-		currentMode = BinaryIOMode::BinaryIOMode_None;
+		currentMode = BinaryIOMode::None;
 	}
 
 	// the destructor will be responsible for checking if we forgot to close
@@ -60,7 +60,7 @@ public:
 		//LOG_INFO(LoggingClass_BinaryIO, "Opening file: " + filePath);
 
 		// Write mode
-		if (mode == BinaryIOMode::BinaryIOMode_Write)
+		if (mode == BinaryIOMode::Write)
 		{
 			currentMode = mode;
 			// check if we had a previously opened file to close it
@@ -71,11 +71,11 @@ public:
 			if (!writer.is_open())
 			{
 				//LOG_ERROR(LoggingClass_BinaryIO, "Could not open file for write: " + filePath);
-				currentMode = BinaryIOMode::BinaryIOMode_None;
+				currentMode = BinaryIOMode::None;
 			}
 		}
 		// Read mode
-		else if (mode == BinaryIOMode::BinaryIOMode_Read)
+		else if (mode == BinaryIOMode::Read)
 		{
 			currentMode = mode;
 			// check if we had a previously opened file to close it
@@ -86,22 +86,22 @@ public:
 			if (!reader.is_open())
 			{
 				//LOG_ERROR(LoggingClass_BinaryIO, "Could not open file for read: " + filePath);
-				currentMode = BinaryIOMode::BinaryIOMode_None;
+				currentMode = BinaryIOMode::None;
 			}
 		}
 
 		// if the mode is still the NONE/initial one -> we failed
-		return currentMode == BinaryIOMode::BinaryIOMode_None ? false : true;
+		return currentMode == BinaryIOMode::None ? false : true;
 	}
 
 	// closes the file
 	void close()
 	{
-		if (currentMode == BinaryIOMode::BinaryIOMode_Write)
+		if (currentMode == BinaryIOMode::Write)
 		{
 			writer.close();
 		}
-		else if (currentMode == BinaryIOMode::BinaryIOMode_Read)
+		else if (currentMode == BinaryIOMode::Read)
 		{
 			reader.close();
 		}
@@ -110,7 +110,7 @@ public:
 	// checks whether we're allowed to write or not.
 	bool checkWritabilityStatus()
 	{
-		if (currentMode != BinaryIOMode::BinaryIOMode_Write)
+		if (currentMode != BinaryIOMode::Write)
 		{
 			//LOG_ERROR(LoggingClass_BinaryIO, "Trying to write with a non Writable mode!");
 			return false;
@@ -121,7 +121,7 @@ public:
 	// helper to check if we're allowed to read
 	bool checkReadabilityStatus()
 	{
-		if (currentMode != BinaryIOMode::BinaryIOMode_Read)
+		if (currentMode != BinaryIOMode::Read)
 		{
 			//LOG_ERROR(LoggingClass_BinaryIO, "Trying to read with a non Readable mode!");
 			return false;
@@ -132,7 +132,7 @@ public:
 		{
 			//LOG_ERROR(LoggingClass_BinaryIO, "Trying to read but reached the end of file!");
 			reader.close();
-			currentMode = BinaryIOMode::BinaryIOMode_None;
+			currentMode = BinaryIOMode::None;
 			return false;
 		}
 
@@ -198,13 +198,13 @@ public:
 	}
 
 	std::ifstream* getReader() {
-		if (currentMode != BinaryIOMode::BinaryIOMode_Read) {
+		if (currentMode != BinaryIOMode::Read) {
 			return NULL;
 		}
 		return &reader;
 	}
 	std::ofstream* getWriter() {
-		if (currentMode != BinaryIOMode::BinaryIOMode_Write) {
+		if (currentMode != BinaryIOMode::Write) {
 			return NULL;
 		}
 		return &writer;
@@ -245,9 +245,9 @@ public:
 	{
 		switch (currentMode)
 		{
-		case BinaryIOMode::BinaryIOMode_Write:
+		case BinaryIOMode::Write:
 			return writer.tellp();
-		case BinaryIOMode::BinaryIOMode_Read:
+		case BinaryIOMode::Read:
 			return reader.tellg();
 		default:
 			return -1;
@@ -258,10 +258,10 @@ public:
 	{
 		switch (currentMode)
 		{
-		case BinaryIOMode::BinaryIOMode_Write:
+		case BinaryIOMode::Write:
 			writer.seekp(off, dir);
 			break;
-		case BinaryIOMode::BinaryIOMode_Read:
+		case BinaryIOMode::Read:
 			reader.seekg(off, dir);
 			break;
 		default:
