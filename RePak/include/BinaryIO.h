@@ -40,13 +40,11 @@ public:
 	{
 		if (writer.is_open())
 		{
-			//LOG_ERROR(LoggingClass_BinaryIO, "You forgot to call close() after finishing with the file! Closing it...");
 			writer.close();
 		}
 
 		if (reader.is_open())
 		{
-			//LOG_ERROR(LoggingClass_BinaryIO, "You forgot to call close() after finishing with the file! Closing it...");
 			reader.close();
 		}
 	}
@@ -56,8 +54,6 @@ public:
 	bool open(std::string fileFullPath, BinaryIOMode mode)
 	{
 		filePath = fileFullPath;
-
-		//LOG_INFO(LoggingClass_BinaryIO, "Opening file: " + filePath);
 
 		// Write mode
 		if (mode == BinaryIOMode::Write)
@@ -70,7 +66,6 @@ public:
 			writer.open(filePath.c_str(), std::ios::binary);
 			if (!writer.is_open())
 			{
-				//LOG_ERROR(LoggingClass_BinaryIO, "Could not open file for write: " + filePath);
 				currentMode = BinaryIOMode::None;
 			}
 		}
@@ -85,7 +80,6 @@ public:
 			reader.open(filePath.c_str(), std::ios::binary);
 			if (!reader.is_open())
 			{
-				//LOG_ERROR(LoggingClass_BinaryIO, "Could not open file for read: " + filePath);
 				currentMode = BinaryIOMode::None;
 			}
 		}
@@ -112,7 +106,6 @@ public:
 	{
 		if (currentMode != BinaryIOMode::Write)
 		{
-			//LOG_ERROR(LoggingClass_BinaryIO, "Trying to write with a non Writable mode!");
 			return false;
 		}
 		return true;
@@ -123,14 +116,12 @@ public:
 	{
 		if (currentMode != BinaryIOMode::Read)
 		{
-			//LOG_ERROR(LoggingClass_BinaryIO, "Trying to read with a non Readable mode!");
 			return false;
 		}
 
 		// check if we hit the end of the file.
 		if (reader.eof())
 		{
-			//LOG_ERROR(LoggingClass_BinaryIO, "Trying to read but reached the end of file!");
 			reader.close();
 			currentMode = BinaryIOMode::None;
 			return false;
