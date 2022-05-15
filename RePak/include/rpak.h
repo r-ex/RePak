@@ -320,7 +320,7 @@ struct UIImageOffset
 
 struct DataTableColumn
 {
-	RPakPtr Name;
+	RPakPtr NamePtr;
 	DataTableColumnDataType Type;
 	uint32_t RowOffset;
 };

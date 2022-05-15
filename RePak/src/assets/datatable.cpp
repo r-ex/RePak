@@ -56,7 +56,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
 
     std::string sAssetName = assetPath;
 
-    DataTableHeader* hdr = new DataTableHeader();
+    DataTableHeader* pHdr = new DataTableHeader();
 
     const size_t columnCount = doc.GetColumnCount();
     const size_t rowCount = doc.GetRowCount();
@@ -81,40 +81,37 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
         ColumnNameBufSize += it.length() + 1;
     }
 
-    // data buffer used for storing the names
-    char* namebuf = new char[ColumnNameBufSize];
-
-    uint32_t nextNameOffset = 0;
-    uint32_t columnIdx = 0;
-    // temp var used for storing the row offset for the next column in the loop below
-    uint32_t tempColumnRowOffset = 0;
-    uint32_t stringEntriesSize = 0;
-    size_t rowDataPageSize = 0;
-
     ///-----------------------------------------
-    // make a segment/page for the sub header
+    // make a page for the sub header
     //
     RPakVirtualSegment SubHeaderSegment{};
     uint32_t shsIdx = RePak::CreateNewSegment(sizeof(DataTableHeader), 0, 8, SubHeaderSegment);
 
-    // page for DataTableColumn entries
+    // DataTableColumn entries
     RPakVirtualSegment ColumnHeaderSegment{};
     uint32_t chsIdx = RePak::CreateNewSegment(sizeof(DataTableColumn) * columnCount, 1, 8, ColumnHeaderSegment, 64);
 
-    hdr->ColumnCount = columnCount;
-    hdr->RowCount = rowCount - 1;
-    hdr->ColumnHeaderPtr.Index = chsIdx;
-    hdr->ColumnHeaderPtr.Offset = 0;
-
-    RePak::RegisterDescriptor(shsIdx, offsetof(DataTableHeader, ColumnHeaderPtr));
-
-    ///-----------------------------------------
-    // make a segment/page for the column names
-    //
+    // column names
     RPakVirtualSegment ColumnNamesSegment{};
     uint32_t nameSegIdx = RePak::CreateNewSegment(ColumnNameBufSize, 1, 8, ColumnNamesSegment, 64);
 
+
+    pHdr->ColumnCount = columnCount;
+    pHdr->RowCount = rowCount - 1;
+    pHdr->ColumnHeaderPtr = { chsIdx, 0 };
+
+    RePak::RegisterDescriptor(shsIdx, offsetof(DataTableHeader, ColumnHeaderPtr));
+
+    // allocate buffers for the loop
+    char* namebuf = new char[ColumnNameBufSize];
     char* columnHeaderBuf = new char[sizeof(DataTableColumn) * columnCount];
+
+    uint32_t nextNameOffset = 0;
+    uint32_t colIdx = 0;
+    // temp var used for storing the row offset for the next column in the loop below
+    uint32_t tempColumnRowOffset = 0;
+    uint32_t stringEntriesSize = 0;
+    size_t rowDataPageSize = 0;
 
     for (auto& it : doc.GetColumnNames())
     {
@@ -122,15 +119,15 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
         // copy the column name into the namebuf
         snprintf(namebuf + nextNameOffset, it.length() + 1, "%s", it.c_str());
 
+        DataTableColumnDataType type = GetDataTableTypeFromString(typeRow[colIdx]);
+
         // set the page index and offset
-        col.Name.Index = nameSegIdx;
-        col.Name.Offset = nextNameOffset;
-        RePak::RegisterDescriptor(chsIdx, (sizeof(DataTableColumn) * columnIdx) + offsetof(DataTableColumn, Name));
-
+        col.NamePtr = { nameSegIdx, nextNameOffset };
         col.RowOffset = tempColumnRowOffset;
-
-        DataTableColumnDataType type = GetDataTableTypeFromString(typeRow[columnIdx]);
         col.Type = type;
+
+        // register name pointer
+        RePak::RegisterDescriptor(chsIdx, (sizeof(DataTableColumn) * colIdx) + offsetof(DataTableColumn, NamePtr));
 
         uint32_t columnEntrySize = 0;
 
@@ -141,7 +138,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
                 // this can be std::string since we only really need to deal with the string types here
                 auto row = doc.GetRow<std::string>(i);
 
-                stringEntriesSize += row[columnIdx].length() + 1;
+                stringEntriesSize += row[colIdx].length() + 1;
             }
         }
 
@@ -149,17 +146,17 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
 
         columns.emplace_back(col);
 
-        *(DataTableColumn*)(columnHeaderBuf + (sizeof(DataTableColumn) * columnIdx)) = col;
+        *(DataTableColumn*)(columnHeaderBuf + (sizeof(DataTableColumn) * colIdx)) = col;
 
         tempColumnRowOffset += columnEntrySize;
         rowDataPageSize += columnEntrySize * (rowCount - 1);
         nextNameOffset += it.length() + 1;
-        columnIdx++;
+        colIdx++;
 
         // if this is the final column, set the total row bytes to the column's row offset + the column's row size
         // (effectively the full length of the row)
-        if (columnIdx == columnCount)
-            hdr->RowStride = tempColumnRowOffset;
+        if (colIdx == columnCount)
+            pHdr->RowStride = tempColumnRowOffset;
     }
 
     // page for Row Data
@@ -176,11 +173,11 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
 
     for (size_t rowIdx = 0; rowIdx < rowCount - 1; ++rowIdx)
     {
-        for (size_t columnIdx = 0; columnIdx < columnCount; ++columnIdx)
+        for (size_t colIdx = 0; colIdx < columnCount; ++colIdx)
         {
-            DataTableColumn col = columns[columnIdx];
+            DataTableColumn col = columns[colIdx];
 
-            char* EntryPtr = (rowDataBuf + (hdr->RowStride * rowIdx) + col.RowOffset);
+            char* EntryPtr = (rowDataBuf + (pHdr->RowStride * rowIdx) + col.RowOffset);
 
             rmem valbuf(EntryPtr);
 
@@ -188,7 +185,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
             {
             case DataTableColumnDataType::Bool:
             {
-                std::string val = doc.GetCell<std::string>(columnIdx, rowIdx);
+                std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
 
                 transform(val.begin(), val.end(), val.begin(), ::tolower);
 
@@ -200,19 +197,19 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
             }
             case DataTableColumnDataType::Int:
             {
-                uint32_t val = doc.GetCell<uint32_t>(columnIdx, rowIdx);
+                uint32_t val = doc.GetCell<uint32_t>(colIdx, rowIdx);
                 valbuf.write(val);
                 break;
             }
             case DataTableColumnDataType::Float:
             {
-                float val = doc.GetCell<float>(columnIdx, rowIdx);
+                float val = doc.GetCell<float>(colIdx, rowIdx);
                 valbuf.write(val);
                 break;
             }
             case DataTableColumnDataType::Vector:
             {
-                std::string val = doc.GetCell<std::string>(columnIdx, rowIdx);
+                std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
 
                 std::smatch sm;
 
@@ -238,11 +235,11 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
 
                 RPakPtr stringPtr{ sesIdx, nextStringEntryOffset };
 
-                std::string val = doc.GetCell<std::string>(columnIdx, rowIdx);
+                std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
                 snprintf(stringEntryBuf + nextStringEntryOffset, val.length() + 1, "%s", val.c_str());
 
                 valbuf.write(stringPtr);
-                RePak::RegisterDescriptor(rdsIdx, (hdr->RowStride * rowIdx) + col.RowOffset);
+                RePak::RegisterDescriptor(rdsIdx, (pHdr->RowStride * rowIdx) + col.RowOffset);
 
                 nextStringEntryOffset += val.length() + 1;
                 break;
@@ -251,11 +248,11 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
         }
     }
 
-    hdr->RowHeaderPtr = { rdsIdx, 0 };
+    pHdr->RowHeaderPtr = { rdsIdx, 0 };
 
     RePak::RegisterDescriptor(shsIdx, offsetof(DataTableHeader, RowHeaderPtr));
 
-    RPakRawDataBlock shDataBlock{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)hdr };
+    RPakRawDataBlock shDataBlock{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)pHdr };
     RePak::AddRawDataBlock(shDataBlock);
 
     RPakRawDataBlock colDataBlock{ chsIdx, ColumnHeaderSegment.DataSize, (uint8_t*)columnHeaderBuf };
