@@ -51,7 +51,7 @@ void Utils::AppendSlash(std::string& in)
 {
 	char lchar = in[in.size() - 1];
 	if (lchar != '\\' && lchar != '/')
-		in.append("/");
+		in.append("\\");
 }
 
 
