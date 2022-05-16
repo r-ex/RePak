@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Utils.h"
 
+// purpose: gets size of the specified file
+// returns: file size
 uintmax_t Utils::GetFileSize(std::string filename)
 {
 	try {
@@ -12,9 +14,8 @@ uintmax_t Utils::GetFileSize(std::string filename)
 	}
 }
 
-// i know this is bad
-// "im just gonna use this until someone complains and replaces it with something better"
-// So never?
+// purpose: pad buffer to the specified alignment
+// returns: new buffer size
 size_t Utils::PadBuffer(char** buf, size_t size, size_t alignment)
 {
 	size_t extra = alignment - (size % alignment);
@@ -29,6 +30,8 @@ size_t Utils::PadBuffer(char** buf, size_t size, size_t alignment)
 	return newSize;
 }
 
+// purpose: write vector of strings to the specified BinaryIO instance
+// returns: length of data written
 size_t Utils::WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVector)
 {
 	size_t length = 0;
@@ -40,6 +43,7 @@ size_t Utils::WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVec
 	return length;
 }
 
+// purpose: get current system time as FILETIME
 FILETIME Utils::GetFileTimeBySystem()
 {
 	FILETIME ft;
@@ -47,6 +51,7 @@ FILETIME Utils::GetFileTimeBySystem()
 	return ft;
 }
 
+// purpose: add backslash to the end of the string if not already present
 void Utils::AppendSlash(std::string& in)
 {
 	char lchar = in[in.size() - 1];
