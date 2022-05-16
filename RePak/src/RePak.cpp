@@ -72,7 +72,13 @@ int main(int argc, char** argv)
 {
     if (argc < 2)
     {
-        printf("invalid usage\n");
+        Error("invalid usage\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!FILE_EXISTS(argv[1]))
+    {
+        Error("couldn't find map file\n");
         return EXIT_FAILURE;
     }
 
@@ -80,7 +86,7 @@ int main(int argc, char** argv)
 
     if (!ifs.is_open())
     {
-        printf("couldn't open map file. does it exist?\n");
+        Error("couldn't open map file.\n");
         return EXIT_FAILURE;
     }
 

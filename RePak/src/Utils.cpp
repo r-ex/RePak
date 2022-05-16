@@ -72,6 +72,18 @@ void Warning(const char* fmt, ...)
 	va_end(args);
 }
 
+void Error(const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	std::string msg = "ERROR: " + std::string(fmt);
+
+	vprintf(msg.c_str(), args);
+
+	va_end(args);
+}
+
 void Log(const char* fmt, ...)
 {
 	va_list args;
