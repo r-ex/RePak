@@ -154,6 +154,7 @@
     <ClCompile Include="src\assets\patch.cpp" />
     <ClCompile Include="src\assets\rui.cpp" />
     <ClCompile Include="src\assets\texture.cpp" />
+    <ClCompile Include="src\components\starpak.cpp" />
     <ClCompile Include="src\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">pch.h</PrecompiledHeaderFile>

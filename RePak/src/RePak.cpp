@@ -1,23 +1,10 @@
 #include "pch.h"
 #include "Assets.h"
 
-std::vector<RPakVirtualSegment> g_vvSegments{};
-std::vector<RPakVirtualSegmentBlock> g_vvSegmentBlocks{};
-std::vector<RPakDescriptor> g_vDescriptors{};
-std::vector<RPakGuidDescriptor> g_vGuidDescriptors{};
-std::vector<RPakRelationBlock> g_vFileRelations{};
-std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
-std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
-std::vector<SRPkDataEntry> g_vSRPkDataEntries{};
-std::vector<std::string> g_vsStarpakPaths{};
-std::vector<std::string> g_vsOptStarpakPaths{};
-
-uint64_t nextStarpakOffset = 0x1000;
-
 using namespace rapidjson;
 
-// flags_maybe is used because it's required for some segments but i have no way of knowing how it's supposed to be set
-// idrk if it's even used for flags tbh
+// purpose: create page and segment with the specified parameters
+// returns: page index
 uint32_t RePak::CreateNewSegment(uint64_t size, uint32_t flags_maybe, uint32_t alignment, RPakVirtualSegment& seg, uint32_t vsegAlignment)
 {
     uint32_t idx = g_vvSegmentBlocks.size();
@@ -32,42 +19,8 @@ uint32_t RePak::CreateNewSegment(uint64_t size, uint32_t flags_maybe, uint32_t a
     return idx;
 }
 
-void RePak::AddStarpakReference(std::string path)
-{
-    for (auto& it : g_vsStarpakPaths)
-    {
-        if (it == path)
-            return;
-    }
-    g_vsStarpakPaths.push_back(path);
-}
-
-// returns offset in starpak
-uint64_t RePak::AddStarpakDataEntry(SRPkDataEntry block)
-{
-    size_t ns = Utils::PadBuffer((char**)&block.dataPtr, block.dataSize, 4096);
-
-    block.dataSize = ns;
-    block.offset = nextStarpakOffset;
-
-    g_vSRPkDataEntries.push_back(block);
-
-    nextStarpakOffset += block.dataSize;
-
-    return block.offset;
-}
-
 void RePak::AddRawDataBlock(RPakRawDataBlock block)
 {
-    // this messes with descriptor registration
-    //uint32_t alignment = g_vvSegmentBlocks[block.pageIdx].Alignment;
-    //size_t ns = Utils::PadBuffer((char**)&block.dataPtr, block.dataSize, alignment);
-    //
-    //if(block.dataSize != ns)
-    //    Debug("Aligned data block to %i bytes (%llx to %llx)\n", alignment, block.dataSize, ns);
-
-    //block.dataSize = ns;
-
     g_vRawDataBlocks.push_back(block);
     return;
 };

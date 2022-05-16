@@ -2,6 +2,17 @@
 
 #define DEFAULT_RPAK_NAME "new"
 
+static std::vector<RPakVirtualSegment> g_vvSegments{};
+static std::vector<RPakVirtualSegmentBlock> g_vvSegmentBlocks{};
+static std::vector<RPakDescriptor> g_vDescriptors{};
+static std::vector<RPakGuidDescriptor> g_vGuidDescriptors{};
+static std::vector<RPakRelationBlock> g_vFileRelations{};
+static std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
+static std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
+static std::vector<SRPkDataEntry> g_vSRPkDataEntries{};
+static std::vector<std::string> g_vsStarpakPaths{};
+static std::vector<std::string> g_vsOptStarpakPaths{};
+
 namespace RePak
 {
 	uint32_t CreateNewSegment(uint64_t size, uint32_t flags_maybe, uint32_t alignment, RPakVirtualSegment& seg, uint32_t vsegAlignment = -1);
