@@ -196,12 +196,12 @@ int main(int argc, char** argv)
     size_t OptStarpakRefLength = Utils::WriteStringVector(out, g_vsOptStarpakPaths);
 
     // write the non-paged data to the file first
-    Utils::WriteVector(out, g_vvSegments);
-    Utils::WriteVector(out, g_vvSegmentBlocks);
-    Utils::WriteVector(out, g_vDescriptors);
-    Utils::WriteVector(out, assetEntries);
-    Utils::WriteVector(out, g_vGuidDescriptors);
-    Utils::WriteVector(out, g_vFileRelations);
+    WRITE_VECTOR(out, g_vvSegments);
+    WRITE_VECTOR(out, g_vvSegmentBlocks);
+    WRITE_VECTOR(out, g_vDescriptors);
+    WRITE_VECTOR(out, assetEntries);
+    WRITE_VECTOR(out, g_vGuidDescriptors);
+    WRITE_VECTOR(out, g_vFileRelations);
     WriteRPakRawDataBlock(out, g_vRawDataBlocks);
 
     // get current time as FILETIME
