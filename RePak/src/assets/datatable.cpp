@@ -61,9 +61,15 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
     const size_t columnCount = doc.GetColumnCount();
     const size_t rowCount = doc.GetRowCount();
 
+    if (columnCount < 0)
+    {
+        Warning("Attempted to add dtbl asset with no columns. Skipping asset...\n");
+        return;
+    }
+
     if (rowCount < 2)
     {
-        Warning("Attempted to add dtbl asset with an invalid row count. Skipping asset...\nDTBL    - CSV must have a row of column types at the end of the table\n");
+        Warning("Attempted to add dtbl asset with invalid row count. Skipping asset...\nDTBL    - CSV must have a row of column types at the end of the table\n");
         return;
     }
 
