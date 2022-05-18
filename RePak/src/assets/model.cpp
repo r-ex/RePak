@@ -114,7 +114,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), shsIdx, 0, SubHeaderSegment.DataSize, -1, 0, starpakOffset, -1, (std::uint32_t)AssetType::RMDL);
     asset.Version = RMDL_VERSION;
     // i have literally no idea what these are
-    asset.HighestPageNum = dataSegIdx + 1;
+    asset.PageEnd = dataSegIdx + 1;
     asset.Un2 = 2;
 
     // note: models use an implicit guid reference to their materials

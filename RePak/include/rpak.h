@@ -177,7 +177,7 @@ struct RPakAssetEntryV8
 	uint64_t StarpakOffset = -1;
 	uint64_t OptionalStarpakOffset = -1;
 
-	uint16_t HighestPageNum = 0; // might be called pageEnd? - number of the highest mem page that is used by this asset
+	uint16_t PageEnd = 0; // highest mem page used by this asset
 	uint16_t Un2 = 0;
 
 	uint32_t RelationsStartIndex = 0;

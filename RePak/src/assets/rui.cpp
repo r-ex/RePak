@@ -134,7 +134,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::UIMG);
     asset.Version = UIMG_VERSION;
 
-    asset.HighestPageNum = rdsIdx + 1; // number of the highest page that the asset references pageidx + 1
+    asset.PageEnd = rdsIdx + 1; // number of the highest page that the asset references pageidx + 1
     asset.Un2 = 2;
 
     asset.UsesStartIndex = fileRelationIdx;

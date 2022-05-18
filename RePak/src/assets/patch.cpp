@@ -67,7 +67,7 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     asset.InitAsset(0x6fc6fa5ad8f8bc9c, shsIdx, 0, SubHeaderPage.DataSize, -1, 0, -1, -1, (std::uint32_t)AssetType::PTCH);
     asset.Version = 1;
 
-    asset.HighestPageNum = rdsIdx + 1;
+    asset.PageEnd = rdsIdx + 1;
     asset.Un2 = 1;
 
     assetEntries->push_back(asset);

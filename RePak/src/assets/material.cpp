@@ -301,7 +301,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), shsIdx, 0, SubHeaderSegment.DataSize, cpuIdx, 0, -1, -1, (std::uint32_t)AssetType::MATL);
     asset.Version = MATL_VERSION;
 
-    asset.HighestPageNum = cpuIdx + 1;
+    asset.PageEnd = cpuIdx + 1;
     asset.Un2 = bColpass ? 7 : 8; // what
 
     asset.UsesStartIndex = fileRelationIdx;

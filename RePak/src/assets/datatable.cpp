@@ -277,7 +277,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
     asset.Version = DTBL_VERSION;
 
-    asset.HighestPageNum = sesIdx + 1; // number of the highest page that the asset references pageidx + 1
+    asset.PageEnd = sesIdx + 1; // number of the highest page that the asset references pageidx + 1
     asset.Un2 = 1;
 
     assetEntries->push_back(asset);
