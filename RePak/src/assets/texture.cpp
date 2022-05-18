@@ -6,9 +6,18 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 {
     Debug("Adding txtr asset '%s'\n", assetPath);
 
-    TextureHeader* hdr = new TextureHeader();
 
     std::string filePath = g_sAssetsDir + assetPath + ".dds";
+
+    if (!FILE_EXISTS(filePath))
+    {
+        // this is a fatal error because if this asset is a dependency for another asset and we just ignore it
+        // we will crash later when trying to reference it
+        Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());
+        exit(EXIT_FAILURE);
+    }
+
+    TextureHeader* hdr = new TextureHeader();
 
     BinaryIO input;
     input.open(filePath, BinaryIOMode::Read);
@@ -55,7 +64,8 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
             dxgiFormat = DXGI_FORMAT_BC7_UNORM;
             break;
         default:
-            Warning("Attempted to add txtr asset '%s' that was not using a supported DDS type. Skipping asset...\n", assetPath);
+            Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
+            exit(EXIT_FAILURE);
             return;
         }
 
