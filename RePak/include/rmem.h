@@ -61,7 +61,7 @@ public: // read/write
 
 		if (advancebuf)
 		{
-			_pbuf += sizeof(T);
+			_pbuf = static_cast<char*>(_pbuf) + sizeof(T);
 			_curpos += sizeof(T);
 		}
 
@@ -75,6 +75,9 @@ public: // read/write
 			throw "failed to write to buffer: attempted to write past the end of the buffer";
 
 		*(T*)_pbuf = val;
+
+		_pbuf = static_cast<char*>(_pbuf) + sizeof(T);
+		_curpos += sizeof(T);
 	}
 
 	template<typename T>
