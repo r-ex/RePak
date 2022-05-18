@@ -73,9 +73,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
         return;
     }
 
-    std::vector<std::string> typeRow = doc.GetRow<std::string>(rowCount - 1);
 
-    std::vector<DataTableColumn> columns{};
 
     size_t ColumnNameBufSize = 0;
 
@@ -111,6 +109,10 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
     char* namebuf = new char[ColumnNameBufSize];
     char* columnHeaderBuf = new char[sizeof(DataTableColumn) * columnCount];
 
+    // vectors
+    std::vector<std::string> typeRow = doc.GetRow<std::string>(rowCount - 1);
+    std::vector<DataTableColumn> columns{};
+
     uint32_t nextNameOffset = 0;
     uint32_t colIdx = 0;
     // temp var used for storing the row offset for the next column in the loop below
@@ -141,7 +143,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
             for (size_t i = 0; i < rowCount - 1; ++i)
             {
                 // this can be std::string since we only really need to deal with the string types here
-                auto row = doc.GetRow<std::string>(i);
+                std::vector<std::string> row = doc.GetRow<std::string>(i);
 
                 stringEntriesSize += row[colIdx].length() + 1;
             }
