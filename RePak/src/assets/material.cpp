@@ -93,7 +93,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
             else
                 RePak::AddFileRelation(assetEntries->size());
 
-            auto txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
+            RPakAssetEntryV8* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
 
             txtrAsset->RelationsStartIndex = fileRelationIdx;
             txtrAsset->RelationsCount++;
@@ -115,7 +115,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
             RePak::AddFileRelation(assetEntries->size());
 
-            auto txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
+            RPakAssetEntryV8* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
 
             txtrAsset->RelationsStartIndex = fileRelationIdx;
             txtrAsset->RelationsCount++;
