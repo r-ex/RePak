@@ -45,7 +45,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     uint32_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint64_t)) * nTexturesCount;
 
     // get total size
-    uint32_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize + (4 * nTexturesCount); // man idk what this +4 is
+    uint32_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize;
 
     // allocate the page and segment
     RPakVirtualSegment SubHeaderSegment;
@@ -66,7 +66,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     RePak::RegisterGuidDescriptor(shsIdx, offsetof(UIImageHeader, atlasGuid));
 
     // buffer for texture info data
-    char* pTextureInfoBuf = new char[textureInfoPageSize];
+    char* pTextureInfoBuf = new char[textureInfoPageSize]{};
     rmem tiBuf(pTextureInfoBuf);
 
     // set texture offset page index and offset
