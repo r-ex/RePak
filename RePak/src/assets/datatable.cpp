@@ -63,8 +63,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
 
     if (rowCount < 2)
     {
-        printf("WARNING - Attempted to add dtbl asset with an invalid row count. Skipping asset...\n");
-        printf("DTBL    - CSV must have a row of column types at the end of the table\n");
+        Warning("Attempted to add dtbl asset with an invalid row count. Skipping asset...\nDTBL    - CSV must have a row of column types at the end of the table\n");
         return;
     }
 
@@ -213,6 +212,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
 
                 std::smatch sm;
 
+                // get values from format "<x,y,z>"
                 std::regex_search(val, sm, s_VectorStringRegex);
 
                 if (sm.size() == 4)
@@ -226,7 +226,6 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
                 }
                 break;
             }
-
             case DataTableColumnDataType::StringT:
             case DataTableColumnDataType::Asset:
             case DataTableColumnDataType::AssetNoPrecache:
