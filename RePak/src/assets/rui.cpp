@@ -5,8 +5,6 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 {
     Debug("Adding uimg asset '%s'\n", assetPath);
 
-    UIImageHeader* pHdr = new UIImageHeader();
-
     std::string sAssetName = assetPath;
 
     // get the info for the ui atlas image
@@ -32,13 +30,14 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     atlas.close();
 
-    pHdr->Width = ddsh.width;
-    pHdr->Height = ddsh.height;
+    UIImageHeader* pHdr = new UIImageHeader();
+    pHdr->width = ddsh.width;
+    pHdr->height = ddsh.height;
 
-    pHdr->TextureOffsetsCount = nTexturesCount;
-    pHdr->TextureCount = nTexturesCount == 1 ? 0 : nTexturesCount; // don't even ask
+    pHdr->textureOffsetsCount = nTexturesCount;
+    pHdr->textureCount = nTexturesCount == 1 ? 0 : nTexturesCount; // don't even ask
 
-    pHdr->TextureGuid = atlasGuid;
+    pHdr->atlasGuid = atlasGuid;
 
     // calculate data sizes so we can allocate a page and segment
     uint32_t textureOffsetsDataSize = sizeof(UIImageOffset) * nTexturesCount;
@@ -59,20 +58,19 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     uint32_t rdsIdx = RePak::CreateNewSegment(nTexturesCount * 0x10, 0x43, 4, RawDataSegment);
 
     // register our descriptors so they get converted properly
-    RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, TextureOffsetsIndex));
-    RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, TextureDimsIndex));
-    RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, TextureHashesIndex));
+    RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, pTextureOffsets));
+    RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, pTextureDims));
+    RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, pTextureHashes));
 
     // textureGUID descriptors
-    RePak::RegisterGuidDescriptor(shsIdx, offsetof(UIImageHeader, TextureGuid));
+    RePak::RegisterGuidDescriptor(shsIdx, offsetof(UIImageHeader, atlasGuid));
 
     // buffer for texture info data
     char* pTextureInfoBuf = new char[textureInfoPageSize];
     rmem tiBuf(pTextureInfoBuf);
 
     // set texture offset page index and offset
-    pHdr->TextureOffsetsIndex = tisIdx;
-    pHdr->TextureOffsetsOffset = 0; // start of the page
+    pHdr->pTextureOffsets = { tisIdx, 0 };
 
     for (auto& it : mapEntry["textures"].GetArray())
     {
@@ -81,8 +79,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     }
 
     // set texture dimensions page index and offset
-    pHdr->TextureDimsIndex = tisIdx;
-    pHdr->TextureDimsOffset = textureOffsetsDataSize;
+    pHdr->pTextureDims = { tisIdx, textureOffsetsDataSize };
 
     for (auto& it : mapEntry["textures"].GetArray())
     {
@@ -91,8 +88,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     }
 
     // set texture hashes page index and offset
-    pHdr->TextureHashesIndex = tisIdx;
-    pHdr->TextureHashesOffset = textureOffsetsDataSize + textureDimensionsDataSize;
+    pHdr->pTextureHashes = { tisIdx, textureOffsetsDataSize + textureDimensionsDataSize };
 
     uint64_t nextStringTableOffset = 0;
 

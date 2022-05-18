@@ -263,22 +263,18 @@ struct TextureHeader
 
 struct UIImageHeader
 {
-	uint64_t Unk0 = 0;
-	uint16_t Width = 1;
-	uint16_t Height = 1;
-	uint16_t TextureOffsetsCount = 0;
-	uint16_t TextureCount = 0;
-	uint32_t TextureOffsetsIndex = 0;
-	uint32_t TextureOffsetsOffset = 0;
-	uint32_t TextureDimsIndex = 0;
-	uint32_t TextureDimsOffset = 0;
-	uint32_t Unk20 = 0;
-	uint32_t Unk24 = 0;
-	uint32_t TextureHashesIndex = 0;
-	uint32_t TextureHashesOffset = 0;
-	uint32_t TextureNamesIndex = 0;
-	uint32_t TextureNamesOffset = 0;
-	uint64_t TextureGuid = 0;
+	uint64_t unknown_0 = 0;
+	uint16_t width = 1;
+	uint16_t height = 1;
+	uint16_t textureOffsetsCount = 0;
+	uint16_t textureCount = 0;
+	RPakPtr pTextureOffsets{};
+	RPakPtr pTextureDims{};
+	uint32_t unknown_20 = 0;
+	uint32_t unknown_24 = 0;
+	RPakPtr pTextureHashes{};
+	RPakPtr pTextureNames{};
+	uint64_t atlasGuid = 0;
 };
 
 struct UIImageUV
