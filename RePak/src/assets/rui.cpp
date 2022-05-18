@@ -18,8 +18,8 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     if (atlasAsset == nullptr)
     {
-        Warning("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Skipping asset...\n", assetPath);
-        return;
+        Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
+        exit(EXIT_FAILURE);
     }
 
     uint32_t nTexturesCount = mapEntry["textures"].GetArray().Size();
