@@ -45,7 +45,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     uint32_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint64_t)) * nTexturesCount;
 
     // get total size
-    uint32_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize;
+    uint32_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
 
     // allocate the page and segment
     RPakVirtualSegment SubHeaderSegment;
