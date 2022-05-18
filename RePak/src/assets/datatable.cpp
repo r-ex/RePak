@@ -122,21 +122,22 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
 
     for (auto& it : doc.GetColumnNames())
     {
-        DataTableColumn col{};
         // copy the column name into the namebuf
         snprintf(namebuf + nextNameOffset, it.length() + 1, "%s", it.c_str());
 
         DataTableColumnDataType type = GetDataTableTypeFromString(typeRow[colIdx]);
+
+        DataTableColumn col{};
 
         // set the page index and offset
         col.NamePtr = { nameSegIdx, nextNameOffset };
         col.RowOffset = tempColumnRowOffset;
         col.Type = type;
 
+        columns.emplace_back(col);
+
         // register name pointer
         RePak::RegisterDescriptor(chsIdx, (sizeof(DataTableColumn) * colIdx) + offsetof(DataTableColumn, NamePtr));
-
-        uint32_t columnEntrySize = 0;
 
         if (type == DataTableColumnDataType::StringT || type == DataTableColumnDataType::Asset || type == DataTableColumnDataType::AssetNoPrecache)
         {
@@ -149,14 +150,10 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
             }
         }
 
-        columnEntrySize = DataTable_GetEntrySize(type);
-
-        columns.emplace_back(col);
-
         *(DataTableColumn*)(columnHeaderBuf + (sizeof(DataTableColumn) * colIdx)) = col;
 
-        tempColumnRowOffset += columnEntrySize;
-        rowDataPageSize += columnEntrySize * (rowCount - 1);
+        tempColumnRowOffset += DataTable_GetEntrySize(type);
+        rowDataPageSize += DataTable_GetEntrySize(type) * (rowCount - 1); // size of type * row count (excluding the type row)
         nextNameOffset += it.length() + 1;
         colIdx++;
 
@@ -259,6 +256,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
 
     RePak::RegisterDescriptor(shsIdx, offsetof(DataTableHeader, RowHeaderPtr));
 
+    // add raw data blocks
     RPakRawDataBlock shDataBlock{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)pHdr };
     RePak::AddRawDataBlock(shDataBlock);
 
