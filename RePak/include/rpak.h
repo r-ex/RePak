@@ -11,6 +11,8 @@ struct Vector3
 		this->y = y;
 		this->z = z;
 	}
+
+	Vector3() {};
 };
 
 #pragma pack(push, 1)
@@ -415,6 +417,8 @@ struct studiohdrshort_t
 
 struct studiohdr_t
 {
+	studiohdr_t() {};
+
 	int id;
 	int version;
 	int checksum;
@@ -546,6 +550,12 @@ struct MaterialHeader
 	uint32_t something2 = 0;
 
 	UnknownMaterialSection UnkSections[2]{};
+};
+
+struct materialref_t
+{
+	uint32_t pathoffset;
+	uint64_t guid;
 };
 
 struct MaterialCPUHeader

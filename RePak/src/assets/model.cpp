@@ -17,7 +17,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     BinaryIO skelInput;
     skelInput.open(rmdlFilePath, BinaryIOMode::Read);
 
-    studiohdrshort_t mdlhdr = skelInput.read<studiohdrshort_t>();
+    studiohdr_t mdlhdr = skelInput.read<studiohdr_t>();
 
     if (mdlhdr.id != 0x54534449)
     {
@@ -98,6 +98,17 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     RePak::RegisterDescriptor(shsIdx, offsetof(ModelHeader, SkeletonPtr));
     RePak::RegisterDescriptor(shsIdx, offsetof(ModelHeader, NamePtr));
     //RePak::RegisterDescriptor(shsIdx, offsetof(ModelHeader, VGPtr));
+
+    rmem dataBuf(pDataBuf);
+    dataBuf.seek(fileNameDataSize + mdlhdr.texture_offset, rseekdir::beg);
+
+    // this shouldn't be needed - the game doesn't register these
+    for (int i = 0; i < mdlhdr.texture_count; ++i)
+    {
+        materialref_t ref = dataBuf.read<materialref_t>();
+        if(ref.guid != 0)
+            RePak::RegisterGuidDescriptor(dataSegIdx, dataBuf.getPosition()-8);
+    }
 
 
     RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)pHdr };
