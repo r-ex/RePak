@@ -403,18 +403,6 @@ struct ModelHeader
 	uint64_t Padding9 = 0;
 };
 
-struct studiohdrshort_t
-{
-	int id;
-	int version;
-	int checksum;
-	int nameTableOffset;
-
-	char name[0x40];
-
-	int dataLength;
-};
-
 struct studiohdr_t
 {
 	studiohdr_t() {};
@@ -455,7 +443,7 @@ struct studiohdr_t
 	int activitylistversion;
 	int eventsindexed;
 
-	int texture_count;
+	int texture_count; // materialref_t
 	int texture_offset;
 
 	int texturedir_count;
@@ -479,6 +467,14 @@ struct studiohdr_t
 	int OffsetToBoneRemapInfo;
 	int boneremap_count;
 };
+
+
+struct materialref_t
+{
+	uint32_t pathoffset;
+	uint64_t guid;
+};
+
 
 struct BasicRMDLVGHeader
 {
@@ -550,12 +546,6 @@ struct MaterialHeader
 	uint32_t something2 = 0;
 
 	UnknownMaterialSection UnkSections[2]{};
-};
-
-struct materialref_t
-{
-	uint32_t pathoffset;
-	uint64_t guid;
 };
 
 struct MaterialCPUHeader
