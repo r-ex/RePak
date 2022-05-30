@@ -7,13 +7,13 @@ using namespace rapidjson;
 // returns: page index
 uint32_t RePak::CreateNewSegment(uint64_t size, uint32_t flags_maybe, uint32_t alignment, RPakVirtualSegment& seg, uint32_t vsegAlignment)
 {
-    uint32_t idx = g_vvSegmentBlocks.size();
+    uint32_t idx = g_vPages.size();
 
     RPakVirtualSegment vseg{flags_maybe, vsegAlignment == -1 ? alignment : vsegAlignment, size};
-    RPakVirtualSegmentBlock vsegblock{g_vvSegments.size(), alignment, size};
+    RPakPageInfo vsegblock{g_vvSegments.size(), alignment, size};
 
     g_vvSegments.emplace_back(vseg);
-    g_vvSegmentBlocks.emplace_back(vsegblock);
+    g_vPages.emplace_back(vsegblock);
 
     seg = vseg;
     return idx;
@@ -156,7 +156,7 @@ int main(int argc, char** argv)
 
     // write the non-paged data to the file first
     WRITE_VECTOR(out, g_vvSegments);
-    WRITE_VECTOR(out, g_vvSegmentBlocks);
+    WRITE_VECTOR(out, g_vPages);
     WRITE_VECTOR(out, g_vDescriptors);
     WRITE_VECTOR(out, assetEntries);
     WRITE_VECTOR(out, g_vGuidDescriptors);
@@ -171,7 +171,7 @@ int main(int argc, char** argv)
     rpakHeader.CompressedSize = out.tell();
     rpakHeader.DecompressedSize = out.tell();
     rpakHeader.VirtualSegmentCount = g_vvSegments.size();
-    rpakHeader.PageCount = g_vvSegmentBlocks.size();
+    rpakHeader.PageCount = g_vPages.size();
     rpakHeader.DescriptorCount = g_vDescriptors.size();
     rpakHeader.GuidDescriptorCount = g_vGuidDescriptors.size();
     rpakHeader.RelationsCount = g_vFileRelations.size();

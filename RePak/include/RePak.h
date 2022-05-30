@@ -3,7 +3,7 @@
 #define DEFAULT_RPAK_NAME "new"
 
 static std::vector<RPakVirtualSegment> g_vvSegments{};
-static std::vector<RPakVirtualSegmentBlock> g_vvSegmentBlocks{};
+static std::vector<RPakPageInfo> g_vPages{};
 static std::vector<RPakDescriptor> g_vDescriptors{};
 static std::vector<RPakGuidDescriptor> g_vGuidDescriptors{};
 static std::vector<RPakRelationBlock> g_vFileRelations{};

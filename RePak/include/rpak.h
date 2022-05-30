@@ -99,7 +99,7 @@ struct RPakVirtualSegment
 };
 
 // mem page
-struct RPakVirtualSegmentBlock
+struct RPakPageInfo
 {
 	uint32_t VirtualSegmentIndex; // which vseg is this pointing to
 	uint32_t Alignment; // data alignment
