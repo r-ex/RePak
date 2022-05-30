@@ -391,7 +391,8 @@ struct ModelHeader
 
 	// size of the data kept in starpak
 	uint32_t StreamedDataSize = 0;
-	uint32_t DataCacheSize = 0;
+	uint32_t DataCacheSize = 0; // when 97028: FS_CheckAsyncRequest returned error for model '<NOINFO>' offset -1 count 97028 -- Error 0x00000006
+
 	uint64_t Padding6 = 0;
 
 	// number of anim sequences directly associated with this model

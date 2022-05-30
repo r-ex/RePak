@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "RePak.h"
+#include <Assets.h>
 
 static uint64_t nextStarpakOffset = 0x1000;
 
@@ -7,12 +8,12 @@ static uint64_t nextStarpakOffset = 0x1000;
 // returns: void
 void RePak::AddStarpakReference(std::string path)
 {
-    for (auto& it : g_vsStarpakPaths)
+    for (auto& it : Assets::g_vsStarpakPaths)
     {
         if (it == path)
             return;
     }
-    g_vsStarpakPaths.push_back(path);
+    Assets::g_vsStarpakPaths.push_back(path);
 }
 
 // purpose: add data entry to be written to the starpak
@@ -24,7 +25,7 @@ uint64_t RePak::AddStarpakDataEntry(SRPkDataEntry block)
     block.dataSize = ns;
     block.offset = nextStarpakOffset;
 
-    g_vSRPkDataEntries.push_back(block);
+    Assets::g_vSRPkDataEntries.push_back(block);
 
     nextStarpakOffset += block.dataSize;
 

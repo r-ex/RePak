@@ -151,8 +151,8 @@ int main(int argc, char** argv)
     RPakFileHeaderV8 rpakHeader{ };
     out.write(rpakHeader);
 
-    size_t StarpakRefLength = Utils::WriteStringVector(out, g_vsStarpakPaths);
-    size_t OptStarpakRefLength = Utils::WriteStringVector(out, g_vsOptStarpakPaths);
+    size_t StarpakRefLength = Utils::WriteStringVector(out, Assets::g_vsStarpakPaths);
+    size_t OptStarpakRefLength = Utils::WriteStringVector(out, Assets::g_vsOptStarpakPaths);
 
     // write the non-paged data to the file first
     WRITE_VECTOR(out, g_vvSegments);
@@ -192,9 +192,9 @@ int main(int argc, char** argv)
     }
 
     // write starpak data
-    if (g_vsStarpakPaths.size() == 1)
+    if (Assets::g_vsStarpakPaths.size() == 1)
     {
-        std::string sFullPath = g_vsStarpakPaths[0];
+        std::string sFullPath = Assets::g_vsStarpakPaths[0];
         std::filesystem::path path(sFullPath);
 
         std::string filename = path.filename().u8string();
@@ -205,7 +205,7 @@ int main(int argc, char** argv)
 
         int magic = 'kPRS';
         int version = 1;
-        uint64_t entryCount = g_vSRPkDataEntries.size();
+        uint64_t entryCount = Assets::g_vSRPkDataEntries.size();
 
         srpkOut.write(magic);
         srpkOut.write(version);
@@ -217,14 +217,14 @@ int main(int argc, char** argv)
 
         srpkOut.getWriter()->write(why, 4088);
 
-        for (auto& it : g_vSRPkDataEntries)
+        for (auto& it : Assets::g_vSRPkDataEntries)
         {
             srpkOut.getWriter()->write((const char*)it.dataPtr, it.dataSize);
         }
 
         // starpaks have a table of sorts at the end of the file, containing the offsets and data sizes for every data block
         // as far as i'm aware, this isn't even used by the game, so i'm not entirely sure why it exists?
-        for (auto& it : g_vSRPkDataEntries)
+        for (auto& it : Assets::g_vSRPkDataEntries)
         {
             SRPkFileEntry fe{};
             fe.offset = it.offset;

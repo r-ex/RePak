@@ -17,5 +17,8 @@ namespace Assets
 	void AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry);
 
 	extern std::string g_sAssetsDir;
+	extern std::vector<std::string> g_vsStarpakPaths;
+	extern std::vector<std::string> g_vsOptStarpakPaths;
+	extern std::vector<SRPkDataEntry> g_vSRPkDataEntries;
 };
 

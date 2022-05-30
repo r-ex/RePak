@@ -9,9 +9,6 @@ static std::vector<RPakGuidDescriptor> g_vGuidDescriptors{};
 static std::vector<RPakRelationBlock> g_vFileRelations{};
 static std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
 static std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
-static std::vector<SRPkDataEntry> g_vSRPkDataEntries{};
-static std::vector<std::string> g_vsStarpakPaths{};
-static std::vector<std::string> g_vsOptStarpakPaths{};
 
 namespace RePak
 {
