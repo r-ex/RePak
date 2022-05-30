@@ -72,12 +72,16 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     // set texture offset page index and offset
     pHdr->pTextureOffsets = { tisIdx, 0 };
 
+    ////////////////////
+    // IMAGE OFFSETS
     for (auto& it : mapEntry["textures"].GetArray())
     {
         UIImageOffset uiio{};
         tiBuf.write(uiio);
     }
 
+    ///////////////////////
+    // IMAGE DIMENSIONS
     // set texture dimensions page index and offset
     pHdr->pTextureDims = { tisIdx, textureOffsetsDataSize };
 
@@ -87,11 +91,14 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
         tiBuf.write<uint16_t>(it["height"].GetInt());
     }
 
+
     // set texture hashes page index and offset
     pHdr->pTextureHashes = { tisIdx, textureOffsetsDataSize + textureDimensionsDataSize };
 
     uint64_t nextStringTableOffset = 0;
 
+    /////////////////////////
+    // IMAGE HASHES/NAMES
     for (auto& it : mapEntry["textures"].GetArray())
     {
         uint32_t pathHash = RTech::StringToUIMGHash(it["path"].GetString());
@@ -112,14 +119,14 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     char* pUVBuf = new char[nTexturesCount * sizeof(UIImageUV)];
     rmem uvBuf(pUVBuf);
 
+    //////////////
+    // IMAGE UVS
     for (uint32_t i = 0; i < nTexturesCount; ++i)
     {
         UIImageUV uiiu{};
         uvBuf.write(uiiu);
     }
 
-    //
-    // add the data blocks so they can be written properly
     RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)pHdr };
     RePak::AddRawDataBlock(shdb);
 
@@ -128,7 +135,8 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     RPakRawDataBlock rdb{ rdsIdx, RawDataSegment.DataSize, (uint8_t*)pUVBuf };
     RePak::AddRawDataBlock(rdb);
-    //
+
+
     // create and init the asset entry
     RPakAssetEntryV8 asset;
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::UIMG);
