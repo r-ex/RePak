@@ -42,7 +42,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     // calculate data sizes so we can allocate a page and segment
     uint32_t textureOffsetsDataSize = sizeof(UIImageOffset) * nTexturesCount;
     uint32_t textureDimensionsDataSize = sizeof(uint16_t) * 2 * nTexturesCount;
-    uint32_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint64_t)) * nTexturesCount;
+    uint32_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * nTexturesCount;
 
     // get total size
     uint32_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
@@ -95,7 +95,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     // set texture hashes page index and offset
     pHdr->pTextureHashes = { tisIdx, textureOffsetsDataSize + textureDimensionsDataSize };
 
-    uint64_t nextStringTableOffset = 0;
+    uint32_t nextStringTableOffset = 0;
 
     /////////////////////////
     // IMAGE HASHES/NAMES
