@@ -3,7 +3,7 @@
 
 using namespace rapidjson;
 
-// purpose: create page and segment with the specified parameters
+// purpose: create page and segment with the specified parameters, no
 // returns: page index
 uint32_t RePak::CreateNewSegment(uint64_t size, uint32_t flags_maybe, uint32_t alignment, RPakVirtualSegment& seg, uint32_t vsegAlignment)
 {
