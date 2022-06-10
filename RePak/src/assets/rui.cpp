@@ -49,28 +49,28 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     // allocate the page and segment
     RPakVirtualSegment SubHeaderSegment;
-    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(UIImageHeader), 0x40, 8, SubHeaderSegment);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(UIImageHeader), 0x40, 8, SubHeaderSegment);
 
     RPakVirtualSegment TextureInfoSegment;
-    uint32_t tisIdx = RePak::CreateNewSegment(textureInfoPageSize, 0x41, 32, TextureInfoSegment);
+    _vseginfo_t tiseginfo = RePak::CreateNewSegment(textureInfoPageSize, 0x41, 32, TextureInfoSegment);
 
     RPakVirtualSegment RawDataSegment;
-    uint32_t rdsIdx = RePak::CreateNewSegment(nTexturesCount * 0x10, 0x43, 4, RawDataSegment);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(nTexturesCount * 0x10, 0x43, 4, RawDataSegment);
 
     // register our descriptors so they get converted properly
-    RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, pTextureOffsets));
-    RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, pTextureDims));
-    RePak::RegisterDescriptor(shsIdx, offsetof(UIImageHeader, pTextureHashes));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, pTextureOffsets));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, pTextureDims));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, pTextureHashes));
 
     // textureGUID descriptors
-    RePak::RegisterGuidDescriptor(shsIdx, offsetof(UIImageHeader, atlasGuid));
+    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, atlasGuid));
 
     // buffer for texture info data
     char* pTextureInfoBuf = new char[textureInfoPageSize]{};
     rmem tiBuf(pTextureInfoBuf);
 
     // set texture offset page index and offset
-    pHdr->pTextureOffsets = { tisIdx, 0 };
+    pHdr->pTextureOffsets = { tiseginfo.index, 0 };
 
     ////////////////////
     // IMAGE OFFSETS
@@ -83,7 +83,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     ///////////////////////
     // IMAGE DIMENSIONS
     // set texture dimensions page index and offset
-    pHdr->pTextureDims = { tisIdx, textureOffsetsDataSize };
+    pHdr->pTextureDims = { tiseginfo.index, textureOffsetsDataSize };
 
     for (auto& it : mapEntry["textures"].GetArray())
     {
@@ -93,7 +93,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
 
     // set texture hashes page index and offset
-    pHdr->pTextureHashes = { tisIdx, textureOffsetsDataSize + textureDimensionsDataSize };
+    pHdr->pTextureHashes = { tiseginfo.index, textureOffsetsDataSize + textureDimensionsDataSize };
 
     uint32_t nextStringTableOffset = 0;
 
@@ -127,22 +127,22 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
         uvBuf.write(uiiu);
     }
 
-    RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)pHdr };
+    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
     RePak::AddRawDataBlock(shdb);
 
-    RPakRawDataBlock tib{ tisIdx, TextureInfoSegment.DataSize, (uint8_t*)pTextureInfoBuf };
+    RPakRawDataBlock tib{ tiseginfo.index, tiseginfo.size, (uint8_t*)pTextureInfoBuf };
     RePak::AddRawDataBlock(tib);
 
-    RPakRawDataBlock rdb{ rdsIdx, RawDataSegment.DataSize, (uint8_t*)pUVBuf };
+    RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pUVBuf };
     RePak::AddRawDataBlock(rdb);
 
 
     // create and init the asset entry
     RPakAssetEntryV8 asset;
-    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::UIMG);
+    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::UIMG);
     asset.Version = UIMG_VERSION;
 
-    asset.PageEnd = rdsIdx + 1; // number of the highest page that the asset references pageidx + 1
+    asset.PageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
     asset.Un2 = 2;
 
     asset.UsesStartIndex = fileRelationIdx;

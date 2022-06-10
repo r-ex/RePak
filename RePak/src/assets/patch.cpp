@@ -25,16 +25,16 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     size_t dataPageSize = (sizeof(RPakPtr) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + entryNamesSectionSize;
 
     RPakVirtualSegment SubHeaderPage;
-    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(PtchHeader), 0, 8, SubHeaderPage);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(PtchHeader), 0, 8, SubHeaderPage);
 
     RPakVirtualSegment DataPage;
-    uint32_t rdsIdx = RePak::CreateNewSegment(dataPageSize, 1, 8, DataPage);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataPageSize, 1, 8, DataPage);
 
-    pHdr->pPakNames = { rdsIdx, 0 };
-    pHdr->pPakPatchNums = { rdsIdx, (int)sizeof(RPakPtr) * pHdr->patchedPakCount };
+    pHdr->pPakNames = { dataseginfo.index, 0 };
+    pHdr->pPakPatchNums = { dataseginfo.index, (int)sizeof(RPakPtr) * pHdr->patchedPakCount };
 
-    RePak::RegisterDescriptor(shsIdx, offsetof(PtchHeader, pPakNames));
-    RePak::RegisterDescriptor(shsIdx, offsetof(PtchHeader, pPakPatchNums));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(PtchHeader, pPakNames));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(PtchHeader, pPakPatchNums));
 
     char* pDataBuf = new char[dataPageSize];
     rmem dataBuf(pDataBuf);
@@ -45,29 +45,29 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
         uint32_t fileNameOffset = (sizeof(RPakPtr) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + it.FileNamePageOffset;
 
         // write the ptr to the file name into the buffer
-        dataBuf.write<RPakPtr>({ rdsIdx, fileNameOffset }, sizeof(RPakPtr) * i);
+        dataBuf.write<RPakPtr>({ dataseginfo.index, fileNameOffset }, sizeof(RPakPtr) * i);
         // write the patch number for this entry into the buffer
         dataBuf.write<uint8_t>(it.PatchNum, pHdr->pPakPatchNums.Offset + i);
 
         snprintf(pDataBuf + fileNameOffset, it.FileName.length() + 1, "%s", it.FileName.c_str());
 
-        RePak::RegisterDescriptor(rdsIdx, sizeof(RPakPtr) * i);
+        RePak::RegisterDescriptor(dataseginfo.index, sizeof(RPakPtr) * i);
         i++;
     }
 
-    RPakRawDataBlock shdb{ shsIdx, SubHeaderPage.DataSize, (uint8_t*)pHdr };
+    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
     RePak::AddRawDataBlock(shdb);
 
-    RPakRawDataBlock rdb{ rdsIdx, dataPageSize, (uint8_t*)pDataBuf };
+    RPakRawDataBlock rdb{ dataseginfo.index, dataPageSize, (uint8_t*)pDataBuf };
     RePak::AddRawDataBlock(rdb);
 
     // create and init the asset entry
     RPakAssetEntryV8 asset;
 
-    asset.InitAsset(0x6fc6fa5ad8f8bc9c, shsIdx, 0, SubHeaderPage.DataSize, -1, 0, -1, -1, (std::uint32_t)AssetType::PTCH);
+    asset.InitAsset(0x6fc6fa5ad8f8bc9c, subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::PTCH);
     asset.Version = 1;
 
-    asset.PageEnd = rdsIdx + 1;
+    asset.PageEnd = dataseginfo.index + 1;
     asset.Un2 = 1;
 
     assetEntries->push_back(asset);

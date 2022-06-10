@@ -3,20 +3,48 @@
 
 using namespace rapidjson;
 
-// purpose: create page and segment with the specified parameters, no
-// returns: page index
-uint32_t RePak::CreateNewSegment(uint64_t size, uint32_t flags_maybe, uint32_t alignment, RPakVirtualSegment& seg, uint32_t vsegAlignment)
+// purpose: create page and segment with the specified parameters
+// idk what the second field is so "a2" is good enough
+RPakVirtualSegment& GetMatchingSegment(uint32_t flags, uint32_t a2, uint32_t* segidx)
 {
-    uint32_t idx = g_vPages.size();
+    uint32_t i = 0;
+    for (auto& it : g_vvSegments)
+    {
+        if (it.DataFlag == flags && it.SomeType == a2)
+        {
+            *segidx = i;
+            return it;
+        }
+        i++;
+    }
+    RPakVirtualSegment ret{ flags, a2, 0 };
+    return ret;
+}
 
-    RPakVirtualSegment vseg{flags_maybe, vsegAlignment == -1 ? alignment : vsegAlignment, size};
-    RPakPageInfo vsegblock{g_vvSegments.size(), alignment, size};
 
-    g_vvSegments.emplace_back(vseg);
+// purpose: create page and segment with the specified parameters
+// returns: page index
+_vseginfo_t RePak::CreateNewSegment(uint32_t size, uint32_t flags_maybe, uint32_t alignment, RPakVirtualSegment& seg_arg, uint32_t vsegAlignment)
+{
+    uint32_t vsegidx = g_vvSegments.size();
+    
+    // find existing "segment" with the same values or create a new one, this is to overcome the engine's limit of having max 20 of these
+    // since otherwise we write into unintended parts of the stack, and that's bad
+    RPakVirtualSegment& seg = GetMatchingSegment(flags_maybe, vsegAlignment == -1 ? alignment : vsegAlignment, &vsegidx);
+
+    bool bShouldAddVSeg = seg.DataSize == 0;
+    seg.DataSize += size;
+
+    if(bShouldAddVSeg)
+        g_vvSegments.emplace_back(seg);
+
+    RPakPageInfo vsegblock{ vsegidx, alignment, size };
+
     g_vPages.emplace_back(vsegblock);
+    uint32_t pageidx = g_vPages.size() - 1;
 
-    seg = vseg;
-    return idx;
+    seg_arg = seg;
+    return { pageidx, size};
 }
 
 void RePak::AddRawDataBlock(RPakRawDataBlock block)

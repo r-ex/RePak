@@ -93,17 +93,17 @@ struct RPakFileHeaderV7
 // segment
 struct RPakVirtualSegment
 {
-	uint32_t DataFlag = 0; // some flags
-	uint32_t Alignment;	// Thank you Respawn, very cool!
-	uint64_t DataSize;	// seg data size
+	uint32_t DataFlag = 0; // not sure what this actually is, doesn't seem to be used in that many places
+	uint32_t SomeType = 0;
+	uint64_t DataSize = 0;
 };
 
 // mem page
 struct RPakPageInfo
 {
-	uint32_t VirtualSegmentIndex; // which vseg is this pointing to
-	uint32_t Alignment; // data alignment
-	uint32_t DataSize; // vseg data size
+	uint32_t VSegIdx; // index into vseg array
+	uint32_t SomeType; // no idea
+	uint32_t DataSize; // actual size of page in bytes
 };
 
 // defines the location of a data "pointer" within the pak's mem pages

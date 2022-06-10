@@ -73,8 +73,6 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
         return;
     }
 
-
-
     size_t ColumnNameBufSize = 0;
 
     ///-------------------------------------
@@ -88,22 +86,22 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
     // make a page for the sub header
     //
     RPakVirtualSegment SubHeaderSegment{};
-    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(DataTableHeader), 0, 8, SubHeaderSegment);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(DataTableHeader), 0, 8, SubHeaderSegment);
 
     // DataTableColumn entries
     RPakVirtualSegment ColumnHeaderSegment{};
-    uint32_t chsIdx = RePak::CreateNewSegment(sizeof(DataTableColumn) * columnCount, 1, 8, ColumnHeaderSegment, 64);
+    _vseginfo_t colhdrinfo = RePak::CreateNewSegment(sizeof(DataTableColumn) * columnCount, 1, 8, ColumnHeaderSegment, 64);
 
     // column names
     RPakVirtualSegment ColumnNamesSegment{};
-    uint32_t nameSegIdx = RePak::CreateNewSegment(ColumnNameBufSize, 1, 8, ColumnNamesSegment, 64);
+    _vseginfo_t nameseginfo = RePak::CreateNewSegment(ColumnNameBufSize, 1, 8, ColumnNamesSegment, 64);
 
 
     pHdr->ColumnCount = columnCount;
     pHdr->RowCount = rowCount - 1;
-    pHdr->ColumnHeaderPtr = { chsIdx, 0 };
+    pHdr->ColumnHeaderPtr = { colhdrinfo.index, 0 };
 
-    RePak::RegisterDescriptor(shsIdx, offsetof(DataTableHeader, ColumnHeaderPtr));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(DataTableHeader, ColumnHeaderPtr));
 
     // allocate buffers for the loop
     char* namebuf = new char[ColumnNameBufSize];
@@ -130,14 +128,14 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
         DataTableColumn col{};
 
         // set the page index and offset
-        col.NamePtr = { nameSegIdx, nextNameOffset };
+        col.NamePtr = { nameseginfo.index, nextNameOffset };
         col.RowOffset = tempColumnRowOffset;
         col.Type = type;
 
         columns.emplace_back(col);
 
         // register name pointer
-        RePak::RegisterDescriptor(chsIdx, (sizeof(DataTableColumn) * colIdx) + offsetof(DataTableColumn, NamePtr));
+        RePak::RegisterDescriptor(colhdrinfo.index, (sizeof(DataTableColumn) * colIdx) + offsetof(DataTableColumn, NamePtr));
 
         if (type == DataTableColumnDataType::StringT || type == DataTableColumnDataType::Asset || type == DataTableColumnDataType::AssetNoPrecache)
         {
@@ -165,11 +163,11 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
 
     // page for Row Data
     RPakVirtualSegment RowDataSegment{};
-    uint32_t rdsIdx = RePak::CreateNewSegment(rowDataPageSize, 1, 8, RowDataSegment, 64);
+    _vseginfo_t rawdatainfo = RePak::CreateNewSegment(rowDataPageSize, 1, 8, RowDataSegment, 64);
 
     // page for string entries
     RPakVirtualSegment StringEntrySegment{};
-    uint32_t sesIdx = RePak::CreateNewSegment(stringEntriesSize, 1, 8, StringEntrySegment, 64);
+    _vseginfo_t stringsinfo = RePak::CreateNewSegment(stringEntriesSize, 1, 8, StringEntrySegment, 64);
 
     char* rowDataBuf = new char[rowDataPageSize];
 
@@ -237,13 +235,13 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
             {
                 static uint32_t nextStringEntryOffset = 0;
 
-                RPakPtr stringPtr{ sesIdx, nextStringEntryOffset };
+                RPakPtr stringPtr{ stringsinfo.index, nextStringEntryOffset };
 
                 std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
                 snprintf(stringEntryBuf + nextStringEntryOffset, val.length() + 1, "%s", val.c_str());
 
                 valbuf.write(stringPtr);
-                RePak::RegisterDescriptor(rdsIdx, (pHdr->RowStride * rowIdx) + col.RowOffset);
+                RePak::RegisterDescriptor(rawdatainfo.index, (pHdr->RowStride * rowIdx) + col.RowOffset);
 
                 nextStringEntryOffset += val.length() + 1;
                 break;
@@ -252,32 +250,32 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
         }
     }
 
-    pHdr->RowHeaderPtr = { rdsIdx, 0 };
+    pHdr->RowHeaderPtr = { rawdatainfo.index, 0 };
 
-    RePak::RegisterDescriptor(shsIdx, offsetof(DataTableHeader, RowHeaderPtr));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(DataTableHeader, RowHeaderPtr));
 
     // add raw data blocks
-    RPakRawDataBlock shDataBlock{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)pHdr };
+    RPakRawDataBlock shDataBlock{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
     RePak::AddRawDataBlock(shDataBlock);
 
-    RPakRawDataBlock colDataBlock{ chsIdx, ColumnHeaderSegment.DataSize, (uint8_t*)columnHeaderBuf };
+    RPakRawDataBlock colDataBlock{ colhdrinfo.index, colhdrinfo.size, (uint8_t*)columnHeaderBuf };
     RePak::AddRawDataBlock(colDataBlock);
 
-    RPakRawDataBlock colNameDataBlock{ nameSegIdx, ColumnNamesSegment.DataSize, (uint8_t*)namebuf };
+    RPakRawDataBlock colNameDataBlock{ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf };
     RePak::AddRawDataBlock(colNameDataBlock);
 
-    RPakRawDataBlock rowDataBlock{ rdsIdx, RowDataSegment.DataSize, (uint8_t*)rowDataBuf };
+    RPakRawDataBlock rowDataBlock{ rawdatainfo.index, rowDataPageSize, (uint8_t*)rowDataBuf };
     RePak::AddRawDataBlock(rowDataBlock);
 
-    RPakRawDataBlock stringEntryDataBlock{ rdsIdx, StringEntrySegment.DataSize, (uint8_t*)stringEntryBuf };
+    RPakRawDataBlock stringEntryDataBlock{ stringsinfo.index, stringEntriesSize, (uint8_t*)stringEntryBuf };
     RePak::AddRawDataBlock(stringEntryDataBlock);
 
     RPakAssetEntryV8 asset;
 
-    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), shsIdx, 0, SubHeaderSegment.DataSize, rdsIdx, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
+    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, rawdatainfo.index, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
     asset.Version = DTBL_VERSION;
 
-    asset.PageEnd = sesIdx + 1; // number of the highest page that the asset references pageidx + 1
+    asset.PageEnd = stringsinfo.index + 1; // number of the highest page that the asset references pageidx + 1
     asset.Un2 = 1;
 
     assetEntries->push_back(asset);

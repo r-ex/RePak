@@ -10,9 +10,15 @@ static std::vector<RPakRelationBlock> g_vFileRelations{};
 static std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
 static std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
 
+struct _vseginfo_t
+{
+	uint32_t index = -1;
+	uint32_t size = -1;
+};
+
 namespace RePak
 {
-	uint32_t CreateNewSegment(uint64_t size, uint32_t flags_maybe, uint32_t alignment, RPakVirtualSegment& seg, uint32_t vsegAlignment = -1);
+	_vseginfo_t CreateNewSegment(uint32_t size, uint32_t flags_maybe, uint32_t alignment, RPakVirtualSegment& seg, uint32_t vsegAlignment = -1);
 	void AddStarpakReference(std::string path);
 	uint64_t AddStarpakDataEntry(SRPkDataEntry block);
 	void AddRawDataBlock(RPakRawDataBlock block);

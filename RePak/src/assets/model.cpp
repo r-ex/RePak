@@ -81,23 +81,23 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     pHdr->DataCacheSize = vgFileSize;
 
     RPakVirtualSegment SubHeaderSegment{};
-    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(ModelHeader), 0, 8, SubHeaderSegment);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(ModelHeader), 0, 8, SubHeaderSegment);
 
     RPakVirtualSegment DataSegment{};
-    uint32_t dataSegIdx = RePak::CreateNewSegment(mdlhdr.dataLength + fileNameDataSize, 1, 64, DataSegment);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(mdlhdr.dataLength + fileNameDataSize, 1, 64, DataSegment);
 
     //RPakVirtualSegment VGSegment{};
     //uint32_t vgIdx = RePak::CreateNewSegment(vgFileSize, 67, 1, DataSegment);
 
-    pHdr->NamePtr = { dataSegIdx, 0 };
+    pHdr->NamePtr = { dataseginfo.index, 0 };
 
-    pHdr->SkeletonPtr = { dataSegIdx, fileNameDataSize };
+    pHdr->SkeletonPtr = { dataseginfo.index, fileNameDataSize };
 
     //pHdr->VGPtr = { vgIdx, 0 };
     //pHdr->DataCacheSize = vgFileSize;
 
-    RePak::RegisterDescriptor(shsIdx, offsetof(ModelHeader, SkeletonPtr));
-    RePak::RegisterDescriptor(shsIdx, offsetof(ModelHeader, NamePtr));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(ModelHeader, SkeletonPtr));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(ModelHeader, NamePtr));
     //RePak::RegisterDescriptor(shsIdx, offsetof(ModelHeader, VGPtr));
 
     rmem dataBuf(pDataBuf);
@@ -108,14 +108,14 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     {
         materialref_t ref = dataBuf.read<materialref_t>();
         if(ref.guid != 0)
-            RePak::RegisterGuidDescriptor(dataSegIdx, dataBuf.getPosition()-8);
+            RePak::RegisterGuidDescriptor(dataseginfo.index, dataBuf.getPosition()-8);
     }
 
 
-    RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)pHdr };
+    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
     RePak::AddRawDataBlock(shdb);
 
-    RPakRawDataBlock rdb{ dataSegIdx, DataSegment.DataSize, (uint8_t*)pDataBuf };
+    RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf };
     RePak::AddRawDataBlock(rdb);
 
     //RPakRawDataBlock vgdb{ vgIdx, vgFileSize, (uint8_t*)pVGBuf };
@@ -123,10 +123,10 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
 
     RPakAssetEntryV8 asset;
 
-    asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), shsIdx, 0, SubHeaderSegment.DataSize, -1, 0, starpakOffset, -1, (std::uint32_t)AssetType::RMDL);
+    asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, starpakOffset, -1, (std::uint32_t)AssetType::RMDL);
     asset.Version = RMDL_VERSION;
     // i have literally no idea what these are
-    asset.PageEnd = dataSegIdx + 1;
+    asset.PageEnd = dataseginfo.index + 1;
     asset.Un2 = 2;
 
     // note: models use an implicit guid reference to their materials

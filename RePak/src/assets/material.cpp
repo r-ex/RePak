@@ -60,10 +60,10 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + (surface.length() + 1);
 
     RPakVirtualSegment SubHeaderSegment;
-    uint32_t shsIdx = RePak::CreateNewSegment(sizeof(MaterialHeader), 0, 8, SubHeaderSegment);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeader), 0, 8, SubHeaderSegment);
 
     RPakVirtualSegment DataSegment;
-    uint32_t dsIdx = RePak::CreateNewSegment(dataBufSize, 1, 64, DataSegment);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataBufSize, 1, 64, DataSegment);
 
     char* dataBuf = new char[dataBufSize] {};
     char* tmp = dataBuf;
@@ -86,7 +86,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
         {
             uint64_t textureGUID = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str()); // Convert texture path to guid.
             *(uint64_t*)dataBuf = textureGUID;
-            RePak::RegisterGuidDescriptor(dsIdx, guidPageOffset + (textureIdx * sizeof(uint64_t))); // Register GUID descriptor for current texture index.
+            RePak::RegisterGuidDescriptor(dataseginfo.index, guidPageOffset + (textureIdx * sizeof(uint64_t))); // Register GUID descriptor for current texture index.
 
             if (fileRelationIdx == -1)
                 fileRelationIdx = RePak::AddFileRelation(assetEntries->size());
@@ -111,7 +111,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
         {
             uint64_t guid = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str());
             *(uint64_t*)dataBuf = guid;
-            RePak::RegisterGuidDescriptor(dsIdx, guidPageOffset + textureRefSize + (textureIdx * sizeof(uint64_t)));
+            RePak::RegisterGuidDescriptor(dataseginfo.index, guidPageOffset + textureRefSize + (textureIdx * sizeof(uint64_t)));
 
             RePak::AddFileRelation(assetEntries->size());
 
@@ -135,14 +135,14 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     // ===============================
     // fill out the rest of the header
-    mtlHdr->Name.Index = dsIdx;
+    mtlHdr->Name.Index = dataseginfo.index;
     mtlHdr->Name.Offset = 0;
 
-    mtlHdr->SurfaceName.Index = dsIdx;
+    mtlHdr->SurfaceName.Index = dataseginfo.index;
     mtlHdr->SurfaceName.Offset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
 
-    RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, Name));
-    RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, SurfaceName));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, Name));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, SurfaceName));
 
     // Type Handling
     if (type == "sknp")
@@ -155,10 +155,10 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
         mtlHdr->GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
         mtlHdr->GUIDRefs[3] = 0x227C27B608B3646B;
 
-        RePak::RegisterGuidDescriptor(shsIdx, offsetof(MaterialHeader, GUIDRefs));
-        RePak::RegisterGuidDescriptor(shsIdx, offsetof(MaterialHeader, GUIDRefs) + 8);
-        RePak::RegisterGuidDescriptor(shsIdx, offsetof(MaterialHeader, GUIDRefs) + 16);
-        RePak::RegisterGuidDescriptor(shsIdx, offsetof(MaterialHeader, GUIDRefs) + 24);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs));
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 8);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 16);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 24);
 
         RePak::AddFileRelation(assetEntries->size(), 4);
         assetUsesCount += 4;
@@ -173,10 +173,10 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
         mtlHdr->GUIDRefs[2] = 0xD306370918620EC0; // DepthVSM
         mtlHdr->GUIDRefs[3] = 0xDAB17AEAD2D3387A; // DepthShadowTight
 
-        RePak::RegisterGuidDescriptor(shsIdx, offsetof(MaterialHeader, GUIDRefs));
-        RePak::RegisterGuidDescriptor(shsIdx, offsetof(MaterialHeader, GUIDRefs) + 8);
-        RePak::RegisterGuidDescriptor(shsIdx, offsetof(MaterialHeader, GUIDRefs) + 16);
-        RePak::RegisterGuidDescriptor(shsIdx, offsetof(MaterialHeader, GUIDRefs) + 24);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs));
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 8);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 16);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 24);
 
         RePak::AddFileRelation(assetEntries->size(), 4);
         assetUsesCount += 4;
@@ -184,7 +184,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
         mtlHdr->ShaderSetGUID = 0x4B0F3B4CBD009096;
     }
 
-    RePak::RegisterGuidDescriptor(shsIdx, offsetof(MaterialHeader, ShaderSetGUID));
+    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, ShaderSetGUID));
     RePak::AddFileRelation(assetEntries->size());
     assetUsesCount++;
 
@@ -195,20 +195,20 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
         std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + ".rpak";
         mtlHdr->GUIDRefs[4] = RTech::StringToGuid(colpassPath.c_str());
 
-        RePak::RegisterGuidDescriptor(shsIdx, offsetof(MaterialHeader, GUIDRefs) + 32);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 32);
         RePak::AddFileRelation(assetEntries->size());
         assetUsesCount++;
 
         bColpass = false;
     }
-    mtlHdr->TextureGUIDs.Index = dsIdx;
+    mtlHdr->TextureGUIDs.Index = dataseginfo.index;
     mtlHdr->TextureGUIDs.Offset = guidPageOffset;
 
-    mtlHdr->TextureGUIDs2.Index = dsIdx;
+    mtlHdr->TextureGUIDs2.Index = dataseginfo.index;
     mtlHdr->TextureGUIDs2.Offset = guidPageOffset + textureRefSize;
 
-    RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, TextureGUIDs));
-    RePak::RegisterDescriptor(shsIdx, offsetof(MaterialHeader, TextureGUIDs2));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, TextureGUIDs));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, TextureGUIDs2));
 
     mtlHdr->something = 0x72000000;
     mtlHdr->something2 = 0x100000;
@@ -269,14 +269,14 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     std::uint64_t cpuDataSize = sizeof(testData) / sizeof(unsigned char);
 
     RPakVirtualSegment CPUSegment;
-    uint32_t cpuIdx = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16, CPUSegment);
+    _vseginfo_t cpuseginfo = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16, CPUSegment);
 
     MaterialCPUHeader cpuhdr{};
-    cpuhdr.Unknown.Index = cpuIdx;
+    cpuhdr.Unknown.Index = cpuseginfo.index;
     cpuhdr.Unknown.Offset = sizeof(MaterialCPUHeader);
     cpuhdr.DataSize = cpuDataSize;
 
-    RePak::RegisterDescriptor(cpuIdx, 0);
+    RePak::RegisterDescriptor(cpuseginfo.index, 0);
 
     char* cpuData = new char[sizeof(MaterialCPUHeader) + cpuDataSize];
 
@@ -285,23 +285,23 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, testData, cpuDataSize);
     //////////////////////////////////////////
 
-    RPakRawDataBlock shdb{ shsIdx, SubHeaderSegment.DataSize, (uint8_t*)mtlHdr };
+    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)mtlHdr };
     RePak::AddRawDataBlock(shdb);
 
-    RPakRawDataBlock dsdb{ dsIdx, DataSegment.DataSize, (uint8_t*)dataBuf };
+    RPakRawDataBlock dsdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)dataBuf };
     RePak::AddRawDataBlock(dsdb);
 
-    RPakRawDataBlock cdb{ cpuIdx, CPUSegment.DataSize, (uint8_t*)cpuData };
+    RPakRawDataBlock cdb{ cpuseginfo.index, cpuseginfo.size, (uint8_t*)cpuData };
     RePak::AddRawDataBlock(cdb);
 
     //////////////////////////////////////////
 
     RPakAssetEntryV8 asset;
 
-    asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), shsIdx, 0, SubHeaderSegment.DataSize, cpuIdx, 0, -1, -1, (std::uint32_t)AssetType::MATL);
+    asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
     asset.Version = MATL_VERSION;
 
-    asset.PageEnd = cpuIdx + 1;
+    asset.PageEnd = cpuseginfo.index + 1;
     asset.Un2 = bColpass ? 7 : 8; // what
 
     asset.UsesStartIndex = fileRelationIdx;
