@@ -91,7 +91,6 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
         tiBuf.write<uint16_t>(it["height"].GetInt());
     }
 
-
     // set texture hashes page index and offset
     pHdr->pTextureHashes = { tiseginfo.index, textureOffsetsDataSize + textureDimensionsDataSize };
 
@@ -135,7 +134,6 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pUVBuf };
     RePak::AddRawDataBlock(rdb);
-
 
     // create and init the asset entry
     RPakAssetEntryV8 asset;

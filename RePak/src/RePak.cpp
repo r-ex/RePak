@@ -21,7 +21,6 @@ RPakVirtualSegment& GetMatchingSegment(uint32_t flags, uint32_t a2, uint32_t* se
     return ret;
 }
 
-
 // purpose: create page and segment with the specified parameters
 // returns: page index
 _vseginfo_t RePak::CreateNewSegment(uint32_t size, uint32_t flags_maybe, uint32_t alignment, RPakVirtualSegment& seg_arg, uint32_t vsegAlignment)
@@ -104,6 +103,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
+    std::filesystem::path mapPath(argv[1]);
     if (!FILE_EXISTS(argv[1]))
     {
         Error("couldn't find map file\n");
@@ -135,10 +135,24 @@ int main(int argc, char** argv)
     if (!doc.HasMember("assetsDir"))
     {
         Warning("No assetsDir field provided. Assuming that everything is relative to the working directory.\n");
-        Assets::g_sAssetsDir = ".\\";
+        if (mapPath.has_parent_path())
+        {
+            Assets::g_sAssetsDir = mapPath.parent_path().u8string();
+        }
+        else
+        {
+            Assets::g_sAssetsDir = ".\\";
+        }
     }
-    else {
-        Assets::g_sAssetsDir = doc["assetsDir"].GetStdString();
+    else
+    {
+        std::filesystem::path assetsDirPath(doc["assetsDir"].GetStdString());
+        if (assetsDirPath.is_relative() && mapPath.has_parent_path())
+            Assets::g_sAssetsDir = std::filesystem::canonical(mapPath.parent_path() / assetsDirPath).u8string();
+        else
+            Assets::g_sAssetsDir = assetsDirPath.u8string();
+
+        // ensure that the path has a slash at the end
         Utils::AppendSlash(Assets::g_sAssetsDir);
         Debug("assetsDir: %s\n", Assets::g_sAssetsDir.c_str());
     }
@@ -147,7 +161,14 @@ int main(int argc, char** argv)
 
     if (doc.HasMember("outputDir"))
     {
-        sOutputDir = doc["outputDir"].GetStdString();
+        std::filesystem::path outputDirPath(doc["outputDir"].GetStdString());
+
+        if (outputDirPath.is_relative() && mapPath.has_parent_path())
+            sOutputDir = std::filesystem::canonical(mapPath.parent_path() / outputDirPath).u8string();
+        else
+            sOutputDir = outputDirPath.u8string();
+
+        // ensure that the path has a slash at the end
         Utils::AppendSlash(sOutputDir);
     }
     // end json parsing
