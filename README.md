@@ -13,3 +13,5 @@ i don't plan on documenting much of anything to do with the input json files for
 enjoy?
 
 idk
+
+amogus
