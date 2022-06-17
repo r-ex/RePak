@@ -51,15 +51,15 @@ void RePak::AddRawDataBlock(RPakRawDataBlock block)
     return;
 };
 
-void RePak::RegisterDescriptor(uint32_t m_nPageIdx, uint32_t pageOffset)
+void RePak::RegisterDescriptor(uint32_t pageIdx, uint32_t pageOffset)
 {
-    g_vDescriptors.push_back({ m_nPageIdx, pageOffset });
+    g_vDescriptors.push_back({ pageIdx, pageOffset });
     return;
 }
 
-void RePak::RegisterGuidDescriptor(uint32_t m_nPageIdx, uint32_t pageOffset)
+void RePak::RegisterGuidDescriptor(uint32_t pageIdx, uint32_t pageOffset)
 {
-    g_vGuidDescriptors.push_back({ m_nPageIdx, pageOffset });
+    g_vGuidDescriptors.push_back({ pageIdx, pageOffset });
     return;
 }
 
