@@ -89,8 +89,10 @@ struct RPakFileHeaderV7
 	uint32_t UnknownEighthBlockCount = 0;
 };
 
-// todo: document these
 // segment
+// these probably aren't actually called virtual segments
+// this struct doesn't really describe any real data segment, but collects info
+// about the size of pages that are using specific flags/types/whatever
 struct RPakVirtualSegment
 {
 	uint32_t DataFlag = 0; // not sure what this actually is, doesn't seem to be used in that many places
@@ -99,6 +101,10 @@ struct RPakVirtualSegment
 };
 
 // mem page
+// describes an actual section in the file data. all pages are sequential
+// with page at idx 0 being just after the asset entries
+// in patched rpaks (e.g. common(01).rpak), these sections don't fully line up with the data,
+// because of both the patch edit stream and also missing pages that are only present in the base rpak
 struct RPakPageInfo
 {
 	uint32_t VSegIdx; // index into vseg array
@@ -118,6 +124,7 @@ struct RPakDescriptor
 // guid references to other assets are within mem pages
 typedef RPakDescriptor RPakGuidDescriptor;
 
+// this definitely doesn't need to be in a struct but whatever
 struct RPakRelationBlock
 {
 	uint32_t FileID;
@@ -199,6 +206,7 @@ struct RPakAssetEntryV8
 };
 #pragma pack(pop)
 
+// internal data structure for referencing file data to be written
 struct RPakRawDataBlock
 {
 	uint32_t pageIdx;
@@ -206,6 +214,7 @@ struct RPakRawDataBlock
 	uint8_t* dataPtr;
 };
 
+// internal data structure for referencing streaming data to be written
 struct SRPkDataEntry
 {
 	uint64_t offset = -1; // set when added
