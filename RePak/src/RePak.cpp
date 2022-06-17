@@ -5,7 +5,7 @@ using namespace rapidjson;
 
 // purpose: create page and segment with the specified parameters
 // idk what the second field is so "a2" is good enough
-RPakVirtualSegment& GetMatchingSegment(uint32_t flags, uint32_t a2, uint32_t* segidx)
+RPakVirtualSegment GetMatchingSegment(uint32_t flags, uint32_t a2, uint32_t* segidx)
 {
     uint32_t i = 0;
     for (auto& it : g_vvSegments)
@@ -17,30 +17,32 @@ RPakVirtualSegment& GetMatchingSegment(uint32_t flags, uint32_t a2, uint32_t* se
         }
         i++;
     }
-    RPakVirtualSegment ret{ flags, a2, 0 };
-    return ret;
+
+    return { flags, a2, 0 };
 }
 
 // purpose: create page and segment with the specified parameters
 // returns: page index
 _vseginfo_t RePak::CreateNewSegment(uint32_t size, uint32_t flags_maybe, uint32_t alignment, uint32_t vsegAlignment)
 {
-    uint32_t vsegidx = g_vvSegments.size();
+    uint32_t vsegidx = (uint32_t)g_vvSegments.size();
     
     // find existing "segment" with the same values or create a new one, this is to overcome the engine's limit of having max 20 of these
     // since otherwise we write into unintended parts of the stack, and that's bad
-    RPakVirtualSegment& seg = GetMatchingSegment(flags_maybe, vsegAlignment == -1 ? alignment : vsegAlignment, &vsegidx);
+    RPakVirtualSegment seg = GetMatchingSegment(flags_maybe, vsegAlignment == -1 ? alignment : vsegAlignment, &vsegidx);
 
     bool bShouldAddVSeg = seg.m_nDataSize == 0;
     seg.m_nDataSize += size;
 
-    if(bShouldAddVSeg)
+    if (bShouldAddVSeg)
         g_vvSegments.emplace_back(seg);
+    else
+        g_vvSegments[vsegidx] = seg;
 
     RPakPageInfo vsegblock{ vsegidx, alignment, size };
 
     g_vPages.emplace_back(vsegblock);
-    uint32_t pageidx = g_vPages.size() - 1;
+    uint32_t pageidx = (uint32_t)g_vPages.size() - 1;
 
     return { pageidx, size};
 }
@@ -224,14 +226,14 @@ int main(int argc, char** argv)
     rpakHeader.m_nCreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
     rpakHeader.m_nSizeDisk = out.tell();
     rpakHeader.m_nSizeMemory = out.tell();
-    rpakHeader.m_nVirtualSegmentCount = g_vvSegments.size();
-    rpakHeader.m_nPageCount = g_vPages.size();
-    rpakHeader.m_nDescriptorCount = g_vDescriptors.size();
-    rpakHeader.m_nGuidDescriptorCount = g_vGuidDescriptors.size();
-    rpakHeader.m_nRelationsCounts = g_vFileRelations.size();
-    rpakHeader.m_nAssetEntryCount = assetEntries.size();
-    rpakHeader.m_nStarpakReferenceSize = StarpakRefLength;
-    rpakHeader.m_nStarpakOptReferenceSize = OptStarpakRefLength;
+    rpakHeader.m_nVirtualSegmentCount = (uint16_t)g_vvSegments.size();
+    rpakHeader.m_nPageCount = (uint16_t)g_vPages.size();
+    rpakHeader.m_nDescriptorCount = (uint32_t)g_vDescriptors.size();
+    rpakHeader.m_nGuidDescriptorCount = (uint32_t)g_vGuidDescriptors.size();
+    rpakHeader.m_nRelationsCounts = (uint32_t)g_vFileRelations.size();
+    rpakHeader.m_nAssetEntryCount = (uint32_t)assetEntries.size();
+    rpakHeader.m_nStarpakReferenceSize = (uint16_t)StarpakRefLength;
+    rpakHeader.m_nStarpakOptReferenceSize = (uint16_t)OptStarpakRefLength;
 
     out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 
