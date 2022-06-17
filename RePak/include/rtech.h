@@ -36,8 +36,8 @@ struct DDS_HEADER {
 // array size is equal to the value of the 64-bit unsigned integer in the last 8 bytes of the file
 struct SRPkFileEntry
 {
-	uint64_t offset;
-	uint64_t size;
+	uint64_t m_nOffset;
+	uint64_t m_nSize;
 };
 
 namespace RTech
@@ -45,4 +45,3 @@ namespace RTech
 	std::uint64_t __fastcall StringToGuid(const char* pData);
 	std::uint32_t __fastcall StringToUIMGHash(const char* str);
 }
-

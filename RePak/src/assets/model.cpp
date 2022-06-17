@@ -126,10 +126,10 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     RPakAssetEntryV8 asset;
 
     asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, starpakOffset, -1, (std::uint32_t)AssetType::RMDL);
-    asset.Version = RMDL_VERSION;
+    asset.m_nVersion = RMDL_VERSION;
     // i have literally no idea what these are
-    asset.PageEnd = dataseginfo.index + 1;
-    asset.Un2 = 2;
+    asset.m_nPageEnd = dataseginfo.index + 1;
+    asset.unk1 = 2;
 
     // note: models use an implicit guid reference to their materials
     // the guids aren't registered but are converted during the loading of the material asset
@@ -137,8 +137,8 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     // a potential solution to the material guid conversion issue could be just registering the guids?
     // 
     size_t fileRelationIdx = RePak::AddFileRelation(assetEntries->size());
-    asset.UsesStartIndex = fileRelationIdx;
-    asset.UsesCount = 1;
+    asset.m_nUsesStartIdx = fileRelationIdx;
+    asset.m_nUsesCount = 1;
 
     assetEntries->push_back(asset);
 

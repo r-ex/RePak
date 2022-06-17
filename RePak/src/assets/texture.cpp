@@ -125,13 +125,13 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     // now time to add the higher level asset entry
     RPakAssetEntryV8 asset;
 
-    uint64_t StarpakOffset = -1;
+    uint64_t m_nStarpakOffset = -1;
 
-    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, StarpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);
-    asset.Version = TXTR_VERSION;
+    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, m_nStarpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);
+    asset.m_nVersion = TXTR_VERSION;
 
-    asset.PageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
-    asset.Un2 = 1;
+    asset.m_nPageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
+    asset.unk1 = 1;
 
     assetEntries->push_back(asset);
 

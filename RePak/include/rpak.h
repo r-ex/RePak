@@ -21,74 +21,66 @@ struct Vector3
 // when loaded, these usually get converted to a real pointer
 struct RPakPtr
 {
-	uint32_t Index = 0;
-	uint32_t Offset = 0;
+	uint32_t m_nIndex = 0;
+	uint32_t m_nOffset = 0;
 };
 
 // Apex Legends RPak file header
 struct RPakFileHeaderV8
 {
-	uint32_t Magic = 0x6b615052;
-	uint16_t Version = 0x8;
-	uint16_t Flags = 0;
-	uint64_t CreatedTime; // this is actually FILETIME, but if we don't make it uint64_t here, it'll break the struct when writing
+	uint32_t m_nMagic = 0x6b615052;
+	uint16_t m_nVersion = 0x8;
+	uint8_t  m_nFlags[0x2];
+	uint64_t m_nCreatedTime; // this is actually FILETIME, but if we don't make it uint64_t here, it'll break the struct when writing
+	uint8_t  unk0[0x8];
+	uint64_t m_nSizeDisk; // size of the rpak file on disk before decompression
+	uint64_t m_nEmbeddedStarpakOffset = 0;
+	uint8_t  unk1[0x8];
+	uint64_t m_nSizeMemory; // actual data size of the rpak file after decompression
+	uint64_t m_nEmbeddedStarpakSize = 0;
+	uint8_t  unk3[0x8];
+	uint16_t m_nStarpakReferenceSize = 0; // size in bytes of the section containing mandatory starpak paths
+	uint16_t m_nStarpakOptReferenceSize = 0; // size in bytes of the section containing optional starpak paths
+	uint16_t m_nVirtualSegmentCount = 0;
+	uint16_t m_nPageCount = 0; // number of "mempages" in the rpak
+	uint32_t m_nPatchIndex = 0;
+	uint32_t m_nDescriptorCount = 0;
+	uint32_t m_nAssetEntryCount = 0;
+	uint32_t m_nGuidDescriptorCount = 0;
+	uint32_t m_nRelationsCounts = 0;
+	uint8_t  unk4[0x1c];
+};
 
-	uint64_t WhoKnows = 0;
-
-	// size of the rpak file on disk before decompression
-	uint64_t CompressedSize;
-
-	uint64_t EmbeddedStarpakOffset = 0;
-	uint64_t Padding1 = 0;
-
-	// actual data size of the rpak file after decompression
-	uint64_t DecompressedSize;
-	uint64_t EmbeddedStarpakSize = 0;
-
-	uint64_t Padding2 = 0;
-	uint16_t StarpakReferenceSize = 0; // size in bytes of the section containing mandatory starpak paths
-	uint16_t StarpakOptReferenceSize = 0; // size in bytes of the section containing optional starpak paths
-	uint16_t VirtualSegmentCount = 0;
-	uint16_t PageCount = 0; // number of "mempages" in the rpak
-	uint32_t PatchIndex = 0;
-
-	uint32_t DescriptorCount = 0;
-	uint32_t AssetEntryCount = 0;
-	uint32_t GuidDescriptorCount = 0;
-	uint32_t RelationsCount = 0;
-
-	uint8_t Unk[0x1c];
+struct RPakPatchCompressedHeader // Comes after file header if its an patch rpak.
+{
+	uint64_t m_nSizeDisk;
+	uint64_t m_nSizeMemory;
 };
 
 // Titanfall 2 RPak file header
 struct RPakFileHeaderV7
 {
-	uint32_t Magic = 0x6b615052;
-	uint16_t Version = 0x7;
-	uint16_t Flags = 0;
+	uint32_t m_nMagic = 0x6b615052;
+	uint16_t m_nVersion = 0x7;
+	uint8_t  m_nFlags[0x2];
+	uint64_t m_nCreatedTime; // this is actually FILETIME, but if we don't make it uint64_t here, it'll break the struct when writing
+	uint8_t  unk0[0x8];
+	uint64_t m_nSizeDisk;
+	uint8_t  unk1[0x8];
+	uint64_t m_nSizeMemory;
+	uint8_t  unk2[0x8];
+	uint16_t m_nStarpakReferenceSize = 0;
+	uint16_t m_nVirtualSegmentCount;
+	uint16_t m_nPageCount;
+	uint16_t m_nPatchIndex = 0;
 
-	uint64_t CreatedTime; // this is actually FILETIME, but if we don't make it uint64_t here, it'll break the struct when writing
+	uint32_t m_nDescriptorCount = 0;
+	uint32_t m_nAssetEntryCount = 0;
+	uint32_t m_nUnknownFifthBlockCount = 0;
+	uint32_t m_nUnknownSixedBlockCount = 0;
 
-	uint64_t WhoKnows = 0;
-
-	uint64_t CompressedSize;
-	uint64_t Padding1 = 0;
-	uint64_t DecompressedSize;
-	uint64_t Padding2 = 0;
-
-	uint16_t StarpakReferenceSize = 0;
-	uint16_t VirtualSegmentCount;
-	uint16_t PageCount;
-
-	uint16_t PatchIndex = 0;
-
-	uint32_t DescriptorCount = 0;
-	uint32_t AssetEntryCount = 0;
-	uint32_t UnknownFifthBlockCount = 0;
-	uint32_t UnknownSixedBlockCount = 0;
-
-	uint32_t UnknownSeventhBlockCount = 0;
-	uint32_t UnknownEighthBlockCount = 0;
+	uint32_t m_nUnknownSeventhBlockCount = 0;
+	uint32_t m_nUnknownEighthBlockCount = 0;
 };
 
 // segment
@@ -97,9 +89,9 @@ struct RPakFileHeaderV7
 // about the size of pages that are using specific flags/types/whatever
 struct RPakVirtualSegment
 {
-	uint32_t DataFlag = 0; // not sure what this actually is, doesn't seem to be used in that many places
-	uint32_t SomeType = 0;
-	uint64_t DataSize = 0;
+	uint32_t m_nDataFlag = 0; // not sure what this actually is, doesn't seem to be used in that many places
+	uint32_t m_nSomeType = 0;
+	uint64_t m_nDataSize = 0;
 };
 
 // mem page
@@ -109,17 +101,17 @@ struct RPakVirtualSegment
 // because of both the patch edit stream and also missing pages that are only present in the base rpak
 struct RPakPageInfo
 {
-	uint32_t VSegIdx; // index into vseg array
-	uint32_t SomeType; // no idea
-	uint32_t DataSize; // actual size of page in bytes
+	uint32_t m_nVSegIndex; // index into vseg array
+	uint32_t m_nSomeType; // no idea
+	uint32_t m_nDataSize; // actual size of page in bytes
 };
 
 // defines the location of a data "pointer" within the pak's mem pages
 // allows the engine to read the index/offset pair and replace it with an actual memory pointer at runtime
 struct RPakDescriptor
 {
-	uint32_t PageIdx;	 // page index
-	uint32_t PageOffset; // offset within page
+	uint32_t m_nPageIdx;	 // page index
+	uint32_t m_nPageOffset; // offset within page
 };
 
 // same kinda thing as RPakDescriptor, but this one tells the engine where
@@ -147,15 +139,15 @@ struct RPakAssetEntryV8
 		uint64_t nOptStarpakOffset,
 		uint32_t Type)
 	{
-		this->GUID = nGUID;
-		this->SubHeaderDataBlockIndex = nSubHeaderBlockIdx;
-		this->SubHeaderDataBlockOffset = nSubHeaderBlockOffset;
-		this->RawDataBlockIndex = nRawDataBlockIdx;
-		this->RawDataBlockOffset = nRawDataBlockOffset;
-		this->StarpakOffset = nStarpakOffset;
-		this->OptionalStarpakOffset = nOptStarpakOffset;
-		this->SubHeaderSize = nSubHeaderSize;
-		this->Magic = Type;
+		this->m_nGUID = nGUID;
+		this->m_nSubHeaderDataBlockIdx = nSubHeaderBlockIdx;
+		this->m_nSubHeaderDataBlockOffset = nSubHeaderBlockOffset;
+		this->m_nRawDataBlockIndex = nRawDataBlockIdx;
+		this->m_nRawDataBlockOffset = nRawDataBlockOffset;
+		this->m_nStarpakOffset = nStarpakOffset;
+		this->m_nOptStarpakOffset = nOptStarpakOffset;
+		this->m_nSubHeaderSize = nSubHeaderSize;
+		this->m_nMagic = Type;
 	}
 
 	// hashed version of the asset path
@@ -164,65 +156,65 @@ struct RPakAssetEntryV8
 	// - when referenced from other assets, the GUID is used directly
 	// - when referenced from scripts, the GUID is calculated from the original asset path
 	//   by a function such as RTech::StringToGuid
-	uint64_t GUID = 0;
-	uint64_t Padding = 0;
+	uint64_t m_nGUID = 0;
+	uint8_t  unk0[0x8];
 
 	// page index and offset for where this asset's header is located
-	uint32_t SubHeaderDataBlockIndex = 0;
-	uint32_t SubHeaderDataBlockOffset = 0;
+	uint32_t m_nSubHeaderDataBlockIdx = 0;
+	uint32_t m_nSubHeaderDataBlockOffset = 0;
 
 	// page index and offset for where this asset's data is located
 	// note: this may not always be used for finding the data:
 	//		 some assets use their own idx/offset pair from within the subheader
 	//		 when adding pairs like this, you MUST register it as a descriptor
 	//		 otherwise the pointer won't be converted
-	uint32_t RawDataBlockIndex = 0;
-	uint32_t RawDataBlockOffset = 0;
+	uint32_t m_nRawDataBlockIndex = 0;
+	uint32_t m_nRawDataBlockOffset = 0;
 
 	// offset to any available streamed data
-	// StarpakOffset         = "mandatory" starpak file offset
-	// OptionalStarpakOffset = "optional" starpak file offset
+	// m_nStarpakOffset    = "mandatory" starpak file offset
+	// m_nOptStarpakOffset = "optional" starpak file offset
 	// 
 	// in reality both are mandatory but respawn likes to do a little trolling
 	// so "opt" starpaks are a thing
-	uint64_t StarpakOffset = -1;
-	uint64_t OptionalStarpakOffset = -1;
+	uint64_t m_nStarpakOffset = -1;
+	uint64_t m_nOptStarpakOffset = -1;
 
-	uint16_t PageEnd = 0; // highest mem page used by this asset
-	uint16_t Un2 = 0;
+	uint16_t m_nPageEnd = 0; // highest mem page used by this asset
+	uint16_t unk1 = 0;
 
-	uint32_t RelationsStartIndex = 0;
+	uint32_t m_nRelationsStartIdx = 0;
 
-	uint32_t UsesStartIndex = 0;
-	uint32_t RelationsCount = 0;
-	uint32_t UsesCount = 0; // number of other assets that this asset uses
+	uint32_t m_nUsesStartIdx = 0;
+	uint32_t m_nRelationsCounts = 0;
+	uint32_t m_nUsesCount = 0; // number of other assets that this asset uses
 
 	// size of the asset header
-	uint32_t SubHeaderSize = 0;
+	uint32_t m_nSubHeaderSize = 0;
 
 	// this isn't always changed when the asset gets changed
 	// but respawn calls it a version so i will as well
-	uint32_t Version = 0; 
+	uint32_t m_nVersion = 0; 
 
 	// see AssetType enum below
-	uint32_t Magic = 0;
+	uint32_t m_nMagic = 0;
 };
 #pragma pack(pop)
 
 // internal data structure for referencing file data to be written
 struct RPakRawDataBlock
 {
-	uint32_t pageIdx;
-	uint64_t dataSize;
-	uint8_t* dataPtr;
+	uint32_t m_nPageIdx;
+	uint64_t m_nDataSize;
+	uint8_t* m_nDataPtr;
 };
 
 // internal data structure for referencing streaming data to be written
 struct SRPkDataEntry
 {
-	uint64_t offset = -1; // set when added
-	uint64_t dataSize = 0;
-	uint8_t* dataPtr;
+	uint64_t m_nOffset = -1; // set when added
+	uint64_t m_nDataSize = 0;
+	uint8_t* m_nDataPtr;
 };
 
 enum class AssetType : uint32_t
@@ -567,9 +559,9 @@ struct MaterialHeader
 // header struct for the material asset cpu data
 struct MaterialCPUHeader
 {
-	RPakPtr Unknown{}; // points to the rest of the cpu data. maybe for colour?
-	uint32_t DataSize = 0;
-	uint32_t VersionMaybe = 3; // every unknown is now either datasize, version, or flags
+	RPakPtr  m_nUnknownRPtr{}; // points to the rest of the cpu data. maybe for colour?
+	uint32_t m_nDataSize = 0;
+	uint32_t m_nVersionMaybe = 3; // every unknown is now either datasize, version, or flags
 };
 
 #pragma pack(pop)

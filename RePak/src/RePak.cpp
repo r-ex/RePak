@@ -10,7 +10,7 @@ RPakVirtualSegment& GetMatchingSegment(uint32_t flags, uint32_t a2, uint32_t* se
     uint32_t i = 0;
     for (auto& it : g_vvSegments)
     {
-        if (it.DataFlag == flags && it.SomeType == a2)
+        if (it.m_nDataFlag == flags && it.m_nSomeType == a2)
         {
             *segidx = i;
             return it;
@@ -31,8 +31,8 @@ _vseginfo_t RePak::CreateNewSegment(uint32_t size, uint32_t flags_maybe, uint32_
     // since otherwise we write into unintended parts of the stack, and that's bad
     RPakVirtualSegment& seg = GetMatchingSegment(flags_maybe, vsegAlignment == -1 ? alignment : vsegAlignment, &vsegidx);
 
-    bool bShouldAddVSeg = seg.DataSize == 0;
-    seg.DataSize += size;
+    bool bShouldAddVSeg = seg.m_nDataSize == 0;
+    seg.m_nDataSize += size;
 
     if(bShouldAddVSeg)
         g_vvSegments.emplace_back(seg);
@@ -51,15 +51,15 @@ void RePak::AddRawDataBlock(RPakRawDataBlock block)
     return;
 };
 
-void RePak::RegisterDescriptor(uint32_t pageIdx, uint32_t pageOffset)
+void RePak::RegisterDescriptor(uint32_t m_nPageIdx, uint32_t pageOffset)
 {
-    g_vDescriptors.push_back({ pageIdx, pageOffset });
+    g_vDescriptors.push_back({ m_nPageIdx, pageOffset });
     return;
 }
 
-void RePak::RegisterGuidDescriptor(uint32_t pageIdx, uint32_t pageOffset)
+void RePak::RegisterGuidDescriptor(uint32_t m_nPageIdx, uint32_t pageOffset)
 {
-    g_vGuidDescriptors.push_back({ pageIdx, pageOffset });
+    g_vGuidDescriptors.push_back({ m_nPageIdx, pageOffset });
     return;
 }
 
@@ -75,7 +75,7 @@ RPakAssetEntryV8* RePak::GetAssetByGuid(std::vector<RPakAssetEntryV8>* assets, u
     uint32_t i = 0;
     for (auto& it : *assets)
     {
-        if (it.GUID == guid)
+        if (it.m_nGUID == guid)
         {
             if (idx)
                 *idx = i;
@@ -91,7 +91,7 @@ void WriteRPakRawDataBlock(BinaryIO& out, std::vector<RPakRawDataBlock>& rawData
 {
     for (auto it = rawDataBlock.begin(); it != rawDataBlock.end(); ++it)
     {
-        out.getWriter()->write((char*)it->dataPtr, it->dataSize);
+        out.getWriter()->write((char*)it->m_nDataPtr, it->m_nDataSize);
     }
 }
 
@@ -221,17 +221,17 @@ int main(int argc, char** argv)
     FILETIME ft = Utils::GetFileTimeBySystem();
 
     // set up the file header
-    rpakHeader.CreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
-    rpakHeader.CompressedSize = out.tell();
-    rpakHeader.DecompressedSize = out.tell();
-    rpakHeader.VirtualSegmentCount = g_vvSegments.size();
-    rpakHeader.PageCount = g_vPages.size();
-    rpakHeader.DescriptorCount = g_vDescriptors.size();
-    rpakHeader.GuidDescriptorCount = g_vGuidDescriptors.size();
-    rpakHeader.RelationsCount = g_vFileRelations.size();
-    rpakHeader.AssetEntryCount = assetEntries.size();
-    rpakHeader.StarpakReferenceSize = StarpakRefLength;
-    rpakHeader.StarpakOptReferenceSize = OptStarpakRefLength;
+    rpakHeader.m_nCreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
+    rpakHeader.m_nSizeDisk = out.tell();
+    rpakHeader.m_nSizeMemory = out.tell();
+    rpakHeader.m_nVirtualSegmentCount = g_vvSegments.size();
+    rpakHeader.m_nPageCount = g_vPages.size();
+    rpakHeader.m_nDescriptorCount = g_vDescriptors.size();
+    rpakHeader.m_nGuidDescriptorCount = g_vGuidDescriptors.size();
+    rpakHeader.m_nRelationsCounts = g_vFileRelations.size();
+    rpakHeader.m_nAssetEntryCount = assetEntries.size();
+    rpakHeader.m_nStarpakReferenceSize = StarpakRefLength;
+    rpakHeader.m_nStarpakOptReferenceSize = OptStarpakRefLength;
 
     out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 
@@ -242,7 +242,7 @@ int main(int argc, char** argv)
     // free the memory
     for (auto& it : g_vRawDataBlocks)
     {
-        delete it.dataPtr;
+        delete it.m_nDataPtr;
     }
 
     // write starpak data
@@ -273,7 +273,7 @@ int main(int argc, char** argv)
 
         for (auto& it : Assets::g_vSRPkDataEntries)
         {
-            srpkOut.getWriter()->write((const char*)it.dataPtr, it.dataSize);
+            srpkOut.getWriter()->write((const char*)it.m_nDataPtr, it.m_nDataSize);
         }
 
         // starpaks have a table of sorts at the end of the file, containing the offsets and data sizes for every data block
@@ -281,8 +281,8 @@ int main(int argc, char** argv)
         for (auto& it : Assets::g_vSRPkDataEntries)
         {
             SRPkFileEntry fe{};
-            fe.offset = it.offset;
-            fe.size = it.dataSize;
+            fe.m_nOffset= it.m_nOffset;
+            fe.m_nSize = it.m_nDataSize;
 
             srpkOut.write(fe);
         }
