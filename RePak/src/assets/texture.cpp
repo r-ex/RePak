@@ -80,6 +80,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     hdr->assetGuid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
+    // unfortunately i'm not a respawn engineer so 1 (unstreamed) mip level will have to do
     hdr->permanentMipLevels = 1;
 
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
