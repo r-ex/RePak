@@ -336,3 +336,17 @@ ASALocalRun/
 # Generated Assets (we really don't want these to end up on git)
 *.rpak
 *.starpak
+
+# Windows Folder pathing is cool and creates .ini files and does not remove em
+*.ini
+
+# Windows Shortcut folder
+*.lnk
+
+# Batch files because that shouldn't be pushed
+*.bat
+
+# Compression archives formats
+*.zip
+*.rar
+*.7z
