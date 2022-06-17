@@ -218,6 +218,10 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
                 // get values from format "<x,y,z>"
                 std::regex_search(val, sm, s_VectorStringRegex);
 
+                // 0 - all
+                // 1 - x
+                // 2 - y
+                // 3 - z
                 if (sm.size() == 4)
                 {
                     float x = atof(sm[1].str().c_str());
