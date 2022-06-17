@@ -201,6 +201,7 @@ int main(int argc, char** argv)
     RPakFileHeaderV8 rpakHeader{ };
     out.write(rpakHeader);
 
+    // write string vectors for starpak paths and get the total length of each vector
     size_t StarpakRefLength = Utils::WriteStringVector(out, Assets::g_vsStarpakPaths);
     size_t OptStarpakRefLength = Utils::WriteStringVector(out, Assets::g_vsOptStarpakPaths);
 

@@ -64,6 +64,7 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     // create and init the asset entry
     RPakAssetEntryV8 asset;
 
+    // hardcoded guid because it's the only Ptch asset guid
     asset.InitAsset(0x6fc6fa5ad8f8bc9c, subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::PTCH);
     asset.Version = 1;
 
