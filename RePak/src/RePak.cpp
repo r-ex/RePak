@@ -23,7 +23,7 @@ RPakVirtualSegment& GetMatchingSegment(uint32_t flags, uint32_t a2, uint32_t* se
 
 // purpose: create page and segment with the specified parameters
 // returns: page index
-_vseginfo_t RePak::CreateNewSegment(uint32_t size, uint32_t flags_maybe, uint32_t alignment, RPakVirtualSegment& seg_arg, uint32_t vsegAlignment)
+_vseginfo_t RePak::CreateNewSegment(uint32_t size, uint32_t flags_maybe, uint32_t alignment, uint32_t vsegAlignment)
 {
     uint32_t vsegidx = g_vvSegments.size();
     
@@ -42,7 +42,6 @@ _vseginfo_t RePak::CreateNewSegment(uint32_t size, uint32_t flags_maybe, uint32_
     g_vPages.emplace_back(vsegblock);
     uint32_t pageidx = g_vPages.size() - 1;
 
-    seg_arg = seg;
     return { pageidx, size};
 }
 

@@ -59,11 +59,11 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     uint32_t assetPathSize = (sAssetPath.length() + 1);
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + (surface.length() + 1);
 
-    RPakVirtualSegment SubHeaderSegment;
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeader), 0, 8, SubHeaderSegment);
+    // asset header
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeader), 0, 8);
 
-    RPakVirtualSegment DataSegment;
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataBufSize, 1, 64, DataSegment);
+    // asset data
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataBufSize, 1, 64);
 
     char* dataBuf = new char[dataBufSize] {};
     char* tmp = dataBuf;
@@ -268,8 +268,8 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     std::uint64_t cpuDataSize = sizeof(testData) / sizeof(unsigned char);
 
-    RPakVirtualSegment CPUSegment;
-    _vseginfo_t cpuseginfo = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16, CPUSegment);
+    // cpu data
+    _vseginfo_t cpuseginfo = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16);
 
     MaterialCPUHeader cpuhdr{};
     cpuhdr.Unknown.Index = cpuseginfo.index;

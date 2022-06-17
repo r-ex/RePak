@@ -48,15 +48,14 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     // get total size
     uint32_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
 
-    // allocate the page and segment
-    RPakVirtualSegment SubHeaderSegment;
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(UIImageHeader), 0x40, 8, SubHeaderSegment);
+    // asset header
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(UIImageHeader), 0x40, 8);
 
-    RPakVirtualSegment TextureInfoSegment;
-    _vseginfo_t tiseginfo = RePak::CreateNewSegment(textureInfoPageSize, 0x41, 32, TextureInfoSegment);
+    // ui image/texture info
+    _vseginfo_t tiseginfo = RePak::CreateNewSegment(textureInfoPageSize, 0x41, 32);
 
-    RPakVirtualSegment RawDataSegment;
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(nTexturesCount * 0x10, 0x43, 4, RawDataSegment);
+    // cpu data
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(nTexturesCount * 0x10, 0x43, 4);
 
     // register our descriptors so they get converted properly
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, pTextureOffsets));

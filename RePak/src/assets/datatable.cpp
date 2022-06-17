@@ -90,16 +90,14 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
     ///-----------------------------------------
     // make a page for the sub header
     //
-    RPakVirtualSegment SubHeaderSegment{};
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(DataTableHeader), 0, 8, SubHeaderSegment);
+    // asset header
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(DataTableHeader), 0, 8);
 
     // DataTableColumn entries
-    RPakVirtualSegment ColumnHeaderSegment{};
-    _vseginfo_t colhdrinfo = RePak::CreateNewSegment(sizeof(DataTableColumn) * columnCount, 1, 8, ColumnHeaderSegment, 64);
+    _vseginfo_t colhdrinfo = RePak::CreateNewSegment(sizeof(DataTableColumn) * columnCount, 1, 8, 64);
 
     // column names
-    RPakVirtualSegment ColumnNamesSegment{};
-    _vseginfo_t nameseginfo = RePak::CreateNewSegment(ColumnNameBufSize, 1, 8, ColumnNamesSegment, 64);
+    _vseginfo_t nameseginfo = RePak::CreateNewSegment(ColumnNameBufSize, 1, 8, 64);
 
     pHdr->ColumnCount = columnCount;
     pHdr->RowCount = rowCount - 1;
@@ -166,12 +164,10 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
     }
 
     // page for Row Data
-    RPakVirtualSegment RowDataSegment{};
-    _vseginfo_t rawdatainfo = RePak::CreateNewSegment(rowDataPageSize, 1, 8, RowDataSegment, 64);
+    _vseginfo_t rawdatainfo = RePak::CreateNewSegment(rowDataPageSize, 1, 8, 64);
 
     // page for string entries
-    RPakVirtualSegment StringEntrySegment{};
-    _vseginfo_t stringsinfo = RePak::CreateNewSegment(stringEntriesSize, 1, 8, StringEntrySegment, 64);
+    _vseginfo_t stringsinfo = RePak::CreateNewSegment(stringEntriesSize, 1, 8, 64);
 
     char* rowDataBuf = new char[rowDataPageSize];
 

@@ -85,18 +85,17 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 
-    // give us a segment to use for the subheader
-    RPakVirtualSegment SubHeaderSegment;
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(TextureHeader), 0, 8, SubHeaderSegment);
+    // asset header
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(TextureHeader), 0, 8);
 
-    RPakVirtualSegment DebugNameSegment;
-    char* namebuf = new char[sAssetName.size() + 1];
     _vseginfo_t nameseginfo{};
+
+    char* namebuf = new char[sAssetName.size() + 1];
 
     if (bSaveDebugName)
     {
         sprintf_s(namebuf, sAssetName.length() + 1, "%s", sAssetName.c_str());
-        nameseginfo = RePak::CreateNewSegment(sAssetName.size() + 1, 129, 1, DebugNameSegment);
+        nameseginfo = RePak::CreateNewSegment(sAssetName.size() + 1, 129, 1);
     }
     else
     {
@@ -104,27 +103,24 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     }
 
     // woo more segments
-    RPakVirtualSegment RawDataSegment;
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->dataLength, 3, 16, RawDataSegment);
+    // cpu data
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->dataLength, 3, 16);
 
     char* databuf = new char[hdr->dataLength];
 
     input.getReader()->read(databuf, hdr->dataLength);
 
-    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)hdr };
-    RePak::AddRawDataBlock(shdb);
+    RePak::AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)hdr });
 
     if (bSaveDebugName)
     {
-        RPakRawDataBlock ndb{ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf };
-        RePak::AddRawDataBlock(ndb);
+        RePak::AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
         hdr->pDebugName = { nameseginfo.index, 0 };
 
         RePak::RegisterDescriptor(nameseginfo.index, offsetof(TextureHeader, pDebugName));
     }
 
-    RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)databuf };
-    RePak::AddRawDataBlock(rdb);
+    RePak::AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)databuf });
 
     // now time to add the higher level asset entry
     RPakAssetEntryV8 asset;

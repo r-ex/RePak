@@ -81,11 +81,11 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
 
     pHdr->DataCacheSize = vgFileSize;
 
-    RPakVirtualSegment SubHeaderSegment{};
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(ModelHeader), 0, 8, SubHeaderSegment);
+    // asset header
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(ModelHeader), 0, 8);
 
-    RPakVirtualSegment DataSegment{};
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(mdlhdr.dataLength + fileNameDataSize, 1, 64, DataSegment);
+    // data segment
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(mdlhdr.dataLength + fileNameDataSize, 1, 64);
 
     //RPakVirtualSegment VGSegment{};
     //uint32_t vgIdx = RePak::CreateNewSegment(vgFileSize, 67, 1, DataSegment);
