@@ -1,6 +1,6 @@
 #pragma once
 
-// yeah these are totally necessary and couldn't just be used as single values :}
+// asset versions
 #define TXTR_VERSION 8
 #define UIMG_VERSION 10
 #define DTBL_VERSION 1

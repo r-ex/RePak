@@ -12,6 +12,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     std::string sAtlasAssetName = mapEntry["atlas"].GetStdString() + ".rpak";
     uint64_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
 
+    // get the txtr asset that this asset is using
     RPakAssetEntryV8* atlasAsset = RePak::GetAssetByGuid(assetEntries, atlasGuid, nullptr);
 
     if (atlasAsset == nullptr)

@@ -6,6 +6,8 @@ enum class rseekdir : uint8_t {
 	end  // from end of the buffer (requires size to be set)
 };
 
+// helper class for working with memory buffers
+// wraps around a pointer and allows easy R/W of data
 class rmem
 {
 private:

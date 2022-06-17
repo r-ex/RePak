@@ -84,6 +84,7 @@ RPakAssetEntryV8* RePak::GetAssetByGuid(std::vector<RPakAssetEntryV8>* assets, u
         }
         i++;
     }
+    Debug("failed to find asset with guid %llX\n", guid);
     return nullptr;
 }
 
@@ -210,6 +211,10 @@ int main(int argc, char** argv)
     WRITE_VECTOR(out, assetEntries);
     WRITE_VECTOR(out, g_vGuidDescriptors);
     WRITE_VECTOR(out, g_vFileRelations);
+
+    // now the actual paged data
+    // this should probably be writing by page instead of just hoping that
+    // the data blocks are in the right order
     WriteRPakRawDataBlock(out, g_vRawDataBlocks);
 
     // get current time as FILETIME

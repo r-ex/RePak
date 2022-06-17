@@ -17,6 +17,8 @@ struct Vector3
 
 #pragma pack(push, 1)
 
+// represents a "pointer" into a mempage by page index and offset
+// when loaded, these usually get converted to a real pointer
 struct RPakPtr
 {
 	uint32_t Index = 0;
@@ -46,8 +48,8 @@ struct RPakFileHeaderV8
 	uint64_t Padding2 = 0;
 	uint16_t StarpakReferenceSize = 0; // size in bytes of the section containing mandatory starpak paths
 	uint16_t StarpakOptReferenceSize = 0; // size in bytes of the section containing optional starpak paths
-	uint16_t VirtualSegmentCount;
-	uint16_t PageCount; // number of "mempages" in the rpak
+	uint16_t VirtualSegmentCount = 0;
+	uint16_t PageCount = 0; // number of "mempages" in the rpak
 	uint32_t PatchIndex = 0;
 
 	uint32_t DescriptorCount = 0;
@@ -102,7 +104,7 @@ struct RPakVirtualSegment
 
 // mem page
 // describes an actual section in the file data. all pages are sequential
-// with page at idx 0 being just after the asset entries
+// with page at idx 0 being just after the asset relation data
 // in patched rpaks (e.g. common(01).rpak), these sections don't fully line up with the data,
 // because of both the patch edit stream and also missing pages that are only present in the base rpak
 struct RPakPageInfo
@@ -202,6 +204,7 @@ struct RPakAssetEntryV8
 	// but respawn calls it a version so i will as well
 	uint32_t Version = 0; 
 
+	// see AssetType enum below
 	uint32_t Magic = 0;
 };
 #pragma pack(pop)
@@ -232,7 +235,8 @@ enum class AssetType : uint32_t
 	MATL = 0x6c74616d,    // b'matl' - material
 };
 
-enum class DataTableColumnDataType : uint32_t
+// identifies the data type for each column in a datatable asset
+enum class dtblcoltype_t : uint32_t
 {
 	Bool,
 	Int,
@@ -328,7 +332,7 @@ struct UIImageOffset
 struct DataTableColumn
 {
 	RPakPtr NamePtr;
-	DataTableColumnDataType Type;
+	dtblcoltype_t Type;
 	uint32_t RowOffset;
 };
 
@@ -350,7 +354,7 @@ struct DataTableHeader
 
 struct DataTableColumnData
 {
-	DataTableColumnDataType Type;
+	dtblcoltype_t Type;
 	bool bValue = 0;
 	int iValue = -1;
 	float fValue = -1;
@@ -413,6 +417,9 @@ struct ModelHeader
 	uint64_t Padding9 = 0;
 };
 
+// modified source engine studio mdl header struct
+// majority of these members are the same as in the source sdk
+// so if you wanna know what any of it does, check there
 struct studiohdr_t
 {
 	studiohdr_t() {};
@@ -453,15 +460,15 @@ struct studiohdr_t
 	int activitylistversion;
 	int eventsindexed;
 
-	int texture_count; // materialref_t
+	int texture_count;
 	int texture_offset;
 
 	int texturedir_count;
 	int texturedir_offset;
 
-	int skinref_count;	   // Total number of references (submeshes)
-	int skinfamily_count; // Total skins per reference
-	int skinref_offset;   // Offset to data
+	int skinref_count;
+	int skinfamily_count;
+	int skinref_offset;
 
 	int bodypart_count;
 	int bodypart_offset;
@@ -478,26 +485,25 @@ struct studiohdr_t
 	int boneremap_count;
 };
 
-
+// used for referencing a material from within a model
+// pathoffset is the offset to the material's path (duh)
+// guid is the material's asset guid (or 0 if it's a vmt, i think)
 struct materialref_t
 {
 	uint32_t pathoffset;
 	uint64_t guid;
 };
 
-
+// small struct to allow verification of the 0tVG section of starpak
+// model data without needing to load the entire thing into memory for a simple
+// validation check
 struct BasicRMDLVGHeader
 {
 	uint32_t magic;
 	uint32_t version;
 };
 
-// asset path
-// texture guids
-// unknown section with same length as texture guids
-// surface name
-
-
+// some repeated section at the end of the material header (CMaterialGlue) struct
 struct UnknownMaterialSection
 {
 	// required but seems to follow a pattern. maybe related to "Unknown2" above?
@@ -520,11 +526,11 @@ struct MaterialHeader
 {
 	uint64_t VtblPtrPad = 0; // Gets set to CMaterialGlue vtbl ptr
 	uint8_t Padding[0x8]{}; // Un-used.
-	uint64_t AssetGUID = 0; // This materials GUID.
+	uint64_t AssetGUID = 0; // guid of this material asset
 
-	RPakPtr Name{}; // Asset path
-	RPakPtr SurfaceName{}; // Surface name (as defined in surfaceproperties.rson)
-	RPakPtr SurfaceName2{}; // Surface name 2 
+	RPakPtr Name{}; // pointer to partial asset path
+	RPakPtr SurfaceName{}; // pointer to surface name (as defined in surfaceproperties.rson)
+	RPakPtr SurfaceName2{}; // pointer to surface name 2 
 
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
@@ -533,7 +539,7 @@ struct MaterialHeader
 	// IDX 5: ColPass
 	// They seem to be the exact same for all materials throughout the game.
 	uint64_t GUIDRefs[5]{}; // Required to have proper textures.
-	uint64_t ShaderSetGUID = 0; // Shaderset guid / CShaderGlue guid
+	uint64_t ShaderSetGUID = 0; // guid of the shaderset asset that this material uses
 
 	RPakPtr TextureGUIDs{}; // TextureGUID Map 1
 	RPakPtr TextureGUIDs2{}; // TextureGUID Map 2
@@ -558,15 +564,17 @@ struct MaterialHeader
 	UnknownMaterialSection UnkSections[2]{};
 };
 
+// header struct for the material asset cpu data
 struct MaterialCPUHeader
 {
 	RPakPtr Unknown{}; // points to the rest of the cpu data. maybe for colour?
 	uint32_t DataSize = 0;
-	uint32_t VersionMaybe = 3;
+	uint32_t VersionMaybe = 3; // every unknown is now either datasize, version, or flags
 };
 
 #pragma pack(pop)
 
+// internal data structure for storing patch_master entries before being written
 struct PtchEntry
 {
 	std::string FileName = "";
@@ -574,6 +582,7 @@ struct PtchEntry
 	uint32_t FileNamePageOffset = 0;
 };
 
+// map of dxgi format to the corresponding txtr asset format value
 static std::map<DXGI_FORMAT, uint16_t> TxtrFormatMap{
 	{ DXGI_FORMAT_BC1_UNORM, 0 },
 	{ DXGI_FORMAT_BC1_UNORM_SRGB, 1 },

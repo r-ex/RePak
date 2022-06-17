@@ -31,15 +31,16 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
         return;
     }
 
-    // go back to the beginning of the file to read all the data
-    skelInput.seek(0);
-
     uint32_t fileNameDataSize = sAssetName.length() + 1;
 
     char* pDataBuf = new char[fileNameDataSize + mdlhdr.dataLength];
 
     // write the model file path into the data buffer
     snprintf(pDataBuf, fileNameDataSize, "%s", sAssetName.c_str());
+
+    // go back to the beginning of the file to read all the data
+    skelInput.seek(0);
+
     // write the skeleton data into the data buffer
     skelInput.getReader()->read(pDataBuf + fileNameDataSize, mdlhdr.dataLength);
     skelInput.close();
@@ -107,6 +108,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     for (int i = 0; i < mdlhdr.texture_count; ++i)
     {
         materialref_t ref = dataBuf.read<materialref_t>();
+        
         if(ref.guid != 0)
             RePak::RegisterGuidDescriptor(dataseginfo.index, dataBuf.getPosition()-8);
     }

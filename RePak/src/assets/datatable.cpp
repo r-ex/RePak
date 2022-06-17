@@ -2,20 +2,20 @@
 #include "Assets.h"
 #include <regex>
 
-std::unordered_map<std::string, DataTableColumnDataType> DataTableColumnMap =
+std::unordered_map<std::string, dtblcoltype_t> DataTableColumnMap =
 {
-    { "bool",   DataTableColumnDataType::Bool },
-    { "int",    DataTableColumnDataType::Int },
-    { "float",  DataTableColumnDataType::Float },
-    { "vector", DataTableColumnDataType::Vector },
-    { "string", DataTableColumnDataType::StringT },
-    { "asset",  DataTableColumnDataType::Asset },
-    { "assetnoprecache", DataTableColumnDataType::AssetNoPrecache }
+    { "bool",   dtblcoltype_t::Bool },
+    { "int",    dtblcoltype_t::Int },
+    { "float",  dtblcoltype_t::Float },
+    { "vector", dtblcoltype_t::Vector },
+    { "string", dtblcoltype_t::StringT },
+    { "asset",  dtblcoltype_t::Asset },
+    { "assetnoprecache", dtblcoltype_t::AssetNoPrecache }
 };
 
 static std::regex s_VectorStringRegex("<(.*),(.*),(.*)>");
 
-DataTableColumnDataType GetDataTableTypeFromString(std::string sType)
+dtblcoltype_t GetDataTableTypeFromString(std::string sType)
 {
     std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
 
@@ -25,26 +25,28 @@ DataTableColumnDataType GetDataTableTypeFromString(std::string sType)
             return value;
     }
 
-    return DataTableColumnDataType::StringT;
+    return dtblcoltype_t::StringT;
 }
 
-uint32_t DataTable_GetEntrySize(DataTableColumnDataType type)
+uint32_t DataTable_GetEntrySize(dtblcoltype_t type)
 {
     switch (type)
     {
-    case DataTableColumnDataType::Bool:
-    case DataTableColumnDataType::Int:
-    case DataTableColumnDataType::Float:
+    case dtblcoltype_t::Bool:
+    case dtblcoltype_t::Int:
+    case dtblcoltype_t::Float:
         return 4;
-    case DataTableColumnDataType::Vector:
+    case dtblcoltype_t::Vector:
         return sizeof(float) * 3;
-    case DataTableColumnDataType::StringT:
-    case DataTableColumnDataType::Asset:
-    case DataTableColumnDataType::AssetNoPrecache:
+    case dtblcoltype_t::StringT:
+    case dtblcoltype_t::Asset:
+    case dtblcoltype_t::AssetNoPrecache:
         // strings get placed at a separate place and have a pointer in place of the actual value
         return sizeof(RPakPtr);
     }
 
+    Error("tried to get entry size for an unknown dtbl column type. asserting...\n");
+    assert(0);
     return 0; // should be unreachable
 }
 
@@ -96,7 +98,6 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
     RPakVirtualSegment ColumnNamesSegment{};
     _vseginfo_t nameseginfo = RePak::CreateNewSegment(ColumnNameBufSize, 1, 8, ColumnNamesSegment, 64);
 
-
     pHdr->ColumnCount = columnCount;
     pHdr->RowCount = rowCount - 1;
     pHdr->ColumnHeaderPtr = { colhdrinfo.index, 0 };
@@ -123,7 +124,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
         // copy the column name into the namebuf
         snprintf(namebuf + nextNameOffset, it.length() + 1, "%s", it.c_str());
 
-        DataTableColumnDataType type = GetDataTableTypeFromString(typeRow[colIdx]);
+        dtblcoltype_t type = GetDataTableTypeFromString(typeRow[colIdx]);
 
         DataTableColumn col{};
 
@@ -137,7 +138,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
         // register name pointer
         RePak::RegisterDescriptor(colhdrinfo.index, (sizeof(DataTableColumn) * colIdx) + offsetof(DataTableColumn, NamePtr));
 
-        if (type == DataTableColumnDataType::StringT || type == DataTableColumnDataType::Asset || type == DataTableColumnDataType::AssetNoPrecache)
+        if (type == dtblcoltype_t::StringT || type == dtblcoltype_t::Asset || type == dtblcoltype_t::AssetNoPrecache)
         {
             for (size_t i = 0; i < rowCount - 1; ++i)
             {
@@ -185,7 +186,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
 
             switch (col.Type)
             {
-            case DataTableColumnDataType::Bool:
+            case dtblcoltype_t::Bool:
             {
                 std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
 
@@ -197,19 +198,19 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
                     valbuf.write<uint32_t>(false);
                 break;
             }
-            case DataTableColumnDataType::Int:
+            case dtblcoltype_t::Int:
             {
                 uint32_t val = doc.GetCell<uint32_t>(colIdx, rowIdx);
                 valbuf.write(val);
                 break;
             }
-            case DataTableColumnDataType::Float:
+            case dtblcoltype_t::Float:
             {
                 float val = doc.GetCell<float>(colIdx, rowIdx);
                 valbuf.write(val);
                 break;
             }
-            case DataTableColumnDataType::Vector:
+            case dtblcoltype_t::Vector:
             {
                 std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
 
@@ -229,9 +230,9 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
                 }
                 break;
             }
-            case DataTableColumnDataType::StringT:
-            case DataTableColumnDataType::Asset:
-            case DataTableColumnDataType::AssetNoPrecache:
+            case dtblcoltype_t::StringT:
+            case dtblcoltype_t::Asset:
+            case dtblcoltype_t::AssetNoPrecache:
             {
                 static uint32_t nextStringEntryOffset = 0;
 
@@ -255,20 +256,11 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(DataTableHeader, RowHeaderPtr));
 
     // add raw data blocks
-    RPakRawDataBlock shDataBlock{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
-    RePak::AddRawDataBlock(shDataBlock);
-
-    RPakRawDataBlock colDataBlock{ colhdrinfo.index, colhdrinfo.size, (uint8_t*)columnHeaderBuf };
-    RePak::AddRawDataBlock(colDataBlock);
-
-    RPakRawDataBlock colNameDataBlock{ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf };
-    RePak::AddRawDataBlock(colNameDataBlock);
-
-    RPakRawDataBlock rowDataBlock{ rawdatainfo.index, rowDataPageSize, (uint8_t*)rowDataBuf };
-    RePak::AddRawDataBlock(rowDataBlock);
-
-    RPakRawDataBlock stringEntryDataBlock{ stringsinfo.index, stringEntriesSize, (uint8_t*)stringEntryBuf };
-    RePak::AddRawDataBlock(stringEntryDataBlock);
+    RePak::AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
+    RePak::AddRawDataBlock({ colhdrinfo.index, colhdrinfo.size, (uint8_t*)columnHeaderBuf });
+    RePak::AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
+    RePak::AddRawDataBlock({ rawdatainfo.index, rowDataPageSize, (uint8_t*)rowDataBuf });
+    RePak::AddRawDataBlock({ stringsinfo.index, stringEntriesSize, (uint8_t*)stringEntryBuf });
 
     RPakAssetEntryV8 asset;
 

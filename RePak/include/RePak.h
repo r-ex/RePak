@@ -2,6 +2,7 @@
 
 #define DEFAULT_RPAK_NAME "new"
 
+// vectors of stuff to get written
 static std::vector<RPakVirtualSegment> g_vvSegments{};
 static std::vector<RPakPageInfo> g_vPages{};
 static std::vector<RPakDescriptor> g_vDescriptors{};
