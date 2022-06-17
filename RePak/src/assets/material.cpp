@@ -5,7 +5,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
-    uint32_t assetUsesCount = 0; // Track how often the asset is used.
+    uint32_t assetUsesCount = 0; // track how many other assets are used by this asset
     MaterialHeader* mtlHdr = new MaterialHeader();
     std::string sAssetPath = std::string(assetPath);
 
@@ -280,19 +280,16 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     char* cpuData = new char[sizeof(MaterialCPUHeader) + cpuDataSize];
 
+    // copy header into the start
     memcpy_s(cpuData, 16, &cpuhdr, 16);
 
+    // copy the rest of the data after the header
     memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, testData, cpuDataSize);
     //////////////////////////////////////////
 
-    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)mtlHdr };
-    RePak::AddRawDataBlock(shdb);
-
-    RPakRawDataBlock dsdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)dataBuf };
-    RePak::AddRawDataBlock(dsdb);
-
-    RPakRawDataBlock cdb{ cpuseginfo.index, cpuseginfo.size, (uint8_t*)cpuData };
-    RePak::AddRawDataBlock(cdb);
+    RePak::AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)mtlHdr });
+    RePak::AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)dataBuf });
+    RePak::AddRawDataBlock({ cpuseginfo.index, cpuseginfo.size, (uint8_t*)cpuData });
 
     //////////////////////////////////////////
 

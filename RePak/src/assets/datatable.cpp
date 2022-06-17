@@ -15,6 +15,8 @@ std::unordered_map<std::string, dtblcoltype_t> DataTableColumnMap =
 
 static std::regex s_VectorStringRegex("<(.*),(.*),(.*)>");
 
+// gets enum value from type string
+// e.g. "string" to dtblcoltype::StringT
 dtblcoltype_t GetDataTableTypeFromString(std::string sType)
 {
     std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
@@ -28,7 +30,8 @@ dtblcoltype_t GetDataTableTypeFromString(std::string sType)
     return dtblcoltype_t::StringT;
 }
 
-uint32_t DataTable_GetEntrySize(dtblcoltype_t type)
+// get required data size to store the specified data type
+uint8_t DataTable_GetEntrySize(dtblcoltype_t type)
 {
     switch (type)
     {
@@ -41,7 +44,7 @@ uint32_t DataTable_GetEntrySize(dtblcoltype_t type)
     case dtblcoltype_t::StringT:
     case dtblcoltype_t::Asset:
     case dtblcoltype_t::AssetNoPrecache:
-        // strings get placed at a separate place and have a pointer in place of the actual value
+        // string types get placed elsewhere and are referenced with a pointer
         return sizeof(RPakPtr);
     }
 
