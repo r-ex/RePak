@@ -26,7 +26,7 @@ namespace RePak
 	void RegisterDescriptor(uint32_t pageIdx, uint32_t pageOffset);
 	void RegisterGuidDescriptor(uint32_t pageIdx, uint32_t pageOffset);
 	size_t AddFileRelation(uint32_t assetIdx, uint32_t count = 1);
-	RPakAssetEntryV8* GetAssetByGuid(std::vector<RPakAssetEntryV8>* assets, uint64_t guid, uint32_t* idx);
+	RPakAssetEntryV7* GetAssetByGuid(std::vector<RPakAssetEntryV7>* assets, uint64_t guid, uint32_t* idx);
 };
 
 #define ASSET_HANDLER(ext, file, assetEntries, func) \

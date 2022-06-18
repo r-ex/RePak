@@ -72,7 +72,7 @@ size_t RePak::AddFileRelation(uint32_t assetIdx, uint32_t count)
     return g_vFileRelations.size()-count; // return the index of the file relation(s)
 }
 
-RPakAssetEntryV8* RePak::GetAssetByGuid(std::vector<RPakAssetEntryV8>* assets, uint64_t guid, uint32_t* idx)
+RPakAssetEntryV7* RePak::GetAssetByGuid(std::vector<RPakAssetEntryV7>* assets, uint64_t guid, uint32_t* idx)
 {
     uint32_t i = 0;
     for (auto& it : *assets)
@@ -177,7 +177,7 @@ int main(int argc, char** argv)
 
     Log("building rpak %s.rpak\n\n", sRpakName.c_str());
 
-    std::vector<RPakAssetEntryV8> assetEntries{ };
+    std::vector<RPakAssetEntryV7> assetEntries{ };
 
     // build asset data
     // loop through all assets defined in the map json
@@ -199,7 +199,7 @@ int main(int argc, char** argv)
 
     // write a placeholder header so we can come back and complete it
     // when we have all the info
-    RPakFileHeaderV8 rpakHeader{ };
+    RPakFileHeaderV7 rpakHeader{ };
     out.write(rpakHeader);
 
     // write string vectors for starpak paths and get the total length of each vector
@@ -233,7 +233,8 @@ int main(int argc, char** argv)
     rpakHeader.m_nRelationsCounts = (uint32_t)g_vFileRelations.size();
     rpakHeader.m_nAssetEntryCount = (uint32_t)assetEntries.size();
     rpakHeader.m_nStarpakReferenceSize = (uint16_t)StarpakRefLength;
-    rpakHeader.m_nStarpakOptReferenceSize = (uint16_t)OptStarpakRefLength;
+    //rpakHeader.m_nStarpakOptReferenceSize = (uint16_t)OptStarpakRefLength;
+
 
     out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 

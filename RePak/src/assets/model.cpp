@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Assets.h"
 
-void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddModelAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding mdl_ asset '%s'\n", assetPath);
 
@@ -123,7 +123,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     //RPakRawDataBlock vgdb{ vgIdx, vgFileSize, (uint8_t*)pVGBuf };
     //RePak::AddRawDataBlock(vgdb);
 
-    RPakAssetEntryV8 asset;
+    RPakAssetEntryV7 asset;
 
     asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, starpakOffset, -1, (std::uint32_t)AssetType::RMDL);
     asset.m_nVersion = RMDL_VERSION;

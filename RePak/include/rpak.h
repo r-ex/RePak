@@ -199,6 +199,82 @@ struct RPakAssetEntryV8
 	// see AssetType enum below
 	uint32_t m_nMagic = 0;
 };
+
+// defines a bunch of values for registering/using an asset from the rpak
+struct RPakAssetEntryV7
+{
+	RPakAssetEntryV7() = default;
+
+	void InitAsset(uint64_t nGUID,
+		uint32_t nSubHeaderBlockIdx,
+		uint32_t nSubHeaderBlockOffset,
+		uint32_t nSubHeaderSize,
+		uint32_t nRawDataBlockIdx,
+		uint32_t nRawDataBlockOffset,
+		uint64_t nStarpakOffset,
+		uint64_t nOptStarpakOffset,
+		uint32_t Type)
+	{
+		this->GUID = nGUID;
+		this->SubHeaderDataBlockIndex = nSubHeaderBlockIdx;
+		this->SubHeaderDataBlockOffset = nSubHeaderBlockOffset;
+		this->RawDataBlockIndex = nRawDataBlockIdx;
+		this->RawDataBlockOffset = nRawDataBlockOffset;
+		this->StarpakOffset = nStarpakOffset;
+		//this->OptionalStarpakOffset = nOptStarpakOffset;
+		this->SubHeaderSize = nSubHeaderSize;
+		this->Magic = Type;
+	}
+
+	// hashed version of the asset path
+	// used for referencing the asset from elsewhere
+	//
+	// - when referenced from other assets, the GUID is used directly
+	// - when referenced from scripts, the GUID is calculated from the original asset path
+	//   by a function such as RTech::StringToGuid
+	uint64_t GUID = 0;
+	uint64_t Padding = 0;
+
+	// page index and offset for where this asset's header is located
+	uint32_t SubHeaderDataBlockIndex = 0;
+	uint32_t SubHeaderDataBlockOffset = 0;
+
+	// page index and offset for where this asset's data is located
+	// note: this may not always be used for finding the data:
+	//		 some assets use their own idx/offset pair from within the subheader
+	//		 when adding pairs like this, you MUST register it as a descriptor
+	//		 otherwise the pointer won't be converted
+	uint32_t RawDataBlockIndex = 0;
+	uint32_t RawDataBlockOffset = 0;
+
+	// offset to any available streamed data
+	// StarpakOffset         = "mandatory" starpak file offset
+	// OptionalStarpakOffset = "optional" starpak file offset
+	// 
+	// in reality both are mandatory but respawn likes to do a little trolling
+	// so "opt" starpaks are a thing
+	uint64_t StarpakOffset = -1;
+	//uint64_t OptionalStarpakOffset = -1;
+
+	uint16_t PageEnd = 0; // highest mem page used by this asset
+	uint16_t Un2 = 0;
+
+	uint32_t RelationsStartIndex = 0;
+
+	uint32_t UsesStartIndex = 0;
+	uint32_t RelationsCount = 0;
+	uint32_t UsesCount = 0; // number of other assets that this asset uses
+
+	// size of the asset header
+	uint32_t SubHeaderSize = 0;
+
+	// this isn't always changed when the asset gets changed
+	// but respawn calls it a version so i will as well
+	uint32_t Version = 0;
+
+	// see AssetType enum below
+	uint32_t Magic = 0;
+};
 #pragma pack(pop)
 
 // internal data structure for referencing file data to be written
