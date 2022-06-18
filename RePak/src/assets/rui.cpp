@@ -15,7 +15,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     // get the txtr asset that this asset is using
     RPakAssetEntryV7* atlasAsset = RePak::GetAssetByGuid(assetEntries, atlasGuid, nullptr);
 
-    if (atlasAsset == nullptr)
+    if (!atlasAsset)
     {
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
         exit(EXIT_FAILURE);
@@ -112,8 +112,8 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     // add the file relation from this uimg asset to the atlas txtr
     size_t fileRelationIdx = RePak::AddFileRelation(assetEntries->size());
 
-    atlasAsset->RelationsStartIndex = fileRelationIdx;
-    atlasAsset->RelationsCount++;
+    atlasAsset->m_nRelationsStartIdx = fileRelationIdx;
+    atlasAsset->m_nRelationsCounts++;
 
     char* pUVBuf = new char[nTexturesCount * sizeof(UIImageUV)];
     rmem uvBuf(pUVBuf);
@@ -138,13 +138,13 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     // create and init the asset entry
     RPakAssetEntryV7 asset;
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::UIMG);
-    asset.Version = UIMG_VERSION;
+    asset.m_nVersion = UIMG_VERSION;
 
-    asset.PageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
-    asset.Un2 = 2;
+    asset.m_nPageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
+    asset.unk1 = 2;
 
-    asset.UsesStartIndex = fileRelationIdx;
-    asset.UsesCount = 1; // the asset should only use 1 other asset for the atlas
+    asset.m_nUsesStartIdx = fileRelationIdx;
+    asset.m_nUsesCount = 1; // the asset should only use 1 other asset for the atlas
 
     // add the asset entry
     assetEntries->push_back(asset);

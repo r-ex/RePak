@@ -47,7 +47,7 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV7>* assetEntries, const ch
         // write the ptr to the file name into the buffer
         dataBuf.write<RPakPtr>({ dataseginfo.index, fileNameOffset }, sizeof(RPakPtr) * i);
         // write the patch number for this entry into the buffer
-        dataBuf.write<uint8_t>(it.PatchNum, pHdr->pPakPatchNums.Offset + i);
+        dataBuf.write<uint8_t>(it.PatchNum, pHdr->pPakPatchNums.m_nOffset + i);
 
         snprintf(pDataBuf + fileNameOffset, it.FileName.length() + 1, "%s", it.FileName.c_str());
 
@@ -66,10 +66,10 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV7>* assetEntries, const ch
 
     // hardcoded guid because it's the only Ptch asset guid
     asset.InitAsset(0x6fc6fa5ad8f8bc9c, subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::PTCH);
-    asset.Version = 1;
+    asset.m_nVersion = 1;
 
-    asset.PageEnd = dataseginfo.index + 1;
-    asset.Un2 = 1;
+    asset.m_nPageEnd = dataseginfo.index + 1;
+    asset.unk1 = 1;
 
     assetEntries->push_back(asset);
 }
