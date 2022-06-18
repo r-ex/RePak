@@ -218,6 +218,10 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV7>* assetEntries, cons
                 // get values from format "<x,y,z>"
                 std::regex_search(val, sm, s_VectorStringRegex);
 
+                // 0 - all
+                // 1 - x
+                // 2 - y
+                // 3 - z
                 if (sm.size() == 4)
                 {
                     float x = atof(sm[1].str().c_str());
@@ -264,10 +268,10 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV7>* assetEntries, cons
     RPakAssetEntryV7 asset;
 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, rawdatainfo.index, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
-    asset.Version = DTBL_VERSION;
+    asset.m_nVersion = DTBL_VERSION;
 
-    asset.PageEnd = stringsinfo.index + 1; // number of the highest page that the asset references pageidx + 1
-    asset.Un2 = 1;
+    asset.m_nPageEnd = stringsinfo.index + 1; // number of the highest page that the asset references pageidx + 1
+    asset.unk1 = 1;
 
     assetEntries->push_back(asset);
 }

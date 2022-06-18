@@ -20,14 +20,14 @@ void RePak::AddStarpakReference(std::string path)
 // returns: offet to data entry in starpak
 uint64_t RePak::AddStarpakDataEntry(SRPkDataEntry block)
 {
-    size_t ns = Utils::PadBuffer((char**)&block.dataPtr, block.dataSize, 4096);
+    size_t ns = Utils::PadBuffer((char**)&block.m_nDataPtr, block.m_nDataSize, 4096);
 
-    block.dataSize = ns;
-    block.offset = nextStarpakOffset;
+    block.m_nDataSize = ns;
+    block.m_nOffset = nextStarpakOffset;
 
     Assets::g_vSRPkDataEntries.push_back(block);
 
-    nextStarpakOffset += block.dataSize;
+    nextStarpakOffset += block.m_nDataSize;
 
-    return block.offset;
+    return block.m_nOffset;
 }
