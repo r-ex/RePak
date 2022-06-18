@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Assets.h"
 
-void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddPatchAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding Ptch asset '%s'\n", assetPath);
 
@@ -62,7 +62,7 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     RePak::AddRawDataBlock(rdb);
 
     // create and init the asset entry
-    RPakAssetEntryV8 asset;
+    RPakAssetEntryV7 asset;
 
     // hardcoded guid because it's the only Ptch asset guid
     asset.InitAsset(0x6fc6fa5ad8f8bc9c, subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::PTCH);

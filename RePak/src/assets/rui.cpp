@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Assets.h"
 
-void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding uimg asset '%s'\n", assetPath);
 
@@ -13,7 +13,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     uint64_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
 
     // get the txtr asset that this asset is using
-    RPakAssetEntryV8* atlasAsset = RePak::GetAssetByGuid(assetEntries, atlasGuid, nullptr);
+    RPakAssetEntryV7* atlasAsset = RePak::GetAssetByGuid(assetEntries, atlasGuid, nullptr);
 
     if (atlasAsset == nullptr)
     {
@@ -136,7 +136,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     RePak::AddRawDataBlock(rdb);
 
     // create and init the asset entry
-    RPakAssetEntryV8 asset;
+    RPakAssetEntryV7 asset;
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::UIMG);
     asset.Version = UIMG_VERSION;
 

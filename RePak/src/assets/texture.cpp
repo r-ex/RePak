@@ -2,7 +2,7 @@
 #include "rmem.h"
 #include "Assets.h"
 
-void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding txtr asset '%s'\n", assetPath);
 
@@ -123,7 +123,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     RePak::AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)databuf });
 
     // now time to add the higher level asset entry
-    RPakAssetEntryV8 asset;
+    RPakAssetEntryV7 asset;
 
     uint64_t StarpakOffset = -1;
 

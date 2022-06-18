@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Assets.h"
 
-void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
@@ -93,7 +93,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
             else
                 RePak::AddFileRelation(assetEntries->size());
 
-            RPakAssetEntryV8* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
+            RPakAssetEntryV7* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
 
             txtrAsset->RelationsStartIndex = fileRelationIdx;
             txtrAsset->RelationsCount++;
@@ -115,7 +115,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
             RePak::AddFileRelation(assetEntries->size());
 
-            RPakAssetEntryV8* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
+            RPakAssetEntryV7* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
 
             txtrAsset->RelationsStartIndex = fileRelationIdx;
             txtrAsset->RelationsCount++;
@@ -293,7 +293,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     //////////////////////////////////////////
 
-    RPakAssetEntryV8 asset;
+    RPakAssetEntryV7 asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
     asset.Version = MATL_VERSION;
