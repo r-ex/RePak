@@ -10,7 +10,7 @@ std::uint64_t __fastcall RTech::StringToGuid(const char* pData)
 	std::uint32_t          i; // edx
 	std::uint64_t         v6; // rcx
 	int                   v7; // er9
-	int                   V7; // edx
+	int                   v8; // edx
 	int                   v9; // eax
 	std::uint32_t        v10; // er8
 	int                  v12; // ecx
@@ -20,7 +20,7 @@ std::uint64_t __fastcall RTech::StringToGuid(const char* pData)
 	v2 = 0i64;
 	v3 = 0;
 	v4 = (*a1 - 45 * ((~(*a1 ^ 0x5C5C5C5Cu) >> 7) & (((*a1 ^ 0x5C5C5C5Cu) - 0x1010101) >> 7) & 0x1010101)) & 0xDFDFDFDF;
-	for (i = ~*a1 & (*a1 - 0x1010101) & 0x80808080; !i; i = V7 & 0x80808080)
+	for (i = ~*a1 & (*a1 - 0x1010101) & 0x80808080; !i; i = v8 & 0x80808080)
 	{
 		v6 = v4;
 		v7 = v1[1];
@@ -28,7 +28,7 @@ std::uint64_t __fastcall RTech::StringToGuid(const char* pData)
 		v3 += 4;
 		v2 = ((((std::uint64_t)(0xFB8C4D96501i64 * v6) >> 24) + 0x633D5F1 * v2) >> 61) ^ (((std::uint64_t)(0xFB8C4D96501i64 * v6) >> 24)
 			+ 0x633D5F1 * v2);
-		V7 = ~v7 & (v7 - 0x1010101);
+		v8 = ~v7 & (v7 - 0x1010101);
 		v4 = (v7 - 45 * ((~(v7 ^ 0x5C5C5C5Cu) >> 7) & (((v7 ^ 0x5C5C5C5Cu) - 0x1010101) >> 7) & 0x1010101)) & 0xDFDFDFDF;
 	}
 	v9 = -1;

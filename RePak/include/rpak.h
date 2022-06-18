@@ -468,7 +468,7 @@ struct ModelHeader
 	uint64_t Padding3 = 0;
 
 	// this data is usually kept in a mandatory starpak, but there's also fallback(?) data here
-	// in rmdl V7, this is literally just .vtx and .vvd stuck together
+	// in rmdl v8, this is literally just .vtx and .vvd stuck together
 	// in v9+ it's an increasingly mutated version, although it contains roughly the same data
 	RPakPtr VGPtr;
 
