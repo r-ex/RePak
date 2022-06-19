@@ -245,43 +245,43 @@ enum class dtblcoltype_t : uint32_t
 #pragma pack(push, 1)
 struct TextureHeader
 {
-	uint64_t assetGuid = 0;
-	RPakPtr pDebugName;
+	uint64_t m_nAssetGUID = 0;
+	RPakPtr  m_pDebugName;
 
-	uint16_t width = 0;
-	uint16_t height = 0;
+	uint16_t m_nWidth = 0;
+	uint16_t m_nHeight = 0;
 
-	uint16_t unknown_1 = 0;
-	uint16_t format = 0;
+	uint16_t unk0 = 0;
+	uint16_t m_nFormat = 0;
 
-	uint32_t dataLength; // total data size across all sources
-	uint8_t unknown_2;
-	uint8_t optStreamedMipLevels; // why is this here and not below? respawn moment
+	uint32_t m_nDataLength; // total data size across all sources
+	uint8_t  unk1;
+	uint8_t  m_nOptStreamedMipLevels; // why is this here and not below? respawn moment
 
 	// d3d11 texture desc params
-	uint8_t arraySize;
-	uint8_t layerCount;
+	uint8_t  m_nArraySize;
+	uint8_t  m_nLayerCount;
 
-	uint8_t unknown_3;
-	uint8_t permanentMipLevels;
-	uint8_t streamedMipLevels;
-	uint8_t unknown_4[21];
+	uint8_t  unk2;
+	uint8_t  m_nPermanentMipLevels;
+	uint8_t  m_nStreamedMipLevels;
+	uint8_t  unk3[21];
 };
 
 struct UIImageHeader
 {
-	uint64_t unknown_0 = 0;
-	uint16_t width = 1;
-	uint16_t height = 1;
-	uint16_t textureOffsetsCount = 0;
-	uint16_t textureCount = 0;
-	RPakPtr pTextureOffsets{};
-	RPakPtr pTextureDims{};
-	uint32_t unknown_20 = 0;
-	uint32_t unknown_24 = 0;
-	RPakPtr pTextureHashes{};
-	RPakPtr pTextureNames{};
-	uint64_t atlasGuid = 0;
+	uint64_t unk0 = 0;
+	uint16_t m_nWidth = 1;
+	uint16_t m_nHeight = 1;
+	uint16_t m_nTextureOffsetsCount = 0;
+	uint16_t m_nTextureCount = 0;
+	RPakPtr  m_pTextureOffsets{};
+	RPakPtr  m_pTextureDims{};
+	uint32_t unk1 = 0;
+	uint32_t unk2 = 0;
+	RPakPtr  m_pTextureHashes{};
+	RPakPtr  m_pTextureNames{};
+	uint64_t m_nAtlasGUID = 0;
 };
 
 struct UIImageUV
@@ -423,7 +423,7 @@ struct studiohdr_t
 
 	char name[0x40];
 
-	int dataLength;
+	int m_nDataLength;
 
 	Vector3 eyeposition;
 	Vector3 illumposition;

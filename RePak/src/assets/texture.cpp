@@ -39,9 +39,9 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
         DDS_HEADER ddsh = input.read<DDS_HEADER>();
 
-        hdr->dataLength = ddsh.pitchOrLinearSize;
-        hdr->width = ddsh.width;
-        hdr->height = ddsh.height;
+        hdr->m_nDataLength = ddsh.pitchOrLinearSize;
+        hdr->m_nWidth = ddsh.width;
+        hdr->m_nHeight = ddsh.height;
 
         DXGI_FORMAT dxgiFormat;
 
@@ -69,7 +69,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
             return;
         }
 
-        hdr->format = (uint16_t)TxtrFormatMap[dxgiFormat];
+        hdr->m_nFormat = (uint16_t)TxtrFormatMap[dxgiFormat];
 
         // go to the end of the main header
         input.seek(ddsh.size + 4);
@@ -78,10 +78,10 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
             input.seek(20, std::ios::cur);
     }
 
-    hdr->assetGuid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
+    hdr->m_nAssetGUID = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
     // unfortunately i'm not a respawn engineer so 1 (unstreamed) mip level will have to do
-    hdr->permanentMipLevels = 1;
+    hdr->m_nPermanentMipLevels = 1;
 
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 
@@ -104,20 +104,20 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
     // woo more segments
     // cpu data
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->dataLength, 3, 16);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->m_nDataLength, 3, 16);
 
-    char* databuf = new char[hdr->dataLength];
+    char* databuf = new char[hdr->m_nDataLength];
 
-    input.getReader()->read(databuf, hdr->dataLength);
+    input.getReader()->read(databuf, hdr->m_nDataLength);
 
     RePak::AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)hdr });
 
     if (bSaveDebugName)
     {
         RePak::AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
-        hdr->pDebugName = { nameseginfo.index, 0 };
+        hdr->m_pDebugName = { nameseginfo.index, 0 };
 
-        RePak::RegisterDescriptor(nameseginfo.index, offsetof(TextureHeader, pDebugName));
+        RePak::RegisterDescriptor(nameseginfo.index, offsetof(TextureHeader, m_pDebugName));
     }
 
     RePak::AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)databuf });
