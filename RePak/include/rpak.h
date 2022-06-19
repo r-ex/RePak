@@ -76,8 +76,8 @@ struct RPakFileHeaderV7
 
 	uint32_t m_nDescriptorCount = 0;
 	uint32_t m_nAssetEntryCount = 0;
-	uint32_t m_nUnknownFifthBlockCount = 0;
-	uint32_t m_nUnknownSixedBlockCount = 0;
+	uint32_t m_nGuidDescriptorCount = 0;
+	uint32_t m_nRelationsCounts = 0;
 
 	uint32_t m_nUnknownSeventhBlockCount = 0;
 	uint32_t m_nUnknownEighthBlockCount = 0;
@@ -215,15 +215,14 @@ struct RPakAssetEntryV7
 		uint64_t nOptStarpakOffset,
 		uint32_t Type)
 	{
-		this->GUID = nGUID;
-		this->SubHeaderDataBlockIndex = nSubHeaderBlockIdx;
-		this->SubHeaderDataBlockOffset = nSubHeaderBlockOffset;
-		this->RawDataBlockIndex = nRawDataBlockIdx;
-		this->RawDataBlockOffset = nRawDataBlockOffset;
-		this->StarpakOffset = nStarpakOffset;
-		//this->OptionalStarpakOffset = nOptStarpakOffset;
-		this->SubHeaderSize = nSubHeaderSize;
-		this->Magic = Type;
+		this->m_nGUID = nGUID;
+		this->m_nSubHeaderDataBlockIdx = nSubHeaderBlockIdx;
+		this->m_nSubHeaderDataBlockOffset = nSubHeaderBlockOffset;
+		this->m_nRawDataBlockIndex = nRawDataBlockIdx;
+		this->m_nRawDataBlockOffset = nRawDataBlockOffset;
+		this->m_nStarpakOffset = nStarpakOffset;
+		this->m_nSubHeaderSize = nSubHeaderSize;
+		this->m_nMagic = Type;
 	}
 
 	// hashed version of the asset path
@@ -232,48 +231,47 @@ struct RPakAssetEntryV7
 	// - when referenced from other assets, the GUID is used directly
 	// - when referenced from scripts, the GUID is calculated from the original asset path
 	//   by a function such as RTech::StringToGuid
-	uint64_t GUID = 0;
-	uint64_t Padding = 0;
+	uint64_t m_nGUID = 0;
+	uint8_t  unk0[0x8];
 
 	// page index and offset for where this asset's header is located
-	uint32_t SubHeaderDataBlockIndex = 0;
-	uint32_t SubHeaderDataBlockOffset = 0;
+	uint32_t m_nSubHeaderDataBlockIdx = 0;
+	uint32_t m_nSubHeaderDataBlockOffset = 0;
 
 	// page index and offset for where this asset's data is located
 	// note: this may not always be used for finding the data:
 	//		 some assets use their own idx/offset pair from within the subheader
 	//		 when adding pairs like this, you MUST register it as a descriptor
 	//		 otherwise the pointer won't be converted
-	uint32_t RawDataBlockIndex = 0;
-	uint32_t RawDataBlockOffset = 0;
+	uint32_t m_nRawDataBlockIndex = 0;
+	uint32_t m_nRawDataBlockOffset = 0;
 
 	// offset to any available streamed data
-	// StarpakOffset         = "mandatory" starpak file offset
-	// OptionalStarpakOffset = "optional" starpak file offset
+	// m_nStarpakOffset    = "mandatory" starpak file offset
+	// m_nOptStarpakOffset = "optional" starpak file offset
 	// 
 	// in reality both are mandatory but respawn likes to do a little trolling
 	// so "opt" starpaks are a thing
-	uint64_t StarpakOffset = -1;
-	//uint64_t OptionalStarpakOffset = -1;
+	uint64_t m_nStarpakOffset = -1;
 
-	uint16_t PageEnd = 0; // highest mem page used by this asset
-	uint16_t Un2 = 0;
+	uint16_t m_nPageEnd = 0; // highest mem page used by this asset
+	uint16_t unk1 = 0;
 
-	uint32_t RelationsStartIndex = 0;
+	uint32_t m_nRelationsStartIdx = 0;
 
-	uint32_t UsesStartIndex = 0;
-	uint32_t RelationsCount = 0;
-	uint32_t UsesCount = 0; // number of other assets that this asset uses
+	uint32_t m_nUsesStartIdx = 0;
+	uint32_t m_nRelationsCounts = 0;
+	uint32_t m_nUsesCount = 0; // number of other assets that this asset uses
 
 	// size of the asset header
-	uint32_t SubHeaderSize = 0;
+	uint32_t m_nSubHeaderSize = 0;
 
 	// this isn't always changed when the asset gets changed
 	// but respawn calls it a version so i will as well
-	uint32_t Version = 0;
+	uint32_t m_nVersion = 0;
 
 	// see AssetType enum below
-	uint32_t Magic = 0;
+	uint32_t m_nMagic = 0;
 };
 #pragma pack(pop)
 
