@@ -3,7 +3,7 @@
 
 void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding uimg asset '%s'\n", assetPath);
+    Log("Adding uimg asset '%s'\n", assetPath);
 
     std::string sAssetName = assetPath;
 
@@ -77,6 +77,13 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     for (auto& it : mapEntry["textures"].GetArray())
     {
         UIImageOffset uiio{};
+        float startX = it["posX"].GetFloat() / pHdr->width;
+        float endX = ( it["posX"].GetFloat() + it["width"].GetFloat() ) / pHdr->width;
+
+        float startY = it["posY"].GetFloat() / pHdr->height;
+        float endY = ( it["posY"].GetFloat() + it["height"].GetFloat() ) / pHdr->height;
+
+        uiio.InitUIImageOffset(startX, startY, endX, endY);
         tiBuf.write(uiio);
     }
 
@@ -120,9 +127,16 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
 
     //////////////
     // IMAGE UVS
-    for (uint32_t i = 0; i < nTexturesCount; ++i)
+    for (auto& it : mapEntry["textures"].GetArray())
     {
         UIImageUV uiiu{};
+        float startX = it["posX"].GetFloat() / pHdr->width;
+        float width = it["width"].GetFloat() / pHdr->width;
+        Log("X: %f -> %f\n", startX, startX + width);
+        float startY = it["posY"].GetFloat() / pHdr->height;
+        float height = it["height"].GetFloat() / pHdr->height;
+        Log("Y: %f -> %f\n", startY, startY + height);
+        uiiu.InitUIImageUV(startX, startY, width, height);
         uvBuf.write(uiiu);
     }
 

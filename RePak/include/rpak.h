@@ -360,6 +360,13 @@ struct UIImageHeader
 
 struct UIImageUV
 {
+	void InitUIImageUV(float startX, float startY, float width, float height)
+	{
+		this->uv0x = startX;
+		this->uv1x = width;
+		this->uv0y = startY;
+		this->uv1y = height;
+	}
 	// maybe the uv coords for top left?
 	// just leave these as 0 and it should be fine
 	float uv0x = 0;
@@ -378,6 +385,14 @@ struct UIImageUV
 // examples of changes from these values: https://imgur.com/a/l1YDXaz
 struct UIImageOffset
 {
+
+	void InitUIImageOffset(float startX, float startY, float endX, float endY)
+	{
+		this->startX = startX;
+		this->startY = startY;
+		this->endX = endX;
+		this->endY = endY;
+	}
 	// these don't seem to matter all that much as long as they are a valid float number
 	float f0 = 0.f;
 	float f1 = 0.f;
