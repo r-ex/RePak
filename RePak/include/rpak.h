@@ -232,7 +232,7 @@ struct RPakAssetEntryV7
 	// - when referenced from scripts, the GUID is calculated from the original asset path
 	//   by a function such as RTech::StringToGuid
 	uint64_t m_nGUID = 0;
-	uint8_t  unk0[0x8];
+	uint64_t unk0 = 0x0000000000000000;
 
 	// page index and offset for where this asset's header is located
 	uint32_t m_nSubHeaderDataBlockIdx = 0;
@@ -392,6 +392,8 @@ struct UIImageOffset
 		this->startY = startY;
 		this->endX = endX;
 		this->endY = endY;
+		//this->unkX = 1 - 2 * startX; // doesnt seem to always 100% of the time match up but its very close
+		//this->unkY = 1 - 2 * startY;
 	}
 	// these don't seem to matter all that much as long as they are a valid float number
 	float f0 = 0.f;
