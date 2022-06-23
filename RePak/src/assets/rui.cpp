@@ -99,7 +99,6 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     {
         tiBuf.write<uint16_t>(it["width"].GetInt());
         tiBuf.write<uint16_t>(it["height"].GetInt());
-        tiBuf.write<uint16_t>(0);
     }
 
     // set texture hashes page index and offset
