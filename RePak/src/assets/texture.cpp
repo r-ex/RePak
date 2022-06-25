@@ -51,6 +51,10 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
             Log("-> fmt: DXT1\n");
             dxgiFormat = DXGI_FORMAT_BC1_UNORM_SRGB;
             break;
+        case '5TXD':
+            Log("-> fmt: DXT5\n");
+            dxgiFormat = DXGI_FORMAT_BC3_UNORM_SRGB;
+            break;
         case 'U4CB':
             Log("-> fmt: BC4U\n");
             dxgiFormat = DXGI_FORMAT_BC4_UNORM;
