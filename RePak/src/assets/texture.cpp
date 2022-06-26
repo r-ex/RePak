@@ -121,7 +121,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
         RePak::AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
         hdr->pDebugName = { nameseginfo.index, 0 };
 
-        RePak::RegisterDescriptor(nameseginfo.index, offsetof(TextureHeader, pDebugName));
+        RePak::RegisterDescriptor(subhdrinfo.index, offsetof(TextureHeader, pDebugName));
     }
 
     RePak::AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)databuf });
