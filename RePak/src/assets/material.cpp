@@ -6,17 +6,25 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     Debug("Adding matl asset '%s'\n", assetPath);
 
     uint32_t assetUsesCount = 0; // track how many other assets are used by this asset
-    MaterialHeader* mtlHdr = new MaterialHeader();
+    MaterialHeaderV12* mtlHdr = new MaterialHeaderV12();
     std::string sAssetPath = std::string(assetPath);
 
     std::string type = "sknp";
+    uint32_t version = 16;
 
     if (mapEntry.HasMember("type"))
         type = mapEntry["type"].GetStdString();
     else
         Warning("Adding material without an explicitly defined type. Assuming 'sknp'...\n");
 
-    std::string sFullAssetRpakPath = "material/" + sAssetPath + "_" + type + ".rpak"; // Make full rpak asset path.
+    // version check
+    if (mapEntry.HasMember("version"))
+        version = mapEntry["version"].GetInt();
+    else
+        Warning("Adding material without an explicitly defined version. Assuming '16'... \n");
+
+
+    std::string sFullAssetRpakPath = "material/" + sAssetPath + "_" + type  + ".rpak"; // Make full rpak asset path.
 
     mtlHdr->AssetGUID = RTech::StringToGuid(sFullAssetRpakPath.c_str()); // Convert full rpak asset path to textureGUID and set it in the material header.
 
@@ -25,8 +33,8 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     // 512x512 = 0x5
     // 1024x1024 = 0x4
     // 2048x2048 = 0x9
-    if (mapEntry.HasMember("signature"))
-        mtlHdr->UnknownSignature = mapEntry["signature"].GetInt();
+    //if (mapEntry.HasMember("signature"))
+    //    mtlHdr->UnknownSignature = mapEntry["signature"].GetInt();
 
     if (mapEntry.HasMember("width")) // Set material width.
         mtlHdr->Width = mapEntry["width"].GetInt();
@@ -34,8 +42,8 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     if (mapEntry.HasMember("height")) // Set material width.
         mtlHdr->Height = mapEntry["height"].GetInt();
 
-    if (mapEntry.HasMember("flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
-        mtlHdr->ImageFlags = mapEntry["flags"].GetUint();
+    //if (mapEntry.HasMember("flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
+    //    mtlHdr->ImageFlags = mapEntry["flags"].GetUint();
 
     std::string surface = "default";
 
@@ -60,7 +68,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + (surface.length() + 1);
 
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeader), 0, 8);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeaderV12), 0, 8);
 
     // asset data
     _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataBufSize, 1, 64);
@@ -95,8 +103,8 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
             RPakAssetEntryV7* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
 
-            txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
-            txtrAsset->m_nRelationsCounts++;
+            //txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
+            //txtrAsset->m_nRelationsCounts++;
 
             assetUsesCount++;
         }
@@ -109,18 +117,24 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     {
         if (it.GetStdString() != "")
         {
-            uint64_t guid = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str());
+            //uint64_t guid = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str());
+            uint64_t guid = 0x0000000000000000;
+
             *(uint64_t*)dataBuf = guid;
-            RePak::RegisterGuidDescriptor(dataseginfo.index, guidPageOffset + textureRefSize + (textureIdx * sizeof(uint64_t)));
+            //RePak::RegisterGuidDescriptor(dataseginfo.index, guidPageOffset + textureRefSize + (textureIdx * sizeof(uint64_t)));
 
-            RePak::AddFileRelation(assetEntries->size());
+            //RePak::AddFileRelation(assetEntries->size());
 
-            RPakAssetEntryV7* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
+            if (guid != 0)
+            {
+                RPakAssetEntryV7* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
 
-            txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
-            txtrAsset->m_nRelationsCounts++;
+                //txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
+               // txtrAsset->m_nRelationsCounts++;
 
-            assetUsesCount++; // Next texture index coming up.
+
+                //assetUsesCount++; // Next texture index coming up.
+            }
         }
         dataBuf += sizeof(uint64_t);
         textureIdx++;
@@ -141,29 +155,39 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     mtlHdr->SurfaceName.m_nIndex = dataseginfo.index;
     mtlHdr->SurfaceName.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
 
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, Name));
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, SurfaceName));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, Name));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, SurfaceName));
 
     // Type Handling
-    if (type == "sknp")
+    if (type == "skn_01")
     {
+        // I HAVE PROBABLY BROKEN THIS AT SOME POINT - spoon
+        
+        //for testing purposes ""sknp"" will be a material with a full suite of textures.
+
         // These should always be constant (per each material type)
         // There's different versions of these for each material type
         // GUIDRefs[4] is Colpass entry.
-        mtlHdr->GUIDRefs[0] = 0x2B93C99C67CC8B51;
+
+        //apex default shader
+        /*mtlHdr->GUIDRefs[0] = 0x2B93C99C67CC8B51;
         mtlHdr->GUIDRefs[1] = 0x1EBD063EA03180C7;
         mtlHdr->GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
-        mtlHdr->GUIDRefs[3] = 0x227C27B608B3646B;
+        mtlHdr->GUIDRefs[3] = 0x227C27B608B3646B;*/
 
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs));
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 8);
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 16);
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 24);
+        mtlHdr->GUIDRefs[0] = 0x39C739E9928E555C;
+        mtlHdr->GUIDRefs[1] = 0x67D89B36EDCDDF6E;
+        mtlHdr->GUIDRefs[2] = 0x43A9D8D429698B9F;
 
-        RePak::AddFileRelation(assetEntries->size(), 4);
-        assetUsesCount += 4;
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs));
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 8);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 16);
 
-        mtlHdr->ShaderSetGUID = 0x1D9FFF314E152725;
+        RePak::AddFileRelation(assetEntries->size(), 3);
+        assetUsesCount += 3;
+
+        //mtlHdr->ShaderSetGUID = 0x1D9FFF314E152725;
+        mtlHdr->ShaderSetGUID = 0x586783F71E99553D;
     }
     else if (type == "wldc")
     {
@@ -173,18 +197,30 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         mtlHdr->GUIDRefs[2] = 0xD306370918620EC0; // DepthVSM
         mtlHdr->GUIDRefs[3] = 0xDAB17AEAD2D3387A; // DepthShadowTight
 
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs));
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 8);
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 16);
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 24);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs));
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 8);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 16);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 24);
 
-        RePak::AddFileRelation(assetEntries->size(), 4);
-        assetUsesCount += 4;
+        //RePak::AddFileRelation(assetEntries->size(), 4);
+        //assetUsesCount += 4;
 
         mtlHdr->ShaderSetGUID = 0x4B0F3B4CBD009096;
     }
+    else if (type == "gen")
+    {
+        // These should always be constant (per each material type)
+        // There's different versions of these for each material type
+        // GUIDRefs[3] is Colpass entry, however loadscreens do not have colpass materials.
 
-    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, ShaderSetGUID));
+        mtlHdr->GUIDRefs[0] = 0x0000000000000000;
+        mtlHdr->GUIDRefs[1] = 0x0000000000000000;
+        mtlHdr->GUIDRefs[2] = 0x0000000000000000;
+
+        mtlHdr->ShaderSetGUID = 0xA5B8D4E9A3364655;
+    }
+
+    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, ShaderSetGUID));
     RePak::AddFileRelation(assetEntries->size());
     assetUsesCount++;
 
@@ -193,24 +229,26 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     if (mapEntry.HasMember("colpass"))
     {
         std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + ".rpak";
-        mtlHdr->GUIDRefs[4] = RTech::StringToGuid(colpassPath.c_str());
+        //mtlHdr->GUIDRefs[4] = RTech::StringToGuid(colpassPath.c_str());
 
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 32);
+        //RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 32);
         RePak::AddFileRelation(assetEntries->size());
         assetUsesCount++;
 
         bColpass = false;
     }
+
+
     mtlHdr->TextureGUIDs.m_nIndex = dataseginfo.index;
     mtlHdr->TextureGUIDs.m_nOffset = guidPageOffset;
 
     mtlHdr->TextureGUIDs2.m_nIndex = dataseginfo.index;
     mtlHdr->TextureGUIDs2.m_nOffset = guidPageOffset + textureRefSize;
 
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, TextureGUIDs));
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, TextureGUIDs2));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, TextureGUIDs));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, TextureGUIDs2));
 
-    mtlHdr->something = 0x72000000;
+    /*mtlHdr->something = 0x72000000;
     mtlHdr->something2 = 0x100000;
 
     for (int i = 0; i < 2; ++i)
@@ -223,13 +261,13 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         mtlHdr->UnkSections[i].Unknown6 = 4;
         mtlHdr->UnkSections[i].Flags1 = f1;
         mtlHdr->UnkSections[i].Flags2 = 6;
-    }
+    }*/
 
     //////////////////////////////////////////
     /// cpu
 
     // required for accurate colour
-    unsigned char testData[544] = {
+    /*unsigned char testData[544] = {
         0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -264,6 +302,25 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+    };*/
+
+    //0x04, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0xE0, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
+
+    unsigned char testData[224] = {
+    0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x40, 0x1C, 0x46, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x81, 0x95, 0xE3, 0x3F,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x66, 0x66, 0x66, 0x3F, 0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x80, 0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0x00, 0x00, 0x80, 0x3F, 0x8F, 0xC2, 0xF5, 0x3C, 0x8F, 0xC2, 0xF5, 0x3C, 0x8F, 0xC2, 0xF5, 0x3C
     };
 
     std::uint64_t cpuDataSize = sizeof(testData) / sizeof(unsigned char);
@@ -296,7 +353,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     RPakAssetEntryV7 asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
-    asset.m_nVersion = MATL_VERSION;
+    asset.m_nVersion = version;
 
     asset.m_nPageEnd = cpuseginfo.index + 1;
     asset.unk1 = bColpass ? 7 : 8; // what

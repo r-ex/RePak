@@ -194,7 +194,7 @@ struct RPakAssetEntryV8
 
 	// this isn't always changed when the asset gets changed
 	// but respawn calls it a version so i will as well
-	uint32_t m_nVersion = 0; 
+	uint32_t m_nVersion = 0;
 
 	// see AssetType enum below
 	uint32_t m_nMagic = 0;
@@ -339,7 +339,7 @@ struct TextureHeader
 	uint8_t unknown_3;
 	uint8_t permanentMipLevels;
 	uint8_t streamedMipLevels;
-	uint8_t unknown_4[21];
+	uint8_t unknown_4[29]; // bonus padding of 8
 };
 
 struct UIImageHeader
@@ -398,7 +398,7 @@ struct UIImageOffset
 	// these don't seem to matter all that much as long as they are a valid float number
 	float f0 = 0.f;
 	float f1 = 0.f;
-	
+
 	// endX and endY define where the edge of the image is, with 1.f being the full length of the image and 0.5f being half of the image
 	float endX = 1.f;
 	float endY = 1.f;
@@ -605,7 +605,7 @@ struct UnknownMaterialSection
 };
 
 // start of CMaterialGlue class
-struct MaterialHeader
+struct MaterialHeaderV16
 {
 	uint64_t VtblPtrPad = 0; // Gets set to CMaterialGlue vtbl ptr
 	uint8_t Padding[0x8]{}; // Un-used.
@@ -633,7 +633,7 @@ struct MaterialHeader
 	int16_t Height = 2048;
 	int16_t Unknown = 0;
 
-	uint32_t ImageFlags = 0x1D0300; 
+	uint32_t ImageFlags = 0x1D0300;
 	uint32_t Unknown1 = 0;
 
 	uint32_t Unknown2 = 0x1F5A92BD; // REQUIRED but why?
@@ -645,6 +645,72 @@ struct MaterialHeader
 	uint32_t something2 = 0;
 
 	UnknownMaterialSection UnkSections[2]{};
+};
+
+struct UnknownMaterialSectionV12
+{
+	uint32_t unkBlock1_1 = 0xF0138286;
+	uint32_t unkBlock1_2 = 0xF0138286;
+	uint32_t unkBlock1_3 = 0xF0008286;
+	uint32_t unkBlock1_4 = 0x00138286;
+	uint32_t unkBlock1_5 = 0x00000005;
+	uint32_t unkBlock1_6 = 0x00060000;
+	uint64_t unkBlock1_padding; // might not actually be padding
+};
+
+// should be size of 208
+struct MaterialHeaderV12
+{
+	uint64_t VtblPtrPad = 0; // Gets set to CMaterialGlue vtbl ptr
+	uint64_t padding = 0; // Un-used.
+	uint64_t AssetGUID = 0; // guid of this material asset
+
+	RPakPtr Name{}; // pointer to partial asset path
+	RPakPtr SurfaceName{}; // pointer to surface name (as defined in surfaceproperties.rson)
+	RPakPtr SurfaceName2{}; // pointer to surface name 2 
+
+	// IDX 1: DepthShadow
+	// IDX 2: DepthPrepass
+	// IDX 3: DepthVSM
+	// IDX 4: DepthShadowTight
+	// IDX 5: ColPass
+	// They seem to be the exact same for all materials throughout the game.
+	// ONE OF THESE IS MISSING FOR TITANFALL?
+
+	uint64_t GUIDRefs[4]{}; // Required to have proper textures.
+
+	// these blocks dont seem to change often but are the same?
+	UnknownMaterialSectionV12 unknownSection[2];
+
+	uint64_t ShaderSetGUID = 0; // guid of the shaderset asset that this material uses
+
+	RPakPtr TextureGUIDs{}; // TextureGUID Map 1
+	RPakPtr TextureGUIDs2{}; // TextureGUID Map 2
+
+
+	int16_t unk1 = 0;
+
+	// seems to be 0x50300 for loadscreens
+	uint32_t flags = 0x50300;
+
+	int16_t unk3 = 0;
+
+	uint64_t padding2 = 0;
+
+	// seems to be 0xFBA63181 for loadscreens
+	uint32_t unk6 = 0xFBA63181; // no clue tbh
+
+	uint32_t padding3 = 0;
+
+	// seems to be 0x10000002 for loadscreens
+	uint32_t Flags2 = 0x10000002;
+
+	uint32_t unk8 = 0x00100000; // seems to be 0x00100000 for loadscreens
+
+	int16_t Width = 2048;
+	int16_t Height = 2048;
+
+	uint32_t unk10 = 0;
 };
 
 // header struct for the material asset cpu data
