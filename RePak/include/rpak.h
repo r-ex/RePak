@@ -658,6 +658,37 @@ struct UnknownMaterialSectionV12
 	uint64_t unkBlock1_padding; // might not actually be padding
 };
 
+struct MaterialCPUDataV12
+{
+	// this data is just sorta yoinked from a material
+	float DetailTexScaleX = 1.0;
+	float UnkData1[2] = { 0.0, -0.0 };
+	float DetailTexScaleY = 1.0;
+	float UnkData2[2] = { 0.0, 0.0 };
+
+	float UnkData3[34] = {
+		1.0, 0.0, -0.0, 1.0, 0.0, 0.0, 1.0, 0.0,
+		-0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+		1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0,
+		0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 10000, -0.0,
+		0.0, 1.778
+	};
+
+	float SelfIllumR = 0.0;
+	float SelfIllumG = 0.0;
+	float SelfIllumB = 0.0;
+
+	uint8_t UnkData4[13 * 4] = {
+		0x00, 0x00, 0x00, 0x00,	0x00, 0x00, 0x00, 0x00, 
+		0x66, 0x66, 0x66, 0x3F, 0x00, 0x00, 0x20, 0x41, 
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 
+		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
+		0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x80, 0x3F, 
+		0x8F, 0xC2, 0xF5, 0x3C, 0x8F, 0xC2, 0xF5, 0x3C, 
+		0x8F, 0xC2, 0xF5, 0x3C
+	}; // this is actually floats but i cba to type all this default data in 
+};
+
 // should be size of 208
 struct MaterialHeaderV12
 {
