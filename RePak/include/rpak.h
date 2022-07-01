@@ -703,7 +703,7 @@ struct MaterialHeaderV12
 	uint32_t padding3 = 0;
 
 	// seems to be 0x10000002 for loadscreens
-	uint32_t Flags2 = 0x10000002;
+	uint32_t Flags2 = 0;
 
 	uint32_t unk8 = 0x00100000; // seems to be 0x00100000 for loadscreens
 
