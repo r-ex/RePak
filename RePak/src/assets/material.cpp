@@ -10,12 +10,18 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     std::string sAssetPath = std::string(assetPath);
 
     std::string type = "skn";
+    std::string subtype = "pilot";
     uint32_t version = 16;
 
     if (mapEntry.HasMember("type"))
         type = mapEntry["type"].GetStdString();
     else
         Warning("Adding material without an explicitly defined type. Assuming 'skn'...\n");
+
+    if (mapEntry.HasMember("subtype"))
+        subtype = mapEntry["subtype"].GetStdString();
+    else
+        Warning("No subtype is defined, this may cause issues... \n");
 
     // version check
     if (mapEntry.HasMember("version"))
@@ -161,7 +167,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, SurfaceName));
 
     // Type Handling
-    if (type == "skn_01")
+    /*if (type == "skn_01")
     {
         // I HAVE PROBABLY BROKEN THIS AT SOME POINT - spoon
 
@@ -172,10 +178,10 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         // GUIDRefs[4] is Colpass entry.
 
         //apex default shader
-        /*mtlHdr->GUIDRefs[0] = 0x2B93C99C67CC8B51;
+        mtlHdr->GUIDRefs[0] = 0x2B93C99C67CC8B51;
         mtlHdr->GUIDRefs[1] = 0x1EBD063EA03180C7;
         mtlHdr->GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
-        mtlHdr->GUIDRefs[3] = 0x227C27B608B3646B;*/
+        mtlHdr->GUIDRefs[3] = 0x227C27B608B3646B;
 
         mtlHdr->GUIDRefs[0] = 0x39C739E9928E555C;
         mtlHdr->GUIDRefs[1] = 0x67D89B36EDCDDF6E;
@@ -191,8 +197,44 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         //mtlHdr->ShaderSetGUID = 0x1D9FFF314E152725;
         mtlHdr->ShaderSetGUID = 0x586783F71E99553D;
     }
-    else if (type == "skn")
+    */
+
+    if (type == "skn")
     {
+
+        if (subtype == "pilot") {
+
+            mtlHdr->ShaderSetGUID = 0xC3ACAF7F1DC7F389;
+
+            // default flags for skn
+            mtlHdr->Flags2 = 0x56000020;
+
+        }
+        else if (subtype == "pilot_skn31") {
+
+            mtlHdr->ShaderSetGUID = 0x4CFB9F15FD2DE909;
+
+            // default flags for skn
+            mtlHdr->Flags2 = 0x56040020;
+
+        }
+        else if (subtype == "weapon") {
+
+            mtlHdr->ShaderSetGUID = 0xBD04CCCC982F8C15;
+
+            // default flags for skn
+            mtlHdr->Flags2 = 0x56000020;
+
+        }
+        else if (subtype == "weapon_skn31") {
+
+            mtlHdr->ShaderSetGUID = 0x07BF4EC4B9632A03;
+
+            // default flags for skn
+            mtlHdr->Flags2 = 0x56040020;
+
+        }
+
         mtlHdr->GUIDRefs[0] = 0xA4728358C3B043CA;
         mtlHdr->GUIDRefs[1] = 0x370BABA9D9147F3D;
         mtlHdr->GUIDRefs[2] = 0x12DCE94708487F8C;
@@ -203,11 +245,6 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
         RePak::AddFileRelation(assetEntries->size(), 3);
         assetUsesCount += 3;
-
-        mtlHdr->ShaderSetGUID = 0xC3ACAF7F1DC7F389;
-
-        // default flags for skn
-        mtlHdr->Flags2 = 0x56000020;
 
         mtlHdr->unknownSection[0].unkBlock1_1 = 0xF0138004;
         mtlHdr->unknownSection[0].unkBlock1_2 = 0xF0138004;
@@ -222,11 +259,20 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         mtlHdr->unknownSection[1].unkBlock1_4 = 0x00138004;
         mtlHdr->unknownSection[1].unkBlock1_5 = 0x00000004;
         mtlHdr->unknownSection[1].unkBlock1_6 = 0x00060017;
-    }
-    else if (type == "wldc")
-    {
 
+        mtlHdr->Flags = 0x001D0300;
+
+        mtlHdr->unk6 = 0x40D33E8F;
+
+    }
+    else if (type == "wld")
+    {
+        Warning("Type 'wld' is not supported currently!!!");
+        return;
+        /*
         // THIS IS 'wld' IN TITANFALL (I think)
+
+        //UNSUPPORTED CURRENTLY
 
         // GUIDRefs[4] is Colpass entry which is optional for wldc.
         mtlHdr->GUIDRefs[0] = 0x435FA77E363BEA48; // DepthShadow
@@ -243,11 +289,12 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         //assetUsesCount += 4;
 
         mtlHdr->ShaderSetGUID = 0x4B0F3B4CBD009096;
+        */
     }
     else if (type == "gen")
     {
         // These should always be constant (per each material type)
-        // There's different versions of these for each material type
+        // There's different versions of these for each material type\
         // GUIDRefs[3] is Colpass entry, however loadscreens do not have colpass materials.
 
         mtlHdr->GUIDRefs[0] = 0x0000000000000000;
@@ -255,6 +302,12 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         mtlHdr->GUIDRefs[2] = 0x0000000000000000;
 
         mtlHdr->ShaderSetGUID = 0xA5B8D4E9A3364655;
+
+        mtlHdr->Flags = 0x00050300;
+        mtlHdr->Flags2 = 0x10000002;
+
+        mtlHdr->unk6 = 0xFBA63181;
+
     }
 
     RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, ShaderSetGUID));
@@ -363,7 +416,30 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     // copy the rest of the data after the header
     MaterialCPUDataV12 cpudata{};
 
+    bool bSelfIllum = mapEntry.HasMember("selfIllum") && mapEntry["selfIllum"].GetBool();
+    std::float_t selfillumintensity = 1.0;
 
+    if (mapEntry.HasMember("selfillumintensity"))
+        selfillumintensity = mapEntry["selfillumintensity"].GetFloat();
+
+    if (mapEntry.HasMember("detail_scale_x"))
+        cpudata.DetailTexScaleX = mapEntry["detail_scale_x"].GetFloat();
+
+    if (mapEntry.HasMember("detail_scale_y"))
+        cpudata.DetailTexScaleY = mapEntry["detail_scale_y"].GetFloat();
+
+    if (bSelfIllum)
+    {
+        cpudata.SelfIllumR = selfillumintensity;
+        cpudata.SelfIllumG = selfillumintensity;
+        cpudata.SelfIllumB = selfillumintensity;
+    }
+    else
+    {
+        cpudata.SelfIllumR = 0.0;
+        cpudata.SelfIllumG = 0.0;
+        cpudata.SelfIllumB = 0.0;
+    }
 
     memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, &cpudata, cpuDataSize);
     //////////////////////////////////////////
