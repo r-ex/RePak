@@ -339,7 +339,7 @@ struct TextureHeader
 	uint8_t unknown_3;
 	uint8_t permanentMipLevels;
 	uint8_t streamedMipLevels;
-	uint8_t unknown_4[29]; // bonus padding of 8
+	uint8_t unknown_4[21];
 };
 
 struct UIImageHeader
@@ -587,7 +587,7 @@ struct BasicRMDLVGHeader
 };
 
 // some repeated section at the end of the material header (CMaterialGlue) struct
-struct UnknownMaterialSection
+struct UnknownMaterialSectionV16
 {
 	// required but seems to follow a pattern. maybe related to "Unknown2" above?
 	// nulling these bytes makes the material stop drawing entirely
@@ -644,49 +644,104 @@ struct MaterialHeaderV16
 	uint32_t something = 0;
 	uint32_t something2 = 0;
 
-	UnknownMaterialSection UnkSections[2]{};
+	UnknownMaterialSectionV16 UnkSections[2]{};
 };
 
 struct UnknownMaterialSectionV12
 {
-	uint32_t unkBlock1_1 = 0xF0138286;
-	uint32_t unkBlock1_2 = 0xF0138286;
-	uint32_t unkBlock1_3 = 0xF0008286;
-	uint32_t unkBlock1_4 = 0x00138286;
-	uint32_t unkBlock1_5 = 0x00000005;
-	uint32_t unkBlock1_6 = 0x00060000;
-	uint64_t unkBlock1_padding; // might not actually be padding
+	//not sure how these work but 0xF0 -> 0x00 toggles them off and vice versa.
+	//they seem to affect various rendering filters.
+	//the duplicate one is likely for the second set of textures which never gets used.
+	uint32_t UnkRenderLighting = 0xF0138286;
+	uint32_t UnkRenderAliasing = 0xF0138286;
+	uint32_t UnkRenderDoF = 0xF0008286;
+	uint32_t UnkRenderUnknown = 0x00138286;
+
+	uint32_t UnkRenderFlags = 0x00000005;
+	uint16_t VisibilityFlags = 0x0000;
+	uint16_t FaceDrawingFlags = 0x0006;
+	uint64_t UnkRender_padding; // might not actually be padding
+	
+	/*VisibilityFlags
+	0x0000 unknown
+	0x0001 inverted ignorez
+	0x0002 required when ignorez is enabled, why
+	0x0004 unknown but used in most opaque materials, not required
+	0x0008 
+	0x0010 seems to toggle transparency, will draw opaque if inverted ignorez is enabled
+
+	0x0017 used for most normal materials
+	0x0007 used for glass which makes me think 0x0010 is for translucency
+	0x0013 is vaild and looks normal  */
+	
+	/*FlagDrawingFlags Flags
+	0x0000 culling this is the same as 0x0002??? maybe the default?
+	0x0001 wireframe
+	0x0002 normal texture drawing aka culling (front side and backside drawn)
+	0x0004 inverted faces
+	0x0008 if this exists I can't tell what it is.
+
+	to get the equalivilent to 'nocull' both 'culling' and 'inverted faces' need to be enabled, see: why matls always have '0x06'.  */
+
+};
+
+struct MaterialTextureTransformMatrix 
+{
+
+	//very similar to how it's done in normal source
+	float TextureScaleX = 1.0;
+	float TextureUnk = 0.0;
+	float TextureRotation = -0.0; //counter clockwise, 0-1, exceeding one causes Weird Stuff to happen.
+	float TextureScaleY = 1.0;
+	float TextureTranslateX = 0.0;
+	float TextureTranslateY = 0.0;
+	
+};
+// this is probably an awful way of doing this that someone smart should fix later.
+struct RGBAVec4
+{
+
+	float R = 1.0;
+	float G = 1.0;
+	float B = 1.0;
+	float A = 1.0;
+
 };
 
 struct MaterialCPUDataV12
 {
-	// this data is just sorta yoinked from a material
-	float DetailTexScaleX = 1.0;
-	float UnkData1[2] = { 0.0, -0.0 };
-	float DetailTexScaleY = 1.0;
-	float UnkData2[2] = { 0.0, 0.0 };
 
-	float UnkData3[34] = {
-		1.0, 0.0, -0.0, 1.0, 0.0, 0.0, 1.0, 0.0,
-		-0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-		1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0,
-		0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 10000, -0.0,
-		0.0, 1.778
+	MaterialTextureTransformMatrix DetailTransform[1]; // detail texture transform matrix
+	MaterialTextureTransformMatrix TextureTransform[2]; // 1st is presumably texture (unconfirmed), 2nd assumed to be texture.
+
+	// this might be another texture transform matrix.
+	float UnkFloat2[6] = {
+		0.0, 0.0, 0.0, 0.0, 1.0, 0.0
 	};
 
-	float SelfIllumR = 0.0;
-	float SelfIllumG = 0.0;
-	float SelfIllumB = 0.0;
+	RGBAVec4 MainTint[1];
 
-	uint8_t UnkData4[13 * 4] = {
-		0x00, 0x00, 0x00, 0x00,	0x00, 0x00, 0x00, 0x00,
-		0x66, 0x66, 0x66, 0x3F, 0x00, 0x00, 0x20, 0x41,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F,
-		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-		0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x80, 0x3F,
-		0x8F, 0xC2, 0xF5, 0x3C, 0x8F, 0xC2, 0xF5, 0x3C,
-		0x8F, 0xC2, 0xF5, 0x3C
+	// these are vector4s for rgba I would think.
+	float UnkData1[12] = {
+
+		0.0, 0.0, 0.0, 0.0,
+		1.0, 0.0, 0.0, 0.0,
+		10000, -0.0, 0.0, 1.778
+
+	};
+
+	RGBAVec4 SelfillumTint[1];
+
+	// these are (more) vector4s for rgba I would think.
+	uint8_t UnkData2[12 * 4] = {
+	0x00, 0x00, 0x00, 0x00, 0x66, 0x66, 0x66, 0x3F, 
+	0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x80, 0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
+	0x00, 0x00, 0x80, 0x3F, 0x8F, 0xC2, 0xF5, 0x3C, 
+	0x8F, 0xC2, 0xF5, 0x3C, 0x8F, 0xC2, 0xF5, 0x3C
 	}; // this is actually floats but i cba to type all this default data in 
+	// also how the hell do you ender NAN as a float lmao??
 };
 
 // should be size of 208
@@ -703,14 +758,13 @@ struct MaterialHeaderV12
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
 	// IDX 3: DepthVSM
-	// IDX 4: DepthShadowTight
-	// IDX 5: ColPass
-	// They seem to be the exact same for all materials throughout the game.
-	// ONE OF THESE IS MISSING FOR TITANFALL?
+	// IDX 4: ColPass
+	// Titanfall is does not have 'DepthShadowTight'
 
 	uint64_t GUIDRefs[4]{}; // Required to have proper textures.
 
 	// these blocks dont seem to change often but are the same?
+	// these blocks relate to different render filters and flags. still not well understood.
 	UnknownMaterialSectionV12 unknownSection[2];
 
 	uint64_t ShaderSetGUID = 0; // guid of the shaderset asset that this material uses
@@ -721,22 +775,26 @@ struct MaterialHeaderV12
 
 	int16_t unk1 = 0;
 
-	// seems to be 0x50300 for loadscreens
-	uint32_t Flags = 0x50300;
+	// seems to be 0x50300 for loadscreens, 0x1D30 for normal materials
+	// this looks similar to the flags section in the apex materials
+	// second section has to do with tiling?
+	// 0x0000001D has been observed, seems to invert lighting?
+	uint32_t Flags = 0x5030;
 
-	int16_t unk3 = 0;
+	int16_t padding2 = 0; // always 0
 
-	uint64_t padding2 = 0;
+	uint64_t padding3 = 0; // never anything here
 
 	// seems to be 0xFBA63181 for loadscreens
 	uint32_t unk6 = 0xFBA63181; // no clue tbh
 
-	uint32_t padding3 = 0;
+	uint32_t padding4 = 0;
 
 	// seems to be 0x10000002 for loadscreens
 	uint32_t Flags2 = 0;
-
-	uint32_t unk8 = 0x00100000; // seems to be 0x00100000 for loadscreens
+	
+	// there are some edge cases where this is 0x00000000
+	uint32_t unk8 = 0x00100000; // seems mostly unchanged between all materials, including apex.
 
 	int16_t Width = 2048;
 	int16_t Height = 2048;
