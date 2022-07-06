@@ -32,15 +32,15 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     atlas.close();
 
     UIImageHeader* pHdr = new UIImageHeader();
-    pHdr->width = ddsh.width;
-    pHdr->height = ddsh.height;
+    pHdr->m_nWidth = ddsh.width;
+    pHdr->m_nHeight = ddsh.height;
 
     // legion uses this to get the texture count, so its probably set correctly
-    pHdr->textureOffsetsCount = nTexturesCount;
+    pHdr->m_nTextureOffsetsCount = nTexturesCount;
     // unused by legion? - might not be correct
     //pHdr->textureCount = nTexturesCount <= 1 ? 0 : nTexturesCount - 1; // don't even ask
-    pHdr->textureCount = 0;
-    pHdr->atlasGuid = atlasGuid;
+    pHdr->m_nTextureCount = 0;
+    pHdr->m_nAtlasGUID = atlasGuid;
 
     // calculate data sizes so we can allocate a page and segment
     uint32_t textureOffsetsDataSize = sizeof(UIImageOffset) * nTexturesCount;
@@ -72,18 +72,18 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     rmem tiBuf(pTextureInfoBuf);
 
     // set texture offset page index and offset
-    pHdr->pTextureOffsets = { tiseginfo.index, 0 };
+    pHdr->m_pTextureOffsets = { tiseginfo.index, 0 };
 
     ////////////////////
     // IMAGE OFFSETS
     for (auto& it : mapEntry["textures"].GetArray())
     {
         UIImageOffset uiio{};
-        float startX = it["posX"].GetFloat() / pHdr->width;
-        float endX = ( it["posX"].GetFloat() + it["width"].GetFloat() ) / pHdr->width;
+        float startX = it["posX"].GetFloat() / pHdr->m_nWidth;
+        float endX = ( it["posX"].GetFloat() + it["width"].GetFloat() ) / pHdr->m_nWidth;
 
-        float startY = it["posY"].GetFloat() / pHdr->height;
-        float endY = ( it["posY"].GetFloat() + it["height"].GetFloat() ) / pHdr->height;
+        float startY = it["posY"].GetFloat() / pHdr->m_nHeight;
+        float endY = ( it["posY"].GetFloat() + it["height"].GetFloat() ) / pHdr->m_nHeight;
 
         // this doesnt affect legion but does affect game?
         //uiio.InitUIImageOffset(startX, startY, endX, endY);
@@ -93,7 +93,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     ///////////////////////
     // IMAGE DIMENSIONS
     // set texture dimensions page index and offset
-    pHdr->pTextureDims = { tiseginfo.index, textureOffsetsDataSize };
+    pHdr->m_pTextureDims = { tiseginfo.index, textureOffsetsDataSize };
 
     for (auto& it : mapEntry["textures"].GetArray())
     {
@@ -102,7 +102,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     }
 
     // set texture hashes page index and offset
-    pHdr->pTextureHashes = { tiseginfo.index, textureOffsetsDataSize + textureDimensionsDataSize };
+    pHdr->m_pTextureHashes = { tiseginfo.index, textureOffsetsDataSize + textureDimensionsDataSize };
     //pHdr->pTextureNames = { tiseginfo.index, 0 };
 
     uint32_t nextStringTableOffset = 0;
@@ -134,11 +134,11 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     for (auto& it : mapEntry["textures"].GetArray())
     {
         UIImageUV uiiu{};
-        float uv0x = it["posX"].GetFloat() / pHdr->width;
-        float uv1x = it["width"].GetFloat() / pHdr->width;
+        float uv0x = it["posX"].GetFloat() / pHdr->m_nWidth;
+        float uv1x = it["width"].GetFloat() / pHdr->m_nWidth;
         Log("X: %f -> %f\n", uv0x, uv0x + uv1x);
-        float uv0y = it["posY"].GetFloat() / pHdr->height;
-        float uv1y = it["height"].GetFloat() / pHdr->height;
+        float uv0y = it["posY"].GetFloat() / pHdr->m_nHeight;
+        float uv1y = it["height"].GetFloat() / pHdr->m_nHeight;
         Log("Y: %f -> %f\n", uv0y, uv0y + uv1y);
         uiiu.InitUIImageUV(uv0x, uv0y, uv1x, uv1y);
         uvBuf.write(uiiu);
