@@ -60,12 +60,12 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     _vseginfo_t dataseginfo = RePak::CreateNewSegment(nTexturesCount * 0x10, 0x43, 4);
 
     // register our descriptors so they get converted properly
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, pTextureOffsets));
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, pTextureDims));
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, pTextureHashes));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, m_pTextureOffsets));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, m_pTextureDims));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, m_pTextureHashes));
 
     // textureGUID descriptors
-    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, atlasGuid));
+    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, m_nAtlasGUID));
 
     // buffer for texture info data
     char* pTextureInfoBuf = new char[textureInfoPageSize]{};
