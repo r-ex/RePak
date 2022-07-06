@@ -10,7 +10,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     std::string sAssetPath = std::string(assetPath);
 
     std::string type = "skn";
-    std::string subtype = "pilot";
+    std::string subtype = "";
     uint32_t version = 16;
 
     if (mapEntry.HasMember("type"))
@@ -50,6 +50,16 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
     //if (mapEntry.HasMember("flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
     //    mtlHdr->ImageFlags = mapEntry["flags"].GetUint();
+
+    if (mapEntry.HasMember("faceflags")) {
+        mtlHdr->unknownSection[0].FaceDrawingFlags = mapEntry["faceflags"].GetInt();
+        mtlHdr->unknownSection[1].FaceDrawingFlags = mapEntry["faceflags"].GetInt();
+        Log("Using faceflags, only touch this if you know what you're doing! \n");
+    }
+    else {
+        mtlHdr->unknownSection[0].FaceDrawingFlags = 0x0006;
+        mtlHdr->unknownSection[1].FaceDrawingFlags = 0x0006;
+    }
 
     std::string surface = "default";
 
@@ -125,7 +135,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         {
             //uint64_t guid = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str());
 
-            //there should not be anything her so it shall remain 0
+            //there should not be anything here so it shall remain 0
             uint64_t guid = 0x0000000000000000;
 
             *(uint64_t*)dataBuf = guid;
@@ -167,21 +177,110 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, SurfaceName));
 
     // Type Handling
-    /*if (type == "skn_01")
+    if (type == "gen")
     {
-        // I HAVE PROBABLY BROKEN THIS AT SOME POINT - spoon
 
-        //for testing purposes ""sknp"" will be a material with a full suite of textures.
+        if (subtype == "loadscreen") {
 
-        // These should always be constant (per each material type)
-        // There's different versions of these for each material type
-        // GUIDRefs[4] is Colpass entry.
+            mtlHdr->Flags2 = 0x10000002;
 
-        //apex default shader
-        mtlHdr->GUIDRefs[0] = 0x2B93C99C67CC8B51;
-        mtlHdr->GUIDRefs[1] = 0x1EBD063EA03180C7;
-        mtlHdr->GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
-        mtlHdr->GUIDRefs[3] = 0x227C27B608B3646B;
+            mtlHdr->ShaderSetGUID = 0xA5B8D4E9A3364655;
+
+        }
+        else {
+
+            Warning("Invalid type used! Defaulting to subtype 'loadscreen'... \n");
+
+            mtlHdr->Flags2 = 0x10000002;
+
+            mtlHdr->ShaderSetGUID = 0xA5B8D4E9A3364655;
+
+        }
+
+    // These should always be constant (per each material type)
+    // There's different versions of these for each material type\
+        // GUIDRefs[3] is Colpass entry, however loadscreens do not have colpass materials.
+
+        mtlHdr->GUIDRefs[0] = 0x0000000000000000;
+        mtlHdr->GUIDRefs[1] = 0x0000000000000000;
+        mtlHdr->GUIDRefs[2] = 0x0000000000000000;
+
+        mtlHdr->Flags = 0x00050300;
+
+        mtlHdr->unk6 = 0xFBA63181;
+
+    }
+    else if (type == "wld")
+    {
+        Warning("Type 'wld' is not supported currently!!!");
+        return;
+        /*
+        // THIS IS 'wld' IN TITANFALL (I think)
+
+        //UNSUPPORTED CURRENTLY
+
+        // GUIDRefs[4] is Colpass entry which is optional for wldc.
+        mtlHdr->GUIDRefs[0] = 0x435FA77E363BEA48; // DepthShadow
+        mtlHdr->GUIDRefs[1] = 0xF734F96BE92E0E71; // DepthPrepass
+        mtlHdr->GUIDRefs[2] = 0xD306370918620EC0; // DepthVSM
+        mtlHdr->GUIDRefs[3] = 0xDAB17AEAD2D3387A; // DepthShadowTight
+
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs));
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 8);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 16);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 24);
+
+        //RePak::AddFileRelation(assetEntries->size(), 4);
+        //assetUsesCount += 4;
+
+        mtlHdr->ShaderSetGUID = 0x4B0F3B4CBD009096;
+        */
+    }
+    else if (type == "fix")
+    {
+
+        if (subtype == "pilot") {
+
+            mtlHdr->ShaderSetGUID = 0x586783F71E99553D;
+
+            // default flags for skn
+            mtlHdr->Flags2 = 0x56000020;
+
+        }
+        else if (subtype == "pilot_skn31") {
+
+            mtlHdr->ShaderSetGUID = 0x5F8181FEFDB0BAD8;
+
+            // default flags for skn
+            mtlHdr->Flags2 = 0x56040020;
+
+        }
+        else if (subtype == "weapon") {
+
+            mtlHdr->ShaderSetGUID = 0x5259835D8C44A14D;
+
+            // default flags for skn
+            mtlHdr->Flags2 = 0x56000020;
+
+        }
+        else if (subtype == "weapon_skn31") {
+
+            mtlHdr->ShaderSetGUID = 0x19F840A12774CA4C;
+
+            // default flags for skn
+            mtlHdr->Flags2 = 0x56040020;
+
+        }
+        else {
+
+            Warning("Invalid type used! Defaulting to subtype 'weapon'... \n");
+
+            mtlHdr->ShaderSetGUID = 0x5259835D8C44A14D;
+
+            // default flags for skn
+            mtlHdr->Flags2 = 0x56000020;
+
+        }
 
         mtlHdr->GUIDRefs[0] = 0x39C739E9928E555C;
         mtlHdr->GUIDRefs[1] = 0x67D89B36EDCDDF6E;
@@ -194,12 +293,35 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         RePak::AddFileRelation(assetEntries->size(), 3);
         assetUsesCount += 3;
 
-        //mtlHdr->ShaderSetGUID = 0x1D9FFF314E152725;
-        mtlHdr->ShaderSetGUID = 0x586783F71E99553D;
-    }
-    */
+        mtlHdr->unknownSection[0].UnkRenderLighting = 0xF0138004;
+        mtlHdr->unknownSection[0].UnkRenderAliasing = 0xF0138004;
+        mtlHdr->unknownSection[0].UnkRenderDoF = 0xF0138004;
+        mtlHdr->unknownSection[0].UnkRenderUnknown = 0x00138004;
 
-    if (type == "skn")
+        mtlHdr->unknownSection[0].UnkRenderFlags = 0x00000004;
+        mtlHdr->unknownSection[0].VisibilityFlags = 0x0017;
+        //mtlHdr->unknownSection[0].FaceDrawingFlags = 0x0006;
+
+        mtlHdr->unknownSection[1].UnkRenderLighting = 0xF0138004;
+        mtlHdr->unknownSection[1].UnkRenderAliasing = 0xF0138004;
+        mtlHdr->unknownSection[1].UnkRenderDoF = 0xF0138004;
+        mtlHdr->unknownSection[1].UnkRenderUnknown = 0x00138004;
+
+        mtlHdr->unknownSection[1].UnkRenderFlags = 0x00000004;
+        mtlHdr->unknownSection[1].VisibilityFlags = 0x0017;
+        //mtlHdr->unknownSection[1].FaceDrawingFlags = 0x0006;
+
+        mtlHdr->Flags = 0x001D0300;
+
+        mtlHdr->unk6 = 0x40D33E8F;
+
+    }
+    else if (type == "rgd")
+    {
+        Warning("Type 'rgd' is not supported currently!!!");
+        return;
+    }
+    else if (type == "skn")
     {
 
         if (subtype == "pilot") {
@@ -234,6 +356,16 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
             mtlHdr->Flags2 = 0x56040020;
 
         }
+        else {
+
+            Warning("Invalid type used! Defaulting to subtype 'weapon'... \n");
+
+            mtlHdr->ShaderSetGUID = 0xBD04CCCC982F8C15;
+
+            // default flags for skn
+            mtlHdr->Flags2 = 0x56000020;
+
+        }
 
         mtlHdr->GUIDRefs[0] = 0xA4728358C3B043CA;
         mtlHdr->GUIDRefs[1] = 0x370BABA9D9147F3D;
@@ -246,67 +378,27 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         RePak::AddFileRelation(assetEntries->size(), 3);
         assetUsesCount += 3;
 
-        mtlHdr->unknownSection[0].unkBlock1_1 = 0xF0138004;
-        mtlHdr->unknownSection[0].unkBlock1_2 = 0xF0138004;
-        mtlHdr->unknownSection[0].unkBlock1_3 = 0xF0138004;
-        mtlHdr->unknownSection[0].unkBlock1_4 = 0x00138004;
-        mtlHdr->unknownSection[0].unkBlock1_5 = 0x00000004;
-        mtlHdr->unknownSection[0].unkBlock1_6 = 0x00060017;
+        mtlHdr->unknownSection[0].UnkRenderLighting = 0xF0138004;
+        mtlHdr->unknownSection[0].UnkRenderAliasing = 0xF0138004;
+        mtlHdr->unknownSection[0].UnkRenderDoF = 0xF0138004;
+        mtlHdr->unknownSection[0].UnkRenderUnknown = 0x00138004;
 
-        mtlHdr->unknownSection[1].unkBlock1_1 = 0xF0138004;
-        mtlHdr->unknownSection[1].unkBlock1_2 = 0xF0138004;
-        mtlHdr->unknownSection[1].unkBlock1_3 = 0xF0138004;
-        mtlHdr->unknownSection[1].unkBlock1_4 = 0x00138004;
-        mtlHdr->unknownSection[1].unkBlock1_5 = 0x00000004;
-        mtlHdr->unknownSection[1].unkBlock1_6 = 0x00060017;
+        mtlHdr->unknownSection[0].UnkRenderFlags = 0x00000004;
+        mtlHdr->unknownSection[0].VisibilityFlags = 0x0017;
+        //mtlHdr->unknownSection[0].FaceDrawingFlags = 0x0006;
+
+        mtlHdr->unknownSection[1].UnkRenderLighting = 0xF0138004;
+        mtlHdr->unknownSection[1].UnkRenderAliasing = 0xF0138004;
+        mtlHdr->unknownSection[1].UnkRenderDoF = 0xF0138004;
+        mtlHdr->unknownSection[1].UnkRenderUnknown = 0x00138004;
+
+        mtlHdr->unknownSection[1].UnkRenderFlags = 0x00000004;
+        mtlHdr->unknownSection[1].VisibilityFlags = 0x0017;
+        //mtlHdr->unknownSection[1].FaceDrawingFlags = 0x0006;
 
         mtlHdr->Flags = 0x001D0300;
 
         mtlHdr->unk6 = 0x40D33E8F;
-
-    }
-    else if (type == "wld")
-    {
-        Warning("Type 'wld' is not supported currently!!!");
-        return;
-        /*
-        // THIS IS 'wld' IN TITANFALL (I think)
-
-        //UNSUPPORTED CURRENTLY
-
-        // GUIDRefs[4] is Colpass entry which is optional for wldc.
-        mtlHdr->GUIDRefs[0] = 0x435FA77E363BEA48; // DepthShadow
-        mtlHdr->GUIDRefs[1] = 0xF734F96BE92E0E71; // DepthPrepass
-        mtlHdr->GUIDRefs[2] = 0xD306370918620EC0; // DepthVSM
-        mtlHdr->GUIDRefs[3] = 0xDAB17AEAD2D3387A; // DepthShadowTight
-
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs));
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 8);
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 16);
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 24);
-
-        //RePak::AddFileRelation(assetEntries->size(), 4);
-        //assetUsesCount += 4;
-
-        mtlHdr->ShaderSetGUID = 0x4B0F3B4CBD009096;
-        */
-    }
-    else if (type == "gen")
-    {
-        // These should always be constant (per each material type)
-        // There's different versions of these for each material type\
-        // GUIDRefs[3] is Colpass entry, however loadscreens do not have colpass materials.
-
-        mtlHdr->GUIDRefs[0] = 0x0000000000000000;
-        mtlHdr->GUIDRefs[1] = 0x0000000000000000;
-        mtlHdr->GUIDRefs[2] = 0x0000000000000000;
-
-        mtlHdr->ShaderSetGUID = 0xA5B8D4E9A3364655;
-
-        mtlHdr->Flags = 0x00050300;
-        mtlHdr->Flags2 = 0x10000002;
-
-        mtlHdr->unk6 = 0xFBA63181;
 
     }
 
@@ -321,9 +413,9 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + ".rpak";
         mtlHdr->GUIDRefs[3] = RTech::StringToGuid(colpassPath.c_str());
 
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 32);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 24);
         RePak::AddFileRelation(assetEntries->size());
-        assetUsesCount++;
+        //assetUsesCount++;
 
         bColpass = false;
     }
@@ -417,28 +509,32 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     MaterialCPUDataV12 cpudata{};
 
     bool bSelfIllum = mapEntry.HasMember("selfIllum") && mapEntry["selfIllum"].GetBool();
-    std::float_t selfillumintensity = 1.0;
+    std::float_t selfillumintensity = 1.0; //this should be swapped over to array of floats named "selfillumtint".
+   // std::float_t selfillumtint[4] = { };
 
     if (mapEntry.HasMember("selfillumintensity"))
         selfillumintensity = mapEntry["selfillumintensity"].GetFloat();
 
+    // these should also be changed into an array of floats for the texture transform matrix, something like "detailtexturetransform" should work..
     if (mapEntry.HasMember("detail_scale_x"))
-        cpudata.DetailTexScaleX = mapEntry["detail_scale_x"].GetFloat();
+        cpudata.DetailTransform->TextureScaleX = mapEntry["detail_scale_x"].GetFloat();
 
     if (mapEntry.HasMember("detail_scale_y"))
-        cpudata.DetailTexScaleY = mapEntry["detail_scale_y"].GetFloat();
+        cpudata.DetailTransform->TextureScaleY = mapEntry["detail_scale_y"].GetFloat();
 
-    if (bSelfIllum)
+    if (bSelfIllum && mapEntry.HasMember("selfillumintensity"))
     {
-        cpudata.SelfIllumR = selfillumintensity;
-        cpudata.SelfIllumG = selfillumintensity;
-        cpudata.SelfIllumB = selfillumintensity;
+        cpudata.SelfillumTint->R = selfillumintensity;
+        cpudata.SelfillumTint->G = selfillumintensity;
+        cpudata.SelfillumTint->B = selfillumintensity;
+        cpudata.SelfillumTint->A = 0.0; // should change once array is implemented.
     }
     else
     {
-        cpudata.SelfIllumR = 0.0;
-        cpudata.SelfIllumG = 0.0;
-        cpudata.SelfIllumB = 0.0;
+        cpudata.SelfillumTint->R = 0.0;
+        cpudata.SelfillumTint->G = 0.0;
+        cpudata.SelfillumTint->B = 0.0;
+        cpudata.SelfillumTint->A = 0.0;
     }
 
     memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, &cpudata, cpuDataSize);
