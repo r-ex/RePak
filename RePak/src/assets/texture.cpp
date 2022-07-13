@@ -42,6 +42,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
         hdr->m_nDataLength = ddsh.pitchOrLinearSize;
         hdr->m_nWidth = ddsh.width;
         hdr->m_nHeight = ddsh.height;
+        Log("-> dimensions: %ix%i\n", ddsh.width, ddsh.height);
 
         DXGI_FORMAT dxgiFormat;
 
