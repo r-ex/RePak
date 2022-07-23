@@ -18,24 +18,24 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     std::string sFullAssetRpakPath = "material/" + sAssetPath + "_" + type + ".rpak"; // Make full rpak asset path.
 
-    mtlHdr->AssetGUID = RTech::StringToGuid(sFullAssetRpakPath.c_str()); // Convert full rpak asset path to textureGUID and set it in the material header.
+    mtlHdr->m_nGUID = RTech::StringToGuid(sFullAssetRpakPath.c_str()); // Convert full rpak asset path to textureGUID and set it in the material header.
 
     // Game ignores this field when parsing, retail rpaks also have this as 0. But In-Game its being set to either 0x4, 0x5, 0x9.
     // Based on resolution.
     // 512x512 = 0x5
     // 1024x1024 = 0x4
     // 2048x2048 = 0x9
-    if (mapEntry.HasMember("signature"))
-        mtlHdr->UnknownSignature = mapEntry["signature"].GetInt();
+    //if (mapEntry.HasMember("signature"))
+    //    mtlHdr->StreamableTextureCount = mapEntry["signature"].GetInt();
 
     if (mapEntry.HasMember("width")) // Set material width.
-        mtlHdr->Width = mapEntry["width"].GetInt();
+        mtlHdr->m_nWidth = mapEntry["width"].GetInt();
 
     if (mapEntry.HasMember("height")) // Set material width.
-        mtlHdr->Height = mapEntry["height"].GetInt();
+        mtlHdr->m_nHeight = mapEntry["height"].GetInt();
 
     if (mapEntry.HasMember("flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
-        mtlHdr->ImageFlags = mapEntry["flags"].GetUint();
+        mtlHdr->m_SomeFlags = mapEntry["flags"].GetUint();
 
     std::string surface = "default";
 
@@ -135,14 +135,14 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     // ===============================
     // fill out the rest of the header
-    mtlHdr->Name.m_nIndex = dataseginfo.index;
-    mtlHdr->Name.m_nOffset = 0;
+    mtlHdr->m_pszName.m_nIndex = dataseginfo.index;
+    mtlHdr->m_pszName.m_nOffset = 0;
 
-    mtlHdr->SurfaceName.m_nIndex = dataseginfo.index;
-    mtlHdr->SurfaceName.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
+    mtlHdr->m_pszSurfaceProp.m_nIndex = dataseginfo.index;
+    mtlHdr->m_pszSurfaceProp.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
 
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, Name));
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, SurfaceName));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_pszName));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_pszSurfaceProp));
 
     // Type Handling
     if (type == "sknp")
@@ -150,41 +150,41 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
         // These should always be constant (per each material type)
         // There's different versions of these for each material type
         // GUIDRefs[4] is Colpass entry.
-        mtlHdr->GUIDRefs[0] = 0x2B93C99C67CC8B51;
-        mtlHdr->GUIDRefs[1] = 0x1EBD063EA03180C7;
-        mtlHdr->GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
-        mtlHdr->GUIDRefs[3] = 0x227C27B608B3646B;
+        mtlHdr->m_GUIDRefs[0] = 0x2B93C99C67CC8B51;
+        mtlHdr->m_GUIDRefs[1] = 0x1EBD063EA03180C7;
+        mtlHdr->m_GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
+        mtlHdr->m_GUIDRefs[3] = 0x227C27B608B3646B;
 
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs));
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 8);
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 16);
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 24);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_GUIDRefs));
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_GUIDRefs) + 8);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_GUIDRefs) + 16);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_GUIDRefs) + 24);
 
         RePak::AddFileRelation(assetEntries->size(), 4);
         assetUsesCount += 4;
 
-        mtlHdr->ShaderSetGUID = 0x1D9FFF314E152725;
+        mtlHdr->m_pShaderSet = 0x1D9FFF314E152725;
     }
     else if (type == "wldc")
     {
         // GUIDRefs[4] is Colpass entry which is optional for wldc.
-        mtlHdr->GUIDRefs[0] = 0x435FA77E363BEA48; // DepthShadow
-        mtlHdr->GUIDRefs[1] = 0xF734F96BE92E0E71; // DepthPrepass
-        mtlHdr->GUIDRefs[2] = 0xD306370918620EC0; // DepthVSM
-        mtlHdr->GUIDRefs[3] = 0xDAB17AEAD2D3387A; // DepthShadowTight
+        mtlHdr->m_GUIDRefs[0] = 0x435FA77E363BEA48; // DepthShadow
+        mtlHdr->m_GUIDRefs[1] = 0xF734F96BE92E0E71; // DepthPrepass
+        mtlHdr->m_GUIDRefs[2] = 0xD306370918620EC0; // DepthVSM
+        mtlHdr->m_GUIDRefs[3] = 0xDAB17AEAD2D3387A; // DepthShadowTight
 
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs));
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 8);
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 16);
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 24);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_GUIDRefs));
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_GUIDRefs) + 8);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_GUIDRefs) + 16);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_GUIDRefs) + 24);
 
         RePak::AddFileRelation(assetEntries->size(), 4);
         assetUsesCount += 4;
 
-        mtlHdr->ShaderSetGUID = 0x4B0F3B4CBD009096;
+        mtlHdr->m_pShaderSet = 0x4B0F3B4CBD009096;
     }
 
-    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, ShaderSetGUID));
+    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_pShaderSet));
     RePak::AddFileRelation(assetEntries->size());
     assetUsesCount++;
 
@@ -193,22 +193,22 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     if (mapEntry.HasMember("colpass"))
     {
         std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + ".rpak";
-        mtlHdr->GUIDRefs[4] = RTech::StringToGuid(colpassPath.c_str());
+        mtlHdr->m_GUIDRefs[4] = RTech::StringToGuid(colpassPath.c_str());
 
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 32);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_GUIDRefs) + 32);
         RePak::AddFileRelation(assetEntries->size());
         assetUsesCount++;
 
         bColpass = false;
     }
-    mtlHdr->TextureGUIDs.m_nIndex = dataseginfo.index;
-    mtlHdr->TextureGUIDs.m_nOffset = guidPageOffset;
+    mtlHdr->m_pTextureHandles.m_nIndex = dataseginfo.index;
+    mtlHdr->m_pTextureHandles.m_nOffset = guidPageOffset;
 
-    mtlHdr->TextureGUIDs2.m_nIndex = dataseginfo.index;
-    mtlHdr->TextureGUIDs2.m_nOffset = guidPageOffset + textureRefSize;
+    mtlHdr->m_pStreamingTextureHandles.m_nIndex = dataseginfo.index;
+    mtlHdr->m_pStreamingTextureHandles.m_nOffset = guidPageOffset + textureRefSize;
 
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, TextureGUIDs));
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, TextureGUIDs2));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_pTextureHandles));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeader, m_pStreamingTextureHandles));
 
     mtlHdr->something = 0x72000000;
     mtlHdr->something2 = 0x100000;
@@ -216,13 +216,13 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     for (int i = 0; i < 2; ++i)
     {
         for (int j = 0; j < 8; ++j)
-            mtlHdr->UnkSections[i].Unknown5[j] = 0xf0000000;
+            mtlHdr->m_UnknownSections[i].m_Unknown1[j] = 0xf0000000;
 
         uint32_t f1 = bColpass ? 0x5 : 0x17;
 
-        mtlHdr->UnkSections[i].Unknown6 = 4;
-        mtlHdr->UnkSections[i].Flags1 = f1;
-        mtlHdr->UnkSections[i].Flags2 = 6;
+        mtlHdr->m_UnknownSections[i].m_Unknown2 = 4;
+        mtlHdr->m_UnknownSections[i].m_Flags1 = f1;
+        mtlHdr->m_UnknownSections[i].m_Flags2 = 6;
     }
 
     //////////////////////////////////////////
@@ -281,10 +281,11 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     char* cpuData = new char[sizeof(MaterialCPUHeader) + cpuDataSize];
 
     // copy header into the start
-    memcpy_s(cpuData, 16, &cpuhdr, 16);
+    memcpy_s(cpuData, sizeof(MaterialCPUHeader), &cpuhdr, sizeof(MaterialCPUHeader));
 
     // copy the rest of the data after the header
     memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, testData, cpuDataSize);
+
     //////////////////////////////////////////
 
     RePak::AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)mtlHdr });

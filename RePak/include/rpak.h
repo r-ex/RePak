@@ -265,7 +265,7 @@ struct TextureHeader
 	uint8_t  unk2;
 	uint8_t  m_nPermanentMipLevels;
 	uint8_t  m_nStreamedMipLevels;
-	uint8_t  unk3[21];
+	uint8_t  unk3[0x15];
 };
 
 struct UIImageHeader
@@ -500,29 +500,29 @@ struct UnknownMaterialSection
 {
 	// required but seems to follow a pattern. maybe related to "Unknown2" above?
 	// nulling these bytes makes the material stop drawing entirely
-	uint32_t Unknown5[8]{};
+	
+	uint32_t m_Unknown1[8]{};
 
-	uint32_t Unknown6 = 0;
-
-	// both of these are required
+	uint32_t m_Unknown2 = 0;
 
 	// seems to be some kind of render/visibility flag.
-	uint16_t Flags1 = 0x17;
-	uint16_t Flags2 = 0x6; // i'm not sure about what this one does exactly
+	uint16_t m_Flags1 = 0x17;
+	uint16_t m_Flags2 = 0x6;
 
-	uint64_t Padding = 0;
-};
+	uint64_t m_Padding = 0;
+}; // total size = 0x30
 
 // start of CMaterialGlue class
 struct MaterialHeader
 {
-	uint64_t VtblPtrPad = 0; // Gets set to CMaterialGlue vtbl ptr
-	uint8_t Padding[0x8]{}; // Un-used.
-	uint64_t AssetGUID = 0; // guid of this material asset
+	uint64_t m_VtblReserved = 0; // Gets set to CMaterialGlue vtbl ptr
+	uint8_t m_Padding[0x8]{}; // unused
 
-	RPakPtr Name{}; // pointer to partial asset path
-	RPakPtr SurfaceName{}; // pointer to surface name (as defined in surfaceproperties.rson)
-	RPakPtr SurfaceName2{}; // pointer to surface name 2 
+	uint64_t m_nGUID = 0; // guid of this material asset
+
+	RPakPtr m_pszName{}; // pointer to partial asset path
+	RPakPtr m_pszSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	RPakPtr m_pszSurfaceProp2{}; // pointer to surfaceprop2 
 
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
@@ -530,30 +530,35 @@ struct MaterialHeader
 	// IDX 4: DepthShadowTight
 	// IDX 5: ColPass
 	// They seem to be the exact same for all materials throughout the game.
-	uint64_t GUIDRefs[5]{}; // Required to have proper textures.
-	uint64_t ShaderSetGUID = 0; // guid of the shaderset asset that this material uses
+	uint64_t m_GUIDRefs[5]{}; // Required to have proper textures.
+	uint64_t m_pShaderSet = 0; // guid of the shaderset asset that this material uses
 
-	RPakPtr TextureGUIDs{}; // TextureGUID Map 1
-	RPakPtr TextureGUIDs2{}; // TextureGUID Map 2
+	/* 0x60 */ RPakPtr m_pTextureHandles{}; // TextureGUID Map 1
 
-	// ????? maybe some vtf-style thing?
-	int16_t UnknownSignature = 0x4;
-	int16_t Width = 2048;
-	int16_t Height = 2048;
-	int16_t Unknown = 0;
+	// should be reserved - used to store the handles for any textures that have streaming mip levels
+	/* 0x68 */ RPakPtr m_pStreamingTextureHandles{};
 
-	uint32_t ImageFlags = 0x1D0300; 
-	uint32_t Unknown1 = 0;
+	/* 0x70 */ int16_t m_nStreamingTextureHandleCount = 0x4;
+	/* 0x72 */ int16_t m_nWidth = 2048;
+	/* 0x74 */ int16_t m_nHeight = 2048;
+	/* 0x76 */ int16_t m_Unknown1 = 0;
 
-	uint32_t Unknown2 = 0x1F5A92BD; // REQUIRED but why?
+	/* 0x78 */ uint32_t m_SomeFlags = 0x1D0300;
+	/* 0x7C */ uint32_t m_Unknown2 = 0;
 
-	uint32_t Alignment = 0;
+	/* 0x80 */ uint32_t m_Unknown3 = 0x1F5A92BD; // REQUIRED but why?
 
-	// neither of these 2 seem to be required
-	uint32_t something = 0;
-	uint32_t something2 = 0;
+	/* 0x84 */ uint32_t m_Unknown4 = 0;
 
-	UnknownMaterialSection UnkSections[2]{};
+	/* 0x88 */ uint32_t something = 0;
+	/* 0x8C */ uint32_t something2 = 0;
+
+	/* 0x90 */ UnknownMaterialSection m_UnknownSections[2]{};
+	/* 0xF0 */ uint8_t bytef0;
+	/* 0xF1 */ uint8_t bytef1;
+	/* 0xF2 */ uint8_t bytef2;
+	/* 0xF3 */ uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
+	/* 0xF4 */ char pad_00F4[12];
 };
 
 // header struct for the material asset cpu data
@@ -575,7 +580,7 @@ struct PtchEntry
 };
 
 // map of dxgi format to the corresponding txtr asset format value
-static std::map<DXGI_FORMAT, uint16_t> TxtrFormatMap{
+static std::map<DXGI_FORMAT, uint16_t> s_txtrFormatMap{
 	{ DXGI_FORMAT_BC1_UNORM, 0 },
 	{ DXGI_FORMAT_BC1_UNORM_SRGB, 1 },
 	{ DXGI_FORMAT_BC2_UNORM, 2 },

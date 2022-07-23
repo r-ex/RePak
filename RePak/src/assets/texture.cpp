@@ -6,7 +6,6 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 {
     Debug("Adding txtr asset '%s'\n", assetPath);
 
-
     std::string filePath = g_sAssetsDir + assetPath + ".dds";
 
     if (!FILE_EXISTS(filePath))
@@ -69,7 +68,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
             return;
         }
 
-        hdr->m_nFormat = (uint16_t)TxtrFormatMap[dxgiFormat];
+        hdr->m_nFormat = s_txtrFormatMap[dxgiFormat];
 
         // go to the end of the main header
         input.seek(ddsh.size + 4);
@@ -102,7 +101,6 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
         delete[] namebuf;
     }
 
-    // woo more segments
     // cpu data
     _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->m_nDataLength, 3, 16);
 

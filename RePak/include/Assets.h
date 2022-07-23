@@ -5,7 +5,7 @@
 #define UIMG_VERSION 10
 #define DTBL_VERSION 1
 #define RMDL_VERSION 9
-#define MATL_VERSION 16
+#define MATL_VERSION 15
 
 namespace Assets
 {
