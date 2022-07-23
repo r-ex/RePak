@@ -89,6 +89,23 @@ RPakAssetEntryV7* RePak::GetAssetByGuid(std::vector<RPakAssetEntryV7>* assets, u
     return nullptr;
 }
 
+RPakAssetEntryV8* RePak::GetAssetByGuid(std::vector<RPakAssetEntryV8>* assets, uint64_t guid, uint32_t* idx)
+{
+    uint32_t i = 0;
+    for (auto& it : *assets)
+    {
+        if (it.m_nGUID == guid)
+        {
+            if (idx)
+                *idx = i;
+            return &it;
+        }
+        i++;
+    }
+    Debug("failed to find asset with guid %llX\n", guid);
+    return nullptr;
+}
+
 void WriteRPakRawDataBlock(BinaryIO& out, std::vector<RPakRawDataBlock>& rawDataBlock)
 {
     for (auto it = rawDataBlock.begin(); it != rawDataBlock.end(); ++it)
@@ -173,22 +190,56 @@ int main(int argc, char** argv)
         // ensure that the path has a slash at the end
         Utils::AppendSlash(sOutputDir);
     }
+
+    if (!doc.HasMember("version"))
+    {
+        Error("Map file doesn't specify an RPak version\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
+        return EXIT_FAILURE;
+    }
+    else if (!doc["version"].IsInt())
+    {
+        Error("Invalid RPak version specified\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
+        return EXIT_FAILURE;
+    }
+
     // end json parsing
 
     Log("building rpak %s.rpak\n\n", sRpakName.c_str());
 
-    std::vector<RPakAssetEntryV7> assetEntries{ };
+    // there has to be a nice way to change the RPakAssetEntry versions here dynamically or something
+    std::vector<RPakAssetEntryV7> assetEntries_v7{ };
+    std::vector<RPakAssetEntryV8> assetEntries_v8{ };
 
     // build asset data
-    // loop through all assets defined in the map json
-    for (auto& file : doc["files"].GetArray())
+    switch (doc["version"].GetInt())
     {
-        ASSET_HANDLER("txtr", file, assetEntries, Assets::AddTextureAsset);
-        ASSET_HANDLER("uimg", file, assetEntries, Assets::AddUIImageAsset);
-        ASSET_HANDLER("Ptch", file, assetEntries, Assets::AddPatchAsset);
-        ASSET_HANDLER("dtbl", file, assetEntries, Assets::AddDataTableAsset);
-        ASSET_HANDLER("rmdl", file, assetEntries, Assets::AddModelAsset);
-        ASSET_HANDLER("matl", file, assetEntries, Assets::AddMaterialAsset);
+    case 7:
+        // loop through all assets defined in the map json
+        for (auto& file : doc["files"].GetArray())
+        {
+            ASSET_HANDLER("txtr", file, assetEntries_v7, Assets::AddTextureAsset);
+            ASSET_HANDLER("uimg", file, assetEntries_v7, Assets::AddUIImageAsset);
+            ASSET_HANDLER("Ptch", file, assetEntries_v7, Assets::AddPatchAsset);
+            ASSET_HANDLER("dtbl", file, assetEntries_v7, Assets::AddDataTableAsset);
+            ASSET_HANDLER("rmdl", file, assetEntries_v7, Assets::AddModelAsset);
+            ASSET_HANDLER("matl", file, assetEntries_v7, Assets::AddMaterialAsset);
+        }
+        break;
+    case 8:
+        // loop through all assets defined in the map json
+        for (auto& file : doc["files"].GetArray())
+        {
+            ASSET_HANDLER("txtr", file, assetEntries_v8, Assets::AddTextureAsset);
+            ASSET_HANDLER("uimg", file, assetEntries_v8, Assets::AddUIImageAsset);
+            ASSET_HANDLER("Ptch", file, assetEntries_v8, Assets::AddPatchAsset);
+            ASSET_HANDLER("dtbl", file, assetEntries_v8, Assets::AddDataTableAsset);
+            ASSET_HANDLER("rmdl", file, assetEntries_v8, Assets::AddModelAsset);
+            ASSET_HANDLER("matl", file, assetEntries_v8, Assets::AddMaterialAsset);
+        }
+        break;
+    default:
+        Error("Unsupported RPak version specified in map file\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
+        return EXIT_FAILURE;
     }
 
     std::filesystem::create_directories(sOutputDir); // create directory if it does not exist yet.
@@ -210,7 +261,20 @@ int main(int argc, char** argv)
     WRITE_VECTOR(out, g_vvSegments);
     WRITE_VECTOR(out, g_vPages);
     WRITE_VECTOR(out, g_vDescriptors);
-    WRITE_VECTOR(out, assetEntries);
+    // i hate this
+    switch (doc["version"].GetInt())
+    {
+    case 7:
+        WRITE_VECTOR(out, assetEntries_v7);
+        break;
+    case 8:
+        WRITE_VECTOR(out, assetEntries_v8);
+        break;
+    default:
+        Error("Unsupported RPak version specified in map file\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
+        return EXIT_FAILURE;
+    }
+    
     WRITE_VECTOR(out, g_vGuidDescriptors);
     WRITE_VECTOR(out, g_vFileRelations);
 
@@ -231,7 +295,19 @@ int main(int argc, char** argv)
     rpakHeader.m_nDescriptorCount = (uint32_t)g_vDescriptors.size();
     rpakHeader.m_nGuidDescriptorCount = (uint32_t)g_vGuidDescriptors.size();
     rpakHeader.m_nRelationsCounts = (uint32_t)g_vFileRelations.size();
-    rpakHeader.m_nAssetEntryCount = (uint32_t)assetEntries.size();
+    // i hate this
+    switch (doc["version"].GetInt())
+    {
+    case 7:
+        rpakHeader.m_nAssetEntryCount = (uint32_t)assetEntries_v7.size();
+        break;
+    case 8:
+        rpakHeader.m_nAssetEntryCount = (uint32_t)assetEntries_v8.size();
+        break;
+    default:
+        Error("Unsupported RPak version specified in map file\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
+        return EXIT_FAILURE;
+    }
     rpakHeader.m_nStarpakReferenceSize = (uint16_t)StarpakRefLength;
     //rpakHeader.m_nStarpakOptReferenceSize = (uint16_t)OptStarpakRefLength;
 

@@ -3,6 +3,11 @@
 
 void Assets::AddModelAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
+    Error("RPak version 7 (Titanfall 2) cannot contain models");
+}
+
+void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+{
     Debug("Adding mdl_ asset '%s'\n", assetPath);
 
     std::string sAssetName = std::string(assetPath) + ".rmdl";
@@ -123,7 +128,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV7>* assetEntries, const ch
     //RPakRawDataBlock vgdb{ vgIdx, vgFileSize, (uint8_t*)pVGBuf };
     //RePak::AddRawDataBlock(vgdb);
 
-    RPakAssetEntryV7 asset;
+    RPakAssetEntryV8 asset;
 
     asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, starpakOffset, -1, (std::uint32_t)AssetType::RMDL);
     asset.m_nVersion = RMDL_VERSION;
