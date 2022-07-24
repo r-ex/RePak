@@ -235,7 +235,7 @@ void Assets::AddUIImageAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, m_nAtlasGUID));
 
     // buffer for texture info data
-    char* pTextureInfoBuf = new char[textureInfoPageSize] {};
+    char* pTextureInfoBuf = new char[textureInfoPageSize]{};
     rmem tiBuf(pTextureInfoBuf);
 
     // set texture offset page index and offset
