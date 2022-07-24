@@ -38,7 +38,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
 
     uint32_t fileNameDataSize = sAssetName.length() + 1;
 
-    char* pDataBuf = new char[fileNameDataSize + mdlhdr.dataLength];
+    char* pDataBuf = new char[fileNameDataSize + mdlhdr.m_nDataLength];
 
     // write the model file path into the data buffer
     snprintf(pDataBuf, fileNameDataSize, "%s", sAssetName.c_str());
@@ -47,7 +47,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     skelInput.seek(0);
 
     // write the skeleton data into the data buffer
-    skelInput.getReader()->read(pDataBuf + fileNameDataSize, mdlhdr.dataLength);
+    skelInput.getReader()->read(pDataBuf + fileNameDataSize, mdlhdr.m_nDataLength);
     skelInput.close();
 
     ///--------------------
@@ -90,7 +90,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(ModelHeader), 0, 8);
 
     // data segment
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(mdlhdr.dataLength + fileNameDataSize, 1, 64);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(mdlhdr.m_nDataLength + fileNameDataSize, 1, 64);
 
     //RPakVirtualSegment VGSegment{};
     //uint32_t vgIdx = RePak::CreateNewSegment(vgFileSize, 67, 1, DataSegment);

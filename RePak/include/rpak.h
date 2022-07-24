@@ -529,7 +529,7 @@ struct studiohdr_t
 
 	char name[0x40];
 
-	int dataLength;
+	int m_nDataLength;
 
 	Vector3 eyeposition;
 	Vector3 illumposition;
@@ -810,9 +810,9 @@ struct MaterialHeaderV12
 	uint64_t padding = 0; // Un-used.
 	uint64_t AssetGUID = 0; // guid of this material asset
 
-	RPakPtr Name{}; // pointer to partial asset path
-	RPakPtr SurfaceName{}; // pointer to surface name (as defined in surfaceproperties.rson)
-	RPakPtr SurfaceName2{}; // pointer to surface name 2 
+	RPakPtr m_pszName{}; // pointer to partial asset path
+	RPakPtr m_pszSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	RPakPtr m_pszSurfaceProp2{}; // pointer to surfaceprop2 
 
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
@@ -853,7 +853,6 @@ struct MaterialHeaderV12
 	/* ImageFlags
 	0x050300 for loadscreens, 0x1D0300 for normal materials.
 	0x1D has been observed, seems to invert lighting? used on some exceptionally weird materials.*/
-
 };
 
 // header struct for the material asset cpu data
