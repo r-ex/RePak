@@ -247,8 +247,8 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
     // ===============================
     // fill out the rest of the header
-    mtlHdr->Name.m_nIndex = dataseginfo.index;
-    mtlHdr->Name.m_nOffset = 0;
+    mtlHdr->m_pszName.m_nIndex = dataseginfo.index;
+    mtlHdr->m_pszName.m_nOffset = 0;
 
     mtlHdr->SurfaceName.m_nIndex = dataseginfo.index;
     mtlHdr->SurfaceName.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
