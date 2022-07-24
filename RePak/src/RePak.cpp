@@ -348,10 +348,6 @@ int main(int argc, char** argv)
         Error("Unsupported RPak version specified in map file\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
         return EXIT_FAILURE;
     }
-    
-
-
-    
 
     // free the memory
     for (auto& it : g_vRawDataBlocks)
