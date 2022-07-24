@@ -617,21 +617,24 @@ struct MaterialTextureTransformMatrix
 };
 
 // some repeated section at the end of the material header (CMaterialGlue) struct
-struct UnknownMaterialSectionV16
+struct UnknownMaterialSectionV15
 {
+	// Spoon - I have kept the names that Rika made for the most part here, except for adding m_ 
+
 	// required but seems to follow a pattern. maybe related to "Unknown2" above?
 	// nulling these bytes makes the material stop drawing entirely
-	uint32_t Unknown5[8]{};
+	uint32_t m_Unknown1[8]{};
 
 	// for more details see the 'UnknownMaterialSectionV12' struct.
-	uint32_t UnkRenderFlags = 0x0;
-	uint16_t VisibilityFlags = 0x0000; // different render settings, such as opacity and transparency.
-	uint16_t FaceDrawingFlags = 0x0006; // how the face is drawn, culling, wireframe, etc.
+	uint32_t m_UnkRenderFlags = 0x0;
+	uint16_t m_VisibilityFlags = 0x0000; // different render settings, such as opacity and transparency.
+	uint16_t m_FaceDrawingFlags = 0x0006; // how the face is drawn, culling, wireframe, etc.
 
-	uint64_t Padding = 0;
+	uint64_t m_Padding = 0;
 };
 
-struct MaterialCPUDataV16
+// this is currently unused, but could probably be used just fine if you copy stuff over from the RPak V7 material function in material.cpp
+struct MaterialCPUDataV15
 {	
 	// hard to test this but I'm pretty sure that's where it is.
 	MaterialTextureTransformMatrix DetailTransform[1]; // detail texture transform matrix
@@ -678,15 +681,15 @@ struct MaterialCPUDataV16
 };
 
 // start of CMaterialGlue class
-struct MaterialHeaderV16
+struct MaterialHeaderV15
 {
-	uint64_t VtblPtrPad = 0; // Gets set to CMaterialGlue vtbl ptr
-	uint8_t Padding[0x8]{}; // Un-used.
-	uint64_t AssetGUID = 0; // guid of this material asset
+	uint64_t m_VtblReserved = 0; // Gets set to CMaterialGlue vtbl ptr
+	uint8_t m_Padding[0x8]{}; // Un-used.
+	uint64_t m_nGUID = 0; // guid of this material asset
 
-	RPakPtr Name{}; // pointer to partial asset path
-	RPakPtr SurfaceName{}; // pointer to surface name (as defined in surfaceproperties.rson)
-	RPakPtr SurfaceName2{}; // pointer to surface name 2 
+	RPakPtr m_pszName{}; // pointer to partial asset path
+	RPakPtr m_pszSurfaceProp{}; // pointer to surface name (as defined in surfaceproperties.rson)
+	RPakPtr m_pszSurfaceProp2{}; // pointer to surface name 2 
 
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
@@ -694,29 +697,34 @@ struct MaterialHeaderV16
 	// IDX 4: DepthShadowTight
 	// IDX 5: ColPass
 	// They seem to be the exact same for all materials throughout the game.
-	uint64_t GUIDRefs[5]{}; // Required to have proper textures.
-	uint64_t ShaderSetGUID = 0; // guid of the shaderset asset that this material uses
+	uint64_t m_GUIDRefs[5]{}; // Required to have proper textures.
+	uint64_t m_pShaderSet = 0; // guid of the shaderset asset that this material uses
 
-	RPakPtr TextureGUIDs{}; // TextureGUID Map
-	RPakPtr TextureGUIDs2{}; // Streamable TextureGUID Map
+	/* 0x60 */ RPakPtr m_pTextureHandles{}; // TextureGUID Map
+	/* 0x68 */ RPakPtr m_pStreamingTextureHandles{}; // Streamable TextureGUID Map
 
-	int16_t StreamableTextureCount = 0x4; // Number of textures with streamed mip levels.
-	int16_t Width = 2048;
-	int16_t Height = 2048;
-	int16_t Unknown = 0;
+	/* 0x70 */ int16_t m_nStreamingTextureHandleCount = 0x4; // Number of textures with streamed mip levels.
+	/* 0x72 */ int16_t m_nWidth = 2048;
+	/* 0x74 */ int16_t m_nHeight = 2048;
+	/* 0x76 */ int16_t m_Unknown1 = 0;
 
-	uint32_t ImageFlags = 0x1D0300;
-	uint32_t Unknown1 = 0;
+	/* 0x78 */ uint32_t m_SomeFlags = 0x1D0300;
+	/* 0x7C */ uint32_t m_Unknown2 = 0;
 
-	uint32_t Unknown2 = 0x1F5A92BD; // REQUIRED but why?
+	/* 0x80 */ uint32_t m_Unknown3 = 0x1F5A92BD; // REQUIRED but why?
 
-	uint32_t Alignment = 0;
+	/* 0x84 */ uint32_t m_Unknown4 = 0;
 
 	// neither of these 2 seem to be required
-	uint32_t Flags2 = 0;
-	uint32_t something2 = 0;
+	/* 0x88 */ uint32_t something = 0;
+	/* 0x8C */ uint32_t something2 = 0;
 
-	UnknownMaterialSectionV16 UnkSections[2]{};
+	/* 0x90 */ UnknownMaterialSectionV15 m_UnknownSections[2]{};
+	/* 0xF0 */ uint8_t bytef0;
+	/* 0xF1 */ uint8_t bytef1;
+	/* 0xF2 */ uint8_t bytef2;
+	/* 0xF3 */ uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
+	/* 0xF4 */ char pad_00F4[12];
 };
 
 struct UnknownMaterialSectionV12
