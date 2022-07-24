@@ -250,8 +250,23 @@ int main(int argc, char** argv)
 
     // write a placeholder header so we can come back and complete it
     // when we have all the info
-    RPakFileHeaderV7 rpakHeader{ };
-    out.write(rpakHeader);
+    RPakFileHeaderV7 rpakHeader_v7{ };
+    RPakFileHeaderV8 rpakHeader_v8{ };
+    // build asset data
+    // this is bad
+    switch (doc["version"].GetInt())
+    {
+    case 7:
+        out.write(rpakHeader_v7);
+        break;
+    case 8:
+        out.write(rpakHeader_v8);
+        break;
+    default:
+        Error("Unsupported RPak version specified in map file\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
+        return EXIT_FAILURE;
+    }
+
 
     // write string vectors for starpak paths and get the total length of each vector
     size_t StarpakRefLength = Utils::WriteStringVector(out, Assets::g_vsStarpakPaths);
@@ -286,37 +301,57 @@ int main(int argc, char** argv)
     // get current time as FILETIME
     FILETIME ft = Utils::GetFileTimeBySystem();
 
-    // set up the file header
-    rpakHeader.m_nCreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
-    rpakHeader.m_nSizeDisk = out.tell();
-    rpakHeader.m_nSizeMemory = out.tell();
-    rpakHeader.m_nVirtualSegmentCount = (uint16_t)g_vvSegments.size();
-    rpakHeader.m_nPageCount = (uint16_t)g_vPages.size();
-    rpakHeader.m_nDescriptorCount = (uint32_t)g_vDescriptors.size();
-    rpakHeader.m_nGuidDescriptorCount = (uint32_t)g_vGuidDescriptors.size();
-    rpakHeader.m_nRelationsCounts = (uint32_t)g_vFileRelations.size();
+    
     // i hate this
     switch (doc["version"].GetInt())
     {
     case 7:
-        rpakHeader.m_nAssetEntryCount = (uint32_t)assetEntries_v7.size();
+        // set up the file header
+        rpakHeader_v7.m_nCreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
+        rpakHeader_v7.m_nSizeDisk = out.tell();
+        rpakHeader_v7.m_nSizeMemory = out.tell();
+        rpakHeader_v7.m_nVirtualSegmentCount = (uint16_t)g_vvSegments.size();
+        rpakHeader_v7.m_nPageCount = (uint16_t)g_vPages.size();
+        rpakHeader_v7.m_nDescriptorCount = (uint32_t)g_vDescriptors.size();
+        rpakHeader_v7.m_nGuidDescriptorCount = (uint32_t)g_vGuidDescriptors.size();
+        rpakHeader_v7.m_nRelationsCounts = (uint32_t)g_vFileRelations.size();
+        rpakHeader_v7.m_nAssetEntryCount = (uint32_t)assetEntries_v7.size();
+        rpakHeader_v7.m_nStarpakReferenceSize = (uint16_t)StarpakRefLength;
+        //rpakHeader_v7.m_nStarpakOptReferenceSize = (uint16_t)OptStarpakRefLength;
+
+        out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
+
+        out.write(rpakHeader_v7); // Re-write rpak header.
+
+        out.close();
         break;
     case 8:
-        rpakHeader.m_nAssetEntryCount = (uint32_t)assetEntries_v8.size();
+        rpakHeader_v8.m_nCreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
+        rpakHeader_v8.m_nSizeDisk = out.tell();
+        rpakHeader_v8.m_nSizeMemory = out.tell();
+        rpakHeader_v8.m_nVirtualSegmentCount = (uint16_t)g_vvSegments.size();
+        rpakHeader_v8.m_nPageCount = (uint16_t)g_vPages.size();
+        rpakHeader_v8.m_nDescriptorCount = (uint32_t)g_vDescriptors.size();
+        rpakHeader_v8.m_nGuidDescriptorCount = (uint32_t)g_vGuidDescriptors.size();
+        rpakHeader_v8.m_nRelationsCounts = (uint32_t)g_vFileRelations.size();
+        rpakHeader_v8.m_nAssetEntryCount = (uint32_t)assetEntries_v8.size();
+        rpakHeader_v8.m_nStarpakReferenceSize = (uint16_t)StarpakRefLength;
+        rpakHeader_v8.m_nStarpakOptReferenceSize = (uint16_t)OptStarpakRefLength;
+
+        out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
+
+        out.write(rpakHeader_v8); // Re-write rpak header.
+
+        out.close();
         break;
     default:
         Error("Unsupported RPak version specified in map file\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
         return EXIT_FAILURE;
     }
-    rpakHeader.m_nStarpakReferenceSize = (uint16_t)StarpakRefLength;
-    //rpakHeader.m_nStarpakOptReferenceSize = (uint16_t)OptStarpakRefLength;
-
-
-    out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
-
-    out.write(rpakHeader); // Re-write rpak header.
     
-    out.close();
+
+
+    
 
     // free the memory
     for (auto& it : g_vRawDataBlocks)
