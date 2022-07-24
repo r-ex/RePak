@@ -188,7 +188,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     input.close();
 }
 
-// VERSION 8 - COPIED FROM VERSION 7 FOR NOW
+// VERSION 8
 void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding txtr asset '%s'\n", assetPath);
