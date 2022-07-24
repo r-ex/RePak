@@ -172,7 +172,7 @@ struct RPakAssetEntryV8
 	// - when referenced from scripts, the GUID is calculated from the original asset path
 	//   by a function such as RTech::StringToGuid
 	uint64_t m_nGUID = 0;
-	uint8_t  unk0[0x8];
+	uint8_t  unk0[0x8]{};
 
 	// page index and offset for where this asset's header is located
 	uint32_t m_nSubHeaderDataBlockIdx = 0;
