@@ -688,8 +688,8 @@ struct MaterialHeaderV15
 	uint64_t m_nGUID = 0; // guid of this material asset
 
 	RPakPtr m_pszName{}; // pointer to partial asset path
-	RPakPtr m_pszSurfaceProp{}; // pointer to surface name (as defined in surfaceproperties.rson)
-	RPakPtr m_pszSurfaceProp2{}; // pointer to surface name 2 
+	RPakPtr m_pszSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	RPakPtr m_pszSurfaceProp2{}; // pointer to surfaceprop2 
 
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
