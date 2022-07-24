@@ -1,6 +1,11 @@
 #include "pch.h"
 #include "Assets.h"
 
+void Assets::AddModelAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+{
+    Error("RPak version 7 (Titanfall 2) cannot contain models");
+}
+
 void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding mdl_ asset '%s'\n", assetPath);
