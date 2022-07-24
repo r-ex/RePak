@@ -261,7 +261,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
             return;
         }
 
-        hdr->m_nFormat = (uint16_t)TxtrFormatMap[dxgiFormat];
+        hdr->m_nFormat = (uint16_t)s_txtrFormatMap[dxgiFormat];
 
         // go to the end of the main header
         input.seek(ddsh.size + 4);
