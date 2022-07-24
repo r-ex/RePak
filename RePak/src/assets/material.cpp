@@ -250,8 +250,8 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     mtlHdr->m_pszName.m_nIndex = dataseginfo.index;
     mtlHdr->m_pszName.m_nOffset = 0;
 
-    mtlHdr->SurfaceName.m_nIndex = dataseginfo.index;
-    mtlHdr->SurfaceName.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
+    mtlHdr->m_pszSurfaceProp.m_nIndex = dataseginfo.index;
+    mtlHdr->m_pszSurfaceProp.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
 
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, Name));
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, SurfaceName));
