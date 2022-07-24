@@ -354,7 +354,7 @@ struct TextureHeader
 	uint8_t unk2;
 	uint8_t m_nPermanentMipLevels;
 	uint8_t m_nStreamedMipLevels;
-	uint8_t unk3[21];
+	uint8_t unk3[0x15];
 };
 
 struct UIImageHeader
@@ -867,7 +867,7 @@ struct PtchEntry
 };
 
 // map of dxgi format to the corresponding txtr asset format value
-static std::map<DXGI_FORMAT, uint16_t> TxtrFormatMap{
+static std::map<DXGI_FORMAT, uint16_t> s_txtrFormatMap{
 	{ DXGI_FORMAT_BC1_UNORM, 0 },
 	{ DXGI_FORMAT_BC1_UNORM_SRGB, 1 },
 	{ DXGI_FORMAT_BC2_UNORM, 2 },

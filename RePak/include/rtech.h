@@ -28,6 +28,14 @@ struct DDS_HEADER {
 	uint32_t reserved2;
 } dds_header;
 
+struct DDS_HEADER_DXT10 {
+	DXGI_FORMAT              dxgiFormat;
+	D3D10_RESOURCE_DIMENSION resourceDimension;
+	UINT                     miscFlag;
+	UINT                     arraySize;
+	UINT                     miscFlags2;
+};
+
 // contains the offset and size of a data entry within the starpak
 // offset must be larger than 0x1000 (4096), as the beginning of 
 // the file is filled with 0xCB until that point
