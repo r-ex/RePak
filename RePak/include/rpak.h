@@ -335,7 +335,7 @@ enum class dtblcoltype_t : uint32_t
 struct TextureHeader
 {
 	uint64_t m_nAssetGUID = 0;
-	RPakPtr m_pDebugName;
+	RPakPtr  m_pDebugName;
 
 	uint16_t m_nWidth = 0;
 	uint16_t m_nHeight = 0;
@@ -344,17 +344,17 @@ struct TextureHeader
 	uint16_t m_nFormat = 0;
 
 	uint32_t m_nDataLength; // total data size across all sources
-	uint8_t unk1;
-	uint8_t m_nOptSreamedMipLevels; // why is this here and not below? respawn moment
+	uint8_t  unk1;
+	uint8_t  m_nOptStreamedMipLevels; // why is this here and not below? respawn moment
 
 	// d3d11 texture desc params
-	uint8_t m_nArraySize;
-	uint8_t m_nLayerCount;
+	uint8_t  m_nArraySize;
+	uint8_t  m_nLayerCount;
 
-	uint8_t unk2;
-	uint8_t m_nPermanentMipLevels;
-	uint8_t m_nStreamedMipLevels;
-	uint8_t unk3[0x15];
+	uint8_t  unk2;
+	uint8_t  m_nPermanentMipLevels;
+	uint8_t  m_nStreamedMipLevels;
+	uint8_t  unk3[0x15];
 };
 
 struct UIImageHeader
