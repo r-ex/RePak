@@ -5,7 +5,7 @@
 // VERSION 7
 void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding txtr asset '%s'\n", assetPath);
+    Log("Adding txtr asset '%s'\n", assetPath);
 
 
     std::string filePath = g_sAssetsDir + assetPath + ".dds";
@@ -47,40 +47,84 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
 
         DXGI_FORMAT dxgiFormat;
 
-        switch (ddsh.pixelfmt.fourCC)
-        {
-        case '1TXD':
-            Log("-> fmt: DXT1\n");
-            dxgiFormat = DXGI_FORMAT_BC1_UNORM_SRGB;
-            break;
-        case '5TXD':
-            Log("-> fmt: DXT5\n");
-            dxgiFormat = DXGI_FORMAT_BC3_UNORM_SRGB;
-            break;
-        case 'U4CB':
-            Log("-> fmt: BC4U\n");
-            dxgiFormat = DXGI_FORMAT_BC4_UNORM;
-            break;
-        case 'U5CB':
-            Log("-> fmt: BC5U\n");
-            dxgiFormat = DXGI_FORMAT_BC5_UNORM;
-            break;
-        case '01XD':
-            Log("-> fmt: DX10\n");
-            dxgiFormat = DXGI_FORMAT_BC7_UNORM;
-            break;
-        default:
-            Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
-            exit(EXIT_FAILURE);
-            return;
+        // Checks if the texture is DX10+, this is needed for SRGB.
+        if (ddsh.pixelfmt.fourCC == '01XD') {
+
+            DDS_HEADER_DXT10 ddsh_dx10 = input.read<DDS_HEADER_DXT10>();
+
+            switch (ddsh_dx10.dxgiFormat)
+            {
+            case 72:
+                Log("-> fmt: BC1 SRGB\n");
+                dxgiFormat = DXGI_FORMAT_BC1_UNORM_SRGB;
+                break;
+            case 75:
+                Log("-> fmt: BC2 SRGB\n");
+                dxgiFormat = DXGI_FORMAT_BC2_UNORM_SRGB;
+                break;
+            case 78:
+                Log("-> fmt: BC2 SRGB\n");
+                dxgiFormat = DXGI_FORMAT_BC3_UNORM_SRGB;
+                break;
+            case 98:
+                Log("-> fmt: BC7\n");
+                dxgiFormat = DXGI_FORMAT_BC7_UNORM;
+                break;
+            case 99:
+                Log("-> fmt: BC7 SRGB\n");
+                dxgiFormat = DXGI_FORMAT_BC7_UNORM_SRGB;
+                break;
+            default:
+                Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+                break;
+            }
+
+        }
+        // Non SRGB texture processing.
+        else {
+
+            switch (ddsh.pixelfmt.fourCC)
+            {
+            case '1TXD':
+                Log("-> fmt: DXT1\n");
+                dxgiFormat = DXGI_FORMAT_BC1_UNORM;
+                break;
+            case '3TXD':
+                Log("-> fmt: DXT3\n");
+                dxgiFormat = DXGI_FORMAT_BC2_UNORM;
+                break;
+            case '5TXD':
+                Log("-> fmt: DXT5\n");
+                dxgiFormat = DXGI_FORMAT_BC3_UNORM;
+                break;
+            case 'U4CB':
+                Log("-> fmt: BC4U\n");
+                dxgiFormat = DXGI_FORMAT_BC4_UNORM;
+                break;
+            case 'U5CB':
+                Log("-> fmt: BC5U\n");
+                dxgiFormat = DXGI_FORMAT_BC5_UNORM;
+                break;
+            case 'S5CB':
+                Log("-> fmt: BC5U\n");
+                dxgiFormat = DXGI_FORMAT_BC5_SNORM;
+                break;
+            default:
+                Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+                return;
+            }
+
         }
 
-        hdr->m_nFormat = (uint16_t)TxtrFormatMap[dxgiFormat];
+        hdr->m_nFormat = s_txtrFormatMap[dxgiFormat];
 
-        // go to the end of the main header
+        // Go to the end of the main header.
         input.seek(ddsh.size + 4);
 
-        if (dxgiFormat == DXGI_FORMAT_BC7_UNORM || dxgiFormat == DXGI_FORMAT_BC7_UNORM_SRGB)
+        // Go to the end of the DX10 header if it exists.
+        if (ddsh.pixelfmt.fourCC == '01XD')
             input.seek(20, std::ios::cur);
     }
 
