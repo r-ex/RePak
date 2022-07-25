@@ -286,6 +286,7 @@ int main(int argc, char** argv)
     {
         delete it.m_nDataPtr;
     }
+    delete rpakFile;
 
     // write starpak data
     if (Assets::g_vsStarpakPaths.size() == 1)
