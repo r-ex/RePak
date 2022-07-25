@@ -13,49 +13,45 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     std::string type = "skn";
     std::string subtype = "";
     std::string visibility = "opaque";
-    uint32_t version = 16;
+    uint64_t shadersetGuid = 0x0;
 
-    if (mapEntry.HasMember("type"))
+    if (mapEntry.HasMember("type")) // Sets the type of the material, skn, fix, etc.
         type = mapEntry["type"].GetStdString();
     else
         Warning("Adding material without an explicitly defined type. Assuming 'skn'...\n");
 
-    if (mapEntry.HasMember("subtype"))
+    if (mapEntry.HasMember("subtype")) // Set subtype, mostly redundant now.
         subtype = mapEntry["subtype"].GetStdString();
     else
         Warning("No subtype is defined, this may cause issues... \n");
 
-    // version check
-    if (mapEntry.HasMember("version"))
-        version = mapEntry["version"].GetInt();
-    else
-        Warning("Adding material without an explicitly defined version. Assuming '16'... \n");
-
+    if (mapEntry.HasMember("shaderset")) // Set ShaderSet.
+        shadersetGuid = RTech::StringToGuid(("shaderset/" + mapEntry["shaderset"].GetStdString() + ".rpak").c_str());
+   else
+        shadersetGuid = 0xC3ACAF7F1DC7F389;
+        Warning("Adding material without an explicitly defined shaderset. Assuming 'uberAoCavEmitEntcolmeSamp2222222_skn'... \n");
 
     std::string sFullAssetRpakPath = "material/" + sAssetPath + "_" + type + ".rpak"; // Make full rpak asset path.
 
-    mtlHdr->AssetGUID = RTech::StringToGuid(sFullAssetRpakPath.c_str()); // Convert full rpak asset path to textureGUID and set it in the material header.
-
-    // this was for 'UnknownSignature' but isn't valid anymore I think.
-    // Game ignores this field when parsing, retail rpaks also have this as 0. But In-Game its being set to either 0x4, 0x5, 0x9.
-    // Based on resolution.
-    // 512x512 = 0x5
-    // 1024x1024 = 0x4
-    // 2048x2048 = 0x9
-
-    // Game ignores this field when parsing, retail rpaks also have this as 0. But In-Game its being set to the number of textures with streamed mip levels.
-    if (mapEntry.HasMember("streamedtexturecount"))
-        mtlHdr->StreamableTextureCount = mapEntry["streamedtexturecount"].GetInt();
+    mtlHdr->m_nGUID = RTech::StringToGuid(sFullAssetRpakPath.c_str()); // Convert full rpak asset path to textureGUID and set it in the material header.
 
     if (mapEntry.HasMember("width")) // Set material width.
-        mtlHdr->Width = mapEntry["width"].GetInt();
+        mtlHdr->m_nWidth = mapEntry["width"].GetInt();
 
     if (mapEntry.HasMember("height")) // Set material width.
-        mtlHdr->Height = mapEntry["height"].GetInt();
+        mtlHdr->m_nHeight = mapEntry["height"].GetInt();
 
-    if (mapEntry.HasMember("imageflags")) // Set flags properly. Responsible for texture stretching, tiling etc.
-        mtlHdr->ImageFlags = mapEntry["imageflags"].GetUint();
+    if (mapEntry.HasMember("flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
+        mtlHdr->m_Flags = strtoul(("0x" + mapEntry["imageflags"].GetStdString()).c_str(), NULL, 0);
+    else
+        mtlHdr->m_Flags = 0x1D0300;
 
+    if (mapEntry.HasMember("flags2")) // This does a lot of very important stuff.
+        mtlHdr->m_Flags2 = strtoul(("0x" + mapEntry["flags2"].GetStdString()).c_str(), NULL, 0);
+    else
+        mtlHdr->m_Flags2 = 0x56000020;
+
+    // Visibility related flags, opacity and the like.
     if (mapEntry.HasMember("visibilityflags")) {
 
         visibility = mapEntry["visibilityflags"].GetString();
@@ -91,25 +87,26 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
         }
 
-        mtlHdr->UnkSections[0].VisibilityFlags = visFlag;
-        mtlHdr->UnkSections[1].VisibilityFlags = visFlag;
+        mtlHdr->m_UnknownSections[0].m_VisibilityFlags = visFlag;
+        mtlHdr->m_UnknownSections[1].m_VisibilityFlags = visFlag;
 
     }
 
+
+    uint16_t faceFlag = 0x0006;
+    // Sets how the faces draw.
     if (mapEntry.HasMember("faceflags")) {
-        mtlHdr->UnkSections[0].FaceDrawingFlags = mapEntry["faceflags"].GetInt();
-        mtlHdr->UnkSections[1].FaceDrawingFlags = mapEntry["faceflags"].GetInt();
-        Log("Using faceflags, only touch this if you know what you're doing! \n");
+
+        faceFlag = strtoul(("0x" + mapEntry["faceflags"].GetStdString()).c_str(), NULL, 0);
+
     }
-    else {
-        mtlHdr->UnkSections[0].FaceDrawingFlags = 0x0006;
-        mtlHdr->UnkSections[1].FaceDrawingFlags = 0x0006;
-    }
+
+    mtlHdr->m_UnknownSections[0].m_FaceDrawingFlags = faceFlag;
+    mtlHdr->m_UnknownSections[1].m_FaceDrawingFlags = faceFlag;
 
     std::string surface = "default";
     std::string surface2 = "default";
 
-    // surfaces are defined in scripts/surfaceproperties.rson
     // titanfall surfaces are defined in scripts/surfaceproperties.txt
     if (mapEntry.HasMember("surface"))
         surface = mapEntry["surface"].GetStdString();
@@ -132,8 +129,6 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     }
 
     int surfaceDataBuffLength = 0;
-   // surfaceDataBuffLength = (surface.length() + 1);
-
     if (mapEntry.HasMember("surface2")) {
 
         surfaceDataBuffLength = (surface.length() + 1) + (surface2.length() + 1);
@@ -256,7 +251,6 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszName));
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszSurfaceProp));
 
-
     if (mapEntry.HasMember("surface2")) {
 
         mtlHdr->m_pszSurfaceProp2.m_nIndex = dataseginfo.index;
@@ -264,496 +258,142 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
         RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszSurfaceProp2));
 
+    }
+
+    //=======================
+    // Depth material set up.
+    uint64_t guidRefs[3] = { 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
+
+    int mId = 0;
+    int usedMId = 0;
+    for (auto& gu : mapEntry["materialrefs"].GetArray())
+    {
+        if (gu.GetStdString() != "") {
+
+            guidRefs[mId] = RTech::StringToGuid(("material/" + gu.GetStdString() + "_" + type + ".rpak").c_str());
+
+            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_GUIDRefs) + (mId * 8));
+
+            usedMId++;
+
+        }
+
+        mId++;
 
     }
 
-    // V12 Type Handling
-    if (version == 12)
-    {
+    for (int i = 0; i < 3; ++i) {
 
-        if (type == "gen")
-        {
-
-            if (subtype == "loadscreen") {
-
-                mtlHdr->Flags2 = 0x10000002;
-
-                mtlHdr->ShaderSetGUID = 0xA5B8D4E9A3364655;
-
-            }
-            else {
-
-                Warning("Invalid type used! Defaulting to subtype 'loadscreen'... \n");
-
-                mtlHdr->Flags2 = 0x10000002;
-
-                mtlHdr->ShaderSetGUID = 0xA5B8D4E9A3364655;
-
-            }
-
-            // These should always be constant (per each material type)
-            // GUIDRefs[3] is Colpass entry, however loadscreens do not have colpass materials.
-
-            mtlHdr->GUIDRefs[0] = 0x0000000000000000;
-            mtlHdr->GUIDRefs[1] = 0x0000000000000000;
-            mtlHdr->GUIDRefs[2] = 0x0000000000000000;
-
-            mtlHdr->ImageFlags = 0x050300;
-
-            mtlHdr->Unknown2 = 0xFBA63181;
-
-        }
-        else if (type == "wld")
-        {
-            Warning("Type 'wld' is not supported currently!!!");
-
-            if (subtype == "test1") {
-
-                mtlHdr->ShaderSetGUID = 0x8FB5DB9ADBEB1CBC;
-
-                mtlHdr->Flags2 = 0x72000002;
-
-            }
-            else {
-
-                Warning("Invalid type used! Defaulting to subtype 'viewmodel'... \n");
-
-                // same as 'viewmodel'.
-                mtlHdr->ShaderSetGUID = 0x8FB5DB9ADBEB1CBC;
-
-                mtlHdr->Flags2 = 0x72000002;
-
-            }
-
-
-            mtlHdr->GUIDRefs[0] = 0x0000000000000000;
-            mtlHdr->GUIDRefs[1] = 0x0000000000000000;
-            mtlHdr->GUIDRefs[2] = 0x0000000000000000;
-
-            mtlHdr->UnkSections[0].UnkRenderFlags = 0x00000005;
-
-            mtlHdr->UnkSections[1].UnkRenderFlags = 0x00000005;
-
-            mtlHdr->ImageFlags = 0x1D0300;
-
-            mtlHdr->Unknown2 = 0x40D33E8F;
-
-
-        }
-        else if (type == "fix")
-        {
-
-            if (subtype == "worldmodel") {
-
-                // supports a set of seven textures.
-                // viewmodel shadersets don't seem to allow ilm in third person, this set supports it.
-                mtlHdr->ShaderSetGUID = 0x586783F71E99553D;
-
-                mtlHdr->Flags2 = 0x56000020;
-
-            }
-            else if (subtype == "worldmodel_skn31") {
-
-                // supports a set of seven textures plus a set of two relating to detail textures (camos).
-                mtlHdr->ShaderSetGUID = 0x5F8181FEFDB0BAD8;
-
-                mtlHdr->Flags2 = 0x56040020;
-
-            }
-            else if (subtype == "worldmodel_noglow") {
-
-                // supports a set of six textures, lacks ilm.
-                // there is a different one used for viewmodels, unsure what difference it makes considering the lack of ilm.
-                mtlHdr->ShaderSetGUID = 0x477A8F31B5963070;
-
-                mtlHdr->Flags2 = 0x56000020;
-
-            }
-            else if (subtype == "worldmodel_skn31_noglow") {
-
-                // supports a set of six textures plus a set of two relating to detail textures (camos), lacks ilm.
-                // same as above, why.
-                mtlHdr->ShaderSetGUID = 0xC9B736D2C8027726;
-
-                mtlHdr->Flags2 = 0x56040020;
-
-            }
-            else if (subtype == "viewmodel") {
-
-                // supports a set of seven textures.
-                // worldmodel shadersets don't seem to allow ilm in first person, this set supports it.
-                mtlHdr->ShaderSetGUID = 0x5259835D8C44A14D;
-
-                mtlHdr->Flags2 = 0x56000020;
-
-            }
-            else if (subtype == "viewmodel_skn31") {
-
-                // supports a set of seven textures plus a set of two relating to detail textures (camos).
-                mtlHdr->ShaderSetGUID = 0x19F840A12774CA4C;
-
-                mtlHdr->Flags2 = 0x56040020;
-
-            }
-            else if (subtype == "nose_art") {
-
-                mtlHdr->ShaderSetGUID = 0x3DAD868FA7485BDD;
-
-                mtlHdr->Flags2 = 0x56000023;
-
-            }
-            else {
-
-                Warning("Invalid type used! Defaulting to subtype 'viewmodel'... \n");
-
-                // same as 'viewmodel'.
-                mtlHdr->ShaderSetGUID = 0x5259835D8C44A14D;
-
-                mtlHdr->Flags2 = 0x56000020;
-
-            }
-
-            if (subtype == "nose_art") {
-
-                for (int i = 0; i < 2; ++i)
-                {
-                    mtlHdr->UnkSections[i].UnkRenderLighting = 0xF0138286;
-                    mtlHdr->UnkSections[i].UnkRenderAliasing = 0xF0138286;
-                    mtlHdr->UnkSections[i].UnkRenderDoF = 0xF0008286;
-                    mtlHdr->UnkSections[i].UnkRenderUnknown = 0x00138286;
-
-                    mtlHdr->UnkSections[i].UnkRenderFlags = 0x00000005;
-
-                }
-
-                mtlHdr->GUIDRefs[0] = 0x0000000000000000;
-                mtlHdr->GUIDRefs[1] = 0x0000000000000000;
-                mtlHdr->GUIDRefs[2] = 0x0000000000000000;
-
-            }
-            else {
-
-                for (int i = 0; i < 2; ++i)
-                {
-
-
-
-                    mtlHdr->UnkSections[i].UnkRenderLighting = 0xF0138004;
-                    mtlHdr->UnkSections[i].UnkRenderAliasing = 0xF0138004;
-                    mtlHdr->UnkSections[i].UnkRenderDoF = 0xF0138004;
-                    mtlHdr->UnkSections[i].UnkRenderUnknown = 0x00138004;
-
-                    mtlHdr->UnkSections[i].UnkRenderFlags = 0x00000004;
-
-                }
-
-                mtlHdr->GUIDRefs[0] = 0x39C739E9928E555C;
-                mtlHdr->GUIDRefs[1] = 0x67D89B36EDCDDF6E;
-                mtlHdr->GUIDRefs[2] = 0x43A9D8D429698B9F;
-
-                RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs));
-                RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 8);
-                RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 16);
-
-                RePak::AddFileRelation(assetEntries->size(), 3);
-                assetUsesCount += 3;
-
-            }
-
-            mtlHdr->ImageFlags = 0x1D0300;
-
-            mtlHdr->Unknown2 = 0x40D33E8F;
-
-        }
-        else if (type == "rgd")
-        {
-            // todo: figure out what rgd is used for.
-            Warning("Type 'rgd' is not supported currently!!!");
-            return;
-        }
-        else if (type == "skn")
-        {
-
-            if (subtype == "worldmodel") {
-
-                // supports a set of seven textures.
-                // viewmodel shadersets don't seem to allow ilm in third person, this set supports it.
-                mtlHdr->ShaderSetGUID = 0xC3ACAF7F1DC7F389;
-
-                mtlHdr->Flags2 = 0x56000020;
-
-            }
-            else if (subtype == "worldmodel_skn31") {
-
-                // supports a set of seven textures plus a set of two relating to detail textures (camos).
-                mtlHdr->ShaderSetGUID = 0x4CFB9F15FD2DE909;
-
-                mtlHdr->Flags2 = 0x56040020;
-
-            }
-            else if (subtype == "worldmodel_noglow") {
-
-                // supports a set of six textures, lacks ilm.
-                // there is a different one used for viewmodels, unsure what difference it makes considering the lack of ilm.
-                mtlHdr->ShaderSetGUID = 0x34A7BB3C163A8139;
-
-                mtlHdr->Flags2 = 0x56000020;
-
-            }
-            else if (subtype == "worldmodel_skn31_noglow") {
-
-                // supports a set of six textures plus a set of two relating to detail textures (camos), lacks ilm.
-                // same as above, why.
-                mtlHdr->ShaderSetGUID = 0x98EA4745D8801A9B;
-
-                mtlHdr->Flags2 = 0x56040020;
-
-            }
-            else if (subtype == "viewmodel") {
-
-                // supports a set of seven textures.
-                // worldmodel shadersets don't seem to allow ilm in first person, this set supports it.
-                mtlHdr->ShaderSetGUID = 0xBD04CCCC982F8C15;
-
-                mtlHdr->Flags2 = 0x56000020;
-
-            }
-            else if (subtype == "viewmodel_skn31") {
-
-                // supports a set of seven textures plus a set of two relating to detail textures (camos).
-                mtlHdr->ShaderSetGUID = 0x07BF4EC4B9632A03;
-
-                mtlHdr->Flags2 = 0x56040020;
-
-            }
-            else if (subtype == "nose_art") {
-
-                mtlHdr->ShaderSetGUID = 0x6CBEA6FE48218FAA;
-
-                mtlHdr->Flags2 = 0x56000023;
-
-            }
-            else if (subtype == "test1") {
-
-                mtlHdr->ShaderSetGUID = 0x942791681799941D;
-
-                mtlHdr->Flags2 = 0x56040022;
-
-            }
-            else {
-
-                Warning("Invalid type used! Defaulting to subtype 'viewmodel'... \n");
-
-                // same as 'viewmodel'.
-                mtlHdr->ShaderSetGUID = 0xBD04CCCC982F8C15;
-
-                mtlHdr->Flags2 = 0x56000020;
-
-            }
-
-            if (subtype == "nose_art") {
-
-                for (int i = 0; i < 2; ++i)
-                {
-                    mtlHdr->UnkSections[i].UnkRenderLighting = 0xF0138286;
-                    mtlHdr->UnkSections[i].UnkRenderAliasing = 0xF0138286;
-                    mtlHdr->UnkSections[i].UnkRenderDoF = 0xF0008286;
-                    mtlHdr->UnkSections[i].UnkRenderUnknown = 0x00138286;
-
-                    mtlHdr->UnkSections[i].UnkRenderFlags = 0x00000005;
-
-                }
-
-                mtlHdr->GUIDRefs[0] = 0x0000000000000000;
-                mtlHdr->GUIDRefs[1] = 0x0000000000000000;
-                mtlHdr->GUIDRefs[2] = 0x0000000000000000;
-
-            }
-            else {
-
-                for (int i = 0; i < 2; ++i)
-                {
-
-
-
-                    mtlHdr->UnkSections[i].UnkRenderLighting = 0xF0138004;
-                    mtlHdr->UnkSections[i].UnkRenderAliasing = 0xF0138004;
-                    mtlHdr->UnkSections[i].UnkRenderDoF = 0xF0138004;
-                    mtlHdr->UnkSections[i].UnkRenderUnknown = 0x00138004;
-
-                    mtlHdr->UnkSections[i].UnkRenderFlags = 0x00000004;
-
-                }
-
-                mtlHdr->GUIDRefs[0] = 0xA4728358C3B043CA;
-                mtlHdr->GUIDRefs[1] = 0x370BABA9D9147F3D;
-                mtlHdr->GUIDRefs[2] = 0x12DCE94708487F8C;
-
-                RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs));
-                RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 8);
-                RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 16);
-
-                RePak::AddFileRelation(assetEntries->size(), 3);
-                assetUsesCount += 3;
-
-            }
-            
-
-            mtlHdr->ImageFlags = 0x1D0300;
-
-            mtlHdr->Unknown2 = 0x40D33E8F;
-
-        }
+        mtlHdr->m_GUIDRefs[i] = guidRefs[i];
 
     }
-    
-    // unsure how to swap the struct depending on version but this should work otherwise.
-    /*
-    // some funny apex people can test the subtypes if they care enough.
-    // V16 Type Handling
-    else if (version == 16)
+
+    mtlHdr->m_pShaderSet = shadersetGuid;
+
+    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pShaderSet));
+
+    RePak::AddFileRelation(assetEntries->size(), (usedMId + 1));
+    assetUsesCount += (usedMId + 1);
+
+    // V12 type handling, mostly stripped now.
+    if (type == "gen")
     {
 
-        if (type == "sknp")
+        for (int i = 0; i < 2; ++i)
         {
-            // unsure if apex still has the issue of needing viewmodel and worldmodel shadersets
-            if (subtype == "default") {
+            mtlHdr->m_UnknownSections[i].UnkRenderLighting = 0xF0138286;
+            mtlHdr->m_UnknownSections[i].UnkRenderAliasing = 0xF0138286;
+            mtlHdr->m_UnknownSections[i].UnkRenderDoF = 0xF0008286;
+            mtlHdr->m_UnknownSections[i].UnkRenderUnknown = 0x00138286;
 
-                mtlHdr->ShaderSetGUID = 0x1D9FFF314E152725;
+            mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000005;
 
-                mtlHdr->Flags2 = 0x72000000;
+        }
 
-            }
-            else if (subtype == "skn31") {
+        mtlHdr->m_Unknown3 = 0xFBA63181;
 
-                mtlHdr->ShaderSetGUID = 0xDFDD369CFE3A4817;
+    }
+    else if (type == "wld")
+    {
 
-                mtlHdr->Flags2 = 0x56040020;
+        Warning("Type 'wld' is not supported currently!!!");
 
-            }
-            else {
+        mtlHdr->m_UnknownSections[0].m_UnknownFlags = 0x00000005;
+        mtlHdr->m_UnknownSections[1].m_UnknownFlags = 0x00000005;
 
-                Warning("Invalid type used! Defaulting to subtype 'default'... \n");
+        mtlHdr->m_Unknown3 = 0x40D33E8F;
 
-                mtlHdr->ShaderSetGUID = 0x1D9FFF314E152725;
+    }
+    else if (type == "fix" || type == "skn")
+    {
 
-                mtlHdr->Flags2 = 0x72000000;
-
-            }
-
-            // These should always be constant (per each material type)
-            // There's different versions of these for each material type
-            // GUIDRefs[4] is Colpass entry.
-            mtlHdr->GUIDRefs[0] = 0x2B93C99C67CC8B51;
-            mtlHdr->GUIDRefs[1] = 0x1EBD063EA03180C7;
-            mtlHdr->GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
-            mtlHdr->GUIDRefs[3] = 0x227C27B608B3646B;
-
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs));
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 8);
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 16);
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 24);
-
-            RePak::AddFileRelation(assetEntries->size(), 4);
-            assetUsesCount += 4;
+        if (subtype == "nose_art") {
 
             for (int i = 0; i < 2; ++i)
             {
-                for (int j = 0; j < 8; ++j)
-                    mtlHdr->UnkSections[i].Unknown5[j] = 0xf0000000;
 
-                mtlHdr->UnkSections[i].Unknown6 = 4;
+                mtlHdr->m_UnknownSections[i].UnkRenderLighting = 0xF0138286;
+                mtlHdr->m_UnknownSections[i].UnkRenderAliasing = 0xF0138286;
+                mtlHdr->m_UnknownSections[i].UnkRenderDoF = 0xF0008286;
+                mtlHdr->m_UnknownSections[i].UnkRenderUnknown = 0x00138286;
+
+                mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000005;
+
             }
-
-            mtlHdr->ImageFlags = 0x1D0300;
-
-            mtlHdr->Unknown2 = 0x1F5A92BD;
 
         }
-        else if (type == "wldc")
-        {
-            //this has been updated to reflect the new structure but nothing other than that.
-            if (subtype == "default") {
-
-                mtlHdr->ShaderSetGUID = 0x4B0F3B4CBD009096;
-
-                mtlHdr->Flags2 = 0x72000000;
-
-            }
-            else {
-
-                Warning("Invalid type used! Defaulting to subtype 'default'... \n");
-
-                mtlHdr->ShaderSetGUID = 0x4B0F3B4CBD009096;
-
-                mtlHdr->Flags2 = 0x72000000;
-
-            }
-
-            // GUIDRefs[4] is Colpass entry which is optional for wldc.
-            mtlHdr->GUIDRefs[0] = 0x435FA77E363BEA48; // DepthShadow
-            mtlHdr->GUIDRefs[1] = 0xF734F96BE92E0E71; // DepthPrepass
-            mtlHdr->GUIDRefs[2] = 0xD306370918620EC0; // DepthVSM
-            mtlHdr->GUIDRefs[3] = 0xDAB17AEAD2D3387A; // DepthShadowTight
-
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs));
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 8);
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 16);
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 24);
-
-            RePak::AddFileRelation(assetEntries->size(), 4);
-            assetUsesCount += 4;
+        else {
 
             for (int i = 0; i < 2; ++i)
             {
-                for (int j = 0; j < 8; ++j)
-                    mtlHdr->UnkSections[i].Unknown5[j] = 0xf0000000;
 
-                mtlHdr->UnkSections[i].Unknown6 = 4;
+                mtlHdr->m_UnknownSections[i].UnkRenderLighting = 0xF0138004;
+                mtlHdr->m_UnknownSections[i].UnkRenderAliasing = 0xF0138004;
+                mtlHdr->m_UnknownSections[i].UnkRenderDoF = 0xF0138004;
+                mtlHdr->m_UnknownSections[i].UnkRenderUnknown = 0x00138004;
+
+                mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000004;
+
             }
 
-            mtlHdr->ImageFlags = 0x1D0300;
-
-            mtlHdr->Unknown2 = 0x1F5A92BD;
-
-        }
-        else if (type == "gen")
-        {
-            // hehe haha I'm not doing the research for this.
-            Warning("Type 'gen' is not supported currently!!!");
-            return;
-
         }
 
-    }*/
-    
-    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, ShaderSetGUID));
-    RePak::AddFileRelation(assetEntries->size());
-    assetUsesCount++;
+        mtlHdr->m_Unknown3 = 0x40D33E8F;
+
+    }
+    else if (type == "rgd")
+    {
+
+        // todo: figure out what rgd is used for.
+        // update: I can not find a single shaderset for rgd.
+        Warning("Type 'rgd' is not supported in Titanfall 2!!");
+        return;
+
+    }
 
     // Is this a colpass asset?
     bool bColpass = false;
     if (mapEntry.HasMember("colpass"))
     {
         std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + "_" + type + ".rpak";
-        mtlHdr->GUIDRefs[3] = RTech::StringToGuid(colpassPath.c_str());
+        mtlHdr->m_GUIDRefs[3] = RTech::StringToGuid(colpassPath.c_str());
 
         // todo, the relations count is not being set properly on the colpass for whatever reason.
-        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 24);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_GUIDRefs) + 24);
         RePak::AddFileRelation(assetEntries->size());
         assetUsesCount++;
 
         bColpass = false;
     }
 
-    mtlHdr->TextureGUIDs.m_nIndex = dataseginfo.index;
-    mtlHdr->TextureGUIDs.m_nOffset = guidPageOffset;
+    mtlHdr->m_pTextureHandles.m_nIndex = dataseginfo.index;
+    mtlHdr->m_pTextureHandles.m_nOffset = guidPageOffset;
 
-    mtlHdr->TextureGUIDs2.m_nIndex = dataseginfo.index;
-    mtlHdr->TextureGUIDs2.m_nOffset = guidPageOffset + textureRefSize;
+    mtlHdr->m_pStreamingTextureHandles.m_nIndex = dataseginfo.index;
+    mtlHdr->m_pStreamingTextureHandles.m_nOffset = guidPageOffset + textureRefSize;
 
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, TextureGUIDs));
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, TextureGUIDs2));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pTextureHandles));
+    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pStreamingTextureHandles));
 
     mtlHdr->something2 = 0x100000;
 
@@ -777,15 +417,15 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     // copy the rest of the data after the header
     MaterialCPUDataV12 cpudata{};
 
-    std::float_t selfillumtint[4] = { 0.0, 0.0, 0.0, 0.0 };
+    std::float_t emissivetint[3] = { 0.0, 0.0, 0.0 };
 
-    if (mapEntry.HasMember("selfillumtint")) {
+    if (mapEntry.HasMember("emissivetint")) {
 
         int tintId = 0;
-        for (auto& sitf : mapEntry["selfillumtint"].GetArray())
+        for (auto& sitf : mapEntry["emissivetint"].GetArray())
         {
 
-            selfillumtint[tintId] = sitf.GetFloat();
+            emissivetint[tintId] = sitf.GetFloat();
 
             tintId++;
 
@@ -798,20 +438,19 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
     }
 
-    cpudata.SelfillumTint->r = selfillumtint[0];
-    cpudata.SelfillumTint->g = selfillumtint[1];
-    cpudata.SelfillumTint->b = selfillumtint[2];
-    cpudata.SelfillumTint->a = selfillumtint[3];
+    cpudata.c_emissiveTint.x = emissivetint[0];
+    cpudata.c_emissiveTint.y = emissivetint[1];
+    cpudata.c_emissiveTint.z = emissivetint[2];
 
-    std::float_t color2[4] = { 1.0, 1.0, 1.0, 1.0 };
+    std::float_t albedotint[3] = { 1.0, 1.0, 1.0 };
 
-    if (mapEntry.HasMember("color2")) {
+    if (mapEntry.HasMember("albedotint")) {
 
         int color2Id = 0;
-        for (auto& c2f : mapEntry["color2"].GetArray())
+        for (auto& c2f : mapEntry["albedotint"].GetArray())
         {
 
-            color2[color2Id] = c2f.GetFloat();
+            albedotint[color2Id] = c2f.GetFloat();
 
             color2Id++;
 
@@ -819,20 +458,19 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
     }
 
-    cpudata.MainTint->r = color2[0];
-    cpudata.MainTint->g = color2[1];
-    cpudata.MainTint->b = color2[2];
-    cpudata.MainTint->a = color2[3];
+    cpudata.c_albedoTint.x = albedotint[0];
+    cpudata.c_albedoTint.y = albedotint[1];
+    cpudata.c_albedoTint.z = albedotint[2];
 
-    std::float_t DetailTransformMatrix[6] = { 1.0, 0, -0, 1.0, 0.0, 0.0 };
+    std::float_t uv1Transform[6] = { 1.0, 0, -0, 1.0, 0.0, 0.0 };
 
-    if (mapEntry.HasMember("detailtransform")) {
+    if (mapEntry.HasMember("uv1transform")) {
 
         int detailId = 0;
-        for (auto& dtm : mapEntry["detailtransform"].GetArray())
+        for (auto& dtm : mapEntry["uv1transform"].GetArray())
         {
 
-            DetailTransformMatrix[detailId] = dtm.GetFloat();
+            uv1Transform[detailId] = dtm.GetFloat();
 
             detailId++;
 
@@ -840,12 +478,12 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
     }
 
-    cpudata.DetailTransform->TextureScaleX = DetailTransformMatrix[0];
-    cpudata.DetailTransform->TextureUnk = DetailTransformMatrix[1];
-    cpudata.DetailTransform->TextureRotation = DetailTransformMatrix[2];
-    cpudata.DetailTransform->TextureScaleY = DetailTransformMatrix[3];
-    cpudata.DetailTransform->TextureTranslateX = DetailTransformMatrix[4];
-    cpudata.DetailTransform->TextureTranslateY = DetailTransformMatrix[5];
+    cpudata.uv1.uvScaleX = uv1Transform[0];
+    cpudata.uv1.uvRotationX = uv1Transform[1];
+    cpudata.uv1.uvRotationY = uv1Transform[2];
+    cpudata.uv1.uvScaleY = uv1Transform[3];
+    cpudata.uv1.uvTranslateX = uv1Transform[4];
+    cpudata.uv1.uvTranslateY = uv1Transform[5];
 
     memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, &cpudata, cpuDataSize);
     //////////////////////////////////////////
@@ -860,7 +498,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     RPakAssetEntryV7 asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
-    asset.m_nVersion = version;
+    asset.m_nVersion = 12;
 
     asset.m_nPageEnd = cpuseginfo.index + 1;
     // this isn't even fully true in some apex materials.
@@ -910,7 +548,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
         mtlHdr->m_nHeight = mapEntry["height"].GetInt();
 
     if (mapEntry.HasMember("flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
-        mtlHdr->m_SomeFlags = mapEntry["flags"].GetUint();
+        mtlHdr->m_Flags = mapEntry["flags"].GetUint();
 
     std::string surface = "default";
 
@@ -1085,7 +723,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pTextureHandles));
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pStreamingTextureHandles));
 
-    mtlHdr->something = 0x72000000;
+    mtlHdr->m_Flags2 = 0x72000000;
     mtlHdr->something2 = 0x100000;
 
     for (int i = 0; i < 2; ++i)
