@@ -82,7 +82,6 @@ public:
 	std::vector<char> GetAssetsBuffer() override
 	{
 		std::vector<char> ret;
-		ret.reserve(sizeof RPakAssetEntryV7 * assets.size());
 		for (auto i : assets)
 		{
 			auto const ptr = reinterpret_cast<char*>(&i);
@@ -137,7 +136,6 @@ public:
 	std::vector<char> GetAssetsBuffer() override
 	{
 		std::vector<char> ret;
-		ret.reserve(sizeof RPakAssetEntryV8 * assets.size());
 		for (auto i : assets)
 		{
 			auto const ptr = reinterpret_cast<char*>(&i);
