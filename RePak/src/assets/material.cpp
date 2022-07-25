@@ -42,7 +42,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         mtlHdr->m_nHeight = mapEntry["height"].GetInt();
 
     if (mapEntry.HasMember("flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
-        mtlHdr->m_Flags = strtoul(("0x" + mapEntry["imageflags"].GetStdString()).c_str(), NULL, 0);
+        mtlHdr->m_Flags = strtoul(("0x" + mapEntry["flags"].GetStdString()).c_str(), NULL, 0);
     else
         mtlHdr->m_Flags = 0x1D0300;
 
