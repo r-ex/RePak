@@ -297,6 +297,11 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
     // V12 type handling, mostly stripped now.
     if (type == "gen")
+        mtlHdr->m_Unknown3 = 0xFBA63181;
+    else
+        mtlHdr->m_Unknown3 = 0x40D33E8F;
+
+    if (type == "gen" || type == "wld" || subtype == "nose_art")
     {
 
         for (int i = 0; i < 2; ++i)
@@ -308,67 +313,41 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
             mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000005;
 
-        }
-
-        mtlHdr->m_Unknown3 = 0xFBA63181;
+        } 
 
     }
-    else if (type == "wld")
+    else if ((type == "fix" || type == "skn") && subtype != "nose_art")
     {
+       
+        for (int i = 0; i < 2; ++i)
+        {
 
-        Warning("Type 'wld' is not supported currently!!!");
+            mtlHdr->m_UnknownSections[i].UnkRenderLighting = 0xF0138004;
+            mtlHdr->m_UnknownSections[i].UnkRenderAliasing = 0xF0138004;
+            mtlHdr->m_UnknownSections[i].UnkRenderDoF = 0xF0138004;
+            mtlHdr->m_UnknownSections[i].UnkRenderUnknown = 0x00138004;
 
-        mtlHdr->m_UnknownSections[0].m_UnknownFlags = 0x00000005;
-        mtlHdr->m_UnknownSections[1].m_UnknownFlags = 0x00000005;
-
-        mtlHdr->m_Unknown3 = 0x40D33E8F;
-
-    }
-    else if (type == "fix" || type == "skn")
-    {
-
-        if (subtype == "nose_art") {
-
-            for (int i = 0; i < 2; ++i)
-            {
-
-                mtlHdr->m_UnknownSections[i].UnkRenderLighting = 0xF0138286;
-                mtlHdr->m_UnknownSections[i].UnkRenderAliasing = 0xF0138286;
-                mtlHdr->m_UnknownSections[i].UnkRenderDoF = 0xF0008286;
-                mtlHdr->m_UnknownSections[i].UnkRenderUnknown = 0x00138286;
-
-                mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000005;
-
-            }
+            mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000004;
 
         }
-        else {
-
-            for (int i = 0; i < 2; ++i)
-            {
-
-                mtlHdr->m_UnknownSections[i].UnkRenderLighting = 0xF0138004;
-                mtlHdr->m_UnknownSections[i].UnkRenderAliasing = 0xF0138004;
-                mtlHdr->m_UnknownSections[i].UnkRenderDoF = 0xF0138004;
-                mtlHdr->m_UnknownSections[i].UnkRenderUnknown = 0x00138004;
-
-                mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000004;
-
-            }
-
-        }
-
-        mtlHdr->m_Unknown3 = 0x40D33E8F;
 
     }
     else if (type == "rgd")
     {
 
         // todo: figure out what rgd is used for.
-        // update: I can not find a single shaderset for rgd.
+        // update: I can not find a single shaderset for rgd, which means it is not possible to use the type.
         Warning("Type 'rgd' is not supported in Titanfall 2!!");
+        exit(EXIT_FAILURE);
         return;
 
+    }
+    else
+    {
+        // do this just in case someone tries to be funny.
+        Warning("Type is not a valid in Titanfall 2!!");
+        exit(EXIT_FAILURE);
+        return;
     }
 
     // Is this a colpass asset?
