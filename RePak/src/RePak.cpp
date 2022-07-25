@@ -203,43 +203,28 @@ int main(int argc, char** argv)
     }
 
     // end json parsing
-
-    Log("building rpak %s.rpak\n\n", sRpakName.c_str());
-
-    // there has to be a nice way to change the RPakAssetEntry versions here dynamically or something
-    std::vector<RPakAssetEntryV7> assetEntries_v7{ };
-    std::vector<RPakAssetEntryV8> assetEntries_v8{ };
-
-    // build asset data
+    RPak* rpakFile;
     switch (doc["version"].GetInt())
     {
     case 7:
-        // loop through all assets defined in the map json
-        for (auto& file : doc["files"].GetArray())
-        {
-            ASSET_HANDLER("txtr", file, assetEntries_v7, Assets::AddTextureAsset);
-            ASSET_HANDLER("uimg", file, assetEntries_v7, Assets::AddUIImageAsset);
-            ASSET_HANDLER("Ptch", file, assetEntries_v7, Assets::AddPatchAsset);
-            ASSET_HANDLER("dtbl", file, assetEntries_v7, Assets::AddDataTableAsset);
-            ASSET_HANDLER("rmdl", file, assetEntries_v7, Assets::AddModelAsset);
-            ASSET_HANDLER("matl", file, assetEntries_v7, Assets::AddMaterialAsset);
-        }
+        rpakFile = new RPakV7();
         break;
     case 8:
-        // loop through all assets defined in the map json
-        for (auto& file : doc["files"].GetArray())
-        {
-            ASSET_HANDLER("txtr", file, assetEntries_v8, Assets::AddTextureAsset);
-            ASSET_HANDLER("uimg", file, assetEntries_v8, Assets::AddUIImageAsset);
-            ASSET_HANDLER("Ptch", file, assetEntries_v8, Assets::AddPatchAsset);
-            ASSET_HANDLER("dtbl", file, assetEntries_v8, Assets::AddDataTableAsset);
-            ASSET_HANDLER("rmdl", file, assetEntries_v8, Assets::AddModelAsset);
-            ASSET_HANDLER("matl", file, assetEntries_v8, Assets::AddMaterialAsset);
-        }
+        rpakFile = new RPakV8();
         break;
     default:
-        Error("Unsupported RPak version specified in map file\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
+        Error("Invalid RPak version specified\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
         return EXIT_FAILURE;
+    }
+
+    Log("building rpak %s.rpak\n\n", sRpakName.c_str());
+    int number = rpakFile->thing();
+
+    // build asset data
+    // loop through all assets defined in the map json
+    for (auto& file : doc["files"].GetArray())
+    {
+        rpakFile->HandleAsset(file);
     }
 
     std::filesystem::create_directories(sOutputDir); // create directory if it does not exist yet.
@@ -250,23 +235,8 @@ int main(int argc, char** argv)
 
     // write a placeholder header so we can come back and complete it
     // when we have all the info
-    RPakFileHeaderV7 rpakHeader_v7{ };
-    RPakFileHeaderV8 rpakHeader_v8{ };
-    // build asset data
-    // this is bad
-    switch (doc["version"].GetInt())
-    {
-    case 7:
-        out.write(rpakHeader_v7);
-        break;
-    case 8:
-        out.write(rpakHeader_v8);
-        break;
-    default:
-        Error("Unsupported RPak version specified in map file\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
-        return EXIT_FAILURE;
-    }
-
+    std::vector<char> write = rpakFile->GetHeaderBuffer();
+    WRITE_VECTOR(out, write)
 
     // write string vectors for starpak paths and get the total length of each vector
     size_t StarpakRefLength = Utils::WriteStringVector(out, Assets::g_vsStarpakPaths);
@@ -276,19 +246,9 @@ int main(int argc, char** argv)
     WRITE_VECTOR(out, g_vvSegments);
     WRITE_VECTOR(out, g_vPages);
     WRITE_VECTOR(out, g_vDescriptors);
-    // i hate this
-    switch (doc["version"].GetInt())
-    {
-    case 7:
-        WRITE_VECTOR(out, assetEntries_v7);
-        break;
-    case 8:
-        WRITE_VECTOR(out, assetEntries_v8);
-        break;
-    default:
-        Error("Unsupported RPak version specified in map file\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
-        return EXIT_FAILURE;
-    }
+
+    write = rpakFile->GetAssetsBuffer();
+    WRITE_VECTOR(out, write)
     
     WRITE_VECTOR(out, g_vGuidDescriptors);
     WRITE_VECTOR(out, g_vFileRelations);
@@ -302,52 +262,24 @@ int main(int argc, char** argv)
     FILETIME ft = Utils::GetFileTimeBySystem();
 
     
-    // i hate this
-    switch (doc["version"].GetInt())
-    {
-    case 7:
-        // set up the file header
-        rpakHeader_v7.m_nCreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
-        rpakHeader_v7.m_nSizeDisk = out.tell();
-        rpakHeader_v7.m_nSizeMemory = out.tell();
-        rpakHeader_v7.m_nVirtualSegmentCount = (uint16_t)g_vvSegments.size();
-        rpakHeader_v7.m_nPageCount = (uint16_t)g_vPages.size();
-        rpakHeader_v7.m_nDescriptorCount = (uint32_t)g_vDescriptors.size();
-        rpakHeader_v7.m_nGuidDescriptorCount = (uint32_t)g_vGuidDescriptors.size();
-        rpakHeader_v7.m_nRelationsCounts = (uint32_t)g_vFileRelations.size();
-        rpakHeader_v7.m_nAssetEntryCount = (uint32_t)assetEntries_v7.size();
-        rpakHeader_v7.m_nStarpakReferenceSize = (uint16_t)StarpakRefLength;
-        //rpakHeader_v7.m_nStarpakOptReferenceSize = (uint16_t)OptStarpakRefLength;
+    rpakFile->m_nCreatedTime(static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime); // write the current time into the file as FILETIME
+    rpakFile->m_nSizeDisk(out.tell());
+    rpakFile->m_nSizeMemory(out.tell());
+    rpakFile->m_nVirtualSegmentCount((uint16_t)g_vvSegments.size());
+    rpakFile->m_nPageCount((uint16_t)g_vPages.size());
+    rpakFile->m_nDescriptorCount((uint32_t)g_vDescriptors.size());
+    rpakFile->m_nGuidDescriptorCount((uint32_t)g_vGuidDescriptors.size());
+    rpakFile->m_nRelationsCounts((uint32_t)g_vFileRelations.size());
+    rpakFile->m_nAssetEntryCount();
+    rpakFile->m_nStarpakReferenceSize((uint16_t)StarpakRefLength);
+    rpakFile->m_nStarpakOptReferenceSize((uint16_t)OptStarpakRefLength);
 
-        out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
+    out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 
-        out.write(rpakHeader_v7); // Re-write rpak header.
+    write = rpakFile->GetHeaderBuffer();
+    WRITE_VECTOR(out, write) // Re-write rpak header.
 
-        out.close();
-        break;
-    case 8:
-        rpakHeader_v8.m_nCreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
-        rpakHeader_v8.m_nSizeDisk = out.tell();
-        rpakHeader_v8.m_nSizeMemory = out.tell();
-        rpakHeader_v8.m_nVirtualSegmentCount = (uint16_t)g_vvSegments.size();
-        rpakHeader_v8.m_nPageCount = (uint16_t)g_vPages.size();
-        rpakHeader_v8.m_nDescriptorCount = (uint32_t)g_vDescriptors.size();
-        rpakHeader_v8.m_nGuidDescriptorCount = (uint32_t)g_vGuidDescriptors.size();
-        rpakHeader_v8.m_nRelationsCounts = (uint32_t)g_vFileRelations.size();
-        rpakHeader_v8.m_nAssetEntryCount = (uint32_t)assetEntries_v8.size();
-        rpakHeader_v8.m_nStarpakReferenceSize = (uint16_t)StarpakRefLength;
-        rpakHeader_v8.m_nStarpakOptReferenceSize = (uint16_t)OptStarpakRefLength;
-
-        out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
-
-        out.write(rpakHeader_v8); // Re-write rpak header.
-
-        out.close();
-        break;
-    default:
-        Error("Unsupported RPak version specified in map file\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
-        return EXIT_FAILURE;
-    }
+    out.close();
 
     // free the memory
     for (auto& it : g_vRawDataBlocks)
