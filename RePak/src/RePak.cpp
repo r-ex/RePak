@@ -203,19 +203,23 @@ int main(int argc, char** argv)
     }
 
     // end json parsing
-    RPak* rpakFile;
+    RPakFileBase* rpakFile;
     switch (doc["version"].GetInt())
     {
     case 7:
-        rpakFile = new RPakV7();
+        rpakFile = new RPakFileV7();
         break;
     case 8:
-        rpakFile = new RPakV8();
+        rpakFile = new RPakFileV8();
         break;
     default:
         Error("Invalid RPak version specified\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
         return EXIT_FAILURE;
     }
+
+    int rpakVersion = doc["version"].GetInt();
+
+    rpakFile->header.m_nVersion = rpakVersion;
 
     Log("building rpak %s.rpak\n\n", sRpakName.c_str());
 
@@ -234,8 +238,10 @@ int main(int argc, char** argv)
 
     // write a placeholder header so we can come back and complete it
     // when we have all the info
-    std::vector<char> write = rpakFile->GetHeaderBuffer();
-    WRITE_VECTOR(out, write)
+    
+    // RPAKFILE WRITE HEADER
+
+    rpakFile->WriteHeader(&out);
 
     // write string vectors for starpak paths and get the total length of each vector
     size_t StarpakRefLength = Utils::WriteStringVector(out, Assets::g_vsStarpakPaths);
@@ -245,10 +251,7 @@ int main(int argc, char** argv)
     WRITE_VECTOR(out, g_vvSegments);
     WRITE_VECTOR(out, g_vPages);
     WRITE_VECTOR(out, g_vDescriptors);
-
-    write = rpakFile->GetAssetsBuffer();
-    WRITE_VECTOR(out, write)
-    
+    rpakFile->WriteAssets(&out);
     WRITE_VECTOR(out, g_vGuidDescriptors);
     WRITE_VECTOR(out, g_vFileRelations);
 
@@ -260,23 +263,21 @@ int main(int argc, char** argv)
     // get current time as FILETIME
     FILETIME ft = Utils::GetFileTimeBySystem();
 
-    
-    rpakFile->m_nCreatedTime(static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime); // write the current time into the file as FILETIME
-    rpakFile->m_nSizeDisk(out.tell());
-    rpakFile->m_nSizeMemory(out.tell());
-    rpakFile->m_nVirtualSegmentCount((uint16_t)g_vvSegments.size());
-    rpakFile->m_nPageCount((uint16_t)g_vPages.size());
-    rpakFile->m_nDescriptorCount((uint32_t)g_vDescriptors.size());
-    rpakFile->m_nGuidDescriptorCount((uint32_t)g_vGuidDescriptors.size());
-    rpakFile->m_nRelationsCounts((uint32_t)g_vFileRelations.size());
-    rpakFile->m_nAssetEntryCount();
-    rpakFile->m_nStarpakReferenceSize((uint16_t)StarpakRefLength);
-    rpakFile->m_nStarpakOptReferenceSize((uint16_t)OptStarpakRefLength);
+    rpakFile->header.m_nCreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
+    rpakFile->header.m_nSizeDisk = out.tell();
+    rpakFile->header.m_nSizeMemory = out.tell();
+    rpakFile->header.m_nVirtualSegmentCount = (uint16_t)g_vvSegments.size();
+    rpakFile->header.m_nPageCount = (uint16_t)g_vPages.size();
+    rpakFile->header.m_nDescriptorCount = (uint32_t)g_vDescriptors.size();
+    rpakFile->header.m_nGuidDescriptorCount = (uint32_t)g_vGuidDescriptors.size();
+    rpakFile->header.m_nRelationsCount = (uint32_t)g_vFileRelations.size();
+    rpakFile->header.m_nAssetEntryCount = rpakFile->GetAssetCount();
+    rpakFile->header.m_nStarpakReferenceSize = (uint16_t)StarpakRefLength;
+    rpakFile->header.m_nStarpakOptReferenceSize = (uint16_t)OptStarpakRefLength;
 
     out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 
-    write = rpakFile->GetHeaderBuffer();
-    WRITE_VECTOR(out, write) // Re-write rpak header.
+    rpakFile->WriteHeader(&out);
 
     out.close();
 

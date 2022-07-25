@@ -40,8 +40,10 @@ struct RPakPtr
 	uint32_t m_nOffset = 0;
 };
 
-// Apex Legends RPak file header
-struct RPakFileHeaderV8
+// generic header struct for both apex and titanfall 2
+// contains all the necessary members for both, RPakFileBase::WriteHeader decides
+// which should be written depending on the version
+struct RPakFileHeader
 {
 	uint32_t m_nMagic = 0x6b615052;
 	uint16_t m_nVersion = 0x8;
@@ -53,49 +55,30 @@ struct RPakFileHeaderV8
 	uint8_t  unk1[0x8];
 	uint64_t m_nSizeMemory; // actual data size of the rpak file after decompression
 	uint64_t m_nEmbeddedStarpakSize = 0;
-	uint8_t  unk3[0x8];
+	uint8_t  unk2[0x8];
 	uint16_t m_nStarpakReferenceSize = 0; // size in bytes of the section containing mandatory starpak paths
 	uint16_t m_nStarpakOptReferenceSize = 0; // size in bytes of the section containing optional starpak paths
 	uint16_t m_nVirtualSegmentCount = 0;
 	uint16_t m_nPageCount = 0; // number of "mempages" in the rpak
-	uint32_t m_nPatchIndex = 0;
+	uint16_t m_nPatchIndex = 0;
+	uint16_t alignment = 0;
 	uint32_t m_nDescriptorCount = 0;
 	uint32_t m_nAssetEntryCount = 0;
 	uint32_t m_nGuidDescriptorCount = 0;
-	uint32_t m_nRelationsCounts = 0;
-	uint8_t  unk4[0x1c];
+	uint32_t m_nRelationsCount = 0;
+
+	// only in tf2
+	uint32_t m_nUnknownSeventhBlockCount = 0;
+	uint32_t m_nUnknownEighthBlockCount = 0;
+
+	// only in apex
+	uint8_t  unk3[0x1c];
 };
 
 struct RPakPatchCompressedHeader // Comes after file header if its an patch rpak.
 {
 	uint64_t m_nSizeDisk;
 	uint64_t m_nSizeMemory;
-};
-
-// Titanfall 2 RPak file header
-struct RPakFileHeaderV7
-{
-	uint32_t m_nMagic = 0x6b615052;
-	uint16_t m_nVersion = 0x7;
-	uint8_t  m_nFlags[0x2];
-	uint64_t m_nCreatedTime; // this is actually FILETIME, but if we don't make it uint64_t here, it'll break the struct when writing
-	uint8_t  unk0[0x8];
-	uint64_t m_nSizeDisk;
-	uint8_t  unk1[0x8];
-	uint64_t m_nSizeMemory;
-	uint8_t  unk2[0x8];
-	uint16_t m_nStarpakReferenceSize = 0;
-	uint16_t m_nVirtualSegmentCount;
-	uint16_t m_nPageCount;
-	uint16_t m_nPatchIndex = 0;
-
-	uint32_t m_nDescriptorCount = 0;
-	uint32_t m_nAssetEntryCount = 0;
-	uint32_t m_nGuidDescriptorCount = 0;
-	uint32_t m_nRelationsCounts = 0;
-
-	uint32_t m_nUnknownSeventhBlockCount = 0;
-	uint32_t m_nUnknownEighthBlockCount = 0;
 };
 
 // segment
