@@ -2,6 +2,18 @@
 
 #include <d3d11.h>
 
+struct Vector2
+{
+	float x, y;
+
+	Vector2(float x, float y) {
+		this->x;
+		this->y;
+	}
+
+	Vector2() {};
+};
+
 struct Vector3
 {
 	float x, y, z;
@@ -13,21 +25,6 @@ struct Vector3
 	}
 
 	Vector3() {};
-};
-
-//I think this implementation is better than what 'TintVec4' was before..
-struct Vector4
-{
-	float r, g, b, a;
-
-	Vector4(float r, float g, float b, float a) {
-		this->r = r;
-		this->g = g;
-		this->b = b;
-		this->a = a;
-	}
-
-	Vector4() {};
 };
 
 #pragma pack(push, 1)
@@ -603,16 +600,19 @@ struct BasicRMDLVGHeader
 
 // the following two structs are found in the ""cpu data"", they are very much alike to what you would use in normal source materials.
 // apex probably has these and more stuff.
-struct MaterialTextureTransformMatrix
+struct uvTransformMatrix
 {
 
-	// very similar to how it's done in normal source
-	float TextureScaleX = 1.0;
-	float TextureUnk = 0.0; // unsure what this does, appears to skew/rotate and scale the texture at the same time? weird.
-	float TextureRotation = -0.0; // counter clockwise, 0-1, exceeding one causes Weird Stuff to happen.
-	float TextureScaleY = 1.0;
-	float TextureTranslateX = 0.0;
-	float TextureTranslateY = 0.0;
+	// this section is actually broken up into three parts.
+	// c_uvRotScaleX
+	float uvScaleX = 1.0;
+	float uvRotationX = 0.0; // rotation, but w e i r d.
+	// c_uvRotScaleY
+	float uvRotationY = -0.0; //counter clockwise, 0-1, exceeding one causes Weird Stuff to happen.
+	float uvScaleY = 1.0;
+	// c_uvTranslate
+	float uvTranslateX = 0.0;
+	float uvTranslateY = 0.0;
 
 };
 
@@ -637,7 +637,7 @@ struct UnknownMaterialSectionV15
 struct MaterialCPUDataV15
 {	
 	// hard to test this but I'm pretty sure that's where it is.
-	MaterialTextureTransformMatrix DetailTransform[1]; // detail texture transform matrix
+	uvTransformMatrix DetailTransform[1]; // detail texture transform matrix
 
 	// SelfIllumTint NEEDS to be found.
 	// this has lots of similar bits to the V12 version but I cba to actually dig into it.
@@ -708,7 +708,7 @@ struct MaterialHeaderV15
 	/* 0x74 */ int16_t m_nHeight = 2048;
 	/* 0x76 */ int16_t m_Unknown1 = 0;
 
-	/* 0x78 */ uint32_t m_SomeFlags = 0x1D0300;
+	/* 0x78 */ uint32_t m_Flags = 0x1D0300;
 	/* 0x7C */ uint32_t m_Unknown2 = 0;
 
 	/* 0x80 */ uint32_t m_Unknown3 = 0x1F5A92BD; // REQUIRED but why?
@@ -716,7 +716,7 @@ struct MaterialHeaderV15
 	/* 0x84 */ uint32_t m_Unknown4 = 0;
 
 	// neither of these 2 seem to be required
-	/* 0x88 */ uint32_t something = 0;
+	/* 0x88 */ uint32_t m_Flags2 = 0;
 	/* 0x8C */ uint32_t something2 = 0;
 
 	/* 0x90 */ UnknownMaterialSectionV15 m_UnknownSections[2]{};
@@ -729,19 +729,20 @@ struct MaterialHeaderV15
 
 struct UnknownMaterialSectionV12
 {
+
 	// not sure how these work but 0xF0 -> 0x00 toggles them off and vice versa.
 	// they seem to affect various rendering filters, said filters might actually be the used shaders.
-	// the duplicate one is likely for the second set of textures which (probably) never gets used.
-	uint32_t UnkRenderLighting = 0xF0138286;
-	uint32_t UnkRenderAliasing = 0xF0138286;
-	uint32_t UnkRenderDoF = 0xF0008286;
-	uint32_t UnkRenderUnknown = 0x00138286;
+	// the duplicate one is likely for streamed textures.
+	uint32_t UnkRenderLighting = 0;
+	uint32_t UnkRenderAliasing = 0;
+	uint32_t UnkRenderDoF = 0;
+	uint32_t UnkRenderUnknown = 0;
 
-	uint32_t UnkRenderFlags = 0x00000005; // this changes sometimes.
-	uint16_t VisibilityFlags = 0x0000; // different render settings, such as opacity and transparency.
-	uint16_t FaceDrawingFlags = 0x0006; // how the face is drawn, culling, wireframe, etc.
+	uint32_t m_UnknownFlags = 0; // this changes sometimes.
+	uint16_t m_VisibilityFlags = 0x17; // different render settings, such as opacity and transparency.
+	uint16_t m_FaceDrawingFlags = 0x6; // how the face is drawn, culling, wireframe, etc.
 
-	uint64_t Padding;
+	uint64_t m_Padding = 0;
 	
 	/*VisibilityFlags
 	0x0000 unknown
@@ -769,49 +770,66 @@ struct UnknownMaterialSectionV12
 struct MaterialCPUDataV12
 {
 
-	MaterialTextureTransformMatrix DetailTransform[1]; // detail texture transform matrix
-	MaterialTextureTransformMatrix TextureTransform[2]; // 1st is presumably texture (unconfirmed), 2nd assumed to be texture.
+	// the assignment of these depends on the shader set, however we'll mostly be using them as follows
+	uvTransformMatrix uv1; // detail
+	uvTransformMatrix uv2; // 1st texture
+	uvTransformMatrix uv3; // 2nd texture
 
-	// this might be another texture transform matrix.
-	float UnkFloat2[6] = {
-		0.0, 0.0, 0.0, 0.0, 1.0, 0.0
-	};
+	Vector2 c_uvDistortionIntensity = { 0.0, 0.0 };
+	Vector2 c_uvDistortion2Intensity = { 0.0, 0.0 };
 
-	Vector4 MainTint[1];
+	float c_fogColorFactor = 1.0;
 
-	// these are vector4s for rgba I would think.
-	float UnkData1[12] = {
+	float c_layerBlendRamp = 0.0;
 
-		0.0, 0.0, 0.0, 0.0,
-		1.0, 0.0, 0.0, 0.0,
-		10000, -0.0, 0.0, 1.778
+	Vector3 c_albedoTint = { 1.0, 1.0, 1.0 };
+	float c_opacity = 1.0;
 
-	};
+	float c_useAlphaModulateSpecular = 0.0;
+	float c_alphaEdgeFadeExponent = 0.0;
+	float c_alphaEdgeFadeInner = 0.0;
+	float c_alphaEdgeFadeOuter = 0.0;
 
-	Vector4 SelfillumTint[1];
+	float c_useAlphaModulateEmissive = 1.0;
+	float c_emissiveEdgeFadeExponent = 0.0;
+	float c_emissiveEdgeFadeInner = 0.0;
+	float c_emissiveEdgeFadeOuter = 0.0;
 
-	// these are (more) vector4s for rgba I would think.
-	uint8_t UnkData2[12 * 4] = {
-	0x00, 0x00, 0x00, 0x00, 0x66, 0x66, 0x66, 0x3F, 
-	0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x80, 0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0x00, 0x00, 0x80, 0x3F, 0x8F, 0xC2, 0xF5, 0x3C, 
-	0x8F, 0xC2, 0xF5, 0x3C, 0x8F, 0xC2, 0xF5, 0x3C
-	};
-	// this is actually floats but i cba to type all this default data in 
-	// the last few are stated as 0xFFFFFFFF which converts to NaN in float, converting NaN to float does not give the same results, why?
+	float c_alphaDistanceFadeScale = 10000.0;
+	float c_alphaDistanceFadeBias = -0.0;
+	float c_alphaTestReference = 0.0;
+
+	float c_aspectRatioMulV = 1.778;
+
+	Vector3 c_emissiveTint = { 0.0, 0.0, 0.0 };
+
+	float c_shadowBias = 0.0;
+
+	float c_tsaaDepthAlphaThreshold = 0.0;
+	float c_tsaaMotionAlphaThreshold = 0.9;
+	float c_tsaaMotionAlphaRamp = 10.0;
+	uint32_t c_tsaaResponsiveFlag = 0x0; // unsure if this is a float or not.
+
+	float c_dofOpacityLuminanceScale = 1.0;
+
+	uint32_t pad_CBufUberStatic[3] = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF };
+
+	float c_perfGloss = 1.0;
+
+	Vector3 c_perfSpecColor = { 0.03, 0.03, 0.03 };
+
 };
 
 // should be size of 208
 struct MaterialHeaderV12
 {
-	uint64_t VtblPtrPad = 0; // Gets set to CMaterialGlue vtbl ptr
-	uint64_t padding = 0; // Un-used.
-	uint64_t AssetGUID = 0; // guid of this material asset
+	uint64_t m_VtblReserved = 0; // Gets set to CMaterialGlue vtbl ptr
+	uint8_t m_Padding[0x8]{}; // unused
+
+	uint64_t m_nGUID = 0; // guid of this material asset
 
 	RPakPtr m_pszName{}; // pointer to partial asset path
-	RPakPtr m_pszSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	RPakPtr m_pszSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.txt)
 	RPakPtr m_pszSurfaceProp2{}; // pointer to surfaceprop2 
 
 	// IDX 1: DepthShadow
@@ -820,39 +838,41 @@ struct MaterialHeaderV12
 	// IDX 4: ColPass
 	// Titanfall is does not have 'DepthShadowTight'
 
-	uint64_t GUIDRefs[4]{}; // Required to have proper textures.
+	uint64_t m_GUIDRefs[4]{}; // Required to have proper textures.
 
 	// these blocks dont seem to change often but are the same?
 	// these blocks relate to different render filters and flags. still not well understood.
-	UnknownMaterialSectionV12 UnkSections[2];
+	UnknownMaterialSectionV12 m_UnknownSections[2];
 
-	uint64_t ShaderSetGUID = 0; // guid of the shaderset asset that this material uses
+	uint64_t m_pShaderSet = 0; // guid of the shaderset asset that this material uses
 
-	RPakPtr TextureGUIDs{}; // TextureGUID Map
-	RPakPtr TextureGUIDs2{}; // Streamable TextureGUID Map
+	RPakPtr m_pTextureHandles{}; // TextureGUID Map 1
 
-	int16_t StreamableTextureCount = 0; // Number of textures with streamed mip levels.
-	uint32_t ImageFlags = 0x503000; // see ImageFlags in the apex struct.
-	int16_t Unk1 = 0; // might be "Unknown"
+	// should be reserved - used to store the handles for any textures that have streaming mip levels
+	RPakPtr m_pStreamingTextureHandles{};
 
-	uint64_t padding2 = 0; // haven't observed anything here.
+	int16_t m_nStreamingTextureHandleCount = 0; // Number of textures with streamed mip levels.
+	uint32_t m_Flags = 0x0; // see ImageFlags in the apex struct.
+	int16_t m_Unk1 = 0; // might be "m_Unknown2"
+
+	uint64_t m_Padding1 = 0; // haven't observed anything here.
 
 	// seems to be 0xFBA63181 for loadscreens
-	uint32_t Unknown2 = 0xFBA63181; // no clue tbh
+	uint32_t m_Unknown3 = 0xFBA63181; // name carried over from apex struct.
 
-	uint32_t Unk2 = 0; // this might actually be "Alignment"
+	uint32_t m_Unk2 = 0; // this might actually be "m_Unknown4"
 
-	uint32_t Flags2 = 0;
+	uint32_t m_Flags2 = 0;
 	uint32_t something2 = 0x0; // seems mostly unchanged between all materials, including apex, however there are some edge cases where this is 0x00.
 
-	int16_t Width = 2048;
-	int16_t Height = 2048;
-
-	uint32_t Unk3 = 0; // might be padding but could also be something else.
+	int16_t m_nWidth = 2048;
+	int16_t m_nHeight = 2048;
+	uint32_t m_Unk3 = 0; // might be padding but could also be something else such as "m_Unknown1"?.
 
 	/* ImageFlags
 	0x050300 for loadscreens, 0x1D0300 for normal materials.
 	0x1D has been observed, seems to invert lighting? used on some exceptionally weird materials.*/
+
 };
 
 // header struct for the material asset cpu data
