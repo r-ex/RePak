@@ -53,7 +53,6 @@ public:
 	virtual void m_nAssetEntryCount() {};
 	virtual void m_nStarpakReferenceSize(uint16_t val) {};
 	virtual void m_nStarpakOptReferenceSize(uint16_t val) {};
-	virtual int thing() { return 15; };
 };
 
 class RPakV7 : public RPak
@@ -88,9 +87,6 @@ public:
 			std::vector<char> buffer(ptr, ptr + sizeof i);
 			ret.insert(ret.end(), buffer.begin(), buffer.end());
 		}
-		//auto const ptr = reinterpret_cast<char*>(&assets);
-		//std::vector<char> buffer(ptr, ptr + sizeof assets);
-		//return buffer;
 		return ret;
 	};
 	// look idk how i can make header public because its type can be RPakFileHeaderV7 or it can be RPakFileHeaderV8, so I have to make setters for every single part of the header
@@ -106,8 +102,6 @@ public:
 	void m_nAssetEntryCount() override { header.m_nAssetEntryCount = (uint32_t)assets.size(); };
 	void m_nStarpakReferenceSize(uint16_t val) override { header.m_nStarpakReferenceSize = val; };
 	void m_nStarpakOptReferenceSize(uint16_t val) override { }; // v7 doesnt have these
-
-	int thing() override { return 10; };
 };
 
 class RPakV8 : public RPak
@@ -142,9 +136,6 @@ public:
 			std::vector<char> buffer(ptr, ptr + sizeof i);
 			ret.insert(ret.end(), buffer.begin(), buffer.end());
 		}
-		//auto const ptr = reinterpret_cast<char*>(&assets);
-		//std::vector<char> buffer(ptr, ptr + sizeof assets);
-		//return buffer;
 		return ret;
 	};
 	// look idk how i can make header public because its type can be RPakFileHeaderV7 or it can be RPakFileHeaderV8, so I have to make setters for every single part of the header
@@ -160,6 +151,4 @@ public:
 	void m_nAssetEntryCount() override { header.m_nAssetEntryCount = (uint32_t)assets.size(); };
 	void m_nStarpakReferenceSize(uint16_t val) override { header.m_nStarpakReferenceSize = val; };
 	void m_nStarpakOptReferenceSize(uint16_t val) override { header.m_nStarpakOptReferenceSize = val; };
-
-	int thing() override { return 5; };
 };
