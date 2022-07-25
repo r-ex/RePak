@@ -218,7 +218,6 @@ int main(int argc, char** argv)
     }
 
     Log("building rpak %s.rpak\n\n", sRpakName.c_str());
-    int number = rpakFile->thing();
 
     // build asset data
     // loop through all assets defined in the map json
