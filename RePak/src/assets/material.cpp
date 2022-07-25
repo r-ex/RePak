@@ -345,7 +345,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     else
     {
         // do this just in case someone tries to be funny.
-        Warning("Type is not a valid in Titanfall 2!!");
+        Warning("Type is not valid in Titanfall 2!!");
         exit(EXIT_FAILURE);
         return;
     }
