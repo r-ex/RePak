@@ -25,6 +25,10 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
 
     uint64_t nInputFileSize = Utils::GetFileSize(filePath);
 
+    uint8_t nTotalMipCount = 1;
+    uint32_t nLargestMipSize = 0;
+    int nDDSHeaderSize = 0;
+
     std::string sAssetName = assetPath; // todo: this needs to be changed to the actual name
 
     // parse input image file
@@ -40,10 +44,36 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
 
         DDS_HEADER ddsh = input.read<DDS_HEADER>();
 
-        hdr->m_nDataLength = ddsh.pitchOrLinearSize;
+        uint32_t nTotalSize = 0;
+        for (int ml = 0; ml < ddsh.mipMapCount; ml++)
+        {
+            uint32_t ms = (ddsh.pitchOrLinearSize / std::pow(4, ml));
+            uint32_t mss = 0;
+            if (ms <= 8) 
+            {
+                // respawn adds eight bytes of padding after these lower mips, Very Cool.
+                nTotalSize += 16;
+                mss = 16;
+            }
+            else
+            {
+                nTotalSize += ms;
+                mss = ms;
+            }
+               
+            Log("current mip level and mip size: %ix%i\n", ml, mss);
+
+        }
+
+        Log("total size %i\n", nTotalSize);
+;
+        hdr->m_nDataLength = nTotalSize;
         hdr->m_nWidth = ddsh.width;
         hdr->m_nHeight = ddsh.height;
         Log("-> dimensions: %ix%i\n", ddsh.width, ddsh.height);
+
+        nTotalMipCount = ddsh.mipMapCount;
+        nLargestMipSize = ddsh.pitchOrLinearSize;
 
         DXGI_FORMAT dxgiFormat;
 
@@ -122,16 +152,23 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
 
         // Go to the end of the main header.
         input.seek(ddsh.size + 4);
+        nDDSHeaderSize += ddsh.size + 4;
+
 
         // Go to the end of the DX10 header if it exists.
-        if (ddsh.pixelfmt.fourCC == '01XD')
+        if (ddsh.pixelfmt.fourCC == '01XD') {
             input.seek(20, std::ios::cur);
+            nDDSHeaderSize += 20;
+        }
+            
     }
 
     hdr->m_nAssetGUID = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
     // unfortunately i'm not a respawn engineer so 1 (unstreamed) mip level will have to do
-    hdr->m_nPermanentMipLevels = 1;
+    hdr->m_nPermanentMipLevels = nTotalMipCount;
+    Log("-> permanent mips: %i\n", nTotalMipCount);
+
 
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 
@@ -158,7 +195,74 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
 
     char* databuf = new char[hdr->m_nDataLength];
 
-    input.getReader()->read(databuf, hdr->m_nDataLength);
+    //input.getReader()->read(databuf, hdr->m_nDataLength);
+
+    uint32_t buffSize = 0;
+    uint32_t currentDDSOffset = 0;
+    int remainingDDSData = hdr->m_nDataLength;
+
+    for (int ml = 0; ml < nTotalMipCount; ml++)
+    {
+        uint32_t ms = (nLargestMipSize / std::pow(4, ml));
+        uint32_t mipSizeDDS = 0;
+        uint32_t mipSizeRpak = 0;
+
+        if (ms <= 8)
+        {
+            currentDDSOffset += 8;
+            mipSizeDDS = 8;
+            mipSizeRpak = 16;
+        }
+        else
+        {
+            currentDDSOffset += ms;
+            mipSizeDDS = ms;
+            mipSizeRpak = ms;
+        }
+
+        remainingDDSData -= mipSizeRpak;
+
+        input.seek(nDDSHeaderSize + (currentDDSOffset - mipSizeDDS), std::ios::beg);
+
+        input.getReader()->read(databuf + remainingDDSData, mipSizeDDS);
+
+        //input.seek(, std::ios::beg);
+
+        //ddsMipArray += databuf[hdr->m_nDataLength - currentDDSOffset, ms];
+
+        
+        Log("current mip level, dds mip size, and rpak mip size: %ix%ix%i\n", ml, mipSizeDDS, mipSizeRpak);
+        Log("current offset: %i\n", currentDDSOffset);
+        Log("remaining data: %i\n", remainingDDSData);
+        //Log("is this real %i\n", databuf[1]);
+
+    }
+
+    //Log("ddsMipArray: %i\n", ddsMipArray);
+    //Log("databuff: %i\n", databuf);
+
+    /*for (int ml = (totalMipCount - 1); ml > 0; ml--)
+    {
+        uint32_t ms = (largestMipSize / std::pow(4, ml));
+        uint32_t mss = 0;
+        if (ms < 8)
+        {
+            buffSize += 8;
+            mss = 8;
+        }
+        else
+        {
+            buffSize += ms;
+            mss = ms;
+        }
+
+        ddsMipArrayInvert += ddsMipArray[currentDDSOffset, ms];
+
+        currentDDSOffset += buffSize;
+        Log("current mip level and mip size 2: %ix%i\n", ml, mss);
+
+    }*/
+
 
     RePak::AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)hdr });
 
