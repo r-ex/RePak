@@ -154,7 +154,6 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
         input.seek(ddsh.size + 4);
         nDDSHeaderSize += ddsh.size + 4;
 
-
         // Go to the end of the DX10 header if it exists.
         if (ddsh.pixelfmt.fourCC == '01XD') {
             input.seek(20, std::ios::cur);
@@ -195,8 +194,6 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
 
     char* databuf = new char[hdr->m_nDataLength];
 
-    //input.getReader()->read(databuf, hdr->m_nDataLength);
-
     uint32_t buffSize = 0;
     uint32_t currentDDSOffset = 0;
     int remainingDDSData = hdr->m_nDataLength;
@@ -225,44 +222,12 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
         input.seek(nDDSHeaderSize + (currentDDSOffset - mipSizeDDS), std::ios::beg);
 
         input.getReader()->read(databuf + remainingDDSData, mipSizeDDS);
-
-        //input.seek(, std::ios::beg);
-
-        //ddsMipArray += databuf[hdr->m_nDataLength - currentDDSOffset, ms];
-
         
         Log("current mip level, dds mip size, and rpak mip size: %ix%ix%i\n", ml, mipSizeDDS, mipSizeRpak);
         Log("current offset: %i\n", currentDDSOffset);
         Log("remaining data: %i\n", remainingDDSData);
-        //Log("is this real %i\n", databuf[1]);
 
     }
-
-    //Log("ddsMipArray: %i\n", ddsMipArray);
-    //Log("databuff: %i\n", databuf);
-
-    /*for (int ml = (totalMipCount - 1); ml > 0; ml--)
-    {
-        uint32_t ms = (largestMipSize / std::pow(4, ml));
-        uint32_t mss = 0;
-        if (ms < 8)
-        {
-            buffSize += 8;
-            mss = 8;
-        }
-        else
-        {
-            buffSize += ms;
-            mss = ms;
-        }
-
-        ddsMipArrayInvert += ddsMipArray[currentDDSOffset, ms];
-
-        currentDDSOffset += buffSize;
-        Log("current mip level and mip size 2: %ix%i\n", ml, mss);
-
-    }*/
-
 
     RePak::AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)hdr });
 
