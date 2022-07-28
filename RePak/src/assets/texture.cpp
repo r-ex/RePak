@@ -28,8 +28,11 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     uint32_t nLargestMipSize = 0;
     uint32_t nDDSHeaderSize = 0;
     uint32_t nStreamedMipSize = 0;
+
     int nStreamedMipCount = 0;
     int nTotalMipCount = 1;  
+
+    bool bStreamable = false;
 
     std::string sAssetName = assetPath; // todo: this needs to be changed to the actual name
 
@@ -46,37 +49,41 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
 
         DDS_HEADER ddsh = input.read<DDS_HEADER>();
 
+        if (ddsh.mipMapCount > 9)
+            bStreamable = true;
+
+        // this loop can probably be removed and added to the lower one if done correctly.
         uint32_t nTotalSize = 0;
         for (int ml = 0; ml < ddsh.mipMapCount; ml++)
         {
             uint32_t ms = (ddsh.pitchOrLinearSize / std::pow(4, ml));
-            uint32_t mss = 0;
-            int streamed = 0;
+            //uint32_t mss = 0;
+            //int streamed = 0;
             if (ms <= 8) 
             {
                 // respawn adds eight bytes of padding after these lower mips, Very Cool.
                 nTotalSize += 16;
-                mss = 16;
+                //mss = 16;
             }
             else
             {
                 nTotalSize += ms;
-                mss = ms;
+                //mss = ms;
             }
 
-            if (ddsh.mipMapCount > 9 && ml < (ddsh.mipMapCount - 9))
+            if (bStreamable && ml < (ddsh.mipMapCount - 9))
             {
                 nStreamedMipSize += ms;
-                streamed = 1;
+                //streamed = 1;
                 nStreamedMipCount++;
             }
                
-            Log("current mip level, mip size, and streamed: %ix%ix%i\n", ml, mss, streamed);
+            //Log("current mip level, mip size, and streamed: %ix%ix%i\n", ml, mss, streamed);
 
         }
 
-        Log("total size %i\n", nTotalSize);
-        Log("streamed size %i\n", nStreamedMipSize);
+        //Log("total size %i\n", nTotalSize);
+        //Log("streamed size %i\n", nStreamedMipSize);
 ;
         hdr->m_nDataLength = nTotalSize;
         hdr->m_nWidth = ddsh.width;
@@ -176,10 +183,11 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     hdr->m_nAssetGUID = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
     // unfortunately i'm not a respawn engineer so 1 (unstreamed) mip level will have to do
+    // I am also not a respawn engineer.
     hdr->m_nPermanentMipLevels = (nTotalMipCount - nStreamedMipCount);
     hdr->m_nStreamedMipLevels = nStreamedMipCount;
     
-    Log("-> mips permanent:streamed : %i:%i\n", (nTotalMipCount - nStreamedMipCount), nStreamedMipCount);
+    Log("-> total mipmaps permanent:streamed : %i:%i\n", (nTotalMipCount - nStreamedMipCount), nStreamedMipCount);
 
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 
@@ -206,6 +214,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->m_nDataLength - nStreamedMipSize, 3, 16);
 
     char* databuf = new char[hdr->m_nDataLength - nStreamedMipSize];
+
     char* streamedbuf = new char[nStreamedMipSize];
 
     uint32_t buffSize = 0;
@@ -216,6 +225,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     for (int ml = 0; ml < nTotalMipCount; ml++)
     {
         uint32_t ms = (nLargestMipSize / std::pow(4, ml));
+        // I can probably just declare these in the if statments I think.
         uint32_t mipSizeDDS = 0;
         uint32_t mipSizeRpak = 0;
 
@@ -236,7 +246,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
 
         input.seek(nDDSHeaderSize + (currentDDSOffset - mipSizeDDS), std::ios::beg);
 
-        if (nTotalMipCount > 9 && ml < (nTotalMipCount - 9))
+        if (bStreamable && ml < (nTotalMipCount - 9))
         {
             remainingStreamedData -= ms;
             input.getReader()->read(streamedbuf + remainingStreamedData, mipSizeDDS);
@@ -248,9 +258,9 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
         
         //input.getReader()->read(databuf + remainingDDSData, mipSizeDDS);
 
-        Log("current mip level, dds mip size, and rpak mip size: %ix%ix%i\n", ml, mipSizeDDS, mipSizeRpak);
-        Log("current offset: %i\n", currentDDSOffset);
-        Log("remaining data: %i\n", remainingDDSData);
+        //Log("current mip level, dds mip size, and rpak mip size: %ix%ix%i\n", ml, mipSizeDDS, mipSizeRpak);
+        //Log("current offset: %i\n", currentDDSOffset);
+        //Log("remaining data: %i\n", remainingDDSData);
 
     }
 
@@ -269,14 +279,21 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     // now time to add the higher level asset entry
     RPakAssetEntryV7 asset;
 
-    //uint64_t starpakOffset = -1;
+    // this should hopefully fix some crashing
+    if(bStreamable) 
+    {
+        RePak::AddStarpakReference("paks/Win64/repak.starpak");
 
-    RePak::AddStarpakReference("paks/Win64/repak.starpak");
+        SRPkDataEntry de{ -1, nStreamedMipSize, (uint8_t*)streamedbuf };
+        uint64_t starpakOffset = RePak::AddStarpakDataEntry(de);
 
-    SRPkDataEntry de{ -1, nStreamedMipSize, (uint8_t*)streamedbuf };
-    uint64_t starpakOffset = RePak::AddStarpakDataEntry(de);
-
-    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);
+        asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);
+    }
+    else
+    {
+        uint64_t starpakOffset = -1;
+    }
+    
     asset.m_nVersion = TXTR_VERSION;
 
     asset.m_nPageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
