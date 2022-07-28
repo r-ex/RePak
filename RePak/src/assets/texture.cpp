@@ -280,20 +280,17 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     RPakAssetEntryV7 asset;
 
     // this should hopefully fix some crashing
+    uint64_t starpakOffset = -1;
+
     if(bStreamable) 
     {
         RePak::AddStarpakReference("paks/Win64/repak.starpak");
 
         SRPkDataEntry de{ -1, nStreamedMipSize, (uint8_t*)streamedbuf };
-        uint64_t starpakOffset = RePak::AddStarpakDataEntry(de);
+        starpakOffset = RePak::AddStarpakDataEntry(de);
+    }
 
-        asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);
-    }
-    else
-    {
-        uint64_t starpakOffset = -1;
-    }
-    
+    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);
     asset.m_nVersion = TXTR_VERSION;
 
     asset.m_nPageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
