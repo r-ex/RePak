@@ -24,10 +24,12 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     input.open(filePath, BinaryIOMode::Read);
 
     uint64_t nInputFileSize = Utils::GetFileSize(filePath);
-
-    uint8_t nTotalMipCount = 1;
+ 
     uint32_t nLargestMipSize = 0;
-    int nDDSHeaderSize = 0;
+    uint32_t nDDSHeaderSize = 0;
+    uint32_t nStreamedMipSize = 0;
+    int nStreamedMipCount = 0;
+    int nTotalMipCount = 1;  
 
     std::string sAssetName = assetPath; // todo: this needs to be changed to the actual name
 
@@ -49,6 +51,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
         {
             uint32_t ms = (ddsh.pitchOrLinearSize / std::pow(4, ml));
             uint32_t mss = 0;
+            int streamed = 0;
             if (ms <= 8) 
             {
                 // respawn adds eight bytes of padding after these lower mips, Very Cool.
@@ -60,12 +63,20 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
                 nTotalSize += ms;
                 mss = ms;
             }
+
+            if (ddsh.mipMapCount > 9 && ml < (ddsh.mipMapCount - 9))
+            {
+                nStreamedMipSize += ms;
+                streamed = 1;
+                nStreamedMipCount++;
+            }
                
-            Log("current mip level and mip size: %ix%i\n", ml, mss);
+            Log("current mip level, mip size, and streamed: %ix%ix%i\n", ml, mss, streamed);
 
         }
 
         Log("total size %i\n", nTotalSize);
+        Log("streamed size %i\n", nStreamedMipSize);
 ;
         hdr->m_nDataLength = nTotalSize;
         hdr->m_nWidth = ddsh.width;
@@ -165,9 +176,10 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     hdr->m_nAssetGUID = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
     // unfortunately i'm not a respawn engineer so 1 (unstreamed) mip level will have to do
-    hdr->m_nPermanentMipLevels = nTotalMipCount;
-    Log("-> permanent mips: %i\n", nTotalMipCount);
-
+    hdr->m_nPermanentMipLevels = (nTotalMipCount - nStreamedMipCount);
+    hdr->m_nStreamedMipLevels = nStreamedMipCount;
+    
+    Log("-> mips permanent:streamed : %i:%i\n", (nTotalMipCount - nStreamedMipCount), nStreamedMipCount);
 
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 
@@ -190,13 +202,16 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
 
     // woo more segments
     // cpu data
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->m_nDataLength, 3, 16);
 
-    char* databuf = new char[hdr->m_nDataLength];
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->m_nDataLength - nStreamedMipSize, 3, 16);
+
+    char* databuf = new char[hdr->m_nDataLength - nStreamedMipSize];
+    char* streamedbuf = new char[nStreamedMipSize];
 
     uint32_t buffSize = 0;
     uint32_t currentDDSOffset = 0;
     int remainingDDSData = hdr->m_nDataLength;
+    int remainingStreamedData = nStreamedMipSize;
 
     for (int ml = 0; ml < nTotalMipCount; ml++)
     {
@@ -221,8 +236,18 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
 
         input.seek(nDDSHeaderSize + (currentDDSOffset - mipSizeDDS), std::ios::beg);
 
-        input.getReader()->read(databuf + remainingDDSData, mipSizeDDS);
+        if (nTotalMipCount > 9 && ml < (nTotalMipCount - 9))
+        {
+            remainingStreamedData -= ms;
+            input.getReader()->read(streamedbuf + remainingStreamedData, mipSizeDDS);
+        }
+        else
+        {
+            input.getReader()->read(databuf + remainingDDSData, mipSizeDDS);
+        }
         
+        //input.getReader()->read(databuf + remainingDDSData, mipSizeDDS);
+
         Log("current mip level, dds mip size, and rpak mip size: %ix%ix%i\n", ml, mipSizeDDS, mipSizeRpak);
         Log("current offset: %i\n", currentDDSOffset);
         Log("remaining data: %i\n", remainingDDSData);
@@ -244,7 +269,12 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
     // now time to add the higher level asset entry
     RPakAssetEntryV7 asset;
 
-    uint64_t starpakOffset = -1;
+    //uint64_t starpakOffset = -1;
+
+    RePak::AddStarpakReference("paks/Win64/repak.starpak");
+
+    SRPkDataEntry de{ -1, nStreamedMipSize, (uint8_t*)streamedbuf };
+    uint64_t starpakOffset = RePak::AddStarpakDataEntry(de);
 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);
     asset.m_nVersion = TXTR_VERSION;
@@ -302,41 +332,86 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
 
         DXGI_FORMAT dxgiFormat;
 
-        switch (ddsh.pixelfmt.fourCC)
-        {
-        case '1TXD':
-            Log("-> fmt: DXT1\n");
-            dxgiFormat = DXGI_FORMAT_BC1_UNORM_SRGB;
-            break;
-        case '5TXD':
-            Log("-> fmt: DXT5\n");
-            dxgiFormat = DXGI_FORMAT_BC3_UNORM_SRGB;
-            break;
-        case 'U4CB':
-            Log("-> fmt: BC4U\n");
-            dxgiFormat = DXGI_FORMAT_BC4_UNORM;
-            break;
-        case 'U5CB':
-            Log("-> fmt: BC5U\n");
-            dxgiFormat = DXGI_FORMAT_BC5_UNORM;
-            break;
-        case '01XD':
-            Log("-> fmt: DX10\n");
-            dxgiFormat = DXGI_FORMAT_BC7_UNORM;
-            break;
-        default:
-            Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
-            exit(EXIT_FAILURE);
-            return;
+        // Checks if the texture is DX10+, this is needed for SRGB.
+        if (ddsh.pixelfmt.fourCC == '01XD') {
+
+            DDS_HEADER_DXT10 ddsh_dx10 = input.read<DDS_HEADER_DXT10>();
+
+            switch (ddsh_dx10.dxgiFormat)
+            {
+            case 72:
+                Log("-> fmt: BC1 SRGB\n");
+                dxgiFormat = DXGI_FORMAT_BC1_UNORM_SRGB;
+                break;
+            case 75:
+                Log("-> fmt: BC2 SRGB\n");
+                dxgiFormat = DXGI_FORMAT_BC2_UNORM_SRGB;
+                break;
+            case 78:
+                Log("-> fmt: BC2 SRGB\n");
+                dxgiFormat = DXGI_FORMAT_BC3_UNORM_SRGB;
+                break;
+            case 98:
+                Log("-> fmt: BC7\n");
+                dxgiFormat = DXGI_FORMAT_BC7_UNORM;
+                break;
+            case 99:
+                Log("-> fmt: BC7 SRGB\n");
+                dxgiFormat = DXGI_FORMAT_BC7_UNORM_SRGB;
+                break;
+            default:
+                Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+                break;
+            }
+
+        }
+        // Non SRGB texture processing.
+        else {
+
+            switch (ddsh.pixelfmt.fourCC)
+            {
+            case '1TXD':
+                Log("-> fmt: DXT1\n");
+                dxgiFormat = DXGI_FORMAT_BC1_UNORM;
+                break;
+            case '3TXD':
+                Log("-> fmt: DXT3\n");
+                dxgiFormat = DXGI_FORMAT_BC2_UNORM;
+                break;
+            case '5TXD':
+                Log("-> fmt: DXT5\n");
+                dxgiFormat = DXGI_FORMAT_BC3_UNORM;
+                break;
+            case 'U4CB':
+                Log("-> fmt: BC4U\n");
+                dxgiFormat = DXGI_FORMAT_BC4_UNORM;
+                break;
+            case 'U5CB':
+                Log("-> fmt: BC5U\n");
+                dxgiFormat = DXGI_FORMAT_BC5_UNORM;
+                break;
+            case 'S5CB':
+                Log("-> fmt: BC5U\n");
+                dxgiFormat = DXGI_FORMAT_BC5_SNORM;
+                break;
+            default:
+                Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+                return;
+            }
+
         }
 
-        hdr->m_nFormat = (uint16_t)s_txtrFormatMap[dxgiFormat];
+        hdr->m_nFormat = s_txtrFormatMap[dxgiFormat];
 
-        // go to the end of the main header
+        // Go to the end of the main header.
         input.seek(ddsh.size + 4);
 
-        if (dxgiFormat == DXGI_FORMAT_BC7_UNORM || dxgiFormat == DXGI_FORMAT_BC7_UNORM_SRGB)
+        // Go to the end of the DX10 header if it exists.
+        if (ddsh.pixelfmt.fourCC == '01XD') {
             input.seek(20, std::ios::cur);
+        }
     }
 
     hdr->m_nAssetGUID = RTech::StringToGuid((sAssetName + ".rpak").c_str());
