@@ -53,8 +53,17 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
         nLargestMipSize = ddsh.pitchOrLinearSize;
 
         if (ddsh.mipMapCount > 9) {
-            nStreamedMipCount = ddsh.mipMapCount - 9;
-            bStreamable = true;
+
+            if (mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool())
+            {
+                nStreamedMipCount = 0;
+                bStreamable = false;
+            }
+            else
+            {
+                nStreamedMipCount = ddsh.mipMapCount - 9;
+                bStreamable = true;
+            }
         }
            
 
@@ -338,8 +347,17 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
         nLargestMipSize = ddsh.pitchOrLinearSize;
 
         if (ddsh.mipMapCount > 9) {
-            nStreamedMipCount = ddsh.mipMapCount - 9;
-            bStreamable = true;
+
+            if (mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool())
+            {
+                nStreamedMipCount = 0;
+                bStreamable = false;
+            }
+            else
+            {
+                nStreamedMipCount = ddsh.mipMapCount - 9;
+                bStreamable = true;
+            }
         }
 
 
@@ -465,7 +483,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
     hdr->m_nPermanentMipLevels = (nTotalMipCount - nStreamedMipCount);
     hdr->m_nStreamedMipLevels = nStreamedMipCount;
 
-    Log("-> total mipmaps permanent:streamed : %i:%i\n", (nTotalMipCount - nStreamedMipCount), nStreamedMipCount);
+    Log("-> total mipmaps permanent:streamed : %i:%i\n", hdr->m_nPermanentMipLevels, hdr->m_nStreamedMipLevels);
 
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 
