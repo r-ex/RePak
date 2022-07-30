@@ -102,7 +102,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
                 dxgiFormat = DXGI_FORMAT_BC2_UNORM_SRGB;
                 break;
             case 78:
-                Log("-> fmt: BC2 SRGB\n");
+                Log("-> fmt: BC3 SRGB\n");
                 dxgiFormat = DXGI_FORMAT_BC3_UNORM_SRGB;
                 break;
             case 98:
@@ -387,7 +387,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
                 dxgiFormat = DXGI_FORMAT_BC2_UNORM_SRGB;
                 break;
             case 78:
-                Log("-> fmt: BC2 SRGB\n");
+                Log("-> fmt: BC3 SRGB\n");
                 dxgiFormat = DXGI_FORMAT_BC3_UNORM_SRGB;
                 break;
             case 98:
