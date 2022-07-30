@@ -146,7 +146,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV7>* assetEntries, const 
                 dxgiFormat = DXGI_FORMAT_BC5_UNORM;
                 break;
             case 'S5CB':
-                Log("-> fmt: BC5U\n");
+                Log("-> fmt: BC5S\n");
                 dxgiFormat = DXGI_FORMAT_BC5_SNORM;
                 break;
             default:
@@ -431,7 +431,7 @@ void Assets::AddTextureAsset(std::vector<RPakAssetEntryV8>* assetEntries, const 
                 dxgiFormat = DXGI_FORMAT_BC5_UNORM;
                 break;
             case 'S5CB':
-                Log("-> fmt: BC5U\n");
+                Log("-> fmt: BC5S\n");
                 dxgiFormat = DXGI_FORMAT_BC5_SNORM;
                 break;
             default:
