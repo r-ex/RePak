@@ -1,12 +1,12 @@
 #include "pch.h"
 #include "Assets.h"
 
-void Assets::AddModelAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddModelAsset_stub(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Error("RPak version 7 (Titanfall 2) cannot contain models");
 }
 
-void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddModelAsset_v9(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding mdl_ asset '%s'\n", assetPath);
 
@@ -118,7 +118,6 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
             RePak::RegisterGuidDescriptor(dataseginfo.index, dataBuf.getPosition()-8);
     }
 
-
     RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
     RePak::AddRawDataBlock(shdb);
 
@@ -128,7 +127,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     //RPakRawDataBlock vgdb{ vgIdx, vgFileSize, (uint8_t*)pVGBuf };
     //RePak::AddRawDataBlock(vgdb);
 
-    RPakAssetEntryV8 asset;
+    RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, starpakOffset, -1, (std::uint32_t)AssetType::RMDL);
     asset.m_nVersion = RMDL_VERSION;
@@ -136,7 +135,7 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     asset.m_nPageEnd = dataseginfo.index + 1;
     asset.unk1 = 2;
 
-    // note: models use an implicit guid reference to their materials
+    // models use an implicit guid reference to their materials
     // the guids aren't registered but are converted during the loading of the material asset
     // during (what i assume is) regular reference conversion
     // a potential solution to the material guid conversion issue could be just registering the guids?
@@ -146,6 +145,4 @@ void Assets::AddModelAsset(std::vector<RPakAssetEntryV8>* assetEntries, const ch
     asset.m_nUsesCount = 1;
 
     assetEntries->push_back(asset);
-
-    Log("%i\n", g_vsStarpakPaths.size());
 }

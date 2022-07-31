@@ -40,8 +40,10 @@ struct RPakPtr
 	uint32_t m_nOffset = 0;
 };
 
-// Apex Legends RPak file header
-struct RPakFileHeaderV8
+// generic header struct for both apex and titanfall 2
+// contains all the necessary members for both, RPakFileBase::WriteHeader decides
+// which should be written depending on the version
+struct RPakFileHeader
 {
 	uint32_t m_nMagic = 0x6b615052;
 	uint16_t m_nVersion = 0x8;
@@ -53,49 +55,30 @@ struct RPakFileHeaderV8
 	uint8_t  unk1[0x8];
 	uint64_t m_nSizeMemory; // actual data size of the rpak file after decompression
 	uint64_t m_nEmbeddedStarpakSize = 0;
-	uint8_t  unk3[0x8];
+	uint8_t  unk2[0x8];
 	uint16_t m_nStarpakReferenceSize = 0; // size in bytes of the section containing mandatory starpak paths
 	uint16_t m_nStarpakOptReferenceSize = 0; // size in bytes of the section containing optional starpak paths
 	uint16_t m_nVirtualSegmentCount = 0;
 	uint16_t m_nPageCount = 0; // number of "mempages" in the rpak
-	uint32_t m_nPatchIndex = 0;
+	uint16_t m_nPatchIndex = 0;
+	uint16_t alignment = 0;
 	uint32_t m_nDescriptorCount = 0;
 	uint32_t m_nAssetEntryCount = 0;
 	uint32_t m_nGuidDescriptorCount = 0;
-	uint32_t m_nRelationsCounts = 0;
-	uint8_t  unk4[0x1c];
+	uint32_t m_nRelationsCount = 0;
+
+	// only in tf2
+	uint32_t m_nUnknownSeventhBlockCount = 0;
+	uint32_t m_nUnknownEighthBlockCount = 0;
+
+	// only in apex
+	uint8_t  unk3[0x1c];
 };
 
 struct RPakPatchCompressedHeader // Comes after file header if its an patch rpak.
 {
 	uint64_t m_nSizeDisk;
 	uint64_t m_nSizeMemory;
-};
-
-// Titanfall 2 RPak file header
-struct RPakFileHeaderV7
-{
-	uint32_t m_nMagic = 0x6b615052;
-	uint16_t m_nVersion = 0x7;
-	uint8_t  m_nFlags[0x2];
-	uint64_t m_nCreatedTime; // this is actually FILETIME, but if we don't make it uint64_t here, it'll break the struct when writing
-	uint8_t  unk0[0x8];
-	uint64_t m_nSizeDisk;
-	uint8_t  unk1[0x8];
-	uint64_t m_nSizeMemory;
-	uint8_t  unk2[0x8];
-	uint16_t m_nStarpakReferenceSize = 0;
-	uint16_t m_nVirtualSegmentCount;
-	uint16_t m_nPageCount;
-	uint16_t m_nPatchIndex = 0;
-
-	uint32_t m_nDescriptorCount = 0;
-	uint32_t m_nAssetEntryCount = 0;
-	uint32_t m_nGuidDescriptorCount = 0;
-	uint32_t m_nRelationsCounts = 0;
-
-	uint32_t m_nUnknownSeventhBlockCount = 0;
-	uint32_t m_nUnknownEighthBlockCount = 0;
 };
 
 // segment
@@ -140,9 +123,9 @@ struct RPakRelationBlock
 };
 
 // defines a bunch of values for registering/using an asset from the rpak
-struct RPakAssetEntryV8
+struct RPakAssetEntry
 {
-	RPakAssetEntryV8() = default;
+	RPakAssetEntry() = default;
 
 	void InitAsset(uint64_t nGUID,
 		uint32_t nSubHeaderBlockIdx,
@@ -194,80 +177,6 @@ struct RPakAssetEntryV8
 	// so "opt" starpaks are a thing
 	uint64_t m_nStarpakOffset = -1;
 	uint64_t m_nOptStarpakOffset = -1;
-
-	uint16_t m_nPageEnd = 0; // highest mem page used by this asset
-	uint16_t unk1 = 0;
-
-	uint32_t m_nRelationsStartIdx = 0;
-
-	uint32_t m_nUsesStartIdx = 0;
-	uint32_t m_nRelationsCounts = 0;
-	uint32_t m_nUsesCount = 0; // number of other assets that this asset uses
-
-	// size of the asset header
-	uint32_t m_nSubHeaderSize = 0;
-
-	// this isn't always changed when the asset gets changed
-	// but respawn calls it a version so i will as well
-	uint32_t m_nVersion = 0;
-
-	// see AssetType enum below
-	uint32_t m_nMagic = 0;
-};
-
-// defines a bunch of values for registering/using an asset from the rpak
-struct RPakAssetEntryV7
-{
-	RPakAssetEntryV7() = default;
-
-	void InitAsset(uint64_t nGUID,
-		uint32_t nSubHeaderBlockIdx,
-		uint32_t nSubHeaderBlockOffset,
-		uint32_t nSubHeaderSize,
-		uint32_t nRawDataBlockIdx,
-		uint32_t nRawDataBlockOffset,
-		uint64_t nStarpakOffset,
-		uint64_t nOptStarpakOffset,
-		uint32_t Type)
-	{
-		this->m_nGUID = nGUID;
-		this->m_nSubHeaderDataBlockIdx = nSubHeaderBlockIdx;
-		this->m_nSubHeaderDataBlockOffset = nSubHeaderBlockOffset;
-		this->m_nRawDataBlockIndex = nRawDataBlockIdx;
-		this->m_nRawDataBlockOffset = nRawDataBlockOffset;
-		this->m_nStarpakOffset = nStarpakOffset;
-		this->m_nSubHeaderSize = nSubHeaderSize;
-		this->m_nMagic = Type;
-	}
-
-	// hashed version of the asset path
-	// used for referencing the asset from elsewhere
-	//
-	// - when referenced from other assets, the GUID is used directly
-	// - when referenced from scripts, the GUID is calculated from the original asset path
-	//   by a function such as RTech::StringToGuid
-	uint64_t m_nGUID = 0;
-	uint64_t unk0 = 0x0000000000000000;
-
-	// page index and offset for where this asset's header is located
-	uint32_t m_nSubHeaderDataBlockIdx = 0;
-	uint32_t m_nSubHeaderDataBlockOffset = 0;
-
-	// page index and offset for where this asset's data is located
-	// note: this may not always be used for finding the data:
-	//		 some assets use their own idx/offset pair from within the subheader
-	//		 when adding pairs like this, you MUST register it as a descriptor
-	//		 otherwise the pointer won't be converted
-	uint32_t m_nRawDataBlockIndex = 0;
-	uint32_t m_nRawDataBlockOffset = 0;
-
-	// offset to any available streamed data
-	// m_nStarpakOffset    = "mandatory" starpak file offset
-	// m_nOptStarpakOffset = "optional" starpak file offset
-	// 
-	// in reality both are mandatory but respawn likes to do a little trolling
-	// so "opt" starpaks are a thing
-	uint64_t m_nStarpakOffset = -1;
 
 	uint16_t m_nPageEnd = 0; // highest mem page used by this asset
 	uint16_t unk1 = 0;

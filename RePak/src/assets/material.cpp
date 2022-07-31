@@ -2,7 +2,7 @@
 #include "Assets.h"
 
 // VERSION 7
-void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
@@ -182,7 +182,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
             else
                 RePak::AddFileRelation(assetEntries->size());
 
-            RPakAssetEntryV7* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
+            RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
 
             txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
             txtrAsset->m_nRelationsCounts++;
@@ -210,7 +210,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
             if (guid != 0)
             {
-                RPakAssetEntryV7* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
+                RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
 
                 txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
                 txtrAsset->m_nRelationsCounts++;
@@ -607,126 +607,6 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
     }
     
-    // unsure how to swap the struct depending on version but this should work otherwise.
-    /*
-    // some funny apex people can test the subtypes if they care enough.
-    // V16 Type Handling
-    else if (version == 16)
-    {
-
-        if (type == "sknp")
-        {
-            // unsure if apex still has the issue of needing viewmodel and worldmodel shadersets
-            if (subtype == "default") {
-
-                mtlHdr->ShaderSetGUID = 0x1D9FFF314E152725;
-
-                mtlHdr->Flags2 = 0x72000000;
-
-            }
-            else if (subtype == "skn31") {
-
-                mtlHdr->ShaderSetGUID = 0xDFDD369CFE3A4817;
-
-                mtlHdr->Flags2 = 0x56040020;
-
-            }
-            else {
-
-                Warning("Invalid type used! Defaulting to subtype 'default'... \n");
-
-                mtlHdr->ShaderSetGUID = 0x1D9FFF314E152725;
-
-                mtlHdr->Flags2 = 0x72000000;
-
-            }
-
-            // These should always be constant (per each material type)
-            // There's different versions of these for each material type
-            // GUIDRefs[4] is Colpass entry.
-            mtlHdr->GUIDRefs[0] = 0x2B93C99C67CC8B51;
-            mtlHdr->GUIDRefs[1] = 0x1EBD063EA03180C7;
-            mtlHdr->GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
-            mtlHdr->GUIDRefs[3] = 0x227C27B608B3646B;
-
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs));
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 8);
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 16);
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 24);
-
-            RePak::AddFileRelation(assetEntries->size(), 4);
-            assetUsesCount += 4;
-
-            for (int i = 0; i < 2; ++i)
-            {
-                for (int j = 0; j < 8; ++j)
-                    mtlHdr->UnkSections[i].Unknown5[j] = 0xf0000000;
-
-                mtlHdr->UnkSections[i].Unknown6 = 4;
-            }
-
-            mtlHdr->ImageFlags = 0x1D0300;
-
-            mtlHdr->Unknown2 = 0x1F5A92BD;
-
-        }
-        else if (type == "wldc")
-        {
-            //this has been updated to reflect the new structure but nothing other than that.
-            if (subtype == "default") {
-
-                mtlHdr->ShaderSetGUID = 0x4B0F3B4CBD009096;
-
-                mtlHdr->Flags2 = 0x72000000;
-
-            }
-            else {
-
-                Warning("Invalid type used! Defaulting to subtype 'default'... \n");
-
-                mtlHdr->ShaderSetGUID = 0x4B0F3B4CBD009096;
-
-                mtlHdr->Flags2 = 0x72000000;
-
-            }
-
-            // GUIDRefs[4] is Colpass entry which is optional for wldc.
-            mtlHdr->GUIDRefs[0] = 0x435FA77E363BEA48; // DepthShadow
-            mtlHdr->GUIDRefs[1] = 0xF734F96BE92E0E71; // DepthPrepass
-            mtlHdr->GUIDRefs[2] = 0xD306370918620EC0; // DepthVSM
-            mtlHdr->GUIDRefs[3] = 0xDAB17AEAD2D3387A; // DepthShadowTight
-
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs));
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 8);
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 16);
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeader, GUIDRefs) + 24);
-
-            RePak::AddFileRelation(assetEntries->size(), 4);
-            assetUsesCount += 4;
-
-            for (int i = 0; i < 2; ++i)
-            {
-                for (int j = 0; j < 8; ++j)
-                    mtlHdr->UnkSections[i].Unknown5[j] = 0xf0000000;
-
-                mtlHdr->UnkSections[i].Unknown6 = 4;
-            }
-
-            mtlHdr->ImageFlags = 0x1D0300;
-
-            mtlHdr->Unknown2 = 0x1F5A92BD;
-
-        }
-        else if (type == "gen")
-        {
-            // hehe haha I'm not doing the research for this.
-            Warning("Type 'gen' is not supported currently!!!");
-            return;
-
-        }
-
-    }*/
-    
     RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, ShaderSetGUID));
     RePak::AddFileRelation(assetEntries->size());
     assetUsesCount++;
@@ -784,18 +664,13 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         int tintId = 0;
         for (auto& sitf : mapEntry["selfillumtint"].GetArray())
         {
-
             selfillumtint[tintId] = sitf.GetFloat();
 
             tintId++;
-
         }
-
     }
     else {
-
         Log("No selfillumtint specified, assuming there is no emissive texture! \n");
-
     }
 
     cpudata.SelfillumTint->r = selfillumtint[0];
@@ -805,18 +680,15 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
     std::float_t color2[4] = { 1.0, 1.0, 1.0, 1.0 };
 
-    if (mapEntry.HasMember("color2")) {
-
+    if (mapEntry.HasMember("color2"))
+    {
         int color2Id = 0;
         for (auto& c2f : mapEntry["color2"].GetArray())
         {
-
             color2[color2Id] = c2f.GetFloat();
 
             color2Id++;
-
         }
-
     }
 
     cpudata.MainTint->r = color2[0];
@@ -826,18 +698,15 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
     std::float_t DetailTransformMatrix[6] = { 1.0, 0, -0, 1.0, 0.0, 0.0 };
 
-    if (mapEntry.HasMember("detailtransform")) {
-
+    if (mapEntry.HasMember("detailtransform"))
+    {
         int detailId = 0;
         for (auto& dtm : mapEntry["detailtransform"].GetArray())
         {
-
             DetailTransformMatrix[detailId] = dtm.GetFloat();
 
             detailId++;
-
         }
-
     }
 
     cpudata.DetailTransform->TextureScaleX = DetailTransformMatrix[0];
@@ -855,9 +724,8 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     RePak::AddRawDataBlock({ cpuseginfo.index, cpuseginfo.size, (uint8_t*)cpuData });
 
     //////////////////////////////////////////
-
     //  todo make thise swap depending on version, probably a global rpak version.
-    RPakAssetEntryV7 asset;
+    RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
     asset.m_nVersion = version;
@@ -876,7 +744,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 }
 
 // VERSION 8
-void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
@@ -968,7 +836,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
             else
                 RePak::AddFileRelation(assetEntries->size());
 
-            RPakAssetEntryV8* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
+            RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
 
             txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
             txtrAsset->m_nRelationsCounts++;
@@ -990,7 +858,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
             RePak::AddFileRelation(assetEntries->size());
 
-            RPakAssetEntryV8* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
+            RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
 
             txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
             txtrAsset->m_nRelationsCounts++;
@@ -1169,7 +1037,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     //////////////////////////////////////////
 
-    RPakAssetEntryV8 asset;
+    RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
     asset.m_nVersion = MATL_VERSION;
