@@ -53,8 +53,7 @@ uint8_t DataTable_GetEntrySize(dtblcoltype_t type)
     return 0; // should be unreachable
 }
 
-// VERSION 7 - HAVENT ACTUALLY IMPLEMENTED YET, THIS IS JUST VERSION 8 COPIED
-void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 
@@ -266,7 +265,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV7>* assetEntries, cons
     RePak::AddRawDataBlock({ rawdatainfo.index, rowDataPageSize, (uint8_t*)rowDataBuf });
     RePak::AddRawDataBlock({ stringsinfo.index, stringEntriesSize, (uint8_t*)stringEntryBuf });
 
-    RPakAssetEntryV7 asset;
+    RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, rawdatainfo.index, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
     asset.m_nVersion = DTBL_VERSION;
@@ -278,7 +277,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV7>* assetEntries, cons
 }
 
 // VERSION 8
-void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddDataTableAsset_v1(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 
@@ -490,7 +489,7 @@ void Assets::AddDataTableAsset(std::vector<RPakAssetEntryV8>* assetEntries, cons
     RePak::AddRawDataBlock({ rawdatainfo.index, rowDataPageSize, (uint8_t*)rowDataBuf });
     RePak::AddRawDataBlock({ stringsinfo.index, stringEntriesSize, (uint8_t*)stringEntryBuf });
 
-    RPakAssetEntryV8 asset;
+    RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, rawdatainfo.index, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
     asset.m_nVersion = DTBL_VERSION;

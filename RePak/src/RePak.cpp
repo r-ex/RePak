@@ -72,24 +72,7 @@ size_t RePak::AddFileRelation(uint32_t assetIdx, uint32_t count)
     return g_vFileRelations.size()-count; // return the index of the file relation(s)
 }
 
-RPakAssetEntryV7* RePak::GetAssetByGuid(std::vector<RPakAssetEntryV7>* assets, uint64_t guid, uint32_t* idx)
-{
-    uint32_t i = 0;
-    for (auto& it : *assets)
-    {
-        if (it.m_nGUID == guid)
-        {
-            if (idx)
-                *idx = i;
-            return &it;
-        }
-        i++;
-    }
-    Debug("failed to find asset with guid %llX\n", guid);
-    return nullptr;
-}
-
-RPakAssetEntryV8* RePak::GetAssetByGuid(std::vector<RPakAssetEntryV8>* assets, uint64_t guid, uint32_t* idx)
+RPakAssetEntry* RePak::GetAssetByGuid(std::vector<RPakAssetEntry>* assets, uint64_t guid, uint32_t* idx)
 {
     uint32_t i = 0;
     for (auto& it : *assets)
@@ -203,23 +186,17 @@ int main(int argc, char** argv)
     }
 
     // end json parsing
-    RPakFileBase* rpakFile;
-    switch (doc["version"].GetInt())
+    RPakFileBase* rpakFile = new RPakFileBase();
+    
+    if (!doc.HasMember("version") || !doc["version"].IsInt())
     {
-    case 7:
-        rpakFile = new RPakFileV7();
-        break;
-    case 8:
-        rpakFile = new RPakFileV8();
-        break;
-    default:
-        Error("Invalid RPak version specified\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
+        Error("Invalid RPak file version specified. Valid options:\n7 - Titanfall 2\n8 - Apex Legends\n");
         return EXIT_FAILURE;
     }
 
     int rpakVersion = doc["version"].GetInt();
 
-    rpakFile->header.m_nVersion = rpakVersion;
+    rpakFile->SetVersion(rpakVersion);
 
     Log("building rpak %s.rpak\n\n", sRpakName.c_str());
 
