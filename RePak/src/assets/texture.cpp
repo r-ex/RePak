@@ -33,8 +33,8 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
 
         if (magic != 0x20534444) // b'DDS '
         {
-            Warning("Attempted to add txtr asset '%s' that was not a valid DDS file (invalid magic). Skipping asset...\n", assetPath);
-            return;
+            Error("Attempted to add txtr asset '%s' that was not a valid DDS file (invalid magic). Exiting...\n", assetPath);
+            exit(EXIT_FAILURE);
         }
 
         DDS_HEADER ddsh = input.read<DDS_HEADER>();
