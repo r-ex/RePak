@@ -59,10 +59,10 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     // get the info for the ui atlas image
     std::string sAtlasFilePath = g_sAssetsDir + mapEntry["atlas"].GetStdString() + ".dds";
     std::string sAtlasAssetName = mapEntry["atlas"].GetStdString() + ".rpak";
-    uint64_t atlasGUID = RTech::StringToGuid(sAtlasAssetName.c_str());
+    uint64_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
 
     // get the txtr asset that this asset is using
-    RPakAssetEntry* atlasAsset = RePak::GetAssetByGuid(assetEntries, atlasGUID, nullptr);
+    RPakAssetEntry* atlasAsset = RePak::GetAssetByGuid(assetEntries, atlasGuid, nullptr);
 
     if (!atlasAsset)
     {
@@ -84,10 +84,12 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     pHdr->m_nWidth = ddsh.width;
     pHdr->m_nHeight = ddsh.height;
 
+    // legion uses this to get the texture count, so its probably set correctly
     pHdr->m_nTextureOffsetsCount = nTexturesCount;
-    pHdr->m_nTextureCount = nTexturesCount == 1 ? 0 : nTexturesCount; // don't even ask
-
-    pHdr->m_nAtlasGUID = atlasGUID;
+    // unused by legion? - might not be correct
+    //pHdr->textureCount = nTexturesCount <= 1 ? 0 : nTexturesCount - 1; // don't even ask
+    pHdr->m_nTextureCount = 0;
+    pHdr->m_nAtlasGUID = atlasGuid;
 
     // calculate data sizes so we can allocate a page and segment
     uint32_t textureOffsetsDataSize = sizeof(UIImageOffset) * nTexturesCount;
