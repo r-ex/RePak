@@ -46,7 +46,7 @@ public:
 	virtual void HandleAsset(rapidjson::Value& file)
 	{
 		ASSET_HANDLER("txtr", file, assets, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
-		ASSET_HANDLER("uimg", file, assets, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
+		ASSET_HANDLER("uimg", file, assets, Assets::AddUIImageAsset_r2, Assets::AddUIImageAsset_v10);
 		ASSET_HANDLER("Ptch", file, assets, Assets::AddPatchAsset, Assets::AddPatchAsset);
 		ASSET_HANDLER("dtbl", file, assets, Assets::AddDataTableAsset_v0, Assets::AddDataTableAsset_v1);
 		ASSET_HANDLER("rmdl", file, assets, Assets::AddModelAsset_stub, Assets::AddModelAsset_v9);

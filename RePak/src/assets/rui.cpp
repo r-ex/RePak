@@ -2,7 +2,7 @@
 #include "Assets.h"
 
 // VERSION 7
-void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddUIImageAsset_r2(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding uimg asset '%s'\n", assetPath);
 
@@ -108,10 +108,10 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     RPakAssetEntry* atlasAsset = RePak::GetAssetByGuid(assetEntries, atlasGuid, nullptr);
 
     if (!atlasAsset)
+    {
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
-
-    if (!mapEntry.HasMember("textures") || !mapEntry["textures"].IsArray())
-        Error("failed to add uimg asset '%s': expected field 'textures' as an array.\n");
+        exit(EXIT_FAILURE);
+    }
 
     uint32_t nTexturesCount = mapEntry["textures"].GetArray().Size();
 
@@ -166,23 +166,84 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     // set texture offset page index and offset
     pHdr->m_pTextureOffsets = { tiseginfo.index, 0 };
 
-    int uiTextureIdx = 0;
-
     ////////////////////
     // IMAGE OFFSETS
     for (auto& it : mapEntry["textures"].GetArray())
     {
-        // validate all textures here since this is the first time we loop through them
-        if (!it.HasMember("path") || !it["path"].IsString())
-        {
-            Error("failed to add ui texture %i for uimg asset '%s': expected field 'path' as a string.\n", uiTextureIdx, assetPath);
-        }
+        UIImageOffset uiio{};
+        float startX = it["posX"].GetFloat() / pHdr->m_nWidth;
+        float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->m_nWidth;
 
-        if (!it.HasMember("posX") || !it["posX"].IsNumber() || !it.HasMember("posY") || !it["posY"].IsNumber())
-            Error("failed to add ui texture '%s': expected fields 'posX' and 'posY' as numbers.\n", it["path"].GetString());
+        float startY = it["posY"].GetFloat() / pHdr->m_nHeight;
+        float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->m_nHeight;
 
-        if (!it.HasMember("width") || !it["width"].IsNumber() || !it.HasMember("height") || !it["height"].IsNumber())
-            Error("failed to add ui texture '%s': expected fields 'width' and 'height' as numbers.\n", it["path"].GetString());
+        // this doesnt affect legion but does affect game?
+        //uiio.InitUIImageOffset(startX, startY, endX, endY);
+        tiBuf.write(uiio);
+    }
+
+    ///////////////////////
+    // IMAGE DIMENSIONS
+    // set texture dimensions page index and offset
+    pHdr->m_pTextureDims = { tiseginfo.index, textureOffsetsDataSize };
+
+    for (auto& it : mapEntry["textures"].GetArray())
+    {
+        tiBuf.write<uint16_t>(it["width"].GetInt());
+        tiBuf.write<uint16_t>(it["height"].GetInt());
+    }
+
+    // set texture hashes page index and offset
+    pHdr->m_pTextureHashes = { tiseginfo.index, textureOffsetsDataSize + textureDimensionsDataSize };
+    //pHdr->pTextureNames = { tiseginfo.index, 0 };
+
+    uint32_t nextStringTableOffset = 0;
+
+    /////////////////////////
+    // IMAGE HASHES/NAMES
+    for (auto& it : mapEntry["textures"].GetArray())
+    {
+        uint32_t pathHash = RTech::StringToUIMGHash(it["path"].GetString());
+        tiBuf.write(pathHash);
+
+        // offset into the path table for this texture
+        // NOTE: this is set regardless of whether the path table exists in original rpaks
+        tiBuf.write(nextStringTableOffset);
+        nextStringTableOffset += it["path"].GetStringLength() + 1;
+    }
+
+    // add the file relation from this uimg asset to the atlas txtr
+    size_t fileRelationIdx = RePak::AddFileRelation(assetEntries->size());
+
+    atlasAsset->m_nRelationsStartIdx = fileRelationIdx;
+    atlasAsset->m_nRelationsCounts++;
+
+    char* pUVBuf = new char[nTexturesCount * sizeof(UIImageUV)];
+    rmem uvBuf(pUVBuf);
+
+    //////////////
+    // IMAGE UVS
+    for (auto& it : mapEntry["textures"].GetArray())
+    {
+        UIImageUV uiiu{};
+        float uv0x = it["posX"].GetFloat() / pHdr->m_nWidth;
+        float uv1x = it["width"].GetFloat() / pHdr->m_nWidth;
+        Log("X: %f -> %f\n", uv0x, uv0x + uv1x);
+        float uv0y = it["posY"].GetFloat() / pHdr->m_nHeight;
+        float uv1y = it["height"].GetFloat() / pHdr->m_nHeight;
+        Log("Y: %f -> %f\n", uv0y, uv0y + uv1y);
+        uiiu.InitUIImageUV(uv0x, uv0y, uv1x, uv1y);
+        uvBuf.write(uiiu);
+    }
+
+    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
+    RePak::AddRawDataBlock(shdb);
+
+    RPakRawDataBlock tib{ tiseginfo.index, tiseginfo.size, (uint8_t*)pTextureInfoBuf };
+    RePak::AddRawDataBlock(tib);
+
+    RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pUVBuf };
+    RePak::AddRawDataBlock(rdb);
 
     // create and init the asset entry
     RPakAssetEntry asset;
@@ -376,8 +437,6 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
         // this doesnt affect legion but does affect game?
         //uiio.InitUIImageOffset(startX, startY, endX, endY);
         tiBuf.write(uiio);
-
-        uiTextureIdx++;
     }
 
     ///////////////////////
@@ -393,7 +452,6 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
 
     // set texture hashes page index and offset
     pHdr->m_pTextureHashes = { tiseginfo.index, textureOffsetsDataSize + textureDimensionsDataSize };
-    //pHdr->pTextureNames = { tiseginfo.index, 0 };
 
     uint32_t nextStringTableOffset = 0;
 

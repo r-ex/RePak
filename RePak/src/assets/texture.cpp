@@ -14,6 +14,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         // this is a fatal error because if this asset is a dependency for another asset and we just ignore it
         // we will crash later when trying to reference it
         Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());
+        exit(EXIT_FAILURE);
     }
 
     TextureHeader* hdr = new TextureHeader();
@@ -31,7 +32,10 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         input.read(magic);
 
         if (magic != 0x20534444) // b'DDS '
+        {
             Error("Attempted to add txtr asset '%s' that was not a valid DDS file (invalid magic). Exiting...\n", assetPath);
+            exit(EXIT_FAILURE);
+        }
 
         DDS_HEADER ddsh = input.read<DDS_HEADER>();
 
@@ -71,6 +75,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
                 break;
             default:
                 Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
                 break;
             }
 
@@ -106,6 +111,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
                 break;
             default:
                 Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
                 return;
             }
         }
