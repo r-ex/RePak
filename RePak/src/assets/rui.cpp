@@ -8,6 +8,97 @@ void Assets::AddUIImageAsset_r2(std::vector<RPakAssetEntry>* assetEntries, const
 
     std::string sAssetName = assetPath;
 
+    ///////////////////////
+    // JSON VALIDATION
+    {
+        // atlas checks
+        if (!mapEntry.HasMember("atlas"))
+        {
+            Error("Required field 'atlas' not found for uimg asset '%s'. Exiting...\n", assetPath);
+            exit(EXIT_FAILURE);
+        }
+        else if (!mapEntry["atlas"].IsString())
+        {
+            Error("'atlas' field is not of required type 'string' for uimg asset '%s'. Exiting...\n", assetPath);
+            exit(EXIT_FAILURE);
+        }
+
+        // textures checks
+        if (!mapEntry.HasMember("textures"))
+        {
+            Error("Required field 'textures' not found for uimg asset '%s'. Exiting...\n", assetPath);
+            exit(EXIT_FAILURE);
+        }
+        else if (!mapEntry["textures"].IsArray())
+        {
+            Error("'textures' field is not of required type 'array' for uimg asset '%s'. Exiting...\n", assetPath);
+            exit(EXIT_FAILURE);
+        }
+
+        // validate fields for each texture
+        for (auto& it : mapEntry["textures"].GetArray())
+        {
+            if (!it.HasMember("path"))
+            {
+                Error("Required field 'path' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+            else if (!it["path"].IsString())
+            {
+                Error("'path' field is not of required type 'string' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+
+            if (!it.HasMember("width"))
+            {
+                Error("Required field 'width' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+            // technically this could be a float i think? Going to limit it to ints for now though for simplicity
+            else if (!it["width"].IsInt())
+            {
+                Error("'width' field is not of required type 'int' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+
+            if (!it.HasMember("height"))
+            {
+                Error("Required field 'height' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+            // technically this could be a float i think? Going to limit it to ints for now though for simplicity
+            else if (!it["height"].IsInt())
+            {
+                Error("'height' field is not of required type 'int' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+
+            if (!it.HasMember("posX"))
+            {
+                Error("Required field 'posX' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+            // technically this could be a float i think? Going to limit it to ints for now though for simplicity
+            else if (!it["posX"].IsInt())
+            {
+                Error("'posX' field is not of required type 'int' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+
+            if (!it.HasMember("posY"))
+            {
+                Error("Required field 'posY' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+            // technically this could be a float i think? Going to limit it to ints for now though for simplicity
+            else if (!it["posY"].IsInt())
+            {
+                Error("'posY' field is not of required type 'int' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+
     // get the info for the ui atlas image
     std::string sAtlasFilePath = g_sAssetsDir + mapEntry["atlas"].GetStdString() + ".dds";
     std::string sAtlasAssetName = mapEntry["atlas"].GetStdString() + ".rpak";
@@ -175,6 +266,97 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     Log("Adding uimg asset '%s'\n", assetPath);
 
     std::string sAssetName = assetPath;
+
+    ///////////////////////
+    // JSON VALIDATION
+    {
+        // atlas checks
+        if (!mapEntry.HasMember("atlas"))
+        {
+            Error("Required field 'atlas' not found for uimg asset '%s'. Exiting...\n", assetPath);
+            exit(EXIT_FAILURE);
+        }
+        else if (!mapEntry["atlas"].IsString())
+        {
+            Error("'atlas' field is not of required type 'string' for uimg asset '%s'. Exiting...\n", assetPath);
+            exit(EXIT_FAILURE);
+        }
+
+        // textures checks
+        if (!mapEntry.HasMember("textures"))
+        {
+            Error("Required field 'textures' not found for uimg asset '%s'. Exiting...\n", assetPath);
+            exit(EXIT_FAILURE);
+        }
+        else if (!mapEntry["textures"].IsArray())
+        {
+            Error("'textures' field is not of required type 'array' for uimg asset '%s'. Exiting...\n", assetPath);
+            exit(EXIT_FAILURE);
+        }
+
+        // validate fields for each texture
+        for (auto& it : mapEntry["textures"].GetArray())
+        {
+            if (!it.HasMember("path"))
+            {
+                Error("Required field 'path' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+            else if (!it["path"].IsString())
+            {
+                Error("'path' field is not of required type 'string' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+
+            if (!it.HasMember("width"))
+            {
+                Error("Required field 'width' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+            // technically this could be a float i think? Going to limit it to ints for now though for simplicity
+            else if (!it["width"].IsInt())
+            {
+                Error("'width' field is not of required type 'int' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+
+            if (!it.HasMember("height"))
+            {
+                Error("Required field 'height' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+            // technically this could be a float i think? Going to limit it to ints for now though for simplicity
+            else if (!it["height"].IsInt())
+            {
+                Error("'height' field is not of required type 'int' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+
+            if (!it.HasMember("posX"))
+            {
+                Error("Required field 'posX' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+            // technically this could be a float i think? Going to limit it to ints for now though for simplicity
+            else if (!it["posX"].IsInt())
+            {
+                Error("'posX' field is not of required type 'int' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+
+            if (!it.HasMember("posY"))
+            {
+                Error("Required field 'posY' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+            // technically this could be a float i think? Going to limit it to ints for now though for simplicity
+            else if (!it["posY"].IsInt())
+            {
+                Error("'posY' field is not of required type 'int' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
 
     // get the info for the ui atlas image
     std::string sAtlasFilePath = g_sAssetsDir + mapEntry["atlas"].GetStdString() + ".dds";
