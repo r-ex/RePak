@@ -100,25 +100,17 @@ void WriteRPakRawDataBlock(BinaryIO& out, std::vector<RPakRawDataBlock>& rawData
 int main(int argc, char** argv)
 {
     if (argc < 2)
-    {
         Error("invalid usage\n");
-        return EXIT_FAILURE;
-    }
 
     std::filesystem::path mapPath(argv[1]);
+
     if (!FILE_EXISTS(argv[1]))
-    {
         Error("couldn't find map file\n");
-        return EXIT_FAILURE;
-    }
 
     std::ifstream ifs(argv[1]);
 
     if (!ifs.is_open())
-    {
         Error("couldn't open map file.\n");
-        return EXIT_FAILURE;
-    }
 
     // begin json parsing
     IStreamWrapper isw{ ifs };
@@ -175,28 +167,17 @@ int main(int argc, char** argv)
     }
 
     if (!doc.HasMember("files"))
-    {
         Warning("No 'files' field specified, the RPak will contain no assets...\n");
-    }
     else if (!doc["files"].IsArray())
-    {
         Error("'files' field is not of required type 'array'. Exiting...\n");
-        return EXIT_FAILURE;
-    }
 
     // end json parsing
     RPakFileBase* rpakFile = new RPakFileBase();
     
     if (!doc.HasMember("version"))
-    {
         Error("No RPak file version specified. Valid options:\n7 - Titanfall 2\n8 - Apex Legends\nExiting...\n");
-        return EXIT_FAILURE;
-    }
     else if ( !doc["version"].IsInt() )
-    {
         Error("Invalid RPak file version specified. Valid options:\n7 - Titanfall 2\n8 - Apex Legends\nExiting...\n");
-        return EXIT_FAILURE;
-    }
 
     int rpakVersion = doc["version"].GetInt();
 
