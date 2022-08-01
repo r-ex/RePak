@@ -9,10 +9,7 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     std::string sAssetName = assetPath;
 
     if (!mapEntry.HasMember("atlas") || !mapEntry["atlas"].IsString())
-    {
         Error("failed to add uimg asset '%s': expected field 'atlas' as a string.\n");
-        exit(EXIT_FAILURE);
-    }
 
     // get the info for the ui atlas image
     std::string sAtlasFilePath = g_sAssetsDir + mapEntry["atlas"].GetStdString() + ".dds";
@@ -23,16 +20,10 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     RPakAssetEntry* atlasAsset = RePak::GetAssetByGuid(assetEntries, atlasGuid, nullptr);
 
     if (!atlasAsset)
-    {
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
-        exit(EXIT_FAILURE);
-    }
 
     if (!mapEntry.HasMember("textures") || !mapEntry["textures"].IsArray())
-    {
         Error("failed to add uimg asset '%s': expected field 'textures' as an array.\n");
-        exit(EXIT_FAILURE);
-    }
 
     uint32_t nTexturesCount = mapEntry["textures"].GetArray().Size();
 
@@ -100,16 +91,10 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
         }
 
         if (!it.HasMember("posX") || !it["posX"].IsNumber() || !it.HasMember("posY") || !it["posY"].IsNumber())
-        {
             Error("failed to add ui texture '%s': expected fields 'posX' and 'posY' as numbers.\n", it["path"].GetString());
-            exit(EXIT_FAILURE);
-        }
 
         if (!it.HasMember("width") || !it["width"].IsNumber() || !it.HasMember("height") || !it["height"].IsNumber())
-        {
             Error("failed to add ui texture '%s': expected fields 'width' and 'height' as numbers.\n", it["path"].GetString());
-            exit(EXIT_FAILURE);
-        }
 
         UIImageOffset uiio{};
         float startX = it["posX"].GetFloat() / pHdr->m_nWidth;
