@@ -1,8 +1,7 @@
 #include "pch.h"
 #include "Assets.h"
 
-// VERSION 7
-void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
@@ -20,16 +19,17 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     else
         Warning("Adding material without an explicitly defined type. Assuming 'skn'...\n");
 
-    if (mapEntry.HasMember("subtype")) // Set subtype, mostly redundant now.
+    if (mapEntry.HasMember("subtype")) // Set subtype, mostly redundant now, only used for "nose_art".
         subtype = mapEntry["subtype"].GetStdString();
-    else
-        Warning("No subtype is defined, this may cause issues... \n");
 
-    if (mapEntry.HasMember("shaderset")) // Set ShaderSet.
+    // Set ShaderSet.  
+    if (mapEntry.HasMember("shaderset") && mapEntry["shaderset"].GetStdString() != "") {
         shadersetGuid = RTech::StringToGuid(("shaderset/" + mapEntry["shaderset"].GetStdString() + ".rpak").c_str());
-   else
+    }
+    else {
         shadersetGuid = 0xC3ACAF7F1DC7F389;
         Warning("Adding material without an explicitly defined shaderset. Assuming 'uberAoCavEmitEntcolmeSamp2222222_skn'... \n");
+    }
 
     std::string sFullAssetRpakPath = "material/" + sAssetPath + "_" + type + ".rpak"; // Make full rpak asset path.
 
@@ -41,12 +41,12 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
     if (mapEntry.HasMember("height")) // Set material width.
         mtlHdr->m_nHeight = mapEntry["height"].GetInt();
 
-    if (mapEntry.HasMember("flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
+    if (mapEntry.HasMember("flags") && mapEntry["flags"].GetStdString() != "") // Set flags properly. Responsible for texture stretching, tiling etc.
         mtlHdr->m_Flags = strtoul(("0x" + mapEntry["flags"].GetStdString()).c_str(), NULL, 0);
     else
         mtlHdr->m_Flags = 0x1D0300;
 
-    if (mapEntry.HasMember("flags2")) // This does a lot of very important stuff.
+    if (mapEntry.HasMember("flags2") && mapEntry["flags2"].GetStdString() != "") // This does a lot of very important stuff.
         mtlHdr->m_Flags2 = strtoul(("0x" + mapEntry["flags2"].GetStdString()).c_str(), NULL, 0);
     else
         mtlHdr->m_Flags2 = 0x56000020;
@@ -177,7 +177,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
             else
                 RePak::AddFileRelation(assetEntries->size());
 
-            RPakAssetEntryV7* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
+            RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
 
             txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
             txtrAsset->m_nRelationsCounts++;
@@ -188,32 +188,10 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
         textureIdx++; // Next texture index coming up.
     }
 
-    textureIdx = 0; // reset index for next TextureGUID Section.
-    for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the second TextureGUID Map.
+    textureIdx = 0; // reset index for StreamableTextureGUID Section.
+    for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the StreamableTextureGUID Map.
     {
-        if (it.GetStdString() != "")
-        {
-            //uint64_t guid = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str());
-
-            // there should not be anything here so it shall remain 0
-            uint64_t guid = 0x0000000000000000;
-
-            *(uint64_t*)dataBuf = guid;
-            //RePak::RegisterGuidDescriptor(dataseginfo.index, guidPageOffset + textureRefSize + (textureIdx * sizeof(uint64_t)));
-
-            //RePak::AddFileRelation(assetEntries->size());
-
-            if (guid != 0)
-            {
-                RPakAssetEntryV7* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
-
-                txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
-                txtrAsset->m_nRelationsCounts++;
-
-
-                assetUsesCount++; // Next texture index coming up.
-            }
-        }
+        // this section could probably be removed tbh.   
         dataBuf += sizeof(uint64_t);
         textureIdx++;
     }
@@ -313,12 +291,12 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
             mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000005;
 
-        } 
+        }
 
     }
     else if ((type == "fix" || type == "skn") && subtype != "nose_art")
     {
-       
+
         for (int i = 0; i < 2; ++i)
         {
 
@@ -376,6 +354,8 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
     mtlHdr->something2 = 0x100000;
 
+    //////////////////////////////////////////
+    /// cpu
     std::uint64_t cpuDataSize = sizeof(MaterialCPUDataV12);
 
     // cpu data
@@ -473,8 +453,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 
     //////////////////////////////////////////
 
-    //  todo make thise swap depending on version, probably a global rpak version.
-    RPakAssetEntryV7 asset;
+    RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
     asset.m_nVersion = 12;
@@ -493,7 +472,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV7>* assetEntries, const
 }
 
 // VERSION 8
-void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
@@ -585,7 +564,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
             else
                 RePak::AddFileRelation(assetEntries->size());
 
-            RPakAssetEntryV8* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
+            RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
 
             txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
             txtrAsset->m_nRelationsCounts++;
@@ -607,7 +586,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
             RePak::AddFileRelation(assetEntries->size());
 
-            RPakAssetEntryV8* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
+            RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
 
             txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
             txtrAsset->m_nRelationsCounts++;
@@ -719,46 +698,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     //////////////////////////////////////////
     /// cpu
-
-    // required for accurate colour
-    unsigned char testData[544] = {
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0xAB, 0xAA, 0x2A, 0x3E, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x1C, 0x46, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,
-        0x81, 0x95, 0xE3, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x00, 0x00, 0x66, 0x66, 0x66, 0x3F, 0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0xDE, 0x88, 0x1B, 0x3D, 0xDE, 0x88, 0x1B, 0x3D, 0xDE, 0x88, 0x1B, 0x3D,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-    };
-
-    std::uint64_t cpuDataSize = sizeof(testData) / sizeof(unsigned char);
+    std::uint64_t cpuDataSize = sizeof(MaterialCPUDataV15);
 
     // cpu data
     _vseginfo_t cpuseginfo = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16);
@@ -770,13 +710,15 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     RePak::RegisterDescriptor(cpuseginfo.index, 0);
 
+    MaterialCPUDataV15 cpudata{};
+
     char* cpuData = new char[sizeof(MaterialCPUHeader) + cpuDataSize];
 
     // copy header into the start
     memcpy_s(cpuData, sizeof(MaterialCPUHeader), &cpuhdr, sizeof(MaterialCPUHeader));
 
     // copy the rest of the data after the header
-    memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, testData, cpuDataSize);
+    memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, &cpudata, cpuDataSize);
 
     //////////////////////////////////////////
 
@@ -786,7 +728,7 @@ void Assets::AddMaterialAsset(std::vector<RPakAssetEntryV8>* assetEntries, const
 
     //////////////////////////////////////////
 
-    RPakAssetEntryV8 asset;
+    RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
     asset.m_nVersion = MATL_VERSION;
