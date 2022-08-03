@@ -82,6 +82,8 @@ void Error(const char* fmt, ...)
 	vprintf(msg.c_str(), args);
 
 	va_end(args);
+
+	exit(EXIT_FAILURE);
 }
 
 void Log(const char* fmt, ...)
