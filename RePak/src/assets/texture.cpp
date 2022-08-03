@@ -46,8 +46,8 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         nTotalMipCount = ddsh.mipMapCount;
         nLargestMipSize = ddsh.pitchOrLinearSize;
 
-        if (ddsh.mipMapCount > 9) {
-
+        if (ddsh.mipMapCount > 9)
+        {
             if (mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool())
             {
                 nStreamedMipCount = 0;
@@ -65,6 +65,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         for (int ml = 0; ml < ddsh.mipMapCount; ml++)
         {
             uint32_t nCurrentMipSize = (ddsh.pitchOrLinearSize / std::pow(4, ml));
+
             if (nCurrentMipSize <= 8)
             {
                 // respawn adds eight bytes of padding after these lower mips, Very Cool.
@@ -79,19 +80,19 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
             {
                 nStreamedMipSize += nCurrentMipSize;
             }
-
         }
-        ;
+
         hdr->m_nDataLength = nTotalSize;
         hdr->m_nWidth = ddsh.width;
         hdr->m_nHeight = ddsh.height;
+
         Log("-> dimensions: %ix%i\n", ddsh.width, ddsh.height);
 
         DXGI_FORMAT dxgiFormat;
 
         // Checks if the texture is DX10+, this is needed for SRGB.
-        if (ddsh.pixelfmt.fourCC == '01XD') {
-
+        if (ddsh.pixelfmt.fourCC == '01XD')
+        {
             DDS_HEADER_DXT10 ddsh_dx10 = input.read<DDS_HEADER_DXT10>();
 
             switch (ddsh_dx10.dxgiFormat)
@@ -122,9 +123,10 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
             }
 
         }
-        // Non SRGB texture processing.
-        else {
 
+        // Non SRGB texture processing.
+        else
+        {
             switch (ddsh.pixelfmt.fourCC)
             {
             case '1TXD':
@@ -166,7 +168,8 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         nDDSHeaderSize += ddsh.size + 4;
 
         // Go to the end of the DX10 header if it exists.
-        if (ddsh.pixelfmt.fourCC == '01XD') {
+        if (ddsh.pixelfmt.fourCC == '01XD')
+        {
             input.seek(20, std::ios::cur);
 
             nDDSHeaderSize += 20;
@@ -181,7 +184,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     hdr->m_nPermanentMipLevels = (nTotalMipCount - nStreamedMipCount);
     hdr->m_nStreamedMipLevels = nStreamedMipCount;
 
-    Log("-> total mipmaps permanent:streamed : %i:%i\n", (nTotalMipCount - nStreamedMipCount), nStreamedMipCount);
+    Log("-> total mipmaps permanent:streamed : %i:%i\n", hdr->m_nPermanentMipLevels, hdr->m_nStreamedMipLevels);
 
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 
@@ -247,7 +250,6 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         {
             input.getReader()->read(databuf + remainingDDSData, mipSizeDDS);
         }
-
     }
 
     RePak::AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)hdr });
