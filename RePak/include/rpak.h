@@ -37,8 +37,10 @@ struct RPakPtr
 	uint32_t m_nOffset = 0;
 };
 
-// Apex Legends RPak file header
-struct RPakFileHeaderV8
+// generic header struct for both apex and titanfall 2
+// contains all the necessary members for both, RPakFileBase::WriteHeader decides
+// which should be written depending on the version
+struct RPakFileHeader
 {
 	uint32_t m_nMagic = 0x6b615052;
 	uint16_t m_nVersion = 0x8;
@@ -50,49 +52,30 @@ struct RPakFileHeaderV8
 	uint8_t  unk1[0x8];
 	uint64_t m_nSizeMemory; // actual data size of the rpak file after decompression
 	uint64_t m_nEmbeddedStarpakSize = 0;
-	uint8_t  unk3[0x8];
+	uint8_t  unk2[0x8];
 	uint16_t m_nStarpakReferenceSize = 0; // size in bytes of the section containing mandatory starpak paths
 	uint16_t m_nStarpakOptReferenceSize = 0; // size in bytes of the section containing optional starpak paths
 	uint16_t m_nVirtualSegmentCount = 0;
 	uint16_t m_nPageCount = 0; // number of "mempages" in the rpak
-	uint32_t m_nPatchIndex = 0;
+	uint16_t m_nPatchIndex = 0;
+	uint16_t alignment = 0;
 	uint32_t m_nDescriptorCount = 0;
 	uint32_t m_nAssetEntryCount = 0;
 	uint32_t m_nGuidDescriptorCount = 0;
-	uint32_t m_nRelationsCounts = 0;
-	uint8_t  unk4[0x1c];
+	uint32_t m_nRelationsCount = 0;
+
+	// only in tf2
+	uint32_t m_nUnknownSeventhBlockCount = 0;
+	uint32_t m_nUnknownEighthBlockCount = 0;
+
+	// only in apex
+	uint8_t  unk3[0x1c];
 };
 
 struct RPakPatchCompressedHeader // Comes after file header if its an patch rpak.
 {
 	uint64_t m_nSizeDisk;
 	uint64_t m_nSizeMemory;
-};
-
-// Titanfall 2 RPak file header
-struct RPakFileHeaderV7
-{
-	uint32_t m_nMagic = 0x6b615052;
-	uint16_t m_nVersion = 0x7;
-	uint8_t  m_nFlags[0x2];
-	uint64_t m_nCreatedTime; // this is actually FILETIME, but if we don't make it uint64_t here, it'll break the struct when writing
-	uint8_t  unk0[0x8];
-	uint64_t m_nSizeDisk;
-	uint8_t  unk1[0x8];
-	uint64_t m_nSizeMemory;
-	uint8_t  unk2[0x8];
-	uint16_t m_nStarpakReferenceSize = 0;
-	uint16_t m_nVirtualSegmentCount;
-	uint16_t m_nPageCount;
-	uint16_t m_nPatchIndex = 0;
-
-	uint32_t m_nDescriptorCount = 0;
-	uint32_t m_nAssetEntryCount = 0;
-	uint32_t m_nGuidDescriptorCount = 0;
-	uint32_t m_nRelationsCounts = 0;
-
-	uint32_t m_nUnknownSeventhBlockCount = 0;
-	uint32_t m_nUnknownEighthBlockCount = 0;
 };
 
 // segment
@@ -137,9 +120,9 @@ struct RPakRelationBlock
 };
 
 // defines a bunch of values for registering/using an asset from the rpak
-struct RPakAssetEntryV8
+struct RPakAssetEntry
 {
-	RPakAssetEntryV8() = default;
+	RPakAssetEntry() = default;
 
 	void InitAsset(uint64_t nGUID,
 		uint32_t nSubHeaderBlockIdx,
@@ -191,80 +174,6 @@ struct RPakAssetEntryV8
 	// so "opt" starpaks are a thing
 	uint64_t m_nStarpakOffset = -1;
 	uint64_t m_nOptStarpakOffset = -1;
-
-	uint16_t m_nPageEnd = 0; // highest mem page used by this asset
-	uint16_t unk1 = 0;
-
-	uint32_t m_nRelationsStartIdx = 0;
-
-	uint32_t m_nUsesStartIdx = 0;
-	uint32_t m_nRelationsCounts = 0;
-	uint32_t m_nUsesCount = 0; // number of other assets that this asset uses
-
-	// size of the asset header
-	uint32_t m_nSubHeaderSize = 0;
-
-	// this isn't always changed when the asset gets changed
-	// but respawn calls it a version so i will as well
-	uint32_t m_nVersion = 0;
-
-	// see AssetType enum below
-	uint32_t m_nMagic = 0;
-};
-
-// defines a bunch of values for registering/using an asset from the rpak
-struct RPakAssetEntryV7
-{
-	RPakAssetEntryV7() = default;
-
-	void InitAsset(uint64_t nGUID,
-		uint32_t nSubHeaderBlockIdx,
-		uint32_t nSubHeaderBlockOffset,
-		uint32_t nSubHeaderSize,
-		uint32_t nRawDataBlockIdx,
-		uint32_t nRawDataBlockOffset,
-		uint64_t nStarpakOffset,
-		uint64_t nOptStarpakOffset,
-		uint32_t Type)
-	{
-		this->m_nGUID = nGUID;
-		this->m_nSubHeaderDataBlockIdx = nSubHeaderBlockIdx;
-		this->m_nSubHeaderDataBlockOffset = nSubHeaderBlockOffset;
-		this->m_nRawDataBlockIndex = nRawDataBlockIdx;
-		this->m_nRawDataBlockOffset = nRawDataBlockOffset;
-		this->m_nStarpakOffset = nStarpakOffset;
-		this->m_nSubHeaderSize = nSubHeaderSize;
-		this->m_nMagic = Type;
-	}
-
-	// hashed version of the asset path
-	// used for referencing the asset from elsewhere
-	//
-	// - when referenced from other assets, the GUID is used directly
-	// - when referenced from scripts, the GUID is calculated from the original asset path
-	//   by a function such as RTech::StringToGuid
-	uint64_t m_nGUID = 0;
-	uint64_t unk0 = 0x0000000000000000;
-
-	// page index and offset for where this asset's header is located
-	uint32_t m_nSubHeaderDataBlockIdx = 0;
-	uint32_t m_nSubHeaderDataBlockOffset = 0;
-
-	// page index and offset for where this asset's data is located
-	// note: this may not always be used for finding the data:
-	//		 some assets use their own idx/offset pair from within the subheader
-	//		 when adding pairs like this, you MUST register it as a descriptor
-	//		 otherwise the pointer won't be converted
-	uint32_t m_nRawDataBlockIndex = 0;
-	uint32_t m_nRawDataBlockOffset = 0;
-
-	// offset to any available streamed data
-	// m_nStarpakOffset    = "mandatory" starpak file offset
-	// m_nOptStarpakOffset = "optional" starpak file offset
-	// 
-	// in reality both are mandatory but respawn likes to do a little trolling
-	// so "opt" starpaks are a thing
-	uint64_t m_nStarpakOffset = -1;
 
 	uint16_t m_nPageEnd = 0; // highest mem page used by this asset
 	uint16_t unk1 = 0;
@@ -635,48 +544,90 @@ struct UnknownMaterialSectionV15
 
 // this is currently unused, but could probably be used just fine if you copy stuff over from the RPak V7 material function in material.cpp
 struct MaterialCPUDataV15
-{	
-	// hard to test this but I'm pretty sure that's where it is.
-	uvTransformMatrix DetailTransform[1]; // detail texture transform matrix
+{
+	uvTransformMatrix uv1; // detail
+	uvTransformMatrix uv2; // 1st texture (unconfirmed)
+	uvTransformMatrix uv3; // 2nd texture (unconfirmed)
+	uvTransformMatrix uv4;
+	uvTransformMatrix uv5;
 
-	// SelfIllumTint NEEDS to be found.
-	// this has lots of similar bits to the V12 version but I cba to actually dig into it.
-	// the top section has as few MaterialTextureTransformMatrix for sure, the section is probably comprised of floats as well.
-	uint8_t testData[520] = {
-		0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
-		0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0xAB, 0xAA, 0x2A, 0x3E, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x1C, 0x46, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,
-		0x81, 0x95, 0xE3, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F,
-		0x00, 0x00, 0x00, 0x00, 0x66, 0x66, 0x66, 0x3F, 0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
-		0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0xDE, 0x88, 0x1B, 0x3D, 0xDE, 0x88, 0x1B, 0x3D, 0xDE, 0x88, 0x1B, 0x3D,
-		0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+	Vector2 c_uvDistortionIntensity;
+	Vector2 c_uvDistortion2Intensity;
+
+	float c_L0_scatterDistanceScale = 0.166667;
+
+	float c_layerBlendRamp = 0.0;
+
+	float c_opacity = 0.0;
+
+	float c_useAlphaModulateSpecular = 0.0;
+	float c_alphaEdgeFadeExponent = 0.0;
+	float c_alphaEdgeFadeInner = 0.0;
+	float c_alphaEdgeFadeOuter = 0.0;
+
+	float c_useAlphaModulateEmissive = 1.0;
+	float c_emissiveEdgeFadeExponent = 0.0;
+	float c_emissiveEdgeFadeInner = 0.0;
+	float c_emissiveEdgeFadeOuter = 0.0;
+
+	float c_alphaDistanceFadeScale = 10000.0;
+	float c_alphaDistanceFadeBias = -0.0;
+	float c_alphaTestReference = 0.0;
+
+	float c_aspectRatioMulV = 1.778;
+
+	float c_shadowBias = 0.0;
+	float c_shadowBiasStatic = 0.0;
+
+	float c_dofOpacityLuminanceScale = 1.0;
+
+	float c_tsaaDepthAlphaThreshold = 0.0;
+	float c_tsaaMotionAlphaThreshold = 0.9;
+	float c_tsaaMotionAlphaRamp = 10.0;
+	uint32_t c_tsaaResponsiveFlag = 0x0; // this is 0 or 1 I think.
+
+	float unkFloat[33] = {
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		1.0, 0.0, 0.0, 0.0,
+		0.0, 0.5, 1.0, 1.0,
+		0.0
 	};
+
+	Vector3 c_L0_albedoTint = { 1.0, 1.0, 1.0 };
+
+	float c_depthBlendScalar = 1.0;
+
+	Vector3 c_L0_emissiveTint = { 0.0, 0.0, 0.0 };
+
+	float c_subsurfaceMaterialID = 0.0;
+
+	Vector3 c_L0_perfSpecColor = { 0.0379723, 0.0379723, 0.0379723 };
+
+	float c_L0_perfGloss = 1.0;
+
+	Vector3 c_L1_albedoTint = { 0.0, 0.0, 0.0 };
+
+	float c_L1_perfGloss = 0.0;
+
+	Vector3 c_L1_emissiveTint = { 0.0, 0.0, 0.0 };
+	Vector3 c_L1_perfSpecColor = { 0.0, 0.0, 0.0 };
+
+	float unkFloat1[23] = {
+		               0.0,
+		1.0, 0.0, 1.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		10.0, -0.0
+	};
+
+	uint32_t unused3[2] = { 0xFFFFFFFF, 0xFFFFFFFF };
 
 };
 
@@ -729,7 +680,6 @@ struct MaterialHeaderV15
 
 struct UnknownMaterialSectionV12
 {
-
 	// not sure how these work but 0xF0 -> 0x00 toggles them off and vice versa.
 	// they seem to affect various rendering filters, said filters might actually be the used shaders.
 	// the duplicate one is likely for streamed textures.
@@ -743,19 +693,19 @@ struct UnknownMaterialSectionV12
 	uint16_t m_FaceDrawingFlags = 0x6; // how the face is drawn, culling, wireframe, etc.
 
 	uint64_t m_Padding = 0;
-	
+
 	/*VisibilityFlags
 	0x0000 unknown
 	0x0001 inverted ignorez
 	0x0002 required when ignorez is enabled, why?
 	0x0004 unknown but used in most opaque materials, not required.
-	0x0008 
+	0x0008
 	0x0010 seems to toggle transparency, will draw opaque if inverted ignorez is enabled
 
 	0x0017 used for most normal materials.
 	0x0007 used for glass which makes me think 0x0010 is for translucency.
 	0x0013 is vaild and looks like a normal opaque material.  */
-	
+
 	/*FlagDrawingFlags Flags
 	0x0000 culling this is the same as 0x0002??? maybe the default?
 	0x0001 wireframe
@@ -764,12 +714,10 @@ struct UnknownMaterialSectionV12
 	0x0008 if this exists I can't tell what it is.
 
 	to get the equalivilent to 'nocull' both 'culling' and 'inverted faces' need to be enabled, see: why most matls have '0x06'.  */
-
 };
 
 struct MaterialCPUDataV12
 {
-
 	// the assignment of these depends on the shader set, however we'll mostly be using them as follows
 	uvTransformMatrix uv1; // detail
 	uvTransformMatrix uv2; // 1st texture
@@ -780,9 +728,9 @@ struct MaterialCPUDataV12
 
 	float c_fogColorFactor = 1.0;
 
-	float c_layerBlendRamp = 0.0;
+	float c_layerBlendRamp = 0.0; // blend intensity (assumed).
 
-	Vector3 c_albedoTint = { 1.0, 1.0, 1.0 };
+	Vector3 c_albedoTint = { 1.0, 1.0, 1.0 }; // color of the albedo texture.
 	float c_opacity = 1.0;
 
 	float c_useAlphaModulateSpecular = 0.0;
@@ -801,14 +749,14 @@ struct MaterialCPUDataV12
 
 	float c_aspectRatioMulV = 1.778;
 
-	Vector3 c_emissiveTint = { 0.0, 0.0, 0.0 };
+	Vector3 c_emissiveTint = { 0.0, 0.0, 0.0 }; // color of the emission.
 
 	float c_shadowBias = 0.0;
 
 	float c_tsaaDepthAlphaThreshold = 0.0;
 	float c_tsaaMotionAlphaThreshold = 0.9;
 	float c_tsaaMotionAlphaRamp = 10.0;
-	uint32_t c_tsaaResponsiveFlag = 0x0; // unsure if this is a float or not.
+	uint32_t c_tsaaResponsiveFlag = 0x0; // this is 0 or 1 I think.
 
 	float c_dofOpacityLuminanceScale = 1.0;
 
@@ -816,8 +764,7 @@ struct MaterialCPUDataV12
 
 	float c_perfGloss = 1.0;
 
-	Vector3 c_perfSpecColor = { 0.03, 0.03, 0.03 };
-
+	Vector3 c_perfSpecColor = { 0.03, 0.03, 0.03 }; // specular color, consistent across most materials.
 };
 
 // should be size of 208
@@ -872,7 +819,6 @@ struct MaterialHeaderV12
 	/* ImageFlags
 	0x050300 for loadscreens, 0x1D0300 for normal materials.
 	0x1D has been observed, seems to invert lighting? used on some exceptionally weird materials.*/
-
 };
 
 // header struct for the material asset cpu data
