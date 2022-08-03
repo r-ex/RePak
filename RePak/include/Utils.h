@@ -27,4 +27,9 @@ void Debug(const char* fmt, ...);
 	out.write(*it); \
 }
 
+#define WRITE_VECTOR_PTRIO(out, dataVector) for (auto it = dataVector.begin(); it != dataVector.end(); ++it) \
+{ \
+	out->write(*it); \
+}
+
 #define FILE_EXISTS(path) std::filesystem::exists(path)
