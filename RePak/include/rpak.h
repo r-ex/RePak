@@ -586,7 +586,7 @@ struct MaterialCPUDataV15
 	float c_tsaaMotionAlphaRamp = 10.0;
 	uint32_t c_tsaaResponsiveFlag = 0x0; // this is 0 or 1 I think.
 
-	// the variables for this are known, however a few are sub structs that with compositions I am unsure of.
+	// the variables for this are known, however a few are sub structs with compositions I am unsure of.
 	float unkFloat[33] = {
 		0.0, 0.0, 0.0, 0.0,
 		0.0, 0.0, 0.0, 0.0,
