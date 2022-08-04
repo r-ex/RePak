@@ -28,9 +28,6 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     uint32_t nStreamedMipSize = 0;
     uint32_t nDDSHeaderSize = 0;
 
-    int nStreamedMipCount = 0;
-    int nTotalMipCount = 1;
-
     bool bStreamable = false;
 
     // parse input image file
@@ -43,8 +40,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
 
         DDS_HEADER ddsh = input.read<DDS_HEADER>();
 
-        nTotalMipCount = ddsh.mipMapCount;
-        nLargestMipSize = ddsh.pitchOrLinearSize;
+        int nStreamedMipCount = 0;
 
         if (ddsh.mipMapCount > 9)
         {
@@ -59,7 +55,6 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
                 bStreamable = true;
             }
         }
-
 
         uint32_t nTotalSize = 0;
         for (int ml = 0; ml < ddsh.mipMapCount; ml++)
@@ -87,6 +82,15 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         hdr->m_nHeight = ddsh.height;
 
         Log("-> dimensions: %ix%i\n", ddsh.width, ddsh.height);
+
+        // unfortunately i'm not a respawn engineer so 1 (unstreamed) mip level will have to do
+        // I am also not a respawn engineer, however 1 (unstreamed) mip level will not do.
+        hdr->m_nPermanentMipLevels = (ddsh.mipMapCount - nStreamedMipCount);
+        hdr->m_nStreamedMipLevels = nStreamedMipCount;
+
+        Log("-> total mipmaps permanent:streamed : %i:%i\n", hdr->m_nPermanentMipLevels, hdr->m_nStreamedMipLevels);
+
+        nLargestMipSize = ddsh.pitchOrLinearSize;
 
         DXGI_FORMAT dxgiFormat;
 
@@ -179,13 +183,6 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
 
     hdr->m_nAssetGUID = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
-    // unfortunately i'm not a respawn engineer so 1 (unstreamed) mip level will have to do
-    // I am also not a respawn engineer, however 1 (unstreamed) mip level will not do.
-    hdr->m_nPermanentMipLevels = (nTotalMipCount - nStreamedMipCount);
-    hdr->m_nStreamedMipLevels = nStreamedMipCount;
-
-    Log("-> total mipmaps permanent:streamed : %i:%i\n", hdr->m_nPermanentMipLevels, hdr->m_nStreamedMipLevels);
-
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 
     // asset header
@@ -218,7 +215,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     int remainingDDSData = hdr->m_nDataLength;
     int remainingStreamedData = nStreamedMipSize;
 
-    for (int ml = 0; ml < nTotalMipCount; ml++)
+    for (int ml = 0; ml < (hdr->m_nPermanentMipLevels + hdr->m_nStreamedMipLevels); ml++)
     {
         uint32_t nCurrentMipSize = (nLargestMipSize / std::pow(4, ml));
         uint32_t mipSizeDDS = 0;
@@ -241,7 +238,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
 
         input.seek(nDDSHeaderSize + (currentDDSOffset - mipSizeDDS), std::ios::beg);
 
-        if (bStreamable && ml < (nTotalMipCount - 9))
+        if (bStreamable && ml < hdr->m_nStreamedMipLevels)
         {
             remainingStreamedData -= nCurrentMipSize;
             input.getReader()->read(streamedbuf + remainingStreamedData, mipSizeDDS);
