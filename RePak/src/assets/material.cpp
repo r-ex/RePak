@@ -23,10 +23,12 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
         subtype = mapEntry["subtype"].GetStdString();
 
     // Set ShaderSet.  
-    if (mapEntry.HasMember("shaderset") && mapEntry["shaderset"].GetStdString() != "") {
+    if (mapEntry.HasMember("shaderset") && mapEntry["shaderset"].GetStdString() != "")
+    {
         shadersetGuid = RTech::StringToGuid(("shaderset/" + mapEntry["shaderset"].GetStdString() + ".rpak").c_str());
     }
-    else {
+    else
+    {
         shadersetGuid = 0xC3ACAF7F1DC7F389;
         Warning("Adding material without an explicitly defined shaderset. Assuming 'uberAoCavEmitEntcolmeSamp2222222_skn'... \n");
     }
@@ -52,44 +54,38 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
         mtlHdr->m_Flags2 = 0x56000020;
 
     // Visibility related flags, opacity and the like.
-    if (mapEntry.HasMember("visibilityflags")) {
-
+    if (mapEntry.HasMember("visibilityflags"))
+    {
         visibility = mapEntry["visibilityflags"].GetString();
         uint16_t visFlag = 0x0017;
 
-        if (visibility == "opaque") {
-
+        if (visibility == "opaque") 
+        {
             visFlag = 0x0017;
-
         }
-        else if (visibility == "transparent") {
-
+        else if (visibility == "transparent")
+        {
             // this will not work properly unless some flags are set in Flags2
             visFlag = 0x0007;
-
         }
-        else if (visibility == "colpass") {
-
+        else if (visibility == "colpass")
+        {
             visFlag = 0x0005;
-
         }
-        else if (visibility == "none") {
-
+        else if (visibility == "none")
+        {
             // for loadscreens
             visFlag = 0x0000;
-
         }
-        else {
-
+        else
+        {
             Log("No valid visibility specified, defaulting to opaque... \n");
 
             visFlag = 0x0017;
-
         }
 
         mtlHdr->m_UnknownSections[0].m_VisibilityFlags = visFlag;
         mtlHdr->m_UnknownSections[1].m_VisibilityFlags = visFlag;
-
     }
 
 
@@ -111,7 +107,7 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
     if (mapEntry.HasMember("surface"))
         surface = mapEntry["surface"].GetStdString();
 
-    // rarely used edge case but it's good to have.
+    // rarely used edge case but it's good to have, especially for doing world materials.
     if (mapEntry.HasMember("surface2"))
         surface2 = mapEntry["surface2"].GetStdString();
 
@@ -128,17 +124,12 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
         return;
     }
 
-    int surfaceDataBuffLength = 0;
-    if (mapEntry.HasMember("surface2")) {
+    int surfaceDataBuffLength = surface.length() + 1;
 
-        surfaceDataBuffLength = (surface.length() + 1) + (surface2.length() + 1);
+    // add surface2's length to buffer if needed.
+    if (mapEntry.HasMember("surface2"))
+        surfaceDataBuffLength += surface2.length() + 1;
 
-    }
-    else {
-
-        surfaceDataBuffLength = (surface.length() + 1);
-
-    }
 
     uint32_t assetPathSize = (sAssetPath.length() + 1);
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + surfaceDataBuffLength;
@@ -197,23 +188,11 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
     }
 
     // ===============================
-    // write the surface names into the buffer.
-    // this is an extremely janky way to do this but I don't know better, basically it writes surface2 first so then the first can overwrite it.
-    // please someone do this better I beg you.
-    if (mapEntry.HasMember("surface2")) {
+    // write surface names into the buffer.
+    snprintf(dataBuf, surface.length() + 1, "%s", surface.c_str());
 
-        std::string surfaceStrTmp = surface + "." + surface2;
-
-        snprintf(dataBuf, (surface.length() + 1) + (surface2.length() + 1), "%s", surfaceStrTmp.c_str());
-        snprintf(dataBuf, surface.length() + 1, "%s", surface.c_str());
-
-    }
-    else {
-
-        snprintf(dataBuf, surface.length() + 1, "%s", surface.c_str());
-
-    }
-
+    if (mapEntry.HasMember("surface2"))
+        snprintf(dataBuf + (surface.length() + 1), surface2.length() + 1, "%s", surface2.c_str());
 
     // get the original pointer back so it can be used later for writing the buffer
     dataBuf = tmp;
@@ -229,13 +208,12 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszName));
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszSurfaceProp));
 
-    if (mapEntry.HasMember("surface2")) {
-
+    if (mapEntry.HasMember("surface2")) 
+    {
         mtlHdr->m_pszSurfaceProp2.m_nIndex = dataseginfo.index;
         mtlHdr->m_pszSurfaceProp2.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2) + (surface.length() + 1);
 
         RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszSurfaceProp2));
-
     }
 
     //=======================
@@ -244,33 +222,31 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
 
     int mId = 0;
     int usedMId = 0;
+
     for (auto& gu : mapEntry["materialrefs"].GetArray())
     {
-        if (gu.GetStdString() != "") {
-
+        if (gu.GetStdString() != "")
+        {
             guidRefs[mId] = RTech::StringToGuid(("material/" + gu.GetStdString() + "_" + type + ".rpak").c_str());
 
             RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_GUIDRefs) + (mId * 8));
 
             usedMId++;
-
         }
 
         mId++;
-
     }
 
-    for (int i = 0; i < 3; ++i) {
-
+    for (int i = 0; i < 3; ++i) 
+    {
         mtlHdr->m_GUIDRefs[i] = guidRefs[i];
-
     }
 
     mtlHdr->m_pShaderSet = shadersetGuid;
 
     RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pShaderSet));
 
-    RePak::AddFileRelation(assetEntries->size(), (usedMId + 1));
+    RePak::AddFileRelation(assetEntries->size(), (usedMId + 1)); // plus one for the shaderset.
     assetUsesCount += (usedMId + 1);
 
     // V12 type handling, mostly stripped now.
@@ -281,7 +257,6 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
 
     if (type == "gen" || type == "wld" || subtype == "nose_art")
     {
-
         for (int i = 0; i < 2; ++i)
         {
             mtlHdr->m_UnknownSections[i].UnkRenderLighting = 0xF0138286;
@@ -290,13 +265,10 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
             mtlHdr->m_UnknownSections[i].UnkRenderUnknown = 0x00138286;
 
             mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000005;
-
         }
-
     }
     else if ((type == "fix" || type == "skn") && subtype != "nose_art")
     {
-
         for (int i = 0; i < 2; ++i)
         {
 
@@ -306,19 +278,15 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
             mtlHdr->m_UnknownSections[i].UnkRenderUnknown = 0x00138004;
 
             mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000004;
-
         }
-
     }
     else if (type == "rgd")
     {
-
         // todo: figure out what rgd is used for.
         // update: I can not find a single shaderset for rgd, which means it is not possible to use the type.
         Warning("Type 'rgd' is not supported in Titanfall 2!!");
         exit(EXIT_FAILURE);
         return;
-
     }
     else
     {
@@ -378,24 +346,18 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
 
     std::float_t emissivetint[3] = { 0.0, 0.0, 0.0 };
 
-    if (mapEntry.HasMember("emissivetint")) {
-
+    if (mapEntry.HasMember("emissivetint"))
+    {
         int tintId = 0;
         for (auto& sitf : mapEntry["emissivetint"].GetArray())
         {
-
             emissivetint[tintId] = sitf.GetFloat();
 
             tintId++;
-
         }
-
     }
-    else {
-
-        Log("No selfillumtint specified, assuming there is no emissive texture! \n");
-
-    }
+    else 
+        Log("No 'emissivetint' specified, assuming there is no emissive texture! \n");
 
     cpudata.c_emissiveTint.x = emissivetint[0];
     cpudata.c_emissiveTint.y = emissivetint[1];
@@ -403,18 +365,15 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
 
     std::float_t albedotint[3] = { 1.0, 1.0, 1.0 };
 
-    if (mapEntry.HasMember("albedotint")) {
-
+    if (mapEntry.HasMember("albedotint")) 
+    {
         int color2Id = 0;
         for (auto& c2f : mapEntry["albedotint"].GetArray())
         {
-
             albedotint[color2Id] = c2f.GetFloat();
 
             color2Id++;
-
         }
-
     }
 
     cpudata.c_albedoTint.x = albedotint[0];
@@ -423,18 +382,15 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
 
     std::float_t uv1Transform[6] = { 1.0, 0, -0, 1.0, 0.0, 0.0 };
 
-    if (mapEntry.HasMember("uv1transform")) {
-
+    if (mapEntry.HasMember("uv1transform"))
+    {
         int detailId = 0;
         for (auto& dtm : mapEntry["uv1transform"].GetArray())
         {
-
             uv1Transform[detailId] = dtm.GetFloat();
 
             detailId++;
-
         }
-
     }
 
     cpudata.uv1.uvScaleX = uv1Transform[0];

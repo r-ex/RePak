@@ -586,6 +586,7 @@ struct MaterialCPUDataV15
 	float c_tsaaMotionAlphaRamp = 10.0;
 	uint32_t c_tsaaResponsiveFlag = 0x0; // this is 0 or 1 I think.
 
+	// the variables for this are known, however a few are sub structs that with compositions I am unsure of.
 	float unkFloat[33] = {
 		0.0, 0.0, 0.0, 0.0,
 		0.0, 0.0, 0.0, 0.0,
@@ -617,6 +618,7 @@ struct MaterialCPUDataV15
 	Vector3 c_L1_emissiveTint = { 0.0, 0.0, 0.0 };
 	Vector3 c_L1_perfSpecColor = { 0.0, 0.0, 0.0 };
 
+	// the same deal as unkFloat.
 	float unkFloat1[23] = {
 		               0.0,
 		1.0, 0.0, 1.0, 0.0,
@@ -627,7 +629,8 @@ struct MaterialCPUDataV15
 		10.0, -0.0
 	};
 
-	uint32_t unused3[2] = { 0xFFFFFFFF, 0xFFFFFFFF };
+	// the value for this is also known, however the size is unknown.
+	uint32_t unk[2] = { 0xFFFFFFFF, 0xFFFFFFFF };
 
 };
 
@@ -718,27 +721,27 @@ struct UnknownMaterialSectionV12
 
 struct MaterialCPUDataV12
 {
-	// the assignment of these depends on the shader set, however we'll mostly be using them as follows
-	uvTransformMatrix uv1; // detail
-	uvTransformMatrix uv2; // 1st texture
-	uvTransformMatrix uv3; // 2nd texture
+	// the assignment of these depends on the shader set, they work similarly to texturetransforms in normal source.
+	uvTransformMatrix uv1; // this is frequently used for detail textures.
+	uvTransformMatrix uv2;
+	uvTransformMatrix uv3;
 
-	Vector2 c_uvDistortionIntensity = { 0.0, 0.0 };
-	Vector2 c_uvDistortion2Intensity = { 0.0, 0.0 };
+	Vector2 c_uvDistortionIntensity = { 0.0, 0.0 }; // distortion on the { x, y } axis.
+	Vector2 c_uvDistortion2Intensity = { 0.0, 0.0 }; // see above, but for a second distortion texture.
 
 	float c_fogColorFactor = 1.0;
 
-	float c_layerBlendRamp = 0.0; // blend intensity (assumed).
+	float c_layerBlendRamp = 0.0; // blend intensity (assumed), likely the hardness/softness of the two textures meshing.
 
 	Vector3 c_albedoTint = { 1.0, 1.0, 1.0 }; // color of the albedo texture.
-	float c_opacity = 1.0;
+	float c_opacity = 1.0; // untested.
 
 	float c_useAlphaModulateSpecular = 0.0;
 	float c_alphaEdgeFadeExponent = 0.0;
 	float c_alphaEdgeFadeInner = 0.0;
 	float c_alphaEdgeFadeOuter = 0.0;
 
-	float c_useAlphaModulateEmissive = 1.0;
+	float c_useAlphaModulateEmissive = 1.0; // almost always set to 1.
 	float c_emissiveEdgeFadeExponent = 0.0;
 	float c_emissiveEdgeFadeInner = 0.0;
 	float c_emissiveEdgeFadeOuter = 0.0;
@@ -747,9 +750,9 @@ struct MaterialCPUDataV12
 	float c_alphaDistanceFadeBias = -0.0;
 	float c_alphaTestReference = 0.0;
 
-	float c_aspectRatioMulV = 1.778;
+	float c_aspectRatioMulV = 1.778; // this is equal to width divided by height see: 16/9 = 1.778~, not clear what it actually does.
 
-	Vector3 c_emissiveTint = { 0.0, 0.0, 0.0 }; // color of the emission.
+	Vector3 c_emissiveTint = { 0.0, 0.0, 0.0 }; // color of the emission, this is normally set to { 0.0, 0.0, 0.0 } if you don't have an emission mask.
 
 	float c_shadowBias = 0.0;
 
@@ -760,7 +763,7 @@ struct MaterialCPUDataV12
 
 	float c_dofOpacityLuminanceScale = 1.0;
 
-	uint32_t pad_CBufUberStatic[3] = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF };
+	uint32_t pad_CBufUberStatic[3] = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF }; // padding, real??
 
 	float c_perfGloss = 1.0;
 
@@ -802,7 +805,7 @@ struct MaterialHeaderV12
 	uint32_t m_Flags = 0x0; // see ImageFlags in the apex struct.
 	int16_t m_Unk1 = 0; // might be "m_Unknown2"
 
-	uint64_t m_Padding1 = 0; // haven't observed anything here.
+	uint64_t m_Padding1 = 0; // haven't observed anything here, however I really doubt this is actually padding.
 
 	// seems to be 0xFBA63181 for loadscreens
 	uint32_t m_Unknown3 = 0xFBA63181; // name carried over from apex struct.
@@ -810,7 +813,7 @@ struct MaterialHeaderV12
 	uint32_t m_Unk2 = 0; // this might actually be "m_Unknown4"
 
 	uint32_t m_Flags2 = 0;
-	uint32_t something2 = 0x0; // seems mostly unchanged between all materials, including apex, however there are some edge cases where this is 0x00.
+	uint32_t something2 = 0x0; // seems mostly unchanged between all materials, including apex, however there are some edge cases where this is 0x0.
 
 	int16_t m_nWidth = 2048;
 	int16_t m_nHeight = 2048;
