@@ -511,7 +511,6 @@ struct BasicRMDLVGHeader
 // apex probably has these and more stuff.
 struct uvTransformMatrix
 {
-
 	// this section is actually broken up into three parts.
 	// c_uvRotScaleX
 	float uvScaleX = 1.0;
@@ -522,7 +521,6 @@ struct uvTransformMatrix
 	// c_uvTranslate
 	float uvTranslateX = 0.0;
 	float uvTranslateY = 0.0;
-
 };
 
 // some repeated section at the end of the material header (CMaterialGlue) struct
@@ -631,7 +629,6 @@ struct MaterialCPUDataV15
 
 	// the value for this is also known, however the size is unknown.
 	uint32_t unk[2] = { 0xFFFFFFFF, 0xFFFFFFFF };
-
 };
 
 // start of CMaterialGlue class
