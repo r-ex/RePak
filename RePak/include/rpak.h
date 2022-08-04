@@ -760,7 +760,9 @@ struct MaterialCPUDataV12
 
 	float c_dofOpacityLuminanceScale = 1.0;
 
-	uint32_t pad_CBufUberStatic[3] = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF }; // padding, real??
+	//float c_glitchStrength; // only used  sometimes. on 'Glitch' shadersets, if used 'pad_CBufUberStatic' is only two sections.
+
+	float pad_CBufUberStatic[3] = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF }; // this is reserved space for special values, three sections by default.
 
 	float c_perfGloss = 1.0;
 
