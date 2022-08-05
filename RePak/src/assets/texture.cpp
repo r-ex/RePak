@@ -269,7 +269,12 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
 
     if (bStreamable)
     {
-        RePak::AddStarpakReference("paks/Win64/repak.starpak");
+        std::string sStarpakPath = "paks/Win64/repak.starpak";
+
+        if (mapEntry.HasMember("starpakpath"))
+            sStarpakPath = mapEntry["starpakpath"].GetString();
+
+        RePak::AddStarpakReference(sStarpakPath);
 
         SRPkDataEntry de{ -1, nStreamedMipSize, (uint8_t*)streamedbuf };
         starpakOffset = RePak::AddStarpakDataEntry(de);
