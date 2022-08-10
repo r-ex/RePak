@@ -166,22 +166,18 @@ int main(int argc, char** argv)
         Utils::AppendSlash(sOutputDir);
     }
 
-    if (!doc.HasMember("version"))
-    {
-        Error("Map file doesn't specify an RPak version\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
-    }
-    else if (!doc["version"].IsInt())
-    {
-        Error("Invalid RPak version specified\nUse 'version: 7' for Titanfall 2 or 'version: 8' for Apex\n");
-    }
+    if (!doc.HasMember("files"))
+        Warning("No 'files' field specified, the RPak will contain no assets...\n");
+    else if (!doc["files"].IsArray())
+        Error("'files' field is not of required type 'array'. Exiting...\n");
 
     // end json parsing
     RPakFileBase* rpakFile = new RPakFileBase();
     
-    if (!doc.HasMember("version") || !doc["version"].IsInt())
-    {
-        Error("Invalid RPak file version specified. Valid options:\n7 - Titanfall 2\n8 - Apex Legends\n");
-    }
+    if (!doc.HasMember("version"))
+        Error("No RPak file version specified. Valid options:\n7 - Titanfall 2\n8 - Apex Legends\nExiting...\n");
+    else if ( !doc["version"].IsInt() )
+        Error("Invalid RPak file version specified. Valid options:\n7 - Titanfall 2\n8 - Apex Legends\nExiting...\n");
 
     int rpakVersion = doc["version"].GetInt();
 
