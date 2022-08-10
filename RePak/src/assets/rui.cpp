@@ -61,9 +61,7 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     RPakAssetEntry* atlasAsset = RePak::GetAssetByGuid(assetEntries, atlasGuid, nullptr);
 
     if (!atlasAsset)
-    {
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
-    }
 
     uint32_t nTexturesCount = mapEntry["textures"].GetArray().Size();
 
@@ -112,7 +110,7 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, m_nAtlasGUID));
 
     // buffer for texture info data
-    char* pTextureInfoBuf = new char[textureInfoPageSize]{};
+    char* pTextureInfoBuf = new char[textureInfoPageSize] {};
     rmem tiBuf(pTextureInfoBuf);
 
     // set texture offset page index and offset
