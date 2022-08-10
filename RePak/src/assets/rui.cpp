@@ -31,26 +31,22 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
                 Error("'path' field is not of required type 'string' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
 
             if (!it.HasMember("width"))
-                Error("Required field 'width' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
-            // technically this could be a float i think? Going to limit it to ints for now though for simplicity
+                Error("Required field 'width' not found for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
             else if (!it["width"].IsNumber())
                 Error("'width' field is not of required type 'number' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
 
             if (!it.HasMember("height"))
-                Error("Required field 'height' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
-            // technically this could be a float i think? Going to limit it to ints for now though for simplicity
+                Error("Required field 'height' not found for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
             else if (!it["height"].IsNumber())
                 Error("'height' field is not of required type 'number' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
 
             if (!it.HasMember("posX"))
-                Error("Required field 'posX' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
-            // technically this could be a float i think? Going to limit it to ints for now though for simplicity
+                Error("Required field 'posX' not found for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
             else if (!it["posX"].IsNumber())
                 Error("'posX' field is not of required type 'number' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
 
             if (!it.HasMember("posY"))
-                Error("Required field 'posY' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
-            // technically this could be a float i think? Going to limit it to ints for now though for simplicity
+                Error("Required field 'posY' not found for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
             else if (!it["posY"].IsNumber())
                 Error("'posY' field is not of required type 'number' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
         }
@@ -67,7 +63,6 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     if (!atlasAsset)
     {
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
-        exit(EXIT_FAILURE);
     }
 
     uint32_t nTexturesCount = mapEntry["textures"].GetArray().Size();
