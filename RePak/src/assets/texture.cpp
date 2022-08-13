@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "rmem.h"
 #include "Assets.h"
+#include "dxutils.h"
 
 void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
@@ -84,91 +85,62 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
 
         DXGI_FORMAT dxgiFormat;
 
-        // Checks if the texture is DX10+, this is needed for SRGB.
-        if (ddsh.pixelfmt.fourCC == '01XD')
+        switch (ddsh.pixelfmt.fourCC)
         {
-            DDS_HEADER_DXT10 ddsh_dx10 = input.read<DDS_HEADER_DXT10>();
-
-            switch (ddsh_dx10.dxgiFormat)
-            {
-            case 72:
-                Log("-> fmt: BC1 SRGB\n");
-                dxgiFormat = DXGI_FORMAT_BC1_UNORM_SRGB;
-                break;
-            case 75:
-                Log("-> fmt: BC2 SRGB\n");
-                dxgiFormat = DXGI_FORMAT_BC2_UNORM_SRGB;
-                break;
-            case 78:
-                Log("-> fmt: BC3 SRGB\n");
-                dxgiFormat = DXGI_FORMAT_BC3_UNORM_SRGB;
-                break;
-            case 98:
-                Log("-> fmt: BC7\n");
-                dxgiFormat = DXGI_FORMAT_BC7_UNORM;
-                break;
-            case 99:
-                Log("-> fmt: BC7 SRGB\n");
-                dxgiFormat = DXGI_FORMAT_BC7_UNORM_SRGB;
-                break;
-            default:
-                Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
-                break;
-            }
-
+        case '1TXD':
+            Log("-> fmt: DXT1\n");
+            dxgiFormat = DXGI_FORMAT_BC1_UNORM;
+            break;
+        case '3TXD':
+            Log("-> fmt: DXT3\n");
+            dxgiFormat = DXGI_FORMAT_BC2_UNORM;
+            break;
+        case '5TXD':
+            Log("-> fmt: DXT5\n");
+            dxgiFormat = DXGI_FORMAT_BC3_UNORM;
+            break;
+        case 'U4CB':
+            Log("-> fmt: BC4U\n");
+            dxgiFormat = DXGI_FORMAT_BC4_UNORM;
+            break;
+        case 'U5CB':
+            Log("-> fmt: BC5U\n");
+            dxgiFormat = DXGI_FORMAT_BC5_UNORM;
+            break;
+        case 'S5CB':
+            Log("-> fmt: BC5S\n");
+            dxgiFormat = DXGI_FORMAT_BC5_SNORM;
+            break;
+        case '10XD':
+            dxgiFormat = DXGI_FORMAT_UNKNOWN;
+            break;
+        default:
+            Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
+            return;
         }
-
-        // Non SRGB texture processing.
-        else
-        {
-            switch (ddsh.pixelfmt.fourCC)
-            {
-            case '1TXD':
-                Log("-> fmt: DXT1\n");
-                dxgiFormat = DXGI_FORMAT_BC1_UNORM;
-                break;
-            case '3TXD':
-                Log("-> fmt: DXT3\n");
-                dxgiFormat = DXGI_FORMAT_BC2_UNORM;
-                break;
-            case '5TXD':
-                Log("-> fmt: DXT5\n");
-                dxgiFormat = DXGI_FORMAT_BC3_UNORM;
-                break;
-            case 'U4CB':
-                Log("-> fmt: BC4U\n");
-                dxgiFormat = DXGI_FORMAT_BC4_UNORM;
-                break;
-            case 'U5CB':
-                Log("-> fmt: BC5U\n");
-                dxgiFormat = DXGI_FORMAT_BC5_UNORM;
-                break;
-            case 'S5CB':
-                Log("-> fmt: BC5S\n");
-                dxgiFormat = DXGI_FORMAT_BC5_SNORM;
-                break;
-            default:
-                Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
-                return;
-            }
-        }
-
-        hdr->m_nFormat = s_txtrFormatMap[dxgiFormat];
 
         // Go to the end of the main header.
         input.seek(ddsh.size + 4);
 
         // this is used for some math later
-        nDDSHeaderSize += ddsh.size + 4;
+        nDDSHeaderSize = ddsh.size + 4;
 
         // Go to the end of the DX10 header if it exists.
-        if (ddsh.pixelfmt.fourCC == '01XD')
+        if (dxgiFormat == DXGI_FORMAT_UNKNOWN)
         {
-            input.seek(20, std::ios::cur);
+            DDS_HEADER_DXT10 ddsh_dx10 = input.read<DDS_HEADER_DXT10>();
+
+            dxgiFormat = ddsh_dx10.dxgiFormat;
+
+            if (s_txtrFormatMap.count(dxgiFormat) == 0)
+                Error("Attempted to add txtr asset '%s' using unsupported DDS type '%s'. Exiting...\n", assetPath, dxutils::GetFormatAsString(dxgiFormat).c_str());
+
+            Log("-> fmt: %s\n", dxutils::GetFormatAsString(dxgiFormat).c_str());
 
             nDDSHeaderSize += 20;
         }
 
+        hdr->m_nFormat = s_txtrFormatMap[dxgiFormat];
     }
 
     hdr->m_nAssetGUID = RTech::StringToGuid((sAssetName + ".rpak").c_str());
