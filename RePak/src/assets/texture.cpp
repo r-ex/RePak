@@ -61,20 +61,12 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         {
             uint32_t nCurrentMipSize = (ddsh.pitchOrLinearSize / std::pow(4, ml));
 
-            if (nCurrentMipSize <= 8)
-            {
-                // respawn adds eight bytes of padding after these lower mips, Very Cool.
-                nTotalSize += 16;
-            }
-            else
-            {
-                nTotalSize += nCurrentMipSize;
-            }
+            // add 16 bytes if mip data size is below 8 bytes else add calculated size
+            nTotalSize += (nCurrentMipSize <= 8 ? 16 : nCurrentMipSize);
 
+            // if this texture and mip are streaming
             if (bStreamable && ml < (ddsh.mipMapCount - 9))
-            {
                 nStreamedMipSize += nCurrentMipSize;
-            }
         }
 
         hdr->m_nDataLength = nTotalSize;
@@ -83,8 +75,6 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
 
         Log("-> dimensions: %ix%i\n", ddsh.width, ddsh.height);
 
-        // unfortunately i'm not a respawn engineer so 1 (unstreamed) mip level will have to do
-        // I am also not a respawn engineer, however 1 (unstreamed) mip level will not do.
         hdr->m_nPermanentMipLevels = (ddsh.mipMapCount - nStreamedMipCount);
         hdr->m_nStreamedMipLevels = nStreamedMipCount;
 
