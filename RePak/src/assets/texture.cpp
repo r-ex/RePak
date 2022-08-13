@@ -111,7 +111,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
             Log("-> fmt: BC5S\n");
             dxgiFormat = DXGI_FORMAT_BC5_SNORM;
             break;
-        case '10XD':
+        case '01XD':
             dxgiFormat = DXGI_FORMAT_UNKNOWN;
             break;
         default:
