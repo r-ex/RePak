@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Assets.h"
+#include <dxutils.h>
 
 // VERSION 7
 void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
@@ -36,8 +37,8 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     atlas.close();
 
     UIImageHeader* pHdr = new UIImageHeader();
-    pHdr->m_nWidth = ddsh.width;
-    pHdr->m_nHeight = ddsh.height;
+    pHdr->m_nWidth = ddsh.dwWidth;
+    pHdr->m_nHeight = ddsh.dwHeight;
 
     // legion uses this to get the texture count, so its probably set correctly
     pHdr->m_nTextureOffsetsCount = nTexturesCount;

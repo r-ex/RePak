@@ -43,7 +43,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
 
         int nStreamedMipCount = 0;
 
-        if (ddsh.mipMapCount > 9)
+        if (ddsh.dwMipMapCount > 9)
         {
             if (mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool())
             {
@@ -52,81 +52,87 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
             }
             else
             {
-                nStreamedMipCount = ddsh.mipMapCount - 9;
+                nStreamedMipCount = ddsh.dwMipMapCount - 9;
                 bStreamable = true;
             }
         }
 
         uint32_t nTotalSize = 0;
-        for (int ml = 0; ml < ddsh.mipMapCount; ml++)
+        for (int ml = 0; ml < ddsh.dwMipMapCount; ml++)
         {
-            uint32_t nCurrentMipSize = (ddsh.pitchOrLinearSize / std::pow(4, ml));
+            uint32_t nCurrentMipSize = (ddsh.dwPitchOrLinearSize / std::pow(4, ml));
 
             // add 16 bytes if mip data size is below 8 bytes else add calculated size
             nTotalSize += (nCurrentMipSize <= 8 ? 16 : nCurrentMipSize);
 
             // if this texture and mip are streaming
-            if (bStreamable && ml < (ddsh.mipMapCount - 9))
+            if (bStreamable && ml < (ddsh.dwMipMapCount - 9))
                 nStreamedMipSize += nCurrentMipSize;
         }
 
         hdr->m_nDataLength = nTotalSize;
-        hdr->m_nWidth = ddsh.width;
-        hdr->m_nHeight = ddsh.height;
+        hdr->m_nWidth = ddsh.dwWidth;
+        hdr->m_nHeight = ddsh.dwHeight;
 
-        Log("-> dimensions: %ix%i\n", ddsh.width, ddsh.height);
+        Log("-> dimensions: %ix%i\n", ddsh.dwWidth, ddsh.dwHeight);
 
-        hdr->m_nPermanentMipLevels = (ddsh.mipMapCount - nStreamedMipCount);
+        hdr->m_nPermanentMipLevels = (ddsh.dwMipMapCount - nStreamedMipCount);
         hdr->m_nStreamedMipLevels = nStreamedMipCount;
 
         Log("-> total mipmaps permanent:streamed : %i:%i\n", hdr->m_nPermanentMipLevels, hdr->m_nStreamedMipLevels);
 
-        nLargestMipSize = ddsh.pitchOrLinearSize;
+        nLargestMipSize = ddsh.dwPitchOrLinearSize;
 
         DXGI_FORMAT dxgiFormat;
 
-        switch (ddsh.pixelfmt.fourCC)
+        switch (ddsh.ddspf.dwFourCC)
         {
-        case '1TXD':
+        case '1TXD': // DXT1
             Log("-> fmt: DXT1\n");
             dxgiFormat = DXGI_FORMAT_BC1_UNORM;
             break;
-        case '3TXD':
+        case '3TXD': // DXT3
             Log("-> fmt: DXT3\n");
             dxgiFormat = DXGI_FORMAT_BC2_UNORM;
             break;
-        case '5TXD':
+        case '5TXD': // DXT5
             Log("-> fmt: DXT5\n");
             dxgiFormat = DXGI_FORMAT_BC3_UNORM;
             break;
-        case 'U4CB':
+        case 'U4CB': // BC4U
             Log("-> fmt: BC4U\n");
             dxgiFormat = DXGI_FORMAT_BC4_UNORM;
             break;
-        case 'U5CB':
+        case 'S4CB':
+            Log("-> fmt: BC4S\n");
+            dxgiFormat = DXGI_FORMAT_BC4_SNORM;
+            break;
+        case '2ITA': // ATI2
+        case 'U5CB': // BC5U
             Log("-> fmt: BC5U\n");
             dxgiFormat = DXGI_FORMAT_BC5_UNORM;
             break;
-        case 'S5CB':
+        case 'S5CB': // BC5S
             Log("-> fmt: BC5S\n");
             dxgiFormat = DXGI_FORMAT_BC5_SNORM;
             break;
-        case '01XD':
+        case '01XD': // DX10
             dxgiFormat = DXGI_FORMAT_UNKNOWN;
             break;
+
         default:
             Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
             return;
         }
 
         // Go to the end of the main header.
-        input.seek(ddsh.size + 4);
+        input.seek(ddsh.dwSize + 4);
 
         // this is used for some math later
-        nDDSHeaderSize = ddsh.size + 4;
+        nDDSHeaderSize = ddsh.dwSize + 4;
 
         // Go to the end of the DX10 header if it exists.
-        if (dxgiFormat == DXGI_FORMAT_UNKNOWN)
+        if (ddsh.ddspf.dwFourCC == '01XD')
         {
             DDS_HEADER_DXT10 ddsh_dx10 = input.read<DDS_HEADER_DXT10>();
 

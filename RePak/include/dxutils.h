@@ -4,7 +4,7 @@
 #include <map>
 #include <string>
 
-std::map<DXGI_FORMAT, std::string> _dxgi_to_string = {
+static std::map<DXGI_FORMAT, std::string> _dxgi_to_string = {
 	{DXGI_FORMAT_UNKNOWN, "DXGI_FORMAT_UNKNOWN"},
 	{DXGI_FORMAT_R32G32B32A32_TYPELESS, "DXGI_FORMAT_R32G32B32A32_TYPELESS"},
 	{DXGI_FORMAT_R32G32B32A32_FLOAT, "DXGI_FORMAT_R32G32B32A32_FLOAT"},
@@ -129,11 +129,94 @@ std::map<DXGI_FORMAT, std::string> _dxgi_to_string = {
 	{DXGI_FORMAT_FORCE_UINT, "DXGI_FORMAT_FORCE_UINT"},
 };
 
+struct DDS_PIXELFORMAT {
+	DWORD dwSize;
+	DWORD dwFlags;
+	uint32_t dwFourCC;
+	DWORD dwRGBBitCount;
+	DWORD dwRBitMask;
+	DWORD dwGBitMask;
+	DWORD dwBBitMask;
+	DWORD dwABitMask;
+};
+
+typedef struct {
+	DWORD           dwSize;
+	DWORD           dwFlags;
+	DWORD           dwHeight;
+	DWORD           dwWidth;
+	DWORD           dwPitchOrLinearSize;
+	DWORD           dwDepth;
+	DWORD           dwMipMapCount;
+	DWORD           dwReserved1[11];
+	DDS_PIXELFORMAT ddspf;
+	DWORD           dwCaps;
+	DWORD           dwCaps2;
+	DWORD           dwCaps3;
+	DWORD           dwCaps4;
+	DWORD           dwReserved2;
+} DDS_HEADER;
+
+struct DDS_HEADER_DXT10 {
+	DXGI_FORMAT              dxgiFormat;
+	D3D10_RESOURCE_DIMENSION resourceDimension;
+	UINT                     miscFlag;
+	UINT                     arraySize;
+	UINT                     miscFlags2;
+};
+
+// pixelformat flags
+#define DDPF_ALPHAPIXELS 0x1
+#define DDPF_ALPHA 0x2
+#define DDPF_FOURCC 0x4
+#define DDPF_RGB 0x40
+#define DDPF_YUV 0x200
+#define DDPF_LUMINANCE 0x20000
+
+// dds flags
+#define DDS_FOURCC DDPF_FOURCC
+#define DDS_ALPHA DDPF_ALPHA
+#define DDS_RGB DDPF_RGB
+#define DDS_LUMINANCE DDPF_LUMINANCE
+#define DDS_RGBA DDPF_RGB | DDPF_ALPHAPIXELS
 class dxutils
 {
 public:
 	static std::string GetFormatAsString(DXGI_FORMAT fmt)
 	{
 		return _dxgi_to_string[fmt];
+	}
+
+	static DXGI_FORMAT GetFormatFromHeader(DDS_HEADER hdr)
+	{
+		DDS_PIXELFORMAT pf = hdr.ddspf;
+		if (pf.dwRGBBitCount == 32)
+		{
+			if (pf.dwFlags & DDS_RGBA)
+			{
+				if (pf.dwRBitMask == 0xff && pf.dwGBitMask == 0xff00 && pf.dwBBitMask == 0xff0000 && pf.dwABitMask == 0xff000000)
+					return DXGI_FORMAT_R8G8B8A8_UNORM;
+				else if (pf.dwRBitMask == 0xffff && pf.dwGBitMask == 0xffff0000)
+					return DXGI_FORMAT_R16G16_UNORM;
+				else if (pf.dwRBitMask == 0x3ff && pf.dwGBitMask == 0xffc00 && pf.dwBBitMask == 0x3ff00000)
+					return DXGI_FORMAT_R10G10B10A2_UNORM;
+			}
+			else if (pf.dwFlags & DDS_RGB)
+			{
+				if (pf.dwRBitMask == 0xffff && pf.dwGBitMask == 0xffff0000)
+					return DXGI_FORMAT_R16G16_UNORM;
+			}
+		}
+		else if (pf.dwRGBBitCount == 8)
+		{
+			if (pf.dwFlags & DDS_ALPHA)
+			{
+				if (pf.dwABitMask == 0xff)
+					return DXGI_FORMAT_A8_UNORM;
+			}
+		}
+
+		// unsupported
+		return DXGI_FORMAT_UNKNOWN;
 	}
 };
