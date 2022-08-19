@@ -1,15 +1,56 @@
 #include "pch.h"
 #include "Assets.h"
 
-// VERSION 7
 void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding uimg asset '%s'\n", assetPath);
 
     std::string sAssetName = assetPath;
 
-    if (!mapEntry.HasMember("atlas") || !mapEntry["atlas"].IsString())
-        Error("failed to add uimg asset '%s': expected field 'atlas' as a string.\n");
+    ///////////////////////
+    // JSON VALIDATION
+    {
+        // atlas checks
+        if (!mapEntry.HasMember("atlas"))
+            Error("Required field 'atlas' not found for uimg asset '%s'. Exiting...\n", assetPath);
+        else if (!mapEntry["atlas"].IsString())
+            Error("'atlas' field is not of required type 'string' for uimg asset '%s'. Exiting...\n", assetPath);
+
+        // textures checks
+        if (!mapEntry.HasMember("textures"))
+            Error("Required field 'textures' not found for uimg asset '%s'. Exiting...\n", assetPath);
+        else if (!mapEntry["textures"].IsArray())
+            Error("'textures' field is not of required type 'array' for uimg asset '%s'. Exiting...\n", assetPath);
+
+        // validate fields for each texture
+        for (auto& it : mapEntry["textures"].GetArray())
+        {
+            if (!it.HasMember("path"))
+                Error("Required field 'path' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+            else if (!it["path"].IsString())
+                Error("'path' field is not of required type 'string' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
+
+            if (!it.HasMember("width"))
+                Error("Required field 'width' not found for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
+            else if (!it["width"].IsNumber())
+                Error("'width' field is not of required type 'number' for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
+
+            if (!it.HasMember("height"))
+                Error("Required field 'height' not found for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
+            else if (!it["height"].IsNumber())
+                Error("'height' field is not of required type 'number' for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
+
+            if (!it.HasMember("posX"))
+                Error("Required field 'posX' not found for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
+            else if (!it["posX"].IsNumber())
+                Error("'posX' field is not of required type 'number' for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
+
+            if (!it.HasMember("posY"))
+                Error("Required field 'posY' not found for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
+            else if (!it["posY"].IsNumber())
+                Error("'posY' field is not of required type 'number' for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
+        }
+    }
 
     // get the info for the ui atlas image
     std::string sAtlasFilePath = g_sAssetsDir + mapEntry["atlas"].GetStdString() + ".dds";
@@ -21,9 +62,6 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
 
     if (!atlasAsset)
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
-
-    if (!mapEntry.HasMember("textures") || !mapEntry["textures"].IsArray())
-        Error("failed to add uimg asset '%s': expected field 'textures' as an array.\n");
 
     uint32_t nTexturesCount = mapEntry["textures"].GetArray().Size();
 
@@ -78,24 +116,10 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     // set texture offset page index and offset
     pHdr->m_pTextureOffsets = { tiseginfo.index, 0 };
 
-    int uiTextureIdx = 0;
-
     ////////////////////
     // IMAGE OFFSETS
     for (auto& it : mapEntry["textures"].GetArray())
     {
-        // validate all textures here since this is the first time we loop through them
-        if (!it.HasMember("path") || !it["path"].IsString())
-        {
-            Error("failed to add ui texture %i for uimg asset '%s': expected field 'path' as a string.\n", uiTextureIdx, assetPath);
-        }
-
-        if (!it.HasMember("posX") || !it["posX"].IsNumber() || !it.HasMember("posY") || !it["posY"].IsNumber())
-            Error("failed to add ui texture '%s': expected fields 'posX' and 'posY' as numbers.\n", it["path"].GetString());
-
-        if (!it.HasMember("width") || !it["width"].IsNumber() || !it.HasMember("height") || !it["height"].IsNumber())
-            Error("failed to add ui texture '%s': expected fields 'width' and 'height' as numbers.\n", it["path"].GetString());
-
         UIImageOffset uiio{};
         float startX = it["posX"].GetFloat() / pHdr->m_nWidth;
         float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->m_nWidth;
@@ -106,8 +130,6 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
         // this doesnt affect legion but does affect game?
         //uiio.InitUIImageOffset(startX, startY, endX, endY);
         tiBuf.write(uiio);
-
-        uiTextureIdx++;
     }
 
     ///////////////////////
@@ -123,7 +145,6 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
 
     // set texture hashes page index and offset
     pHdr->m_pTextureHashes = { tiseginfo.index, textureOffsetsDataSize + textureDimensionsDataSize };
-    //pHdr->pTextureNames = { tiseginfo.index, 0 };
 
     uint32_t nextStringTableOffset = 0;
 
