@@ -169,6 +169,7 @@
   <ItemGroup>
     <ClInclude Include="include\Assets.h" />
     <ClInclude Include="include\BinaryIO.h" />
+    <ClInclude Include="include\dxutils.h" />
     <ClInclude Include="include\pch.h" />
     <ClInclude Include="include\rapidcsv\rapidcsv.h" />
     <ClInclude Include="include\rapidjson\allocators.h" />
