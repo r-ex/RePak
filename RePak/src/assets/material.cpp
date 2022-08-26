@@ -393,12 +393,12 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
         }
     }
 
-    cpudata.uv1.uvScaleX = uv1Transform[0];
-    cpudata.uv1.uvRotationX = uv1Transform[1];
-    cpudata.uv1.uvRotationY = uv1Transform[2];
-    cpudata.uv1.uvScaleY = uv1Transform[3];
-    cpudata.uv1.uvTranslateX = uv1Transform[4];
-    cpudata.uv1.uvTranslateY = uv1Transform[5];
+    cpudata.c_uv1.uvScaleX = uv1Transform[0];
+    cpudata.c_uv1.uvRotationX = uv1Transform[1];
+    cpudata.c_uv1.uvRotationY = uv1Transform[2];
+    cpudata.c_uv1.uvScaleY = uv1Transform[3];
+    cpudata.c_uv1.uvTranslateX = uv1Transform[4];
+    cpudata.c_uv1.uvTranslateY = uv1Transform[5];
 
     memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, &cpudata, cpuDataSize);
     //////////////////////////////////////////

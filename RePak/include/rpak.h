@@ -543,11 +543,11 @@ struct UnknownMaterialSectionV15
 // this is currently unused, but could probably be used just fine if you copy stuff over from the RPak V7 material function in material.cpp
 struct MaterialCPUDataV15
 {
-	uvTransformMatrix uv1; // detail
-	uvTransformMatrix uv2; // 1st texture (unconfirmed)
-	uvTransformMatrix uv3; // 2nd texture (unconfirmed)
-	uvTransformMatrix uv4;
-	uvTransformMatrix uv5;
+	uvTransformMatrix c_uv1; // detail
+	uvTransformMatrix c_uv2; // 1st texture (unconfirmed)
+	uvTransformMatrix c_uv3; // 2nd texture (unconfirmed)
+	uvTransformMatrix c_uv4;
+	uvTransformMatrix c_uv5;
 
 	Vector2 c_uvDistortionIntensity;
 	Vector2 c_uvDistortion2Intensity;
@@ -584,18 +584,42 @@ struct MaterialCPUDataV15
 	float c_tsaaMotionAlphaRamp = 10.0;
 	uint32_t c_tsaaResponsiveFlag = 0x0; // this is 0 or 1 I think.
 
-	// the variables for this are known, however a few are sub structs with compositions I am unsure of.
-	float unkFloat[33] = {
-		0.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0, 0.0,
-		1.0, 0.0, 0.0, 0.0,
-		0.0, 0.5, 1.0, 1.0,
-		0.0
-	};
+	Vector3 c_outlineColorSDF = { 0.0, 0.0, 0.0 };
+	float c_outlineWidthSDF = 0.0;
+
+	Vector3 c_shadowColorSDF = { 0.0, 0.0, 0.0 };
+	float c_shadowWidthSDF = 0.0;
+
+	Vector3 c_insideColorSDF = { 0.0, 0.0, 0.0 };
+
+	float c_outsideAlphaScalarSDF = 0.0;
+
+	float c_glitchStrength = 0.0;
+
+	float c_vertexDisplacementScale = 0.0;
+
+	float c_innerFalloffWidthSDF = 0.0;
+	float c_innerEdgeOffsetSDF = 0.0;
+
+	Vector2 c_dropShadowOffsetSDF = { 0.0, 0.0 };
+
+	float c_normalMapEdgeWidthSDF = 0.0;
+
+	float c_shadowFalloffSDF = 0.0;
+
+	Vector2 c_L0_scatterAmount = { 0.0, 0.0 };
+	float c_L0_scatterRatio = 0.0;
+
+	float c_L0_transmittanceIntensityScale = 1.0;
+
+	Vector2 c_vertexDisplacementDirection = { 0.0, 0.0 };
+
+	float c_L0_transmittanceAmount = 0.0;
+	float c_L0_transmittanceDistortionAmount = 0.5;
+
+	float c_zUpBlendingMinAngleCos = 1.0;
+	float c_zUpBlendingMaxAngleCos = 1.0;
+	float c_zUpBlendingVertexAlpha = 0.0;
 
 	Vector3 c_L0_albedoTint = { 1.0, 1.0, 1.0 };
 
@@ -616,19 +640,24 @@ struct MaterialCPUDataV15
 	Vector3 c_L1_emissiveTint = { 0.0, 0.0, 0.0 };
 	Vector3 c_L1_perfSpecColor = { 0.0, 0.0, 0.0 };
 
-	// the same deal as unkFloat.
-	float unkFloat1[23] = {
-		               0.0,
-		1.0, 0.0, 1.0, 0.0,
-		0.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0, 0.0,
-		10.0, -0.0
-	};
+	float c_splineMinPixelPercent = 0.0;
 
-	// the value for this is also known, however the size is unknown.
-	uint32_t unk[2] = { 0xFFFFFFFF, 0xFFFFFFFF };
+	Vector2 c_L0_anisoSpecCosSinTheta = { 1.0, 0.0 };
+	Vector2 c_L1_anisoSpecCosSinTheta = { 1.0, 0.0 };
+
+	float c_L0_anisoSpecStretchAmount = 0.0;
+	float c_L1_anisoSpecStretchAmount = 0.0;
+
+	float c_L0_emissiveHeightFalloff = 0.0;
+	float c_L1_emissiveHeightFalloff = 0.0;
+
+	float c_L1_transmittanceIntensityScale = 0.0;
+	float c_L1_transmittanceAmount = 0.0;
+	float c_L1_transmittanceDistortionAmount = 0.0;
+
+	float c_L1_scatterDistanceScale = 0.0;
+	Vector3 c_L1_scatterAmount = { 0.0, 0.0, 0.0 };
+	float c_L1_scatterRatio = 0.0;
 };
 
 // start of CMaterialGlue class
@@ -719,9 +748,9 @@ struct UnknownMaterialSectionV12
 struct MaterialCPUDataV12
 {
 	// the assignment of these depends on the shader set, they work similarly to texturetransforms in normal source.
-	uvTransformMatrix uv1; // this is frequently used for detail textures.
-	uvTransformMatrix uv2;
-	uvTransformMatrix uv3;
+	uvTransformMatrix c_uv1; // this is frequently used for detail textures.
+	uvTransformMatrix c_uv2;
+	uvTransformMatrix c_uv3;
 
 	Vector2 c_uvDistortionIntensity = { 0.0, 0.0 }; // distortion on the { x, y } axis.
 	Vector2 c_uvDistortion2Intensity = { 0.0, 0.0 }; // see above, but for a second distortion texture.
