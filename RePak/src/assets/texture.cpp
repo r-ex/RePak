@@ -261,8 +261,8 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         std::string sStarpakPath = "paks/Win64/repak.starpak";
 
         // check per texture just in case for whatever reason you want stuff in different starpaks (if it ever gets fixed).
-        if (mapEntry.HasMember("starpakpath"))
-            sStarpakPath = mapEntry["starpakpath"].GetString();
+        if (mapEntry.HasMember("starpakPath"))
+            sStarpakPath = mapEntry["starpakPath"].GetString();
 
         RePak::AddStarpakReference(sStarpakPath);
 
