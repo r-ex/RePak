@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Assets.h"
+#include "rapidjson/error/en.h"
 
 using namespace rapidjson;
 
@@ -118,6 +119,41 @@ int main(int argc, char** argv)
     Document doc{ };
 
     doc.ParseStream(isw);
+
+    if (doc.HasParseError()) {
+        int lineNum = 1;
+        int columnNum = 0;
+        std::string lastLine = "";
+        std::string curLine = "";
+
+        int offset = doc.GetErrorOffset();
+        ifs.clear();
+        ifs.seekg(0, std::ios::beg);
+        IStreamWrapper isw{ ifs };
+
+        for (int i = 0; ; i++)
+        {
+            char c = isw.Take();
+            curLine.push_back(c);
+            if (c == '\n')
+            {
+                if (i >= offset)
+                    break;
+                lastLine = curLine;
+                curLine = "";
+                lineNum++;
+                columnNum = 0;
+            }
+            else
+            {
+                if (i < offset)
+                    columnNum++;
+            }
+        }
+
+        // this could probably be formatted nicer
+        Error("Failed to parse map file: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n", lineNum, columnNum, GetParseError_En(doc.GetParseError()), lastLine.c_str(), curLine.c_str(), (std::string(columnNum, ' ') += '^').c_str());
+    }
 
     std::string sRpakName = DEFAULT_RPAK_NAME;
 
