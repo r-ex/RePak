@@ -25,6 +25,5 @@ namespace Assets
 	extern std::string g_sAssetsDir;
 	extern std::vector<std::string> g_vsStarpakPaths;
 	extern std::vector<std::string> g_vsOptStarpakPaths;
-	extern std::vector<SRPkDataEntry> g_vSRPkDataEntries;
 };
 

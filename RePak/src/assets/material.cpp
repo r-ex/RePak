@@ -853,28 +853,8 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
         dataBuf += sizeof(uint64_t);
         textureIdx++; // Next texture index coming up.
     }
+    dataBuf += sizeof(uint64_t) * mapEntry["textures"].Size();
 
-    textureIdx = 0; // reset index for next TextureGUID Section.
-    for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the second TextureGUID Map.
-    {
-        if (it.GetStdString() != "")
-        {
-            uint64_t guid = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str());
-            *(uint64_t*)dataBuf = guid;
-            RePak::RegisterGuidDescriptor(dataseginfo.index, guidPageOffset + textureRefSize + (textureIdx * sizeof(uint64_t)));
-
-            RePak::AddFileRelation(assetEntries->size());
-
-            RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
-
-            txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
-            txtrAsset->m_nRelationsCounts++;
-
-            assetUsesCount++; // Next texture index coming up.
-        }
-        dataBuf += sizeof(uint64_t);
-        textureIdx++;
-    }
 
     // ===============================
     // write the surface name into the buffer
@@ -894,11 +874,9 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pszName));
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pszSurfaceProp));
 
-    // Type Handling
+    // Shader Type Handling
     if (type == "sknp")
     {
-        // These should always be constant (per each material type)
-        // There's different versions of these for each material type
         // GUIDRefs[4] is Colpass entry.
         mtlHdr->m_GUIDRefs[0] = 0x2B93C99C67CC8B51;
         mtlHdr->m_GUIDRefs[1] = 0x1EBD063EA03180C7;

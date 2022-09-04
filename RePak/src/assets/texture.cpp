@@ -268,7 +268,8 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         RePak::AddStarpakReference(sStarpakPath);
 
         SRPkDataEntry de{ 0, nStreamedMipSize, (uint8_t*)streamedbuf };
-        starpakOffset = RePak::AddStarpakDataEntry(de);
+        de = RePak::AddStarpakDataEntry(de);
+        starpakOffset = de.m_nOffset;
     }
 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);

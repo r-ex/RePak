@@ -97,8 +97,18 @@ void WriteRPakRawDataBlock(BinaryIO& out, std::vector<RPakRawDataBlock>& rawData
     }
 }
 
+const char startupVersion[] = {
+    "RePak - Built "
+    __DATE__
+    " "
+    __TIME__
+    "\n\n"
+};
+
 int main(int argc, char** argv)
 {
+    printf(startupVersion);
+
     if (argc < 2)
         Error("invalid usage\n");
 
@@ -126,17 +136,16 @@ int main(int argc, char** argv)
     else
         Warning("Map file should have a 'name' field containing the string name for the new rpak, but none was provided. Defaulting to '%s.rpak' and continuing...\n", DEFAULT_RPAK_NAME);
 
+    Log("build settings:\n");
+    Log("filename: %s\n", sRpakName.c_str());
+
     if (!doc.HasMember("assetsDir"))
     {
         Warning("No assetsDir field provided. Assuming that everything is relative to the working directory.\n");
         if (mapPath.has_parent_path())
-        {
             Assets::g_sAssetsDir = mapPath.parent_path().u8string();
-        }
         else
-        {
             Assets::g_sAssetsDir = ".\\";
-        }
     }
     else
     {
@@ -148,7 +157,7 @@ int main(int argc, char** argv)
 
         // ensure that the path has a slash at the end
         Utils::AppendSlash(Assets::g_sAssetsDir);
-        Debug("assetsDir: %s\n", Assets::g_sAssetsDir.c_str());
+        Log("assetsDir: %s\n", Assets::g_sAssetsDir.c_str());
     }
 
     std::string sOutputDir = "build/";
@@ -164,6 +173,7 @@ int main(int argc, char** argv)
 
         // ensure that the path has a slash at the end
         Utils::AppendSlash(sOutputDir);
+        Log("outputDir: %s\n", sOutputDir.c_str());
     }
 
     if (!doc.HasMember("files"))
@@ -183,7 +193,7 @@ int main(int argc, char** argv)
 
     rpakFile->SetVersion(rpakVersion);
 
-    Log("building rpak %s.rpak\n\n", sRpakName.c_str());
+    Log("version: %i\n\n", rpakVersion);
 
     // build asset data
     // loop through all assets defined in the map json
@@ -200,9 +210,6 @@ int main(int argc, char** argv)
 
     // write a placeholder header so we can come back and complete it
     // when we have all the info
-    
-    // RPAKFILE WRITE HEADER
-
     rpakFile->WriteHeader(&out);
 
     // write string vectors for starpak paths and get the total length of each vector
@@ -243,6 +250,8 @@ int main(int argc, char** argv)
 
     out.close();
 
+    Debug("written rpak file with size %lld\n", rpakFile->header.m_nSizeDisk);
+
     // free the memory
     for (auto& it : g_vRawDataBlocks)
     {
@@ -258,14 +267,15 @@ int main(int argc, char** argv)
 
         std::string filename = path.filename().u8string();
 
+        Debug("writing starpak %s with %lld data entries\n", filename.c_str(), g_vSRPkDataEntries.size());
         BinaryIO srpkOut;
 
         srpkOut.open(sOutputDir + filename, BinaryIOMode::Write);
 
         int magic = 'kPRS';
         int version = 1;
-        uint64_t entryCount = Assets::g_vSRPkDataEntries.size();
-
+        uint64_t entryCount = g_vSRPkDataEntries.size();
+        
         srpkOut.write(magic);
         srpkOut.write(version);
 
@@ -276,14 +286,14 @@ int main(int argc, char** argv)
 
         srpkOut.getWriter()->write(why, 4088);
 
-        for (auto& it : Assets::g_vSRPkDataEntries)
+        for (auto& it : g_vSRPkDataEntries)
         {
             srpkOut.getWriter()->write((const char*)it.m_nDataPtr, it.m_nDataSize);
         }
 
         // starpaks have a table of sorts at the end of the file, containing the offsets and data sizes for every data block
         // as far as i'm aware, this isn't even used by the game, so i'm not entirely sure why it exists?
-        for (auto& it : Assets::g_vSRPkDataEntries)
+        for (auto& it : g_vSRPkDataEntries)
         {
             SRPkFileEntry fe{};
             fe.m_nOffset= it.m_nOffset;
@@ -293,6 +303,9 @@ int main(int argc, char** argv)
         }
 
         srpkOut.write(entryCount);
+
+        Debug("written starpak file with size %lld\n", srpkOut.tell());
+
         srpkOut.close();
     }
     return EXIT_SUCCESS;

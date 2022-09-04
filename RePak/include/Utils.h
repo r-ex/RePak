@@ -11,6 +11,8 @@ namespace Utils
 	FILETIME GetFileTimeBySystem();
 
 	void AppendSlash(std::string& in);
+
+	std::string ChangeExtension(const std::string& in, const std::string& ext);
 };
 
 // non-fatal errors/issues
@@ -33,3 +35,7 @@ void Debug(const char* fmt, ...);
 }
 
 #define FILE_EXISTS(path) std::filesystem::exists(path)
+
+#define REQUIRE_FILE(path) \
+	if(!FILE_EXISTS(path)) \
+		Error("Unable to find required file '%s'\n", std::string(path).c_str())

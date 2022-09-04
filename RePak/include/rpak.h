@@ -212,7 +212,7 @@ struct SRPkDataEntry
 {
 	uint64_t m_nOffset = -1; // set when added
 	uint64_t m_nDataSize = 0;
-	uint8_t* m_nDataPtr;
+	uint8_t* m_nDataPtr = nullptr;
 };
 
 enum class AssetType : uint32_t
@@ -386,38 +386,36 @@ struct ModelHeader
 {
 	// IDST data
 	// .mdl
-	RPakPtr SkeletonPtr;
+	RPakPtr pRMDL;
 	uint64_t Padding = 0;
 
 	// model path
 	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
-	RPakPtr NamePtr;
+	RPakPtr pName;
 	uint64_t Padding2 = 0;
 
 	// .phy
-	RPakPtr PhyPtr;
+	RPakPtr pPhyData;
 	uint64_t Padding3 = 0;
 
-	// this data is usually kept in a mandatory starpak, but there's also fallback(?) data here
-	// in rmdl v8, this is literally just .vtx and .vvd stuck together
-	// in v9+ it's an increasingly mutated version, although it contains roughly the same data
-	RPakPtr VGPtr;
+	// preload cache data for static props
+	RPakPtr pStaticPropVtxCache;
 
 	// pointer to data for the model's arig guid(s?)
-	RPakPtr AnimRigRefPtr;
+	RPakPtr pAnimRigs;
 
 	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
-	uint32_t AnimRigCount = 0;
+	uint32_t animRigCount = 0;
 
 	// size of the data kept in starpak
-	uint32_t StreamedDataSize = 0;
-	uint32_t DataCacheSize = 0; // when 97028: FS_CheckAsyncRequest returned error for model '<NOINFO>' offset -1 count 97028 -- Error 0x00000006
+	uint32_t unkDataSize = 0;
+	uint32_t alignedStreamingSize = 0; // full size of the starpak entry, aligned to 4096.
 
 	uint64_t Padding6 = 0;
 
 	// number of anim sequences directly associated with this model
-	uint32_t AnimSequenceCount = 0;
-	RPakPtr AnimSequencePtr;
+	uint32_t animSeqCount = 0;
+	RPakPtr pAnimSeqs;
 
 	uint64_t Padding7 = 0;
 	uint64_t Padding8 = 0;
@@ -425,71 +423,189 @@ struct ModelHeader
 };
 
 // modified source engine studio mdl header struct
-// majority of these members are the same as in the source sdk
-// so if you wanna know what any of it does, check there
 struct studiohdr_t
 {
-	studiohdr_t() {};
+	int id; // Model format ID, such as "IDST" (0x49 0x44 0x53 0x54)
+	int version; // Format version number, such as 48 (0x30,0x00,0x00,0x00)
+	int checksum; // This has to be the same in the phy and vtx files to load!
+	int sznameindex; // This has been moved from studiohdr2 to the front of the main header.
+	char name[64]; // The internal name of the model, padding with null bytes.
+	// Typically "my_model.mdl" will have an internal name of "my_model"
+	int length; // Data size of MDL file in bytes.
 
-	int id;
-	int version;
-	int checksum;
-	int nameTableOffset;
+	Vector3 eyeposition;	// ideal eye position
 
-	char name[0x40];
+	Vector3 illumposition;	// illumination center
 
-	int m_nDataLength;
-
-	Vector3 eyeposition;
-	Vector3 illumposition;
-	Vector3 hull_min;
+	Vector3 hull_min;		// ideal movement hull size
 	Vector3 hull_max;
-	Vector3 view_bbmin;
+
+	Vector3 view_bbmin;		// clipping bounding box
 	Vector3 view_bbmax;
 
-	int flags; // 0x9c
+	int flags;
 
-	int bone_count; // 0xa0
-	int bone_offset; // 0xa4
+	int numbones; // bones
+	int boneindex;
 
-	int bonecontroller_count;
-	int bonecontroller_offset;
+	int numbonecontrollers; // bone controllers
+	int bonecontrollerindex;
 
-	int hitboxset_count;
-	int hitboxset_offset;
+	int numhitboxsets;
+	int hitboxsetindex;
 
-	int localanim_count;
-	int localanim_offset;
+	int numlocalanim; // animations/poses
+	int localanimindex; // animation descriptions
 
-	int localseq_count;
-	int localseq_offset;
+	int numlocalseq; // sequences
+	int	localseqindex;
 
-	int activitylistversion;
-	int eventsindexed;
+	int activitylistversion; // initialization flag - have the sequences been indexed?
 
-	int texture_count;
-	int texture_offset;
+	// mstudiotexture_t
+	// short rpak path
+	// raw textures
+	int materialtypesindex;
+	int numtextures; // the material limit exceeds 128, probably 256.
+	int textureindex;
 
-	int texturedir_count;
-	int texturedir_offset;
+	// this should always only be one, unless using vmts.
+	// raw textures search paths
+	int numcdtextures;
+	int cdtextureindex;
 
-	int skinref_count;
-	int skinfamily_count;
-	int skinref_offset;
+	// replaceable textures tables
+	int numskinref;
+	int numskinfamilies;
+	int skinindex;
 
-	int bodypart_count;
-	int bodypart_offset;
+	int numbodyparts;
+	int bodypartindex;
 
-	int attachment_count;
-	int attachment_offset;
+	int numlocalattachments;
+	int localattachmentindex;
 
-	uint8_t unknown_1[0x14];
+	int numlocalnodes;
+	int localnodeindex;
+	int localnodenameindex;
 
-	int submeshlods_count;
+	int numflexdesc;
+	int flexdescindex;
 
-	uint8_t unknown_2[0x64];
-	int OffsetToBoneRemapInfo;
-	int boneremap_count;
+	int meshindex; // SubmeshLodsOffset, might just be a mess offset
+
+	int numflexcontrollers;
+	int flexcontrollerindex;
+
+	int numflexrules;
+	int flexruleindex;
+
+	int numikchains;
+	int ikchainindex;
+
+	// this is rui meshes
+	int numruimeshes;
+	int ruimeshindex;
+
+	int numlocalposeparameters;
+	int localposeparamindex;
+
+	int surfacepropindex;
+
+	int keyvalueindex;
+	int keyvaluesize;
+
+	int numlocalikautoplaylocks;
+	int localikautoplaylockindex;
+
+	float mass;
+	int contents;
+
+	// unused for packed models
+	int numincludemodels;
+	int includemodelindex;
+
+	uint32_t virtualModel;
+
+	int bonetablebynameindex;
+
+	// if STUDIOHDR_FLAGS_CONSTANT_DIRECTIONAL_LIGHT_DOT is set,
+	// this value is used to calculate directional components of lighting 
+	// on static props
+	byte constdirectionallightdot;
+
+	// set during load of mdl data to track *desired* lod configuration (not actual)
+	// the *actual* clamped root lod is found in studiohwdata
+	// this is stored here as a global store to ensure the staged loading matches the rendering
+	byte rootLOD;
+
+	// set in the mdl data to specify that lod configuration should only allow first numAllowRootLODs
+	// to be set as root LOD:
+	//	numAllowedRootLODs = 0	means no restriction, any lod can be set as root lod.
+	//	numAllowedRootLODs = N	means that lod0 - lod(N-1) can be set as root lod, but not lodN or lower.
+	byte numAllowedRootLODs;
+
+	byte unused;
+
+	float fadedistance;
+
+	float gathersize; // what. from r5r struct
+
+	int numunk_v54_early;
+	int unkindex_v54_early;
+
+	int unk_v54[2];
+
+	// this is in all shipped models, probably part of their asset bakery. it should be 0x2CC.
+	int mayaindex; // doesn't actually need to be written pretty sure, only four bytes when not present.
+
+	int numsrcbonetransform;
+	int srcbonetransformindex;
+
+	int	illumpositionattachmentindex;
+
+	int linearboneindex;
+
+	int m_nBoneFlexDriverCount; // unsure if that's what it is in apex
+	int m_nBoneFlexDriverIndex;
+
+	int unk1_v54[7];
+
+	// always "" or "Titan"
+	int unkstringindex;
+
+	// this is now used for combined files in rpak, vtx, vvd, and vvc are all combined while vphy is separate.
+	// the indexes are added to the offset in the rpak mdl_ header.
+	// vphy isn't vphy, looks like a heavily modified vphy.
+	int vtxindex; // VTX
+	int vvdindex; // VVD / IDSV
+	int vvcindex; // VVC / IDCV 
+	int vphyindex; // VPHY / IVPS
+
+	int vtxsize;
+	int vvdsize;
+	int vvcsize;
+	int vphysize; // still used in models using vg
+
+	// unk2_v54[3] is the chunk after following unkindex2's chunk
+	int unk2_v54[3]; // the same four unks in v53 I think, the first index being unused now probably
+
+	int unkindex3; // index to chunk after string block
+
+	// likely related to AABB
+	Vector3 mins; // min/max for Something
+	Vector3 maxs; // seem to be the same as hull size
+
+	int unk3_v54[3];
+
+	int unkindex4; // chunk before unkindex3 sometimes
+
+	int unk4_v54[3]; // same as unk3_v54_v121
+
+	//int vgindex; // 0tVG
+	//int unksize; // might be offset
+	//int unksize1; // might be offset
+
 };
 
 // used for referencing a material from within a model

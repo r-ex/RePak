@@ -16,18 +16,28 @@ void RePak::AddStarpakReference(std::string path)
     Assets::g_vsStarpakPaths.push_back(path);
 }
 
+void RePak::AddOptStarpakReference(std::string path)
+{
+    for (auto& it : Assets::g_vsOptStarpakPaths)
+    {
+        if (it == path)
+            return;
+    }
+    Assets::g_vsOptStarpakPaths.push_back(path);
+}
+
 // purpose: add data entry to be written to the starpak
 // returns: offet to data entry in starpak
-uint64_t RePak::AddStarpakDataEntry(SRPkDataEntry block)
+SRPkDataEntry RePak::AddStarpakDataEntry(SRPkDataEntry block)
 {
     size_t ns = Utils::PadBuffer((char**)&block.m_nDataPtr, block.m_nDataSize, 4096);
 
     block.m_nDataSize = ns;
     block.m_nOffset = nextStarpakOffset;
 
-    Assets::g_vSRPkDataEntries.push_back(block);
+    g_vSRPkDataEntries.push_back(block);
 
     nextStarpakOffset += block.m_nDataSize;
 
-    return block.m_nOffset;
+    return block;
 }
