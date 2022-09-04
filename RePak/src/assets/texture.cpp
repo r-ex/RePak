@@ -96,6 +96,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         case '5TXD': // DXT5
             dxgiFormat = DXGI_FORMAT_BC3_UNORM;
             break;
+        case '1ITA':
         case 'U4CB': // BC4U
             dxgiFormat = DXGI_FORMAT_BC4_UNORM;
             break;
