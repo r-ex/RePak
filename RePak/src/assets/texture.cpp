@@ -261,14 +261,13 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         std::string sStarpakPath = "paks/Win64/repak.starpak";
 
         // check per texture just in case for whatever reason you want stuff in different starpaks (if it ever gets fixed).
-        if (mapEntry.HasMember("starpakpath"))
-            sStarpakPath = mapEntry["starpakpath"].GetString();
+        if (mapEntry.HasMember("starpakPath"))
+            sStarpakPath = mapEntry["starpakPath"].GetString();
 
         RePak::AddStarpakReference(sStarpakPath);
 
-        SRPkDataEntry de{ -1, nStreamedMipSize, (uint8_t*)streamedbuf };
-        de = RePak::AddStarpakDataEntry(de);
-        starpakOffset = de.m_nOffset;
+        SRPkDataEntry de{ 0, nStreamedMipSize, (uint8_t*)streamedbuf };
+        starpakOffset = RePak::AddStarpakDataEntry(de);
     }
 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);
