@@ -170,8 +170,15 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
 
             RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
 
-            txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
-            txtrAsset->m_nRelationsCounts++;
+            if (txtrAsset)
+            {
+                txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
+                txtrAsset->m_nRelationsCounts++;
+            }
+            else
+                Warning("unable to find texture '%s' for material '%s'\n", it.GetString(), assetPath);
+
+
 
             assetUsesCount++;
         }
