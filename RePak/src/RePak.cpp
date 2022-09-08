@@ -152,7 +152,13 @@ int main(int argc, char** argv)
         }
 
         // this could probably be formatted nicer
-        Error("Failed to parse map file: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n", lineNum, columnNum, GetParseError_En(doc.GetParseError()), lastLine.c_str(), curLine.c_str(), (std::string(columnNum, ' ') += '^').c_str());
+        Error("Failed to parse map file: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n", 
+            lineNum, 
+            columnNum, 
+            GetParseError_En(doc.GetParseError()), 
+            lastLine.c_str(), 
+            curLine.c_str(), 
+            (std::string(columnNum, ' ') += '^').c_str());
     }
 
     std::string sRpakName = DEFAULT_RPAK_NAME;
