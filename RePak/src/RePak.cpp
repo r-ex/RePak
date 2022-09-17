@@ -50,19 +50,16 @@ _vseginfo_t RePak::CreateNewSegment(uint32_t size, uint32_t flags, uint32_t alig
 void RePak::AddRawDataBlock(RPakRawDataBlock block)
 {
     g_vRawDataBlocks.push_back(block);
-    return;
 };
 
 void RePak::RegisterDescriptor(uint32_t pageIdx, uint32_t pageOffset)
 {
     g_vDescriptors.push_back({ pageIdx, pageOffset });
-    return;
 }
 
 void RePak::RegisterGuidDescriptor(uint32_t pageIdx, uint32_t pageOffset)
 {
     g_vGuidDescriptors.push_back({ pageIdx, pageOffset });
-    return;
 }
 
 size_t RePak::AddFileRelation(uint32_t assetIdx, uint32_t count)
