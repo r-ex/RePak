@@ -176,7 +176,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(TextureHeader), 0, 8);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(TextureHeader), SF_HEAD, 8);
 
     _vseginfo_t nameseginfo{};
 
@@ -185,7 +185,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     if (bSaveDebugName)
     {
         sprintf_s(namebuf, sAssetName.length() + 1, "%s", sAssetName.c_str());
-        nameseginfo = RePak::CreateNewSegment(sAssetName.size() + 1, 129, 1);
+        nameseginfo = RePak::CreateNewSegment(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
     }
     else
     {
@@ -195,7 +195,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     // woo more segments
     // cpu data
 
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->m_nDataLength - nStreamedMipSize, 3, 16);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->m_nDataLength - nStreamedMipSize, SF_CPU | SF_UNK2, 16);
 
     char* databuf = new char[hdr->m_nDataLength - nStreamedMipSize];
 

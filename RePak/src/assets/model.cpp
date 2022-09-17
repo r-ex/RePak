@@ -148,18 +148,18 @@ void Assets::AddModelAsset_v9(std::vector<RPakAssetEntry>* assetEntries, const c
 
     // Segments
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(ModelHeader), 0, 16);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(ModelHeader), SF_HEAD, 16);
 
     // data segment
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(mdlhdr.length + fileNameDataSize, 1, 64);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(mdlhdr.length + fileNameDataSize, SF_CPU, 64);
 
     _vseginfo_t physeginfo;
     if (phyBuf)
-        physeginfo = RePak::CreateNewSegment(phyFileSize, 1, 64);
+        physeginfo = RePak::CreateNewSegment(phyFileSize, SF_CPU, 64);
 
     _vseginfo_t arigseginfo;
     if (pAnimRigBuf)
-        arigseginfo = RePak::CreateNewSegment(pHdr->animRigCount * 8, 1, 64);
+        arigseginfo = RePak::CreateNewSegment(pHdr->animRigCount * 8, SF_CPU, 64);
 
     pHdr->pName = { dataseginfo.index, 0 };
 

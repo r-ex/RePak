@@ -26,10 +26,10 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntry>* assetEntries, const char
     size_t dataPageSize = (sizeof(RPakPtr) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + entryNamesSectionSize;
 
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(PtchHeader), 0, 8);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(PtchHeader), SF_HEAD, 8);
 
     // data segment
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataPageSize, 1, 8);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataPageSize, SF_CPU, 8);
 
     pHdr->pPakNames = { dataseginfo.index, 0 };
     pHdr->pPakPatchNums = { dataseginfo.index, (int)sizeof(RPakPtr) * pHdr->patchedPakCount };

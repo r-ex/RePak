@@ -5,13 +5,12 @@
 using namespace rapidjson;
 
 // purpose: create page and segment with the specified parameters
-// idk what the second field is so "a2" is good enough
-RPakVirtualSegment GetMatchingSegment(uint32_t flags, uint32_t a2, uint32_t* segidx)
+RPakVirtualSegment GetMatchingSegment(uint32_t flags, uint32_t alignment, uint32_t* segidx)
 {
     uint32_t i = 0;
     for (auto& it : g_vvSegments)
     {
-        if (it.m_nDataFlag == flags && it.m_nSomeType == a2)
+        if (it.flags == flags && it.alignment == alignment)
         {
             *segidx = i;
             return it;
@@ -19,21 +18,21 @@ RPakVirtualSegment GetMatchingSegment(uint32_t flags, uint32_t a2, uint32_t* seg
         i++;
     }
 
-    return { flags, a2, 0 };
+    return { flags, alignment, 0 };
 }
 
 // purpose: create page and segment with the specified parameters
 // returns: page index
-_vseginfo_t RePak::CreateNewSegment(uint32_t size, uint32_t flags_maybe, uint32_t alignment, uint32_t vsegAlignment)
+_vseginfo_t RePak::CreateNewSegment(uint32_t size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment)
 {
     uint32_t vsegidx = (uint32_t)g_vvSegments.size();
-    
+
     // find existing "segment" with the same values or create a new one, this is to overcome the engine's limit of having max 20 of these
     // since otherwise we write into unintended parts of the stack, and that's bad
-    RPakVirtualSegment seg = GetMatchingSegment(flags_maybe, vsegAlignment == -1 ? alignment : vsegAlignment, &vsegidx);
+    RPakVirtualSegment seg = GetMatchingSegment(flags, vsegAlignment == -1 ? alignment : vsegAlignment, &vsegidx);
 
-    bool bShouldAddVSeg = seg.m_nDataSize == 0;
-    seg.m_nDataSize += size;
+    bool bShouldAddVSeg = seg.dataSize == 0;
+    seg.dataSize += size;
 
     if (bShouldAddVSeg)
         g_vvSegments.emplace_back(seg);
@@ -45,7 +44,7 @@ _vseginfo_t RePak::CreateNewSegment(uint32_t size, uint32_t flags_maybe, uint32_
     g_vPages.emplace_back(vsegblock);
     uint32_t pageidx = (uint32_t)g_vPages.size() - 1;
 
-    return { pageidx, size};
+    return { pageidx, size };
 }
 
 void RePak::AddRawDataBlock(RPakRawDataBlock block)
@@ -68,9 +67,9 @@ void RePak::RegisterGuidDescriptor(uint32_t pageIdx, uint32_t pageOffset)
 
 size_t RePak::AddFileRelation(uint32_t assetIdx, uint32_t count)
 {
-    for(uint32_t i = 0; i < count; ++i)
+    for (uint32_t i = 0; i < count; ++i)
         g_vFileRelations.push_back({ assetIdx });
-    return g_vFileRelations.size()-count; // return the index of the file relation(s)
+    return g_vFileRelations.size() - count; // return the index of the file relation(s)
 }
 
 RPakAssetEntry* RePak::GetAssetByGuid(std::vector<RPakAssetEntry>* assets, uint64_t guid, uint32_t* idx)
@@ -225,7 +224,7 @@ int main(int argc, char** argv)
 
     // end json parsing
     RPakFileBase* rpakFile = new RPakFileBase();
-    
+
     if (!doc.HasMember("version"))
         Error("No RPak file version specified. Valid options:\n7 - Titanfall 2\n8 - Apex Legends\nExiting...\n");
     else if ( !doc["version"].IsInt() )
@@ -317,7 +316,7 @@ int main(int argc, char** argv)
         int magic = 'kPRS';
         int version = 1;
         uint64_t entryCount = g_vSRPkDataEntries.size();
-        
+
         srpkOut.write(magic);
         srpkOut.write(version);
 
@@ -338,7 +337,7 @@ int main(int argc, char** argv)
         for (auto& it : g_vSRPkDataEntries)
         {
             SRPkFileEntry fe{};
-            fe.m_nOffset= it.m_nOffset;
+            fe.m_nOffset = it.m_nOffset;
             fe.m_nSize = it.m_nDataSize;
 
             srpkOut.write(fe);

@@ -22,7 +22,7 @@ struct _vseginfo_t
 
 namespace RePak
 {
-	_vseginfo_t CreateNewSegment(uint32_t size, uint32_t flags_maybe, uint32_t alignment, uint32_t vsegAlignment = -1);
+	_vseginfo_t CreateNewSegment(uint32_t size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
 	void AddStarpakReference(std::string path);
 	void AddOptStarpakReference(std::string path);
 	SRPkDataEntry AddStarpakDataEntry(SRPkDataEntry block);

@@ -87,9 +87,9 @@ struct RPakPatchCompressedHeader // Comes after file header if its an patch rpak
 // about the size of pages that are using specific flags/types/whatever
 struct RPakVirtualSegment
 {
-	uint32_t m_nDataFlag = 0; // not sure what this actually is, doesn't seem to be used in that many places
-	uint32_t m_nSomeType = 0;
-	uint64_t m_nDataSize = 0;
+	uint32_t flags = 0; // not sure what this actually is, doesn't seem to be used in that many places
+	uint32_t alignment = 0;
+	uint64_t dataSize = 0;
 };
 
 // mem page
@@ -99,9 +99,9 @@ struct RPakVirtualSegment
 // because of both the patch edit stream and also missing pages that are only present in the base rpak
 struct RPakPageInfo
 {
-	uint32_t m_nVSegIndex; // index into vseg array
-	uint32_t m_nSomeType; // no idea
-	uint32_t m_nDataSize; // actual size of page in bytes
+	uint32_t segIdx; // index into vseg array
+	uint32_t pageAlignment; // no idea
+	uint32_t dataSize; // actual size of page in bytes
 };
 
 // defines the location of a data "pointer" within the pak's mem pages
@@ -963,3 +963,10 @@ static std::map<DXGI_FORMAT, uint16_t> s_txtrFormatMap{
 	{ DXGI_FORMAT_D32_FLOAT, 60 },
 	{ DXGI_FORMAT_D16_UNORM, 61 },
 };
+
+#define SF_HEAD   0 // :skull:
+#define SF_CPU    (1 << 0)
+#define SF_UNK2   (1 << 1)// maybe "temp"?
+#define SF_SERVER (1 << 5)
+#define SF_CLIENT (1 << 6)
+#define SF_DEV    (1 << 7)

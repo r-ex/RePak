@@ -91,13 +91,13 @@ void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, con
     // make a page for the sub header
     //
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(DataTableHeader), 0, 8);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(DataTableHeader), SF_HEAD, 8);
 
     // DataTableColumn entries
-    _vseginfo_t colhdrinfo = RePak::CreateNewSegment(sizeof(DataTableColumn) * columnCount, 1, 8, 64);
+    _vseginfo_t colhdrinfo = RePak::CreateNewSegment(sizeof(DataTableColumn) * columnCount, SF_CPU, 8, 64);
 
     // column names
-    _vseginfo_t nameseginfo = RePak::CreateNewSegment(ColumnNameBufSize, 1, 8, 64);
+    _vseginfo_t nameseginfo = RePak::CreateNewSegment(ColumnNameBufSize, SF_CPU, 8, 64);
 
     pHdr->ColumnCount = columnCount;
     pHdr->RowCount = rowCount - 1;
@@ -164,10 +164,10 @@ void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, con
     }
 
     // page for Row Data
-    _vseginfo_t rawdatainfo = RePak::CreateNewSegment(rowDataPageSize, 1, 8, 64);
+    _vseginfo_t rawdatainfo = RePak::CreateNewSegment(rowDataPageSize, SF_CPU, 8, 64);
 
     // page for string entries
-    _vseginfo_t stringsinfo = RePak::CreateNewSegment(stringEntriesSize, 1, 8, 64);
+    _vseginfo_t stringsinfo = RePak::CreateNewSegment(stringEntriesSize, SF_CPU, 8, 64);
 
     char* rowDataBuf = new char[rowDataPageSize];
 
@@ -315,13 +315,13 @@ void Assets::AddDataTableAsset_v1(std::vector<RPakAssetEntry>* assetEntries, con
     // make a page for the sub header
     //
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(DataTableHeader), 0, 8);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(DataTableHeader), SF_HEAD, 8);
 
     // DataTableColumn entries
-    _vseginfo_t colhdrinfo = RePak::CreateNewSegment(sizeof(DataTableColumn) * columnCount, 1, 8, 64);
+    _vseginfo_t colhdrinfo = RePak::CreateNewSegment(sizeof(DataTableColumn) * columnCount, SF_CPU, 8, 64);
 
     // column names
-    _vseginfo_t nameseginfo = RePak::CreateNewSegment(ColumnNameBufSize, 1, 8, 64);
+    _vseginfo_t nameseginfo = RePak::CreateNewSegment(ColumnNameBufSize, SF_CPU, 8, 64);
 
     pHdr->ColumnCount = columnCount;
     pHdr->RowCount = rowCount - 1;
@@ -388,10 +388,10 @@ void Assets::AddDataTableAsset_v1(std::vector<RPakAssetEntry>* assetEntries, con
     }
 
     // page for Row Data
-    _vseginfo_t rawdatainfo = RePak::CreateNewSegment(rowDataPageSize, 1, 8, 64);
+    _vseginfo_t rawdatainfo = RePak::CreateNewSegment(rowDataPageSize, SF_CPU, 8, 64);
 
     // page for string entries
-    _vseginfo_t stringsinfo = RePak::CreateNewSegment(stringEntriesSize, 1, 8, 64);
+    _vseginfo_t stringsinfo = RePak::CreateNewSegment(stringEntriesSize, SF_CPU, 8, 64);
 
     char* rowDataBuf = new char[rowDataPageSize];
 

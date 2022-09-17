@@ -149,10 +149,10 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + surfaceDataBuffLength;
 
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeaderV12), 0, 8);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeaderV12), SF_HEAD, 8);
 
     // asset data
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataBufSize, 1, 64);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataBufSize, SF_CPU, 64);
 
     char* dataBuf = new char[dataBufSize] {};
     char* tmp = dataBuf;
@@ -810,10 +810,10 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + (surface.length() + 1);
 
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeaderV15), 0, 8);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeaderV15), SF_HEAD /*| SF_CLIENT*/, 8);
 
     // asset data
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataBufSize, 1, 64);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
 
     char* dataBuf = new char[dataBufSize] {};
     char* tmp = dataBuf;
@@ -997,7 +997,7 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
     std::uint64_t cpuDataSize = sizeof(testData) / sizeof(unsigned char);
 
     // cpu data
-    _vseginfo_t cpuseginfo = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16);
+    _vseginfo_t cpuseginfo = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, SF_CPU | SF_UNK2, 16);
 
     MaterialCPUHeader cpuhdr{};
     cpuhdr.m_nUnknownRPtr.m_nIndex = cpuseginfo.index;
