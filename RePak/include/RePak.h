@@ -12,6 +12,7 @@ static std::vector<RPakGuidDescriptor> g_vGuidDescriptors{};
 static std::vector<RPakRelationBlock> g_vFileRelations{};
 static std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
 static std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
+inline std::vector<SRPkDataEntry> g_vSRPkDataEntries{};
 
 struct _vseginfo_t
 {
@@ -23,7 +24,8 @@ namespace RePak
 {
 	_vseginfo_t CreateNewSegment(uint32_t size, uint32_t flags_maybe, uint32_t alignment, uint32_t vsegAlignment = -1);
 	void AddStarpakReference(std::string path);
-	uint64_t AddStarpakDataEntry(SRPkDataEntry block);
+	void AddOptStarpakReference(std::string path);
+	SRPkDataEntry AddStarpakDataEntry(SRPkDataEntry block);
 	void AddRawDataBlock(RPakRawDataBlock block);
 	void RegisterDescriptor(uint32_t pageIdx, uint32_t pageOffset);
 	void RegisterGuidDescriptor(uint32_t pageIdx, uint32_t pageOffset);
