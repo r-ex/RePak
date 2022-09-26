@@ -4,7 +4,8 @@
 // VERSION 7
 void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding matl asset '%s'\n", assetPath);
+    Log("\n==============================\n");
+    Log("Asset matl -> '%s'\n", assetPath);
 
     uint32_t assetUsesCount = 0; // track how many other assets are used by this asset
     MaterialHeaderV12* mtlHdr = new MaterialHeaderV12();
@@ -753,7 +754,8 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
 // VERSION 8
 void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding matl asset '%s'\n", assetPath);
+    Log("\n==============================\n");
+    Log("Asset matl -> '%s'\n", assetPath);
 
     uint32_t assetUsesCount = 0; // track how many other assets are used by this asset
     MaterialHeaderV15* mtlHdr = new MaterialHeaderV15();

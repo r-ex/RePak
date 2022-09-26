@@ -55,7 +55,8 @@ uint8_t DataTable_GetEntrySize(dtblcoltype_t type)
 
 void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding dtbl asset '%s'\n", assetPath);
+    Log("\n==============================\n");
+    Log("Asset dtbl -> '%s'\n", assetPath);
 
     rapidcsv::Document doc(g_sAssetsDir + assetPath + ".csv");
 
@@ -279,7 +280,8 @@ void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, con
 // VERSION 8
 void Assets::AddDataTableAsset_v1(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding dtbl asset '%s'\n", assetPath);
+    Log("\n==============================\n");
+    Log("Asset dtbl -> '%s'\n", assetPath);
 
     rapidcsv::Document doc(g_sAssetsDir + assetPath + ".csv");
 

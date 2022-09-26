@@ -4,7 +4,8 @@
 // only tested for apex, should be identical on tf2
 void Assets::AddPatchAsset(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding Ptch asset '%s'\n", assetPath);
+    Log("==============================\n");
+    Log("Asset Ptch -> '%s'\n", assetPath);
 
     PtchHeader* pHdr = new PtchHeader();
 

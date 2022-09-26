@@ -5,7 +5,8 @@
 
 void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Log("Adding txtr asset '%s'\n", assetPath);
+    Log("==============================\n");
+    Log("Asset txtr -> '%s'\n", assetPath);
 
     std::string filePath = g_sAssetsDir + assetPath + ".dds";
 
@@ -171,7 +172,12 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         hdr->m_nFormat = s_txtrFormatMap[dxgiFormat];
     }
 
-    hdr->m_nAssetGUID = RTech::StringToGuid((sAssetName + ".rpak").c_str());
+    if (mapEntry.HasMember("guid") && mapEntry["guid"].IsUint64())
+        hdr->m_nAssetGUID = mapEntry["guid"].GetUint64();
+    else
+        hdr->m_nAssetGUID = RTech::StringToGuid((sAssetName + ".rpak").c_str());
+
+    Log("-> GUID: 0x%llX\n", hdr->m_nAssetGUID);
 
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 

@@ -4,7 +4,8 @@
 
 void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Log("Adding uimg asset '%s'\n", assetPath);
+    Log("==============================\n");
+    Log("Asset uimg -> '%s'\n", assetPath);
 
     std::string sAssetName = assetPath;
 

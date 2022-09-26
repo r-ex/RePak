@@ -3,12 +3,14 @@
 
 void Assets::AddModelAsset_stub(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
+    Log("\n==============================\n");
     Error("RPak version 7 (Titanfall 2) cannot contain models");
 }
 
 void Assets::AddModelAsset_v9(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding mdl_ asset '%s'\n", assetPath);
+    Log("\n==============================\n");
+    Log("Asset dtbl -> '%s'\n", assetPath);
 
     std::string sAssetName = assetPath;
 
