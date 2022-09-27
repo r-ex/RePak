@@ -278,7 +278,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         starpakOffset = de.m_nOffset;
     }
 
-    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);
+    asset.InitAsset( hdr->m_nAssetGUID , subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);
     asset.m_nVersion = TXTR_VERSION;
 
     asset.m_nPageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
