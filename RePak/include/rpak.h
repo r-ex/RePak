@@ -5,13 +5,6 @@
 struct Vector2
 {
 	float x, y;
-
-	Vector2(float x, float y) {
-		this->x;
-		this->y;
-	}
-
-	Vector2() {};
 };
 
 struct Vector3
@@ -623,22 +616,6 @@ struct BasicRMDLVGHeader
 	uint32_t version;
 };
 
-// the following two structs are found in the ""cpu data"", they are very much alike to what you would use in normal source materials.
-// apex probably has these and more stuff.
-struct uvTransformMatrix
-{
-	// this section is actually broken up into three parts.
-	// c_uvRotScaleX
-	float uvScaleX = 1.0;
-	float uvRotationX = 0.0; // rotation, but w e i r d.
-	// c_uvRotScaleY
-	float uvRotationY = -0.0; //counter clockwise, 0-1, exceeding one causes Weird Stuff to happen.
-	float uvScaleY = 1.0;
-	// c_uvTranslate
-	float uvTranslateX = 0.0;
-	float uvTranslateY = 0.0;
-};
-
 // some repeated section at the end of the material header (CMaterialGlue) struct
 struct UnknownMaterialSectionV15
 {
@@ -654,6 +631,222 @@ struct UnknownMaterialSectionV15
 	uint16_t m_FaceDrawingFlags = 0x0006; // how the face is drawn, culling, wireframe, etc.
 
 	uint64_t m_Padding = 0;
+};
+
+// start of CMaterialGlue class
+struct MaterialHeaderV15
+{
+	uint64_t m_VtblReserved = 0; // Gets set to CMaterialGlue vtbl ptr
+	uint8_t m_Padding[0x8]{}; // Un-used.
+	uint64_t m_nGUID = 0; // guid of this material asset
+
+	RPakPtr m_pszName{}; // pointer to partial asset path
+	RPakPtr m_pszSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	RPakPtr m_pszSurfaceProp2{}; // pointer to surfaceprop2 
+
+	// IDX 1: DepthShadow
+	// IDX 2: DepthPrepass
+	// IDX 3: DepthVSM
+	// IDX 4: DepthShadowTight
+	// IDX 5: ColPass
+	// They seem to be the exact same for all materials throughout the game.
+	uint64_t m_GUIDRefs[5]{}; // Required to have proper textures.
+	uint64_t m_pShaderSet = 0; // guid of the shaderset asset that this material uses
+
+	/* 0x60 */ RPakPtr m_pTextureHandles{}; // TextureGUID Map
+	/* 0x68 */ RPakPtr m_pStreamingTextureHandles{}; // Streamable TextureGUID Map
+
+	/* 0x70 */ int16_t m_nStreamingTextureHandleCount = 0x4; // Number of textures with streamed mip levels.
+	/* 0x72 */ int16_t m_nWidth = 2048;
+	/* 0x74 */ int16_t m_nHeight = 2048;
+	/* 0x76 */ int16_t m_Unknown1 = 0;
+
+	/* 0x78 */ uint32_t m_Flags = 0x1D0300;
+	/* 0x7C */ uint32_t m_Unknown2 = 0;
+
+	/* 0x80 */ uint32_t m_Unknown3 = 0x1F5A92BD; // REQUIRED but why?
+
+	/* 0x84 */ uint32_t m_Unknown4 = 0;
+
+	// neither of these 2 seem to be required
+	/* 0x88 */ uint32_t m_Flags2 = 0;
+	/* 0x8C */ uint32_t something2 = 0;
+
+	/* 0x90 */ UnknownMaterialSectionV15 m_UnknownSections[2]{};
+	/* 0xF0 */ uint8_t bytef0;
+	/* 0xF1 */ uint8_t bytef1;
+	/* 0xF2 */ uint8_t bytef2;
+	/* 0xF3 */ uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
+	/* 0xF4 */ uint32_t unk;
+	/* 0xF8 */ uint64_t m_pTxan; // texan
+};
+
+struct UnknownMaterialSectionV12
+{
+	// not sure how these work but 0xF0 -> 0x00 toggles them off and vice versa.
+	// they seem to affect various rendering filters, said filters might actually be the used shaders.
+	// the duplicate one is likely for streamed textures.
+	uint32_t UnkRenderLighting = 0;
+	uint32_t UnkRenderAliasing = 0;
+	uint32_t UnkRenderDoF = 0;
+	uint32_t UnkRenderUnknown = 0;
+
+	uint32_t m_UnknownFlags = 0; // this changes sometimes.
+	uint16_t m_VisibilityFlags = 0x17; // different render settings, such as opacity and transparency.
+	uint16_t m_FaceDrawingFlags = 0x6; // how the face is drawn, culling, wireframe, etc.
+
+	uint64_t m_Padding = 0;
+
+	/*VisibilityFlags
+	0x0000 unknown
+	0x0001 inverted ignorez
+	0x0002 required when ignorez is enabled, why?
+	0x0004 unknown but used in most opaque materials, not required.
+	0x0008
+	0x0010 seems to toggle transparency, will draw opaque if inverted ignorez is enabled
+
+	0x0017 used for most normal materials.
+	0x0007 used for glass which makes me think 0x0010 is for translucency.
+	0x0013 is vaild and looks like a normal opaque material.  */
+
+	/*FlagDrawingFlags Flags
+	0x0000 culling this is the same as 0x0002??? maybe the default?
+	0x0001 wireframe
+	0x0002 normal texture drawing aka culling (front side and backside drawn).
+	0x0004 inverted faces
+	0x0008 if this exists I can't tell what it is.
+
+	to get the equalivilent to 'nocull' both 'culling' and 'inverted faces' need to be enabled, see: why most matls have '0x06'.  */
+};
+
+// should be size of 208
+struct MaterialHeaderV12
+{
+	uint64_t m_VtblReserved = 0; // Gets set to CMaterialGlue vtbl ptr
+	uint8_t m_Padding[0x8]{}; // unused
+
+	uint64_t m_nGUID = 0; // guid of this material asset
+
+	RPakPtr m_pszName{}; // pointer to partial asset path
+	RPakPtr m_pszSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.txt)
+	RPakPtr m_pszSurfaceProp2{}; // pointer to surfaceprop2 
+
+	// IDX 1: DepthShadow
+	// IDX 2: DepthPrepass
+	// IDX 3: DepthVSM
+	// IDX 4: ColPass
+	// Titanfall is does not have 'DepthShadowTight'
+
+	uint64_t m_GUIDRefs[4]{}; // Required to have proper textures.
+
+	// these blocks dont seem to change often but are the same?
+	// these blocks relate to different render filters and flags. still not well understood.
+	UnknownMaterialSectionV12 m_UnknownSections[2];
+
+	uint64_t m_pShaderSet = 0; // guid of the shaderset asset that this material uses
+
+	RPakPtr m_pTextureHandles{}; // TextureGUID Map 1
+
+	// should be reserved - used to store the handles for any textures that have streaming mip levels
+	RPakPtr m_pStreamingTextureHandles{};
+
+	int16_t m_nStreamingTextureHandleCount = 0; // Number of textures with streamed mip levels.
+	uint32_t m_Flags = 0x0; // see ImageFlags in the apex struct.
+	int16_t m_Unk1 = 0; // might be "m_Unknown2"
+
+	uint64_t m_Padding1 = 0; // haven't observed anything here, however I really doubt this is actually padding.
+
+	// seems to be 0xFBA63181 for loadscreens
+	uint32_t m_Unknown3 = 0xFBA63181; // name carried over from apex struct.
+
+	uint32_t m_Unk2 = 0; // this might actually be "m_Unknown4"
+
+	uint32_t m_Flags2 = 0;
+	uint32_t something2 = 0x0; // seems mostly unchanged between all materials, including apex, however there are some edge cases where this is 0x0.
+
+	int16_t m_nWidth = 2048;
+	int16_t m_nHeight = 2048;
+	uint32_t m_Unk3 = 0; // might be padding but could also be something else such as "m_Unknown1"?.
+
+	/* ImageFlags
+	0x050300 for loadscreens, 0x1D0300 for normal materials.
+	0x1D has been observed, seems to invert lighting? used on some exceptionally weird materials.*/
+};
+
+// header struct for the material asset cpu data
+struct MaterialCPUHeader
+{
+	RPakPtr  m_pData{}; // points to the rest of the cpu data. maybe for colour?
+	uint32_t m_nDataSize = 0;
+	uint32_t m_nType; // every unknown is now either datasize, version, or flags
+};
+
+// the following two structs are found in the ""cpu data"", they are very much alike to what you would use in normal source materials.
+struct uvTransformMatrix
+{
+	// this section is actually broken up into three parts.
+	// c_uvRotScaleX
+	float uvScaleX = 1.0;
+	float uvRotationX = 0.0; // rotation, but w e i r d.
+	// c_uvRotScaleY
+	float uvRotationY = -0.0; //counter clockwise, 0-1, exceeding one causes Weird Stuff to happen.
+	float uvScaleY = 1.0;
+	// c_uvTranslate
+	float uvTranslateX = 0.0;
+	float uvTranslateY = 0.0;
+};
+
+struct MaterialCPUDataV12
+{
+	// the assignment of these depends on the shader set, they work similarly to texturetransforms in normal source.
+	uvTransformMatrix c_uv1; // this is frequently used for detail textures.
+	uvTransformMatrix c_uv2;
+	uvTransformMatrix c_uv3;
+
+	Vector2 c_uvDistortionIntensity = { 0.0, 0.0 }; // distortion on the { x, y } axis.
+	Vector2 c_uvDistortion2Intensity = { 0.0, 0.0 }; // see above, but for a second distortion texture.
+
+	float c_fogColorFactor = 1.0;
+
+	float c_layerBlendRamp = 0.0; // blend intensity (assumed), likely the hardness/softness of the two textures meshing.
+
+	Vector3 c_albedoTint = { 1.0, 1.0, 1.0 }; // color of the albedo texture.
+	float c_opacity = 1.0; // untested.
+
+	float c_useAlphaModulateSpecular = 0.0;
+	float c_alphaEdgeFadeExponent = 0.0;
+	float c_alphaEdgeFadeInner = 0.0;
+	float c_alphaEdgeFadeOuter = 0.0;
+
+	float c_useAlphaModulateEmissive = 1.0; // almost always set to 1.
+	float c_emissiveEdgeFadeExponent = 0.0;
+	float c_emissiveEdgeFadeInner = 0.0;
+	float c_emissiveEdgeFadeOuter = 0.0;
+
+	float c_alphaDistanceFadeScale = 10000.0;
+	float c_alphaDistanceFadeBias = -0.0;
+	float c_alphaTestReference = 0.0;
+
+	float c_aspectRatioMulV = 1.778; // this is equal to width divided by height see: 16/9 = 1.778~, not clear what it actually does.
+
+	Vector3 c_emissiveTint = { 0.0, 0.0, 0.0 }; // color of the emission, this is normally set to { 0.0, 0.0, 0.0 } if you don't have an emission mask.
+
+	float c_shadowBias = 0.0;
+
+	float c_tsaaDepthAlphaThreshold = 0.0;
+	float c_tsaaMotionAlphaThreshold = 0.9;
+	float c_tsaaMotionAlphaRamp = 10.0;
+	uint32_t c_tsaaResponsiveFlag = 0x0; // this is 0 or 1 I think.
+
+	float c_dofOpacityLuminanceScale = 1.0;
+
+	//float c_glitchStrength; // only used  sometimes. on 'Glitch' shadersets, if used 'pad_CBufUberStatic' is only two sections.
+
+	uint32_t pad_CBufUberStatic[3] = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF }; // this is reserved space for special values, three sections by default.
+
+	float c_perfGloss = 1.0;
+
+	Vector3 c_perfSpecColor = { 0.03, 0.03, 0.03 }; // specular color, consistent across most materials.
 };
 
 // this is currently unused, but could probably be used just fine if you copy stuff over from the RPak V7 material function in material.cpp
@@ -723,12 +916,12 @@ struct MaterialCPUDataV15
 
 	float c_shadowFalloffSDF = 0.0;
 
-	Vector2 c_L0_scatterAmount = { 0.0, 0.0 };
+	Vector3 c_L0_scatterAmount = { 0.0, 0.0, 0.0 };
 	float c_L0_scatterRatio = 0.0;
 
 	float c_L0_transmittanceIntensityScale = 1.0;
 
-	Vector2 c_vertexDisplacementDirection = { 0.0, 0.0 };
+	Vector3 c_vertexDisplacementDirection = { 0.0, 0.0, 0.0 };
 
 	float c_L0_transmittanceAmount = 0.0;
 	float c_L0_transmittanceDistortionAmount = 0.5;
@@ -774,206 +967,6 @@ struct MaterialCPUDataV15
 	float c_L1_scatterDistanceScale = 0.0;
 	Vector3 c_L1_scatterAmount = { 0.0, 0.0, 0.0 };
 	float c_L1_scatterRatio = 0.0;
-};
-
-// start of CMaterialGlue class
-struct MaterialHeaderV15
-{
-	uint64_t m_VtblReserved = 0; // Gets set to CMaterialGlue vtbl ptr
-	uint8_t m_Padding[0x8]{}; // Un-used.
-	uint64_t m_nGUID = 0; // guid of this material asset
-
-	RPakPtr m_pszName{}; // pointer to partial asset path
-	RPakPtr m_pszSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
-	RPakPtr m_pszSurfaceProp2{}; // pointer to surfaceprop2 
-
-	// IDX 1: DepthShadow
-	// IDX 2: DepthPrepass
-	// IDX 3: DepthVSM
-	// IDX 4: DepthShadowTight
-	// IDX 5: ColPass
-	// They seem to be the exact same for all materials throughout the game.
-	uint64_t m_GUIDRefs[5]{}; // Required to have proper textures.
-	uint64_t m_pShaderSet = 0; // guid of the shaderset asset that this material uses
-
-	/* 0x60 */ RPakPtr m_pTextureHandles{}; // TextureGUID Map
-	/* 0x68 */ RPakPtr m_pStreamingTextureHandles{}; // Streamable TextureGUID Map
-
-	/* 0x70 */ int16_t m_nStreamingTextureHandleCount = 0x4; // Number of textures with streamed mip levels.
-	/* 0x72 */ int16_t m_nWidth = 2048;
-	/* 0x74 */ int16_t m_nHeight = 2048;
-	/* 0x76 */ int16_t m_Unknown1 = 0;
-
-	/* 0x78 */ uint32_t m_Flags = 0x1D0300;
-	/* 0x7C */ uint32_t m_Unknown2 = 0;
-
-	/* 0x80 */ uint32_t m_Unknown3 = 0x1F5A92BD; // REQUIRED but why?
-
-	/* 0x84 */ uint32_t m_Unknown4 = 0;
-
-	// neither of these 2 seem to be required
-	/* 0x88 */ uint32_t m_Flags2 = 0;
-	/* 0x8C */ uint32_t something2 = 0;
-
-	/* 0x90 */ UnknownMaterialSectionV15 m_UnknownSections[2]{};
-	/* 0xF0 */ uint8_t bytef0;
-	/* 0xF1 */ uint8_t bytef1;
-	/* 0xF2 */ uint8_t bytef2;
-	/* 0xF3 */ uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
-	/* 0xF4 */ char pad_00F4[12];
-};
-
-struct UnknownMaterialSectionV12
-{
-	// not sure how these work but 0xF0 -> 0x00 toggles them off and vice versa.
-	// they seem to affect various rendering filters, said filters might actually be the used shaders.
-	// the duplicate one is likely for streamed textures.
-	uint32_t UnkRenderLighting = 0;
-	uint32_t UnkRenderAliasing = 0;
-	uint32_t UnkRenderDoF = 0;
-	uint32_t UnkRenderUnknown = 0;
-
-	uint32_t m_UnknownFlags = 0; // this changes sometimes.
-	uint16_t m_VisibilityFlags = 0x17; // different render settings, such as opacity and transparency.
-	uint16_t m_FaceDrawingFlags = 0x6; // how the face is drawn, culling, wireframe, etc.
-
-	uint64_t m_Padding = 0;
-
-	/*VisibilityFlags
-	0x0000 unknown
-	0x0001 inverted ignorez
-	0x0002 required when ignorez is enabled, why?
-	0x0004 unknown but used in most opaque materials, not required.
-	0x0008
-	0x0010 seems to toggle transparency, will draw opaque if inverted ignorez is enabled
-
-	0x0017 used for most normal materials.
-	0x0007 used for glass which makes me think 0x0010 is for translucency.
-	0x0013 is vaild and looks like a normal opaque material.  */
-
-	/*FlagDrawingFlags Flags
-	0x0000 culling this is the same as 0x0002??? maybe the default?
-	0x0001 wireframe
-	0x0002 normal texture drawing aka culling (front side and backside drawn).
-	0x0004 inverted faces
-	0x0008 if this exists I can't tell what it is.
-
-	to get the equalivilent to 'nocull' both 'culling' and 'inverted faces' need to be enabled, see: why most matls have '0x06'.  */
-};
-
-struct MaterialCPUDataV12
-{
-	// the assignment of these depends on the shader set, they work similarly to texturetransforms in normal source.
-	uvTransformMatrix c_uv1; // this is frequently used for detail textures.
-	uvTransformMatrix c_uv2;
-	uvTransformMatrix c_uv3;
-
-	Vector2 c_uvDistortionIntensity = { 0.0, 0.0 }; // distortion on the { x, y } axis.
-	Vector2 c_uvDistortion2Intensity = { 0.0, 0.0 }; // see above, but for a second distortion texture.
-
-	float c_fogColorFactor = 1.0;
-
-	float c_layerBlendRamp = 0.0; // blend intensity (assumed), likely the hardness/softness of the two textures meshing.
-
-	Vector3 c_albedoTint = { 1.0, 1.0, 1.0 }; // color of the albedo texture.
-	float c_opacity = 1.0; // untested.
-
-	float c_useAlphaModulateSpecular = 0.0;
-	float c_alphaEdgeFadeExponent = 0.0;
-	float c_alphaEdgeFadeInner = 0.0;
-	float c_alphaEdgeFadeOuter = 0.0;
-
-	float c_useAlphaModulateEmissive = 1.0; // almost always set to 1.
-	float c_emissiveEdgeFadeExponent = 0.0;
-	float c_emissiveEdgeFadeInner = 0.0;
-	float c_emissiveEdgeFadeOuter = 0.0;
-
-	float c_alphaDistanceFadeScale = 10000.0;
-	float c_alphaDistanceFadeBias = -0.0;
-	float c_alphaTestReference = 0.0;
-
-	float c_aspectRatioMulV = 1.778; // this is equal to width divided by height see: 16/9 = 1.778~, not clear what it actually does.
-
-	Vector3 c_emissiveTint = { 0.0, 0.0, 0.0 }; // color of the emission, this is normally set to { 0.0, 0.0, 0.0 } if you don't have an emission mask.
-
-	float c_shadowBias = 0.0;
-
-	float c_tsaaDepthAlphaThreshold = 0.0;
-	float c_tsaaMotionAlphaThreshold = 0.9;
-	float c_tsaaMotionAlphaRamp = 10.0;
-	uint32_t c_tsaaResponsiveFlag = 0x0; // this is 0 or 1 I think.
-
-	float c_dofOpacityLuminanceScale = 1.0;
-
-	//float c_glitchStrength; // only used  sometimes. on 'Glitch' shadersets, if used 'pad_CBufUberStatic' is only two sections.
-
-	uint32_t pad_CBufUberStatic[3] = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF }; // this is reserved space for special values, three sections by default.
-
-	float c_perfGloss = 1.0;
-
-	Vector3 c_perfSpecColor = { 0.03, 0.03, 0.03 }; // specular color, consistent across most materials.
-};
-
-// should be size of 208
-struct MaterialHeaderV12
-{
-	uint64_t m_VtblReserved = 0; // Gets set to CMaterialGlue vtbl ptr
-	uint8_t m_Padding[0x8]{}; // unused
-
-	uint64_t m_nGUID = 0; // guid of this material asset
-
-	RPakPtr m_pszName{}; // pointer to partial asset path
-	RPakPtr m_pszSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.txt)
-	RPakPtr m_pszSurfaceProp2{}; // pointer to surfaceprop2 
-
-	// IDX 1: DepthShadow
-	// IDX 2: DepthPrepass
-	// IDX 3: DepthVSM
-	// IDX 4: ColPass
-	// Titanfall is does not have 'DepthShadowTight'
-
-	uint64_t m_GUIDRefs[4]{}; // Required to have proper textures.
-
-	// these blocks dont seem to change often but are the same?
-	// these blocks relate to different render filters and flags. still not well understood.
-	UnknownMaterialSectionV12 m_UnknownSections[2];
-
-	uint64_t m_pShaderSet = 0; // guid of the shaderset asset that this material uses
-
-	RPakPtr m_pTextureHandles{}; // TextureGUID Map 1
-
-	// should be reserved - used to store the handles for any textures that have streaming mip levels
-	RPakPtr m_pStreamingTextureHandles{};
-
-	int16_t m_nStreamingTextureHandleCount = 0; // Number of textures with streamed mip levels.
-	uint32_t m_Flags = 0x0; // see ImageFlags in the apex struct.
-	int16_t m_Unk1 = 0; // might be "m_Unknown2"
-
-	uint64_t m_Padding1 = 0; // haven't observed anything here, however I really doubt this is actually padding.
-
-	// seems to be 0xFBA63181 for loadscreens
-	uint32_t m_Unknown3 = 0xFBA63181; // name carried over from apex struct.
-
-	uint32_t m_Unk2 = 0; // this might actually be "m_Unknown4"
-
-	uint32_t m_Flags2 = 0;
-	uint32_t something2 = 0x0; // seems mostly unchanged between all materials, including apex, however there are some edge cases where this is 0x0.
-
-	int16_t m_nWidth = 2048;
-	int16_t m_nHeight = 2048;
-	uint32_t m_Unk3 = 0; // might be padding but could also be something else such as "m_Unknown1"?.
-
-	/* ImageFlags
-	0x050300 for loadscreens, 0x1D0300 for normal materials.
-	0x1D has been observed, seems to invert lighting? used on some exceptionally weird materials.*/
-};
-
-// header struct for the material asset cpu data
-struct MaterialCPUHeader
-{
-	RPakPtr  m_nUnknownRPtr{}; // points to the rest of the cpu data. maybe for colour?
-	uint32_t m_nDataSize = 0;
-	uint32_t m_nVersionMaybe = 3; // every unknown is now either datasize, version, or flags
 };
 
 #pragma pack(pop)

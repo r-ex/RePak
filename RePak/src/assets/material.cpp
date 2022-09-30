@@ -287,18 +287,10 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
             mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000004;
         }
     }
-    else if (type == "rgd")
-    {
-        // todo: figure out what rgd is used for.
-        // update: I can not find a single shaderset for rgd, which means it is not possible to use the type.
-        Warning("Type 'rgd' is not supported in Titanfall 2!!");
-        exit(EXIT_FAILURE);
-        return;
-    }
     else
     {
-        // do this just in case someone tries to be funny.
-        Warning("Type is not valid in Titanfall 2!!");
+        // exit because of unsupported type
+        Warning("Type '%s' is not valid in Titanfall 2!!", type.c_str());
         exit(EXIT_FAILURE);
         return;
     }
@@ -337,9 +329,10 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
     _vseginfo_t cpuseginfo = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16);
 
     MaterialCPUHeader cpuhdr{};
-    cpuhdr.m_nUnknownRPtr.m_nIndex = cpuseginfo.index;
-    cpuhdr.m_nUnknownRPtr.m_nOffset = sizeof(MaterialCPUHeader);
+    cpuhdr.m_pData.m_nIndex = cpuseginfo.index;
+    cpuhdr.m_pData.m_nOffset = sizeof(MaterialCPUHeader);
     cpuhdr.m_nDataSize = cpuDataSize;
+    cpuhdr.m_nType = 3; // hardcode this until more is known.
 
     RePak::RegisterDescriptor(cpuseginfo.index, 0);
 
@@ -645,9 +638,10 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
     _vseginfo_t cpuseginfo = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16);
 
     MaterialCPUHeader cpuhdr{};
-    cpuhdr.m_nUnknownRPtr.m_nIndex = cpuseginfo.index;
-    cpuhdr.m_nUnknownRPtr.m_nOffset = sizeof(MaterialCPUHeader);
+    cpuhdr.m_pData.m_nIndex = cpuseginfo.index;
+    cpuhdr.m_pData.m_nOffset = sizeof(MaterialCPUHeader);
     cpuhdr.m_nDataSize = cpuDataSize;
+    cpuhdr.m_nType = 3; // hardcode this until more is known, for apex specifically this will vary much more.
 
     RePak::RegisterDescriptor(cpuseginfo.index, 0);
 
