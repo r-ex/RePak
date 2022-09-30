@@ -268,15 +268,15 @@ struct TextureHeader
 
 struct UIImageHeader
 {
-	uint64_t unk0 = 0;
+	float m_fWidthRatio; // 1 / m_nWidth
+	float m_fHeightRatio; // 1 / m_nHeight
 	uint16_t m_nWidth = 1;
 	uint16_t m_nHeight = 1;
 	uint16_t m_nTextureOffsetsCount = 0;
 	uint16_t m_nTextureCount = 0;
 	RPakPtr m_pTextureOffsets{};
 	RPakPtr m_pTextureDims{};
-	uint32_t unk1 = 0;
-	uint32_t unk2 = 0;
+	RPakPtr m_pUnkPtr{}; // per texture image uv
 	RPakPtr m_pTextureHashes{};
 	RPakPtr m_pTextureNames{};
 	uint64_t m_nAtlasGUID = 0;
