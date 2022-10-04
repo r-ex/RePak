@@ -927,7 +927,7 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
         RePak::AddFileRelation(assetEntries->size(), 4);
         assetUsesCount += 4;
 
-        mtlHdr->m_pShaderSet = 0xA88300265E3C1C33;
+        mtlHdr->m_pShaderSet = 0x2a2db3a47af9b3d5;
     }
 
     RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pShaderSet));
