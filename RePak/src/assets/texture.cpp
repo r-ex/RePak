@@ -195,7 +195,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     // woo more segments
     // cpu data
 
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->dataSize - nStreamedMipSize, SF_CPU | SF_UNK2, 16);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->dataSize - nStreamedMipSize, SF_CPU | SF_TEMP, 16);
 
     char* databuf = new char[hdr->dataSize - nStreamedMipSize];
 

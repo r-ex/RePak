@@ -100,7 +100,7 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     _vseginfo_t tiseginfo = RePak::CreateNewSegment(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
 
     // cpu data
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(nTexturesCount * 0x10, SF_CPU | SF_UNK2 | SF_CLIENT, 4);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(nTexturesCount * 0x10, SF_CPU | SF_TEMP | SF_CLIENT, 4);
     
     // register our descriptors so they get converted properly
     RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, pTextureOffsets));

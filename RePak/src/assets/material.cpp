@@ -1015,7 +1015,7 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
     std::uint64_t cpuDataSize = sizeof(testData) / sizeof(unsigned char);
 
     // cpu data
-    _vseginfo_t cpuseginfo = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, SF_CPU | SF_UNK2, 16);
+    _vseginfo_t cpuseginfo = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, SF_CPU | SF_TEMP, 16);
 
     MaterialCPUHeader cpuhdr{};
     cpuhdr.m_nUnknownRPtr.m_nIndex = cpuseginfo.index;
