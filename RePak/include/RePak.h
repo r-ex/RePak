@@ -45,7 +45,12 @@ namespace RePak
 class RPakFileBase
 {
 public:
-	virtual void HandleAsset(rapidjson::Value& file)
+	RPakFileBase(int version)
+	{
+		this->version = version;
+	}
+
+	virtual void AddAsset(rapidjson::Value& file)
 	{
 		ASSET_HANDLER("txtr", file, assets, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
 		ASSET_HANDLER("uimg", file, assets, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
@@ -61,70 +66,70 @@ public:
 	{
 		for (auto& it : assets)
 		{
-			io->write(it.m_nGUID);
+			io->write(it.guid);
 			io->write(it.unk0);
-			io->write(it.m_nSubHeaderDataBlockIdx);
-			io->write(it.m_nSubHeaderDataBlockOffset);
-			io->write(it.m_nRawDataBlockIndex);
-			io->write(it.m_nRawDataBlockOffset);
-			io->write(it.m_nStarpakOffset);
+			io->write(it.headIdx);
+			io->write(it.headOffset);
+			io->write(it.cpuIdx);
+			io->write(it.cpuOffset);
+			io->write(it.starpakOffset);
 
 			if(this->version == 8)
-				io->write(it.m_nOptStarpakOffset);
+				io->write(it.optStarpakOffset);
 
-			io->write(it.m_nPageEnd);
+			io->write(it.pageEnd);
 			io->write(it.unk1);
-			io->write(it.m_nRelationsStartIdx);
-			io->write(it.m_nUsesStartIdx);
-			io->write(it.m_nRelationsCounts);
-			io->write(it.m_nUsesCount);
-			io->write(it.m_nSubHeaderSize);
-			io->write(it.m_nVersion);
-			io->write(it.m_nMagic);
+			io->write(it.relStartIdx);
+			io->write(it.usesStartIdx);
+			io->write(it.relationCount);
+			io->write(it.usesCount);
+			io->write(it.headDataSize);
+			io->write(it.version);
+			io->write(it.id);
 		}
 	};
 	virtual void WriteHeader(BinaryIO* io)
 	{
-		int version = header.m_nVersion;
+		int version = header.fileVersion;
 
-		io->write(header.m_nMagic);
-		io->write(header.m_nVersion);
-		io->write(header.m_nFlags);
-		io->write(header.m_nCreatedTime);
+		io->write(header.magic);
+		io->write(header.fileVersion);
+		io->write(header.flags);
+		io->write(header.fileTime);
 		io->write(header.unk0);
-		io->write(header.m_nSizeDisk);
+		io->write(header.compressedSize);
 
 		if (version == 8)
-			io->write(header.m_nEmbeddedStarpakOffset);
+			io->write(header.embeddedStarpakOffset);
 
 		io->write(header.unk1);
-		io->write(header.m_nSizeMemory);
+		io->write(header.decompressedSize);
 
 		if (version == 8)
-			io->write(header.m_nEmbeddedStarpakSize);
+			io->write(header.embeddedStarpakSize);
 
 		io->write(header.unk2);
-		io->write(header.m_nStarpakReferenceSize);
+		io->write(header.starpakPathsSize);
 
 		if (version == 8)
-			io->write(header.m_nStarpakOptReferenceSize);
+			io->write(header.optStarpakPathsSize);
 
-		io->write(header.m_nVirtualSegmentCount);
-		io->write(header.m_nPageCount);
-		io->write(header.m_nPatchIndex);
+		io->write(header.virtualSegmentCount);
+		io->write(header.pageCount);
+		io->write(header.patchIndex);
 
 		if (version == 8)
 			io->write(header.alignment);
 
-		io->write(header.m_nDescriptorCount);
-		io->write(header.m_nAssetEntryCount);
-		io->write(header.m_nGuidDescriptorCount);
-		io->write(header.m_nRelationsCount);
+		io->write(header.descriptorCount);
+		io->write(header.assetCount);
+		io->write(header.guidDescriptorCount);
+		io->write(header.relationCount);
 
 		if (version == 7)
 		{
-			io->write(header.m_nUnknownSeventhBlockCount);
-			io->write(header.m_nUnknownEighthBlockCount);
+			io->write(header.unk7count);
+			io->write(header.unk8count);
 		}
 		else if (version == 8)
 		{
@@ -134,7 +139,7 @@ public:
 
 	virtual void SetVersion(uint32_t version)
 	{
-		this->header.m_nVersion = version;
+		this->header.fileVersion = version;
 		this->version = version;
 	}
 

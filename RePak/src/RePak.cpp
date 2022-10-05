@@ -74,7 +74,7 @@ RPakAssetEntry* RePak::GetAssetByGuid(std::vector<RPakAssetEntry>* assets, uint6
     uint32_t i = 0;
     for (auto& it : *assets)
     {
-        if (it.m_nGUID == guid)
+        if (it.guid == guid)
         {
             if (idx)
                 *idx = i;
@@ -219,8 +219,6 @@ int main(int argc, char** argv)
     else if (!doc["files"].IsArray())
         Error("'files' field is not of required type 'array'. Exiting...\n");
 
-    // end json parsing
-    RPakFileBase* rpakFile = new RPakFileBase();
 
     if (!doc.HasMember("version"))
         Error("No RPak file version specified. Valid options:\n7 - Titanfall 2\n8 - Apex Legends\nExiting...\n");
@@ -229,7 +227,7 @@ int main(int argc, char** argv)
 
     int rpakVersion = doc["version"].GetInt();
 
-    rpakFile->SetVersion(rpakVersion);
+    RPakFileBase* rpakFile = new RPakFileBase(rpakVersion);
 
     Log("version: %i\n\n", rpakVersion);
 
@@ -237,7 +235,7 @@ int main(int argc, char** argv)
     // loop through all assets defined in the map json
     for (auto& file : doc["files"].GetArray())
     {
-        rpakFile->HandleAsset(file);
+        rpakFile->AddAsset(file);
     }
 
     std::filesystem::create_directories(sOutputDir); // create directory if it does not exist yet.
@@ -270,17 +268,17 @@ int main(int argc, char** argv)
     // get current time as FILETIME
     FILETIME ft = Utils::GetFileTimeBySystem();
 
-    rpakFile->header.m_nCreatedTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
-    rpakFile->header.m_nSizeDisk = out.tell();
-    rpakFile->header.m_nSizeMemory = out.tell();
-    rpakFile->header.m_nVirtualSegmentCount = (uint16_t)g_vvSegments.size();
-    rpakFile->header.m_nPageCount = (uint16_t)g_vPages.size();
-    rpakFile->header.m_nDescriptorCount = (uint32_t)g_vDescriptors.size();
-    rpakFile->header.m_nGuidDescriptorCount = (uint32_t)g_vGuidDescriptors.size();
-    rpakFile->header.m_nRelationsCount = (uint32_t)g_vFileRelations.size();
-    rpakFile->header.m_nAssetEntryCount = rpakFile->GetAssetCount();
-    rpakFile->header.m_nStarpakReferenceSize = (uint16_t)StarpakRefLength;
-    rpakFile->header.m_nStarpakOptReferenceSize = (uint16_t)OptStarpakRefLength;
+    rpakFile->header.fileTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
+    rpakFile->header.compressedSize = out.tell();
+    rpakFile->header.decompressedSize = out.tell();
+    rpakFile->header.virtualSegmentCount = (uint16_t)g_vvSegments.size();
+    rpakFile->header.pageCount = (uint16_t)g_vPages.size();
+    rpakFile->header.descriptorCount = (uint32_t)g_vDescriptors.size();
+    rpakFile->header.guidDescriptorCount = (uint32_t)g_vGuidDescriptors.size();
+    rpakFile->header.relationCount = (uint32_t)g_vFileRelations.size();
+    rpakFile->header.assetCount = rpakFile->GetAssetCount();
+    rpakFile->header.starpakPathsSize = (uint16_t)StarpakRefLength;
+    rpakFile->header.optStarpakPathsSize = (uint16_t)OptStarpakRefLength;
 
     out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 
@@ -288,7 +286,7 @@ int main(int argc, char** argv)
 
     out.close();
 
-    Debug("written rpak file with size %lld\n", rpakFile->header.m_nSizeDisk);
+    Debug("written rpak file with size %lld\n", rpakFile->header.compressedSize);
 
     // free the memory
     for (auto& it : g_vRawDataBlocks)

@@ -186,8 +186,8 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
 
             if (txtrAsset)
             {
-                txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
-                txtrAsset->m_nRelationsCounts++;
+                txtrAsset->relStartIdx = fileRelationIdx;
+                txtrAsset->relationCount++;
             }
             else
                 Warning("unable to find texture '%s' for material '%s'\n", it.GetString(), assetPath);
@@ -219,8 +219,8 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
             {
                 RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
 
-                txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
-                txtrAsset->m_nRelationsCounts++;
+                txtrAsset->relStartIdx = fileRelationIdx;
+                txtrAsset->relationCount++;
 
 
                 assetUsesCount++; // Next texture index coming up.
@@ -735,17 +735,17 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
     RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
-    asset.m_nVersion = version;
+    asset.version = version;
 
-    asset.m_nPageEnd = cpuseginfo.index + 1;
+    asset.pageEnd = cpuseginfo.index + 1;
     // this isn't even fully true in some apex materials.
     //asset.unk1 = bColpass ? 7 : 8; // what
     // unk1 appears to be maxusecount, although seemingly nothing is affected by changing it unless you exceed 18.
     // In every TF|2 material asset entry I've looked at it's always UsesCount + 1.
     asset.unk1 = assetUsesCount + 1;
 
-    asset.m_nUsesStartIdx = fileRelationIdx;
-    asset.m_nUsesCount = assetUsesCount;
+    asset.usesStartIdx = fileRelationIdx;
+    asset.usesCount = assetUsesCount;
 
     assetEntries->push_back(asset);
 }
@@ -845,8 +845,8 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
 
             RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
 
-            txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
-            txtrAsset->m_nRelationsCounts++;
+            txtrAsset->relStartIdx = fileRelationIdx;
+            txtrAsset->relationCount++;
 
             assetUsesCount++;
         }
@@ -1043,13 +1043,13 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
     RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
-    asset.m_nVersion = MATL_VERSION;
+    asset.version = MATL_VERSION;
 
-    asset.m_nPageEnd = cpuseginfo.index + 1;
+    asset.pageEnd = cpuseginfo.index + 1;
     asset.unk1 = bColpass ? 7 : 8; // what
 
-    asset.m_nUsesStartIdx = fileRelationIdx;
-    asset.m_nUsesCount = assetUsesCount;
+    asset.usesStartIdx = fileRelationIdx;
+    asset.usesCount = assetUsesCount;
 
     assetEntries->push_back(asset);
 }

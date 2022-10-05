@@ -268,9 +268,9 @@ void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, con
     RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, rawdatainfo.index, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
-    asset.m_nVersion = DTBL_VERSION;
+    asset.version = DTBL_VERSION;
 
-    asset.m_nPageEnd = stringsinfo.index + 1; // number of the highest page that the asset references pageidx + 1
+    asset.pageEnd = stringsinfo.index + 1; // number of the highest page that the asset references pageidx + 1
     asset.unk1 = 1;
 
     assetEntries->push_back(asset);
@@ -492,9 +492,9 @@ void Assets::AddDataTableAsset_v1(std::vector<RPakAssetEntry>* assetEntries, con
     RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, rawdatainfo.index, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
-    asset.m_nVersion = DTBL_VERSION;
+    asset.version = DTBL_VERSION;
 
-    asset.m_nPageEnd = stringsinfo.index + 1; // number of the highest page that the asset references pageidx + 1
+    asset.pageEnd = stringsinfo.index + 1; // number of the highest page that the asset references pageidx + 1
     asset.unk1 = 1;
 
     assetEntries->push_back(asset);
