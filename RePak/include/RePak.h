@@ -47,10 +47,11 @@ class RPakFileBase
 public:
 	RPakFileBase(int version)
 	{
+		this->header.fileVersion = version;
 		this->version = version;
 	}
 
-	virtual void AddAsset(rapidjson::Value& file)
+	void AddAsset(rapidjson::Value& file)
 	{
 		ASSET_HANDLER("txtr", file, assets, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
 		ASSET_HANDLER("uimg", file, assets, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
@@ -60,9 +61,15 @@ public:
 		ASSET_HANDLER("matl", file, assets, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
 	};
 
-	virtual size_t GetAssetCount() { return assets.size(); };
+	size_t GetAssetCount() { return assets.size(); };
 
-	virtual void WriteAssets(BinaryIO* io)
+	void SetVersion(uint32_t version)
+	{
+		this->header.fileVersion = version;
+		this->version = version;
+	}
+
+	void WriteAssets(BinaryIO* io)
 	{
 		for (auto& it : assets)
 		{
@@ -88,7 +95,8 @@ public:
 			io->write(it.id);
 		}
 	};
-	virtual void WriteHeader(BinaryIO* io)
+
+	void WriteHeader(BinaryIO* io)
 	{
 		int version = header.fileVersion;
 
@@ -137,11 +145,7 @@ public:
 		}
 	};
 
-	virtual void SetVersion(uint32_t version)
-	{
-		this->header.fileVersion = version;
-		this->version = version;
-	}
+
 
 public:
 	std::vector<RPakAssetEntry> assets{};
