@@ -148,8 +148,8 @@ public:
 
 		if (version == 7)
 		{
-			io->write(header.unk7count);
-			io->write(header.unk8count);
+			io->write(header.externalAssetsCount);
+			io->write(header.externalAssetsSize);
 		}
 		else if (version == 8)
 		{

@@ -68,8 +68,8 @@ struct RPakFileHeader
 	uint32_t relationCount = 0;
 
 	// only in tf2
-	uint32_t unk7count = 0;
-	uint32_t unk8count = 0;
+	uint32_t externalAssetsCount = 0;
+	uint32_t externalAssetsSize = 0;
 
 	// only in apex
 	uint8_t  unk3[0x1c];
