@@ -10,6 +10,7 @@ static std::vector<RPakPageInfo> g_vPages{};
 static std::vector<RPakDescriptor> g_vDescriptors{};
 static std::vector<RPakGuidDescriptor> g_vGuidDescriptors{};
 static std::vector<RPakRelationBlock> g_vFileRelations{};
+static std::vector<std::string> g_vExternalAssetPaths{};
 static std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
 static std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
 inline std::vector<SRPkDataEntry> g_vSRPkDataEntries{};
@@ -30,6 +31,7 @@ namespace RePak
 	void RegisterDescriptor(uint32_t pageIdx, uint32_t pageOffset);
 	void RegisterGuidDescriptor(uint32_t pageIdx, uint32_t pageOffset);
 	size_t AddFileRelation(uint32_t assetIdx, uint32_t count = 1);
+	void AddExternalAsset(std::string path);
 	RPakAssetEntry* GetAssetByGuid(std::vector<RPakAssetEntry>* assets, uint64_t guid, uint32_t* idx);
 };
 

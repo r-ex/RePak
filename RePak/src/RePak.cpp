@@ -69,6 +69,18 @@ size_t RePak::AddFileRelation(uint32_t assetIdx, uint32_t count)
     return g_vFileRelations.size() - count; // return the index of the file relation(s)
 }
 
+void AddExternalAsset(std::string path)
+{
+    // check for duplicates
+    for (auto& it : g_vExternalAssetPaths)
+    {
+        if (it == path)
+            return;
+    }
+    // no duplicates, add to vector
+    g_vExternalAssetPaths.push_back(path);
+}
+
 RPakAssetEntry* RePak::GetAssetByGuid(std::vector<RPakAssetEntry>* assets, uint64_t guid, uint32_t* idx)
 {
     uint32_t i = 0;
@@ -262,7 +274,22 @@ int main(int argc, char** argv)
     WRITE_VECTOR(out, g_vGuidDescriptors);
     WRITE_VECTOR(out, g_vFileRelations);
 
-    // write the external asset references here
+    // write the external asset references
+    uint32_t offset = 0;
+    rpakFile->header.externalAssetsCount = g_vExternalAssetPaths.size();
+    for (auto& it : g_vExternalAssetPaths)
+    {
+        // why in the fuck cant i do out.write(0); this is stupid
+        uint32_t zero = 0;
+        out.write(zero);
+        offset += it.length() + 1;
+    }
+    rpakFile->header.externalAssetsSize = offset;
+    // write the reserved space
+    while(offset--)
+    {
+        out.writeString("\0");
+    }
 
     // now the actual paged data
     // this should probably be writing by page instead of just hoping that
