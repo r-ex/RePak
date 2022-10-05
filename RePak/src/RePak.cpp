@@ -271,8 +271,10 @@ int main(int argc, char** argv)
     FILETIME ft = Utils::GetFileTimeBySystem();
 
     rpakFile->header.fileTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
+
     rpakFile->header.compressedSize = out.tell();
     rpakFile->header.decompressedSize = out.tell();
+
     rpakFile->header.virtualSegmentCount = (uint16_t)g_vvSegments.size();
     rpakFile->header.pageCount = (uint16_t)g_vPages.size();
     rpakFile->header.descriptorCount = (uint32_t)g_vDescriptors.size();

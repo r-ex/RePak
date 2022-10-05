@@ -966,7 +966,7 @@ static std::map<DXGI_FORMAT, uint16_t> s_txtrFormatMap{
 
 #define SF_HEAD   0 // :skull:
 #define SF_CPU    (1 << 0)
-#define SF_UNK2   (1 << 1)// maybe "temp"?
+#define SF_TEMP   (1 << 1)
 #define SF_SERVER (1 << 5)
 #define SF_CLIENT (1 << 6)
 #define SF_DEV    (1 << 7)
