@@ -252,6 +252,8 @@ int main(int argc, char** argv)
     size_t StarpakRefLength = Utils::WriteStringVector(out, Assets::g_vsStarpakPaths);
     size_t OptStarpakRefLength = Utils::WriteStringVector(out, Assets::g_vsOptStarpakPaths);
 
+    rpakFile->SetStarpakPathsSize(StarpakRefLength, OptStarpakRefLength);
+
     // write the non-paged data to the file first
     WRITE_VECTOR(out, g_vvSegments);
     WRITE_VECTOR(out, g_vPages);
@@ -276,9 +278,6 @@ int main(int argc, char** argv)
     rpakFile->header.descriptorCount = (uint32_t)g_vDescriptors.size();
     rpakFile->header.guidDescriptorCount = (uint32_t)g_vGuidDescriptors.size();
     rpakFile->header.relationCount = (uint32_t)g_vFileRelations.size();
-    rpakFile->header.assetCount = rpakFile->GetAssetCount();
-    rpakFile->header.starpakPathsSize = (uint16_t)StarpakRefLength;
-    rpakFile->header.optStarpakPathsSize = (uint16_t)OptStarpakRefLength;
 
     out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 

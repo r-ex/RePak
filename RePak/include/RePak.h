@@ -69,8 +69,15 @@ public:
 		this->version = version;
 	}
 
+	void SetStarpakPathsSize(int len, int optLen)
+	{
+		this->header.starpakPathsSize = len;
+		this->header.optStarpakPathsSize = optLen;
+	}
+
 	void WriteAssets(BinaryIO* io)
 	{
+		int i = 0;
 		for (auto& it : assets)
 		{
 			io->write(it.guid);
@@ -93,7 +100,12 @@ public:
 			io->write(it.headDataSize);
 			io->write(it.version);
 			io->write(it.id);
+
+			i++;
 		}
+
+		// update header asset count with the assets we've just written
+		this->header.assetCount += i;
 	};
 
 	void WriteHeader(BinaryIO* io)
