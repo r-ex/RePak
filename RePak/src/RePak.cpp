@@ -224,6 +224,8 @@ int main(int argc, char** argv)
     WRITE_VECTOR(out, g_vGuidDescriptors);
     WRITE_VECTOR(out, g_vFileRelations);
 
+    // write the external asset references here
+
     // now the actual paged data
     // this should probably be writing by page instead of just hoping that
     // the data blocks are in the right order
