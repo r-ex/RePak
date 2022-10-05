@@ -70,16 +70,16 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
                 nStreamedMipSize += nCurrentMipSize;
         }
 
-        hdr->m_nDataLength = nTotalSize;
-        hdr->m_nWidth = ddsh.dwWidth;
-        hdr->m_nHeight = ddsh.dwHeight;
+        hdr->dataSize = nTotalSize;
+        hdr->width = ddsh.dwWidth;
+        hdr->height = ddsh.dwHeight;
 
         Log("-> dimensions: %ix%i\n", ddsh.dwWidth, ddsh.dwHeight);
 
-        hdr->m_nPermanentMipLevels = (ddsh.dwMipMapCount - nStreamedMipCount);
-        hdr->m_nStreamedMipLevels = nStreamedMipCount;
+        hdr->mipLevels = (ddsh.dwMipMapCount - nStreamedMipCount);
+        hdr->streamedMipLevels = nStreamedMipCount;
 
-        Log("-> total mipmaps permanent:streamed : %i:%i\n", hdr->m_nPermanentMipLevels, hdr->m_nStreamedMipLevels);
+        Log("-> total mipmaps permanent:streamed : %i:%i\n", hdr->mipLevels, hdr->streamedMipLevels);
 
         nLargestMipSize = ddsh.dwPitchOrLinearSize;
 
@@ -168,15 +168,15 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
 
         Log("-> fmt: %s\n", dxutils::GetFormatAsString(dxgiFormat).c_str());
 
-        hdr->m_nFormat = s_txtrFormatMap[dxgiFormat];
+        hdr->imgFormat = s_txtrFormatMap[dxgiFormat];
     }
 
-    hdr->m_nAssetGUID = RTech::StringToGuid((sAssetName + ".rpak").c_str());
+    hdr->guid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(TextureHeader), 0, 8);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(TextureHeader), SF_HEAD, 8);
 
     _vseginfo_t nameseginfo{};
 
@@ -185,7 +185,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     if (bSaveDebugName)
     {
         sprintf_s(namebuf, sAssetName.length() + 1, "%s", sAssetName.c_str());
-        nameseginfo = RePak::CreateNewSegment(sAssetName.size() + 1, 129, 1);
+        nameseginfo = RePak::CreateNewSegment(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
     }
     else
     {
@@ -195,17 +195,17 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     // woo more segments
     // cpu data
 
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->m_nDataLength - nStreamedMipSize, 3, 16);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->dataSize - nStreamedMipSize, SF_CPU | SF_TEMP, 16);
 
-    char* databuf = new char[hdr->m_nDataLength - nStreamedMipSize];
+    char* databuf = new char[hdr->dataSize - nStreamedMipSize];
 
     char* streamedbuf = new char[nStreamedMipSize];
 
     int currentDDSOffset = 0;
-    int remainingDDSData = hdr->m_nDataLength;
+    int remainingDDSData = hdr->dataSize;
     int remainingStreamedData = nStreamedMipSize;
 
-    for (int ml = 0; ml < (hdr->m_nPermanentMipLevels + hdr->m_nStreamedMipLevels); ml++)
+    for (int ml = 0; ml < (hdr->mipLevels + hdr->streamedMipLevels); ml++)
     {
         uint32_t nCurrentMipSize = (nLargestMipSize / std::pow(4, ml));
         uint32_t mipSizeDDS = 0;
@@ -228,7 +228,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
 
         input.seek(nDDSHeaderSize + (currentDDSOffset - mipSizeDDS), std::ios::beg);
 
-        if (bStreamable && ml < hdr->m_nStreamedMipLevels)
+        if (bStreamable && ml < hdr->streamedMipLevels)
         {
             remainingStreamedData -= nCurrentMipSize;
             input.getReader()->read(streamedbuf + remainingStreamedData, mipSizeDDS);
@@ -244,9 +244,9 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     if (bSaveDebugName)
     {
         RePak::AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
-        hdr->m_pDebugName = { nameseginfo.index, 0 };
+        hdr->pName = { nameseginfo.index, 0 };
 
-        RePak::RegisterDescriptor(subhdrinfo.index, offsetof(TextureHeader, m_pDebugName));
+        RePak::RegisterDescriptor(subhdrinfo.index, offsetof(TextureHeader, pName));
     }
 
     RePak::AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)databuf });
@@ -273,9 +273,9 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     }
 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);
-    asset.m_nVersion = TXTR_VERSION;
+    asset.version = TXTR_VERSION;
 
-    asset.m_nPageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
+    asset.pageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
     asset.unk1 = 1;
 
     assetEntries->push_back(asset);

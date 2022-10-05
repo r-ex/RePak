@@ -149,10 +149,10 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + surfaceDataBuffLength;
 
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeaderV12), 0, 8);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeaderV12), SF_HEAD, 8);
 
     // asset data
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataBufSize, 1, 64);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataBufSize, SF_CPU, 64);
 
     char* dataBuf = new char[dataBufSize] {};
     char* tmp = dataBuf;
@@ -186,8 +186,8 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
 
             if (txtrAsset)
             {
-                txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
-                txtrAsset->m_nRelationsCounts++;
+                txtrAsset->relStartIdx = fileRelationIdx;
+                txtrAsset->relationCount++;
             }
             else
                 Warning("unable to find texture '%s' for material '%s'\n", it.GetString(), assetPath);
@@ -219,8 +219,8 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
             {
                 RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, guid, nullptr);
 
-                txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
-                txtrAsset->m_nRelationsCounts++;
+                txtrAsset->relStartIdx = fileRelationIdx;
+                txtrAsset->relationCount++;
 
 
                 assetUsesCount++; // Next texture index coming up.
@@ -735,17 +735,17 @@ void Assets::AddMaterialAsset_v12(std::vector<RPakAssetEntry>* assetEntries, con
     RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
-    asset.m_nVersion = version;
+    asset.version = version;
 
-    asset.m_nPageEnd = cpuseginfo.index + 1;
+    asset.pageEnd = cpuseginfo.index + 1;
     // this isn't even fully true in some apex materials.
     //asset.unk1 = bColpass ? 7 : 8; // what
     // unk1 appears to be maxusecount, although seemingly nothing is affected by changing it unless you exceed 18.
     // In every TF|2 material asset entry I've looked at it's always UsesCount + 1.
     asset.unk1 = assetUsesCount + 1;
 
-    asset.m_nUsesStartIdx = fileRelationIdx;
-    asset.m_nUsesCount = assetUsesCount;
+    asset.usesStartIdx = fileRelationIdx;
+    asset.usesCount = assetUsesCount;
 
     assetEntries->push_back(asset);
 }
@@ -810,10 +810,10 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + (surface.length() + 1);
 
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeaderV15), 0, 8);
+    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(MaterialHeaderV15), SF_HEAD /*| SF_CLIENT*/, 8);
 
     // asset data
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataBufSize, 1, 64);
+    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
 
     char* dataBuf = new char[dataBufSize] {};
     char* tmp = dataBuf;
@@ -845,8 +845,8 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
 
             RPakAssetEntry* txtrAsset = RePak::GetAssetByGuid(assetEntries, textureGUID, nullptr);
 
-            txtrAsset->m_nRelationsStartIdx = fileRelationIdx;
-            txtrAsset->m_nRelationsCounts++;
+            txtrAsset->relStartIdx = fileRelationIdx;
+            txtrAsset->relationCount++;
 
             assetUsesCount++;
         }
@@ -910,6 +910,24 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
         assetUsesCount += 4;
 
         mtlHdr->m_pShaderSet = 0x4B0F3B4CBD009096;
+    }
+    else if (type == "rgdp")
+    {
+        // GUIDRefs[4] is Colpass entry which is optional for wldc.
+        mtlHdr->m_GUIDRefs[0] = 0x251FBE09EFFE8AB1; // DepthShadow
+        mtlHdr->m_GUIDRefs[1] = 0xE2D52641AFC77395; // DepthPrepass
+        mtlHdr->m_GUIDRefs[2] = 0xBDBF90B97E7D9280; // DepthVSM
+        mtlHdr->m_GUIDRefs[3] = 0x85654E05CF9B40E7; // DepthShadowTight
+
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
+        RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
+
+        RePak::AddFileRelation(assetEntries->size(), 4);
+        assetUsesCount += 4;
+
+        mtlHdr->m_pShaderSet = 0x2a2db3a47af9b3d5;
     }
 
     RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pShaderSet));
@@ -997,7 +1015,7 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
     std::uint64_t cpuDataSize = sizeof(testData) / sizeof(unsigned char);
 
     // cpu data
-    _vseginfo_t cpuseginfo = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16);
+    _vseginfo_t cpuseginfo = RePak::CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, SF_CPU | SF_TEMP, 16);
 
     MaterialCPUHeader cpuhdr{};
     cpuhdr.m_nUnknownRPtr.m_nIndex = cpuseginfo.index;
@@ -1025,13 +1043,13 @@ void Assets::AddMaterialAsset_v15(std::vector<RPakAssetEntry>* assetEntries, con
     RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
-    asset.m_nVersion = MATL_VERSION;
+    asset.version = MATL_VERSION;
 
-    asset.m_nPageEnd = cpuseginfo.index + 1;
+    asset.pageEnd = cpuseginfo.index + 1;
     asset.unk1 = bColpass ? 7 : 8; // what
 
-    asset.m_nUsesStartIdx = fileRelationIdx;
-    asset.m_nUsesCount = assetUsesCount;
+    asset.usesStartIdx = fileRelationIdx;
+    asset.usesCount = assetUsesCount;
 
     assetEntries->push_back(asset);
 }
