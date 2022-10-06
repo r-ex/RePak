@@ -3,7 +3,7 @@
 #include "Assets.h"
 #include "dxutils.h"
 
-void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
 
@@ -176,7 +176,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
 
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(TextureHeader), SF_HEAD, 8);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(TextureHeader), SF_HEAD, 8);
 
     _vseginfo_t nameseginfo{};
 
@@ -185,7 +185,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     if (bSaveDebugName)
     {
         sprintf_s(namebuf, sAssetName.length() + 1, "%s", sAssetName.c_str());
-        nameseginfo = RePak::CreateNewSegment(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
+        nameseginfo = pak->CreateNewSegment(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
     }
     else
     {
@@ -195,7 +195,7 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
     // woo more segments
     // cpu data
 
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(hdr->dataSize - nStreamedMipSize, SF_CPU | SF_TEMP, 16);
+    _vseginfo_t dataseginfo = pak->CreateNewSegment(hdr->dataSize - nStreamedMipSize, SF_CPU | SF_TEMP, 16);
 
     char* databuf = new char[hdr->dataSize - nStreamedMipSize];
 
@@ -239,17 +239,17 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         }
     }
 
-    RePak::AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)hdr });
+    pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)hdr });
 
     if (bSaveDebugName)
     {
-        RePak::AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
+        pak->AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
         hdr->pName = { nameseginfo.index, 0 };
 
-        RePak::RegisterDescriptor(subhdrinfo.index, offsetof(TextureHeader, pName));
+        pak->AddPointer(subhdrinfo.index, offsetof(TextureHeader, pName));
     }
 
-    RePak::AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)databuf });
+    pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)databuf });
 
     // now time to add the higher level asset entry
     RPakAssetEntry asset;
@@ -265,10 +265,10 @@ void Assets::AddTextureAsset_v8(std::vector<RPakAssetEntry>* assetEntries, const
         if (mapEntry.HasMember("starpakPath"))
             sStarpakPath = mapEntry["starpakPath"].GetString();
 
-        RePak::AddStarpakReference(sStarpakPath);
+        pak->AddStarpakReference(sStarpakPath);
 
         SRPkDataEntry de{ 0, nStreamedMipSize, (uint8_t*)streamedbuf };
-        de = RePak::AddStarpakDataEntry(de);
+        de = pak->AddStarpakDataEntry(de);
         starpakOffset = de.m_nOffset;
     }
 
