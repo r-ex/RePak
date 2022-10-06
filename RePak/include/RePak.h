@@ -168,9 +168,9 @@ public:
 		m_vDescriptors.push_back({ pageIdx, pageOffset });
 	}
 
-	inline void AddGuidDescriptor(unsigned int idx, unsigned int offset)
+	inline void AddGuidDescriptor(std::vector<RPakGuidDescriptor>* guids, unsigned int idx, unsigned int offset)
 	{
-		m_vGuidDescriptors.push_back({ idx, offset });
+		guids->push_back({ idx, offset });
 	}
 
 	inline void AddRawDataBlock(RPakRawDataBlock block)
@@ -178,12 +178,31 @@ public:
 		m_vRawDataBlocks.push_back(block);
 	};
 
-	// this does not work!!!!!!!
-	size_t AddFileRelation(uint32_t assetIdx, uint32_t count = 1)
+	// purpose: populates m_vFileRelations vector with combined asset relation data
+	inline void GenerateFileRelations()
 	{
-		for (uint32_t i = 0; i < count; ++i)
-			m_vFileRelations.push_back({ assetIdx });
-		return m_vFileRelations.size() - count; // return the index of the file relation(s)
+		for (auto& it : m_Assets)
+		{
+			it.relationCount = it._relations.size();
+			it.relStartIdx = m_vFileRelations.size();
+
+			for (int i = 0; i < it._relations.size(); ++i)
+				m_vFileRelations.push_back({ it._relations[i] });
+		}
+		m_Header.relationCount = m_vFileRelations.size();
+	}
+
+	inline void GenerateGuidData()
+	{
+		for (auto& it : m_Assets)
+		{
+			it.usesCount = it._guids.size();
+			it.usesStartIdx = it.usesCount == 0 ? 0 : m_vGuidDescriptors.size();
+
+			for (int i = 0; i < it._guids.size(); ++i)
+				m_vGuidDescriptors.push_back({ it._guids[i] });
+		}
+		m_Header.guidDescriptorCount = m_vGuidDescriptors.size();
 	}
 
 	_vseginfo_t CreateNewSegment(uint32_t size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1)
@@ -210,7 +229,7 @@ public:
 		return { pageidx, size };
 	}
 
-	RPakAssetEntry* GetAssetByGuid(uint64_t guid, uint32_t* idx)
+	RPakAssetEntry* GetAssetByGuid(uint64_t guid, uint32_t* idx = nullptr)
 	{
 		uint32_t i = 0;
 		for (auto& it : m_Assets)
