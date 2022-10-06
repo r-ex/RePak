@@ -196,6 +196,13 @@ struct RPakAssetEntry
 
 	// see AssetType enum below
 	uint32_t id = 0;
+
+	// internal
+
+	// vector of indexes for local assets that use this asset
+	std::vector<unsigned int> _relations{};
+
+	inline void AddRelation(unsigned int idx) { _relations.push_back({ idx }); };
 };
 #pragma pack(pop)
 

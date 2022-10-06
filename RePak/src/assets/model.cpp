@@ -236,9 +236,11 @@ void Assets::AddModelAsset_v9(RPakFileBase* pak, std::vector<RPakAssetEntry>* as
     asset.pageEnd = lastPageIdx + 1;
     asset.unk1 = 2;
 
-    size_t fileRelationIdx = pak->AddFileRelation(assetEntries->size());
-    asset.usesStartIdx = fileRelationIdx;
-    asset.usesCount = mdlhdr.numtextures + pHdr->animRigCount;
+
+    // this needs to be fixed!!!
+    //size_t fileRelationIdx = pak->AddFileRelation(assetEntries->size());
+    //asset.usesStartIdx = fileRelationIdx;
+    //asset.usesCount = mdlhdr.numtextures + pHdr->animRigCount;
 
     assetEntries->push_back(asset);
 }
