@@ -2,7 +2,7 @@
 #include "Assets.h"
 
 // only tested for apex, should be identical on tf2
-void Assets::AddPatchAsset(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddPatchAsset(RPakFileBase* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding Ptch asset '%s'\n", assetPath);
 
@@ -26,16 +26,16 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntry>* assetEntries, const char
     size_t dataPageSize = (sizeof(RPakPtr) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + entryNamesSectionSize;
 
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(PtchHeader), SF_HEAD, 8);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(PtchHeader), SF_HEAD, 8);
 
     // data segment
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(dataPageSize, SF_CPU, 8);
+    _vseginfo_t dataseginfo = pak->CreateNewSegment(dataPageSize, SF_CPU, 8);
 
     pHdr->pPakNames = { dataseginfo.index, 0 };
     pHdr->pPakPatchNums = { dataseginfo.index, (int)sizeof(RPakPtr) * pHdr->patchedPakCount };
 
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(PtchHeader, pPakNames));
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(PtchHeader, pPakPatchNums));
+    pak->AddPointer(subhdrinfo.index, offsetof(PtchHeader, pPakNames));
+    pak->AddPointer(subhdrinfo.index, offsetof(PtchHeader, pPakPatchNums));
 
     char* pDataBuf = new char[dataPageSize];
     rmem dataBuf(pDataBuf);
@@ -52,15 +52,15 @@ void Assets::AddPatchAsset(std::vector<RPakAssetEntry>* assetEntries, const char
 
         snprintf(pDataBuf + fileNameOffset, it.FileName.length() + 1, "%s", it.FileName.c_str());
 
-        RePak::RegisterDescriptor(dataseginfo.index, sizeof(RPakPtr) * i);
+        pak->AddPointer(dataseginfo.index, sizeof(RPakPtr) * i);
         i++;
     }
 
     RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
-    RePak::AddRawDataBlock(shdb);
+    pak->AddRawDataBlock(shdb);
 
     RPakRawDataBlock rdb{ dataseginfo.index, dataPageSize, (uint8_t*)pDataBuf };
-    RePak::AddRawDataBlock(rdb);
+    pak->AddRawDataBlock(rdb);
 
     // create and init the asset entry
     RPakAssetEntry asset;

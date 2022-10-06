@@ -2,7 +2,7 @@
 #include "Assets.h"
 #include <dxutils.h>
 
-void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddUIImageAsset_v10(RPakFileBase* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding uimg asset '%s'\n", assetPath);
 
@@ -59,7 +59,7 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     uint64_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
 
     // get the txtr asset that this asset is using
-    RPakAssetEntry* atlasAsset = RePak::GetAssetByGuid(assetEntries, atlasGuid, nullptr);
+    RPakAssetEntry* atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 
     if (!atlasAsset)
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
@@ -94,21 +94,21 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     uint32_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
 
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(UIImageHeader), SF_HEAD | SF_CLIENT, 8);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(UIImageHeader), SF_HEAD | SF_CLIENT, 8);
 
     // ui image/texture info
-    _vseginfo_t tiseginfo = RePak::CreateNewSegment(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
+    _vseginfo_t tiseginfo = pak->CreateNewSegment(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
 
     // cpu data
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(nTexturesCount * 0x10, SF_CPU | SF_TEMP | SF_CLIENT, 4);
+    _vseginfo_t dataseginfo = pak->CreateNewSegment(nTexturesCount * 0x10, SF_CPU | SF_TEMP | SF_CLIENT, 4);
     
     // register our descriptors so they get converted properly
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, pTextureOffsets));
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, pTextureDimensions));
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, pTextureHashes));
+    pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureOffsets));
+    pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureDimensions));
+    pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureHashes));
 
     // textureGUID descriptors
-    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, atlasGUID));
+    pak->AddGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, atlasGUID));
 
     // buffer for texture info data
     char* pTextureInfoBuf = new char[textureInfoPageSize] {};
@@ -163,7 +163,7 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     }
 
     // add the file relation from this uimg asset to the atlas txtr
-    size_t fileRelationIdx = RePak::AddFileRelation(assetEntries->size());
+    size_t fileRelationIdx = pak->AddFileRelation(assetEntries->size());
 
     atlasAsset->relStartIdx = fileRelationIdx;
     atlasAsset->relationCount++;
@@ -187,13 +187,13 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     }
 
     RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
-    RePak::AddRawDataBlock(shdb);
+    pak->AddRawDataBlock(shdb);
 
     RPakRawDataBlock tib{ tiseginfo.index, tiseginfo.size, (uint8_t*)pTextureInfoBuf };
-    RePak::AddRawDataBlock(tib);
+    pak->AddRawDataBlock(tib);
 
     RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pUVBuf };
-    RePak::AddRawDataBlock(rdb);
+    pak->AddRawDataBlock(rdb);
 
     // create and init the asset entry
     RPakAssetEntry asset;
