@@ -179,7 +179,7 @@ struct RPakAssetEntry
 	uint64_t optStarpakOffset = -1;
 
 	uint16_t pageEnd = 0; // highest mem page used by this asset
-	uint16_t unk1 = 0;
+	uint16_t unk1 = 0; // might be local "uses" + 1
 
 	uint32_t relStartIdx = 0;
 

@@ -173,7 +173,7 @@ void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* 
 
     hdr->guid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
-    bool bSaveDebugName = mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool();
+    bool bSaveDebugName = pak->IsFlagSet(PF_KEEP_DEV) || (mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool());
 
     // asset header
     _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(TextureHeader), SF_HEAD, 8);
@@ -259,13 +259,18 @@ void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* 
 
     if (bStreamable)
     {
-        std::string sStarpakPath = "paks/Win64/repak.starpak";
+        std::string sStarpakPath = pak->primaryStarpakPath;
 
         // check per texture just in case for whatever reason you want stuff in different starpaks (if it ever gets fixed).
         if (mapEntry.HasMember("starpakPath"))
+        {
             sStarpakPath = mapEntry["starpakPath"].GetString();
 
-        pak->AddStarpakReference(sStarpakPath);
+            pak->AddStarpakReference(sStarpakPath);
+        }
+
+        if (sStarpakPath.length() == 0)
+            Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\nto fix: set 'starpakPath' as a rpak-wide variable\nor: add 'starpakPath' as an asset specific variable\n", assetPath);
 
         SRPkDataEntry de{ 0, nStreamedMipSize, (uint8_t*)streamedbuf };
         de = pak->AddStarpakDataEntry(de);
