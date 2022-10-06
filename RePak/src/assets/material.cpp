@@ -200,8 +200,8 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         textureIdx++; // Next texture index coming up.
     }
 
-    textureIdx = 0; // reset index for StreamableTextureGUID Section.
-    for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the StreamableTextureGUID Map.
+    textureIdx = 0; // reset index for next TextureGUID Section.
+    for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the second TextureGUID Map.
     {
         *(uint64_t*)dataBuf = 0;
 
@@ -251,7 +251,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         {
             guidRefs[mId] = RTech::StringToGuid(("material/" + gu.GetStdString() + "_" + type + ".rpak").c_str());
 
-            pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_GUIDRefs) + (mId * 8));
+            pak->AddGuidDescriptor(&guids, subhdrinfo.index, (offsetof(MaterialHeaderV12, m_GUIDRefs) + (mId * 8)));
 
             usedMId++;
         }
@@ -272,9 +272,6 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
 
     mtlHdr->m_pShaderSet = shadersetGuid;
 
-    pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pShaderSet));
-
-    pak->AddFileRelation(assetEntries->size(), (usedMId + 1)); // plus one for the shaderset.
     assetUsesCount += (usedMId + 1);
 
     // V12 type handling, mostly stripped now.
@@ -315,9 +312,12 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         return;
     }
 
-    if (mtlHdr->ShaderSetGUID != 0)
+    pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, m_pShaderSet));
+    assetUsesCount++;
+
+    if (mtlHdr->m_pShaderSet != 0)
     {
-        RPakAssetEntry* asset = pak->GetAssetByGuid(mtlHdr->ShaderSetGUID);
+        RPakAssetEntry* asset = pak->GetAssetByGuid(mtlHdr->m_pShaderSet);
 
         if (asset)
             asset->AddRelation(assetEntries->size());
@@ -339,11 +339,11 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
 
     for (int i = 0; i < 4; ++i)
     {
-        uint64_t guid = mtlHdr->GUIDRefs[i];
+        uint64_t guid = mtlHdr->m_GUIDRefs[i];
 
         if (guid != 0)
         {
-            RPakAssetEntry* asset = pak->GetAssetByGuid(guid);
+            RPakAssetEntry* asset = pak->GetAssetByGuid(guid, nullptr);
 
             if (asset)
                 asset->AddRelation(assetEntries->size());
@@ -671,7 +671,7 @@ void Assets::AddMaterialAsset_v15(RPakFileBase* pak, std::vector<RPakAssetEntry>
 
         if (guid != 0)
         {
-            RPakAssetEntry* asset = pak->GetAssetByGuid(guid);
+            RPakAssetEntry* asset = pak->GetAssetByGuid(guid, nullptr);
 
             if (asset)
                 asset->AddRelation(assetEntries->size());
