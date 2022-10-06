@@ -2,7 +2,7 @@
 #include "Assets.h"
 #include <dxutils.h>
 
-void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddUIImageAsset_v10(RPakFileBase* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding uimg asset '%s'\n", assetPath);
 
@@ -59,7 +59,7 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     uint64_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
 
     // get the txtr asset that this asset is using
-    RPakAssetEntry* atlasAsset = RePak::GetAssetByGuid(assetEntries, atlasGuid, nullptr);
+    RPakAssetEntry* atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 
     if (!atlasAsset)
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
@@ -75,15 +75,15 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     atlas.close();
 
     UIImageHeader* pHdr = new UIImageHeader();
-    pHdr->m_nWidth = ddsh.dwWidth;
-    pHdr->m_nHeight = ddsh.dwHeight;
+    pHdr->width = ddsh.dwWidth;
+    pHdr->height = ddsh.dwHeight;
 
     // legion uses this to get the texture count, so its probably set correctly
-    pHdr->m_nTextureOffsetsCount = nTexturesCount;
+    pHdr->textureCount = nTexturesCount;
     // unused by legion? - might not be correct
     //pHdr->textureCount = nTexturesCount <= 1 ? 0 : nTexturesCount - 1; // don't even ask
-    pHdr->m_nTextureCount = 0;
-    pHdr->m_nAtlasGUID = atlasGuid;
+    pHdr->unkCount = 0;
+    pHdr->atlasGUID = atlasGuid;
 
     // calculate data sizes so we can allocate a page and segment
     uint32_t textureOffsetsDataSize = sizeof(UIImageOffset) * nTexturesCount;
@@ -94,39 +94,39 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     uint32_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
 
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(UIImageHeader), 0x40, 8);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(UIImageHeader), SF_HEAD | SF_CLIENT, 8);
 
     // ui image/texture info
-    _vseginfo_t tiseginfo = RePak::CreateNewSegment(textureInfoPageSize, 0x41, 32);
+    _vseginfo_t tiseginfo = pak->CreateNewSegment(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
 
     // cpu data
-    _vseginfo_t dataseginfo = RePak::CreateNewSegment(nTexturesCount * 0x10, 0x43, 4);
-
+    _vseginfo_t dataseginfo = pak->CreateNewSegment(nTexturesCount * 0x10, SF_CPU | SF_TEMP | SF_CLIENT, 4);
+    
     // register our descriptors so they get converted properly
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, m_pTextureOffsets));
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, m_pTextureDims));
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(UIImageHeader, m_pTextureHashes));
+    pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureOffsets));
+    pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureDimensions));
+    pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureHashes));
 
     // textureGUID descriptors
-    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, m_nAtlasGUID));
+    pak->AddGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, atlasGUID));
 
     // buffer for texture info data
     char* pTextureInfoBuf = new char[textureInfoPageSize] {};
     rmem tiBuf(pTextureInfoBuf);
 
     // set texture offset page index and offset
-    pHdr->m_pTextureOffsets = { tiseginfo.index, 0 };
+    pHdr->pTextureOffsets = { tiseginfo.index, 0 };
 
     ////////////////////
     // IMAGE OFFSETS
     for (auto& it : mapEntry["textures"].GetArray())
     {
         UIImageOffset uiio{};
-        float startX = it["posX"].GetFloat() / pHdr->m_nWidth;
-        float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->m_nWidth;
+        float startX = it["posX"].GetFloat() / pHdr->width;
+        float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->width;
 
-        float startY = it["posY"].GetFloat() / pHdr->m_nHeight;
-        float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->m_nHeight;
+        float startY = it["posY"].GetFloat() / pHdr->height;
+        float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->height;
 
         // this doesnt affect legion but does affect game?
         //uiio.InitUIImageOffset(startX, startY, endX, endY);
@@ -136,7 +136,7 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     ///////////////////////
     // IMAGE DIMENSIONS
     // set texture dimensions page index and offset
-    pHdr->m_pTextureDims = { tiseginfo.index, textureOffsetsDataSize };
+    pHdr->pTextureDimensions = { tiseginfo.index, textureOffsetsDataSize };
 
     for (auto& it : mapEntry["textures"].GetArray())
     {
@@ -145,7 +145,7 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     }
 
     // set texture hashes page index and offset
-    pHdr->m_pTextureHashes = { tiseginfo.index, textureOffsetsDataSize + textureDimensionsDataSize };
+    pHdr->pTextureHashes = { tiseginfo.index, textureOffsetsDataSize + textureDimensionsDataSize };
 
     uint32_t nextStringTableOffset = 0;
 
@@ -163,10 +163,10 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     }
 
     // add the file relation from this uimg asset to the atlas txtr
-    size_t fileRelationIdx = RePak::AddFileRelation(assetEntries->size());
+    size_t fileRelationIdx = pak->AddFileRelation(assetEntries->size());
 
-    atlasAsset->m_nRelationsStartIdx = fileRelationIdx;
-    atlasAsset->m_nRelationsCounts++;
+    atlasAsset->relStartIdx = fileRelationIdx;
+    atlasAsset->relationCount++;
 
     char* pUVBuf = new char[nTexturesCount * sizeof(UIImageUV)];
     rmem uvBuf(pUVBuf);
@@ -176,35 +176,35 @@ void Assets::AddUIImageAsset_v10(std::vector<RPakAssetEntry>* assetEntries, cons
     for (auto& it : mapEntry["textures"].GetArray())
     {
         UIImageUV uiiu{};
-        float uv0x = it["posX"].GetFloat() / pHdr->m_nWidth;
-        float uv1x = it["width"].GetFloat() / pHdr->m_nWidth;
+        float uv0x = it["posX"].GetFloat() / pHdr->width;
+        float uv1x = it["width"].GetFloat() / pHdr->width;
         Log("X: %f -> %f\n", uv0x, uv0x + uv1x);
-        float uv0y = it["posY"].GetFloat() / pHdr->m_nHeight;
-        float uv1y = it["height"].GetFloat() / pHdr->m_nHeight;
+        float uv0y = it["posY"].GetFloat() / pHdr->height;
+        float uv1y = it["height"].GetFloat() / pHdr->height;
         Log("Y: %f -> %f\n", uv0y, uv0y + uv1y);
         uiiu.InitUIImageUV(uv0x, uv0y, uv1x, uv1y);
         uvBuf.write(uiiu);
     }
 
     RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
-    RePak::AddRawDataBlock(shdb);
+    pak->AddRawDataBlock(shdb);
 
     RPakRawDataBlock tib{ tiseginfo.index, tiseginfo.size, (uint8_t*)pTextureInfoBuf };
-    RePak::AddRawDataBlock(tib);
+    pak->AddRawDataBlock(tib);
 
     RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pUVBuf };
-    RePak::AddRawDataBlock(rdb);
+    pak->AddRawDataBlock(rdb);
 
     // create and init the asset entry
     RPakAssetEntry asset;
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::UIMG);
-    asset.m_nVersion = UIMG_VERSION;
+    asset.version = UIMG_VERSION;
 
-    asset.m_nPageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
+    asset.pageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
     asset.unk1 = 2;
 
-    asset.m_nUsesStartIdx = fileRelationIdx;
-    asset.m_nUsesCount = 1; // the asset should only use 1 other asset for the atlas
+    asset.usesStartIdx = fileRelationIdx;
+    asset.usesCount = 1; // the asset should only use 1 other asset for the atlas
 
     // add the asset entry
     assetEntries->push_back(asset);
