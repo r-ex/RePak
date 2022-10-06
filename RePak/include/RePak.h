@@ -168,9 +168,9 @@ public:
 		m_vDescriptors.push_back({ pageIdx, pageOffset });
 	}
 
-	inline void AddGuidDescriptor(unsigned int idx, unsigned int offset)
+	inline void AddGuidDescriptor(std::vector<RPakGuidDescriptor>* guids, unsigned int idx, unsigned int offset)
 	{
-		m_vGuidDescriptors.push_back({ idx, offset });
+		guids->push_back({ idx, offset });
 	}
 
 	inline void AddRawDataBlock(RPakRawDataBlock block)
@@ -190,6 +190,19 @@ public:
 				m_vFileRelations.push_back({ it._relations[i] });
 		}
 		m_Header.relationCount = m_vFileRelations.size();
+	}
+
+	inline void GenerateGuidData()
+	{
+		for (auto& it : m_Assets)
+		{
+			it.usesCount = it._guids.size();
+			it.usesStartIdx = it.usesCount == 0 ? 0 : m_vGuidDescriptors.size();
+
+			for (int i = 0; i < it._guids.size(); ++i)
+				m_vGuidDescriptors.push_back({ it._guids[i] });
+		}
+		m_Header.guidDescriptorCount = m_vGuidDescriptors.size();
 	}
 
 	_vseginfo_t CreateNewSegment(uint32_t size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1)

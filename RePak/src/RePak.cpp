@@ -166,6 +166,7 @@ int main(int argc, char** argv)
 
     // generate file relation vector to be written
     rpakFile->GenerateFileRelations();
+    rpakFile->GenerateGuidData();
 
     // write the non-paged data to the file first
     WRITE_VECTOR(out, rpakFile->m_vVirtualSegments);

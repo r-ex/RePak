@@ -203,6 +203,16 @@ struct RPakAssetEntry
 	std::vector<unsigned int> _relations{};
 
 	inline void AddRelation(unsigned int idx) { _relations.push_back({ idx }); };
+
+	std::vector<RPakGuidDescriptor> _guids{};
+
+	inline void AddGuid(RPakGuidDescriptor desc) { _guids.push_back(desc); };
+
+	inline void AddGuids(std::vector<RPakGuidDescriptor>* descs)
+	{
+		for (auto& it : *descs)
+			_guids.push_back(it);
+	};
 };
 #pragma pack(pop)
 

@@ -108,7 +108,8 @@ void Assets::AddUIImageAsset_v10(RPakFileBase* pak, std::vector<RPakAssetEntry>*
     pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureHashes));
 
     // textureGUID descriptors
-    pak->AddGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, atlasGUID));
+    // moved to the end of the func
+    //pak->AddGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, atlasGUID));
 
     // buffer for texture info data
     char* pTextureInfoBuf = new char[textureInfoPageSize] {};
@@ -195,6 +196,7 @@ void Assets::AddUIImageAsset_v10(RPakFileBase* pak, std::vector<RPakAssetEntry>*
     RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pUVBuf };
     pak->AddRawDataBlock(rdb);
 
+
     // create and init the asset entry
     RPakAssetEntry asset;
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::UIMG);
@@ -203,9 +205,8 @@ void Assets::AddUIImageAsset_v10(RPakFileBase* pak, std::vector<RPakAssetEntry>*
     asset.pageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
     asset.unk1 = 2;
 
-    // this needs to be fixed!!!
-    //asset.usesStartIdx = fileRelationIdx;
-    //asset.usesCount = 1; // the asset should only use 1 other asset for the atlas
+    // this asset only has one guid reference so im just gonna do it here
+    asset.AddGuid({ subhdrinfo.index, offsetof(UIImageHeader, atlasGUID) });
 
     // add the asset entry
     assetEntries->push_back(asset);

@@ -174,6 +174,8 @@ void Assets::AddModelAsset_v9(RPakFileBase* pak, std::vector<RPakAssetEntry>* as
         pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pPhyData));
     }
 
+    std::vector<RPakGuidDescriptor> guids{};
+
     // anim rigs are "includemodels" from source, containing a very stripped version of the main .rmdl data without any meshes
     // they are used for sharing anim data between models
     // file extension is ".rrig", rpak asset id is "arig"
@@ -184,7 +186,7 @@ void Assets::AddModelAsset_v9(RPakFileBase* pak, std::vector<RPakAssetEntry>* as
 
         for (int i = 0; i < pHdr->animRigCount; ++i)
         {
-            pak->AddGuidDescriptor(arigseginfo.index, sizeof(uint64_t) * i);
+            pak->AddGuidDescriptor(&guids, arigseginfo.index, sizeof(uint64_t) * i);
         }
     }
 
@@ -203,7 +205,7 @@ void Assets::AddModelAsset_v9(RPakFileBase* pak, std::vector<RPakAssetEntry>* as
         //    material->guid = 0x15ba3e223a795c19;
 
         if(material->guid != 0)
-            pak->AddGuidDescriptor(dataseginfo.index, dataBuf.getPosition()+ offsetof(materialref_t, guid));
+            pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition()+ offsetof(materialref_t, guid));
     }
 
     RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
@@ -236,11 +238,7 @@ void Assets::AddModelAsset_v9(RPakFileBase* pak, std::vector<RPakAssetEntry>* as
     asset.pageEnd = lastPageIdx + 1;
     asset.unk1 = 2;
 
-
-    // this needs to be fixed!!!
-    //size_t fileRelationIdx = pak->AddFileRelation(assetEntries->size());
-    //asset.usesStartIdx = fileRelationIdx;
-    //asset.usesCount = mdlhdr.numtextures + pHdr->animRigCount;
+    asset.AddGuids(&guids);
 
     assetEntries->push_back(asset);
 }
