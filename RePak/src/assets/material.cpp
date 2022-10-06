@@ -175,6 +175,8 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     // add the texture guids to the buffer
     size_t guidPageOffset = sAssetPath.length() + 1 + assetPathAlignment;
 
+    std::vector<RPakGuidDescriptor> guids{};
+
     int textureIdx = 0;
     int fileRelationIdx = -1;
     for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the first TextureGUID Map.
@@ -183,27 +185,14 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         {
             uint64_t textureGUID = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str()); // Convert texture path to guid.
             *(uint64_t*)dataBuf = textureGUID;
-            pak->AddGuidDescriptor(dataseginfo.index, guidPageOffset + (textureIdx * sizeof(uint64_t))); // Register GUID descriptor for current texture index.
-
-            if (fileRelationIdx == -1)
-                fileRelationIdx = pak->AddFileRelation(assetEntries->size());
-            else
-                pak->AddFileRelation(assetEntries->size());
+            pak->AddGuidDescriptor(&guids, dataseginfo.index, guidPageOffset + (textureIdx * sizeof(uint64_t))); // Register GUID descriptor for current texture index.
 
             RPakAssetEntry* txtrAsset = pak->GetAssetByGuid(textureGUID, nullptr);
 
             if (txtrAsset)
-            {
-                txtrAsset->relStartIdx = fileRelationIdx;
-                txtrAsset->relationCount++;
-            }
+                txtrAsset->AddRelation(assetEntries->size());
             else
-            { 
-                Warning("unable to find texture '%s' for material '%s'\n", it.GetString(), assetPath);
-                externalAssetCount++;
-            }
-
-
+                Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
 
             assetUsesCount++;
         }
@@ -326,6 +315,14 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         return;
     }
 
+    if (mtlHdr->ShaderSetGUID != 0)
+    {
+        RPakAssetEntry* asset = pak->GetAssetByGuid(mtlHdr->ShaderSetGUID);
+
+        if (asset)
+            asset->AddRelation(assetEntries->size());
+    }
+
     // Is this a colpass asset?
     bool bColpass = false;
     if (mapEntry.HasMember("colpass"))
@@ -334,13 +331,25 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         mtlHdr->m_GUIDRefs[3] = RTech::StringToGuid(colpassPath.c_str());
 
         // todo, the relations count is not being set properly on the colpass for whatever reason.
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_GUIDRefs) + 24);
-        pak->AddFileRelation(assetEntries->size());
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, m_GUIDRefs) + 24);
         assetUsesCount++;
 
         bColpass = false;
     }
 
+    for (int i = 0; i < 4; ++i)
+    {
+        uint64_t guid = mtlHdr->GUIDRefs[i];
+
+        if (guid != 0)
+        {
+            RPakAssetEntry* asset = pak->GetAssetByGuid(guid);
+
+            if (asset)
+                asset->AddRelation(assetEntries->size());
+        }
+    }
+    
     mtlHdr->m_pTextureHandles.m_nIndex = dataseginfo.index;
     mtlHdr->m_pTextureHandles.m_nOffset = guidPageOffset;
 
@@ -453,8 +462,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     // In every TF|2 material asset entry I've looked at it's always UsesCount + 1.
     asset.unk1 = (assetUsesCount - externalAssetCount) + 1;
 
-    asset.usesStartIdx = fileRelationIdx;
-    asset.usesCount = assetUsesCount;
+    asset.AddGuids(&guids);
 
     Debug("External assets: %i\n", externalAssetCount);
 
@@ -539,25 +547,23 @@ void Assets::AddMaterialAsset_v15(RPakFileBase* pak, std::vector<RPakAssetEntry>
     // add the texture guids to the buffer
     size_t guidPageOffset = sAssetPath.length() + 1 + assetPathAlignment;
 
+    std::vector<RPakGuidDescriptor> guids{};
+
     int textureIdx = 0;
-    int fileRelationIdx = -1;
     for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the first TextureGUID Map.
     {
         if (it.GetStdString() != "")
         {
             uint64_t textureGUID = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str()); // Convert texture path to guid.
             *(uint64_t*)dataBuf = textureGUID;
-            pak->AddGuidDescriptor(dataseginfo.index, guidPageOffset + (textureIdx * sizeof(uint64_t))); // Register GUID descriptor for current texture index.
-
-            if (fileRelationIdx == -1)
-                fileRelationIdx = pak->AddFileRelation(assetEntries->size());
-            else
-                pak->AddFileRelation(assetEntries->size());
+            pak->AddGuidDescriptor(&guids, dataseginfo.index, guidPageOffset + (textureIdx * sizeof(uint64_t))); // Register GUID descriptor for current texture index.
 
             RPakAssetEntry* txtrAsset = pak->GetAssetByGuid(textureGUID, nullptr);
 
-            txtrAsset->relStartIdx = fileRelationIdx;
-            txtrAsset->relationCount++;
+            if (txtrAsset)
+                txtrAsset->AddRelation(assetEntries->size());
+            else
+                Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
 
             assetUsesCount++;
         }
@@ -594,12 +600,10 @@ void Assets::AddMaterialAsset_v15(RPakFileBase* pak, std::vector<RPakAssetEntry>
         mtlHdr->m_GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
         mtlHdr->m_GUIDRefs[3] = 0x227C27B608B3646B;
 
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
-
-        pak->AddFileRelation(assetEntries->size(), 4);
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
         assetUsesCount += 4;
 
         mtlHdr->m_pShaderSet = 0x1D9FFF314E152725;
@@ -612,12 +616,10 @@ void Assets::AddMaterialAsset_v15(RPakFileBase* pak, std::vector<RPakAssetEntry>
         mtlHdr->m_GUIDRefs[2] = 0xD306370918620EC0; // DepthVSM
         mtlHdr->m_GUIDRefs[3] = 0xDAB17AEAD2D3387A; // DepthShadowTight
 
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
-
-        pak->AddFileRelation(assetEntries->size(), 4);
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
         assetUsesCount += 4;
 
         mtlHdr->m_pShaderSet = 0x4B0F3B4CBD009096;
@@ -630,20 +632,25 @@ void Assets::AddMaterialAsset_v15(RPakFileBase* pak, std::vector<RPakAssetEntry>
         mtlHdr->m_GUIDRefs[2] = 0xBDBF90B97E7D9280; // DepthVSM
         mtlHdr->m_GUIDRefs[3] = 0x85654E05CF9B40E7; // DepthShadowTight
 
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
-
-        pak->AddFileRelation(assetEntries->size(), 4);
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
         assetUsesCount += 4;
 
         mtlHdr->m_pShaderSet = 0x2a2db3a47af9b3d5;
     }
 
-    pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pShaderSet));
-    pak->AddFileRelation(assetEntries->size());
+    pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_pShaderSet));
     assetUsesCount++;
+
+    if (mtlHdr->m_pShaderSet != 0)
+    {
+        RPakAssetEntry* asset = pak->GetAssetByGuid(mtlHdr->m_pShaderSet);
+
+        if (asset)
+            asset->AddRelation(assetEntries->size());
+    }
 
     // Is this a colpass asset?
     bool bColpass = false;
@@ -652,12 +659,25 @@ void Assets::AddMaterialAsset_v15(RPakFileBase* pak, std::vector<RPakAssetEntry>
         std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + ".rpak";
         mtlHdr->m_GUIDRefs[4] = RTech::StringToGuid(colpassPath.c_str());
 
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 32);
-        pak->AddFileRelation(assetEntries->size());
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 32);
         assetUsesCount++;
 
         bColpass = false;
     }
+
+    for (int i = 0; i < 5; ++i)
+    {
+        uint64_t guid = mtlHdr->m_GUIDRefs[i];
+
+        if (guid != 0)
+        {
+            RPakAssetEntry* asset = pak->GetAssetByGuid(guid);
+
+            if (asset)
+                asset->AddRelation(assetEntries->size());
+        }
+    }
+
     mtlHdr->m_pTextureHandles.m_nIndex = dataseginfo.index;
     mtlHdr->m_pTextureHandles.m_nOffset = guidPageOffset;
 
@@ -723,8 +743,7 @@ void Assets::AddMaterialAsset_v15(RPakFileBase* pak, std::vector<RPakAssetEntry>
     asset.pageEnd = cpuseginfo.index + 1;
     asset.unk1 = bColpass ? 7 : 8; // what
 
-    asset.usesStartIdx = fileRelationIdx;
-    asset.usesCount = assetUsesCount;
+    asset.AddGuids(&guids);
 
     assetEntries->push_back(asset);
 }
