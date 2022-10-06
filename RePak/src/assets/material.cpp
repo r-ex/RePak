@@ -222,7 +222,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         mtlHdr->m_pszSurfaceProp2.m_nIndex = dataseginfo.index;
         mtlHdr->m_pszSurfaceProp2.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2) + (surface.length() + 1);
 
-        RePak::RegisterDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszSurfaceProp2));
+        pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszSurfaceProp2));
     }
 
     //=======================
@@ -238,7 +238,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         {
             guidRefs[mId] = RTech::StringToGuid(("material/" + gu.GetStdString() + "_" + type + ".rpak").c_str());
 
-            RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_GUIDRefs) + (mId * 8));
+            pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_GUIDRefs) + (mId * 8));
 
             usedMId++;
         }
@@ -253,9 +253,9 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
 
     mtlHdr->m_pShaderSet = shadersetGuid;
 
-    RePak::RegisterGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pShaderSet));
+    pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pShaderSet));
 
-    RePak::AddFileRelation(assetEntries->size(), (usedMId + 1)); // plus one for the shaderset.
+    pak->AddFileRelation(assetEntries->size(), (usedMId + 1)); // plus one for the shaderset.
     assetUsesCount += (usedMId + 1);
 
     // V12 type handling, mostly stripped now.
@@ -304,7 +304,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         mtlHdr->m_GUIDRefs[3] = RTech::StringToGuid(colpassPath.c_str());
 
         // todo, the relations count is not being set properly on the colpass for whatever reason.
-        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 24);
+        pak->AddGuidDescriptor(subhdrinfo.index, offsetof(MaterialHeaderV12, m_GUIDRefs) + 24);
         pak->AddFileRelation(assetEntries->size());
         assetUsesCount++;
 
@@ -413,7 +413,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
-    asset.version = version;
+    asset.version = 12;
 
     asset.pageEnd = cpuseginfo.index + 1;
     // this isn't even fully true in some apex materials.
