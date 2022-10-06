@@ -270,7 +270,7 @@ void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* 
         }
 
         if (sStarpakPath.length() == 0)
-            Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\nto fix: set 'starpakPath' as a rpak-wide variable\nor: add 'starpakPath' as an asset specific variable\n", assetPath);
+            Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\nto fix: add 'starpakPath' as a rpak-wide variable\nor: add 'starpakPath' as an asset specific variable\n", assetPath);
 
         SRPkDataEntry de{ 0, nStreamedMipSize, (uint8_t*)streamedbuf };
         de = pak->AddStarpakDataEntry(de);
