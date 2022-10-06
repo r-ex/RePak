@@ -265,9 +265,13 @@ void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* 
         if (mapEntry.HasMember("starpakPath"))
         {
             sStarpakPath = mapEntry["starpakPath"].GetString();
-
-            pak->AddStarpakReference(sStarpakPath);
         }
+        else
+        {
+            sStarpakPath = pak->primaryStarpakPath;
+        }
+        
+        pak->AddStarpakReference(sStarpakPath);
 
         if (sStarpakPath.length() == 0)
             Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\nto fix: add 'starpakPath' as an rpak-wide variable\nor: add 'starpakPath' as an asset specific variable\n", assetPath);
