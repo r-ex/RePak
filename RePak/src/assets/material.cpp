@@ -15,6 +15,8 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     std::string visibility = "opaque";
     uint64_t shadersetGuid = 0x0;
 
+    int externalAssetCount = 0; // number of assets not within this rpak
+
     if (mapEntry.HasMember("type")) // Sets the type of the material, skn, fix, etc.
         type = mapEntry["type"].GetStdString();
     else
@@ -23,27 +25,44 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     if (mapEntry.HasMember("subtype")) // Set subtype, mostly redundant now, only used for "nose_art".
         subtype = mapEntry["subtype"].GetStdString();
 
-    // Set ShaderSet.  
+
+    //===============
+    // Set ShaderSet.
+    //===============
     if (mapEntry.HasMember("shaderset") && mapEntry["shaderset"].GetStdString() != "")
     {
         shadersetGuid = RTech::StringToGuid(("shaderset/" + mapEntry["shaderset"].GetStdString() + ".rpak").c_str());
     }
+    else if (mapEntry.HasMember("shadersetGUID") && mapEntry["shadersetGUID"].GetStdString() != "")
+    {
+        shadersetGuid = strtoul((mapEntry["shadersetGUID"].GetStdString()).c_str(), NULL, 0);
+    }
     else
     {
-        shadersetGuid = 0xC3ACAF7F1DC7F389;
-        Warning("Adding material without an explicitly defined shaderset. Assuming 'uberAoCavEmitEntcolmeSamp2222222_skn'... \n");
+        shadersetGuid = RTech::StringToGuid("shaderset/uberAoCavEmitEntcolmeSamp2222222_skn.rpak");
+        Warning("Adding material without an explicitly defined shaderset, Assuming 'uberAoCavEmitEntcolmeSamp2222222_skn'... \n");
     }
 
+    // check if shaderset is local.
+    RPakAssetEntry* shdsAsset = RePak::GetAssetByGuid(assetEntries, shadersetGuid, nullptr);
+
+    if (!shdsAsset)
+        externalAssetCount++;
+     
+
+    // get material path and guid
     std::string sFullAssetRpakPath = "material/" + sAssetPath + "_" + type + ".rpak"; // Make full rpak asset path.
 
     mtlHdr->m_nGUID = RTech::StringToGuid(sFullAssetRpakPath.c_str()); // Convert full rpak asset path to textureGUID and set it in the material header.
 
+    // resolution handling
     if (mapEntry.HasMember("width")) // Set material width.
         mtlHdr->m_nWidth = mapEntry["width"].GetInt();
 
     if (mapEntry.HasMember("height")) // Set material width.
         mtlHdr->m_nHeight = mapEntry["height"].GetInt();
 
+    // flag vars in material header
     if (mapEntry.HasMember("flags") && mapEntry["flags"].GetStdString() != "") // Set flags properly. Responsible for texture stretching, tiling etc.
         mtlHdr->m_Flags = strtoul(("0x" + mapEntry["flags"].GetStdString()).c_str(), NULL, 0);
     else
@@ -53,6 +72,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         mtlHdr->m_Flags2 = strtoul(("0x" + mapEntry["flags2"].GetStdString()).c_str(), NULL, 0);
     else
         mtlHdr->m_Flags2 = 0x56000020;
+
 
     // Visibility related flags, opacity and the like.
     if (mapEntry.HasMember("visibilityflags"))
@@ -90,8 +110,9 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     }
 
 
-    uint16_t faceFlag = 0x0006;
     // Sets how the faces draw.
+    uint16_t faceFlag = 0x0006;
+
     if (mapEntry.HasMember("faceflags")) {
 
         faceFlag = strtoul(("0x" + mapEntry["faceflags"].GetStdString()).c_str(), NULL, 0);
@@ -177,7 +198,10 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
                 txtrAsset->relationCount++;
             }
             else
+            { 
                 Warning("unable to find texture '%s' for material '%s'\n", it.GetString(), assetPath);
+                externalAssetCount++;
+            }
 
 
 
@@ -249,6 +273,12 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     for (int i = 0; i < 3; ++i) 
     {
         mtlHdr->m_GUIDRefs[i] = guidRefs[i];
+
+        // check if matRef is local.
+        RPakAssetEntry* matRefAsset = RePak::GetAssetByGuid(assetEntries, guidRefs[i], nullptr);
+
+        if (!matRefAsset)
+            externalAssetCount++;          
     }
 
     mtlHdr->m_pShaderSet = shadersetGuid;
@@ -320,6 +350,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pTextureHandles));
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pStreamingTextureHandles));
 
+    // not always 0x100000, however if the material you're trying to do doesn't have this seek help
     mtlHdr->something2 = 0x100000;
 
     //////////////////////////////////////////
@@ -420,10 +451,12 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     //asset.unk1 = bColpass ? 7 : 8; // what
     // unk1 appears to be maxusecount, although seemingly nothing is affected by changing it unless you exceed 18.
     // In every TF|2 material asset entry I've looked at it's always UsesCount + 1.
-    asset.unk1 = assetUsesCount + 1;
+    asset.unk1 = (assetUsesCount - externalAssetCount) + 1;
 
     asset.usesStartIdx = fileRelationIdx;
     asset.usesCount = assetUsesCount;
+
+    Debug("External assets: %i\n", externalAssetCount);
 
     assetEntries->push_back(asset);
 }
