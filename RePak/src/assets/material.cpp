@@ -44,7 +44,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     }
 
     // check if shaderset is local.
-    RPakAssetEntry* shdsAsset = RePak::GetAssetByGuid(assetEntries, shadersetGuid, nullptr);
+    RPakAssetEntry* shdsAsset = pak->GetAssetByGuid(shadersetGuid, nullptr);
 
     if (!shdsAsset)
         externalAssetCount++;
@@ -275,7 +275,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         mtlHdr->m_GUIDRefs[i] = guidRefs[i];
 
         // check if matRef is local.
-        RPakAssetEntry* matRefAsset = RePak::GetAssetByGuid(assetEntries, guidRefs[i], nullptr);
+        RPakAssetEntry* matRefAsset = pak->GetAssetByGuid(guidRefs[i], nullptr);
 
         if (!matRefAsset)
             externalAssetCount++;          
