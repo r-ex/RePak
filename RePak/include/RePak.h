@@ -63,6 +63,15 @@ public:
 
 	size_t GetAssetCount() { return m_Assets.size(); };
 
+	std::string GetStarpakPath(int i) {
+		if (m_vStarpakPaths.size() > i)
+			return m_vStarpakPaths[i];
+		else
+			return ""; // if invalid starpak is requested, return empty string
+	};
+
+	inline bool IsFlagSet(int flag) { return this->flags & flag; };
+
 	void SetVersion(uint32_t version)
 	{
 		this->m_Header.fileVersion = version;
@@ -318,7 +327,11 @@ public:
 
 	uint32_t m_Version = 0;
 
+	int flags = 0;
+
 	RPakFileHeader m_Header{};
+
+	std::string primaryStarpakPath;
 
 	std::vector<std::string> m_vStarpakPaths{};
 	std::vector<std::string> m_vOptStarpakPaths{};
@@ -333,3 +346,5 @@ public:
 
 	std::vector<SRPkDataEntry> m_vStarpakDataBlocks{};
 };
+
+#define PF_KEEP_DEV 1 << 0
