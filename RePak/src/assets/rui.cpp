@@ -78,8 +78,8 @@ void Assets::AddUIImageAsset_v10(RPakFileBase* pak, std::vector<RPakAssetEntry>*
     pHdr->width = ddsh.dwWidth;
     pHdr->height = ddsh.dwHeight;
 
-    pHdr->m_fWidthRatio = 1 / pHdr->m_nWidth;
-    pHdr->m_fHeightRatio = 1 / pHdr->m_nHeight;
+    pHdr->widthRatio = 1 / pHdr->width;
+    pHdr->heightRatio = 1 / pHdr->height;
 
     // legion uses this to get the texture count, so its probably set correctly
     pHdr->textureCount = nTexturesCount;
