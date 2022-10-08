@@ -70,6 +70,17 @@ public: // read/write
 		return val;
 	}
 
+	template <typename T>
+	T* get()
+	{
+		if(_curpos + sizeof(T) > _bufsize)
+			throw "failed to get ptr from buffer: attempted to read past the end of the buffer";
+
+		T* ptr = (T*)_pbuf;
+
+		return ptr;
+	}
+
 	template<typename T>
 	void write(T val)
 	{

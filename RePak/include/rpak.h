@@ -45,31 +45,31 @@ struct RPakPtr
 // which should be written depending on the version
 struct RPakFileHeader
 {
-	uint32_t m_nMagic = 0x6b615052;
-	uint16_t m_nVersion = 0x8;
-	uint8_t  m_nFlags[0x2];
-	uint64_t m_nCreatedTime; // this is actually FILETIME, but if we don't make it uint64_t here, it'll break the struct when writing
+	uint32_t magic = 0x6b615052;
+	uint16_t fileVersion = 0x8;
+	uint8_t  flags[0x2];
+	uint64_t fileTime; // this is actually FILETIME, but if we don't make it uint64_t here, it'll break the struct when writing
 	uint8_t  unk0[0x8];
-	uint64_t m_nSizeDisk; // size of the rpak file on disk before decompression
-	uint64_t m_nEmbeddedStarpakOffset = 0;
+	uint64_t compressedSize; // size of the rpak file on disk before decompression
+	uint64_t embeddedStarpakOffset = 0;
 	uint8_t  unk1[0x8];
-	uint64_t m_nSizeMemory; // actual data size of the rpak file after decompression
-	uint64_t m_nEmbeddedStarpakSize = 0;
+	uint64_t decompressedSize; // actual data size of the rpak file after decompression
+	uint64_t embeddedStarpakSize = 0;
 	uint8_t  unk2[0x8];
-	uint16_t m_nStarpakReferenceSize = 0; // size in bytes of the section containing mandatory starpak paths
-	uint16_t m_nStarpakOptReferenceSize = 0; // size in bytes of the section containing optional starpak paths
-	uint16_t m_nVirtualSegmentCount = 0;
-	uint16_t m_nPageCount = 0; // number of "mempages" in the rpak
-	uint16_t m_nPatchIndex = 0;
+	uint16_t starpakPathsSize = 0; // size in bytes of the section containing mandatory starpak paths
+	uint16_t optStarpakPathsSize = 0; // size in bytes of the section containing optional starpak paths
+	uint16_t virtualSegmentCount = 0;
+	uint16_t pageCount = 0; // number of "mempages" in the rpak
+	uint16_t patchIndex = 0;
 	uint16_t alignment = 0;
-	uint32_t m_nDescriptorCount = 0;
-	uint32_t m_nAssetEntryCount = 0;
-	uint32_t m_nGuidDescriptorCount = 0;
-	uint32_t m_nRelationsCount = 0;
+	uint32_t descriptorCount = 0;
+	uint32_t assetCount = 0;
+	uint32_t guidDescriptorCount = 0;
+	uint32_t relationCount = 0;
 
 	// only in tf2
-	uint32_t m_nUnknownSeventhBlockCount = 0;
-	uint32_t m_nUnknownEighthBlockCount = 0;
+	uint32_t unk7count = 0;
+	uint32_t unk8count = 0;
 
 	// only in apex
 	uint8_t  unk3[0x1c];
@@ -77,8 +77,8 @@ struct RPakFileHeader
 
 struct RPakPatchCompressedHeader // Comes after file header if its an patch rpak.
 {
-	uint64_t m_nSizeDisk;
-	uint64_t m_nSizeMemory;
+	uint64_t compressedSize;
+	uint64_t decompressedSize;
 };
 
 // segment
@@ -87,9 +87,9 @@ struct RPakPatchCompressedHeader // Comes after file header if its an patch rpak
 // about the size of pages that are using specific flags/types/whatever
 struct RPakVirtualSegment
 {
-	uint32_t m_nDataFlag = 0; // not sure what this actually is, doesn't seem to be used in that many places
-	uint32_t m_nSomeType = 0;
-	uint64_t m_nDataSize = 0;
+	uint32_t flags = 0; // not sure what this actually is, doesn't seem to be used in that many places
+	uint32_t alignment = 0;
+	uint64_t dataSize = 0;
 };
 
 // mem page
@@ -99,17 +99,17 @@ struct RPakVirtualSegment
 // because of both the patch edit stream and also missing pages that are only present in the base rpak
 struct RPakPageInfo
 {
-	uint32_t m_nVSegIndex; // index into vseg array
-	uint32_t m_nSomeType; // no idea
-	uint32_t m_nDataSize; // actual size of page in bytes
+	uint32_t segIdx; // index into vseg array
+	uint32_t pageAlignment; // no idea
+	uint32_t dataSize; // actual size of page in bytes
 };
 
 // defines the location of a data "pointer" within the pak's mem pages
 // allows the engine to read the index/offset pair and replace it with an actual memory pointer at runtime
 struct RPakDescriptor
 {
-	uint32_t m_nPageIdx;	 // page index
-	uint32_t m_nPageOffset; // offset within page
+	uint32_t index;	 // page index
+	uint32_t offset; // offset within page
 };
 
 // same kinda thing as RPakDescriptor, but this one tells the engine where
@@ -137,15 +137,15 @@ struct RPakAssetEntry
 		uint64_t nOptStarpakOffset,
 		uint32_t Type)
 	{
-		this->m_nGUID = nGUID;
-		this->m_nSubHeaderDataBlockIdx = nSubHeaderBlockIdx;
-		this->m_nSubHeaderDataBlockOffset = nSubHeaderBlockOffset;
-		this->m_nRawDataBlockIndex = nRawDataBlockIdx;
-		this->m_nRawDataBlockOffset = nRawDataBlockOffset;
-		this->m_nStarpakOffset = nStarpakOffset;
-		this->m_nOptStarpakOffset = nOptStarpakOffset;
-		this->m_nSubHeaderSize = nSubHeaderSize;
-		this->m_nMagic = Type;
+		this->guid = nGUID;
+		this->headIdx = nSubHeaderBlockIdx;
+		this->headOffset = nSubHeaderBlockOffset;
+		this->cpuIdx = nRawDataBlockIdx;
+		this->cpuOffset = nRawDataBlockOffset;
+		this->starpakOffset = nStarpakOffset;
+		this->optStarpakOffset = nOptStarpakOffset;
+		this->headDataSize = nSubHeaderSize;
+		this->id = Type;
 	}
 
 	// hashed version of the asset path
@@ -154,20 +154,20 @@ struct RPakAssetEntry
 	// - when referenced from other assets, the GUID is used directly
 	// - when referenced from scripts, the GUID is calculated from the original asset path
 	//   by a function such as RTech::StringToGuid
-	uint64_t m_nGUID = 0;
+	uint64_t guid = 0;
 	uint8_t  unk0[0x8]{};
 
 	// page index and offset for where this asset's header is located
-	uint32_t m_nSubHeaderDataBlockIdx = 0;
-	uint32_t m_nSubHeaderDataBlockOffset = 0;
+	uint32_t headIdx = 0;
+	uint32_t headOffset = 0;
 
 	// page index and offset for where this asset's data is located
 	// note: this may not always be used for finding the data:
 	//		 some assets use their own idx/offset pair from within the subheader
 	//		 when adding pairs like this, you MUST register it as a descriptor
 	//		 otherwise the pointer won't be converted
-	uint32_t m_nRawDataBlockIndex = 0;
-	uint32_t m_nRawDataBlockOffset = 0;
+	uint32_t cpuIdx = 0;
+	uint32_t cpuOffset = 0;
 
 	// offset to any available streamed data
 	// m_nStarpakOffset    = "mandatory" starpak file offset
@@ -175,27 +175,44 @@ struct RPakAssetEntry
 	// 
 	// in reality both are mandatory but respawn likes to do a little trolling
 	// so "opt" starpaks are a thing
-	uint64_t m_nStarpakOffset = -1;
-	uint64_t m_nOptStarpakOffset = -1;
+	uint64_t starpakOffset = -1;
+	uint64_t optStarpakOffset = -1;
 
-	uint16_t m_nPageEnd = 0; // highest mem page used by this asset
-	uint16_t unk1 = 0;
+	uint16_t pageEnd = 0; // highest mem page used by this asset
+	uint16_t unk1 = 0; // might be local "uses" + 1
 
-	uint32_t m_nRelationsStartIdx = 0;
+	uint32_t relStartIdx = 0;
 
-	uint32_t m_nUsesStartIdx = 0;
-	uint32_t m_nRelationsCounts = 0;
-	uint32_t m_nUsesCount = 0; // number of other assets that this asset uses
+	uint32_t usesStartIdx = 0;
+	uint32_t relationCount = 0;
+	uint32_t usesCount = 0; // number of other assets that this asset uses
 
 	// size of the asset header
-	uint32_t m_nSubHeaderSize = 0;
+	uint32_t headDataSize = 0;
 
 	// this isn't always changed when the asset gets changed
 	// but respawn calls it a version so i will as well
-	uint32_t m_nVersion = 0;
+	uint32_t version = 0;
 
 	// see AssetType enum below
-	uint32_t m_nMagic = 0;
+	uint32_t id = 0;
+
+	// internal
+
+	// vector of indexes for local assets that use this asset
+	std::vector<unsigned int> _relations{};
+
+	inline void AddRelation(unsigned int idx) { _relations.push_back({ idx }); };
+
+	std::vector<RPakGuidDescriptor> _guids{};
+
+	inline void AddGuid(RPakGuidDescriptor desc) { _guids.push_back(desc); };
+
+	inline void AddGuids(std::vector<RPakGuidDescriptor>* descs)
+	{
+		for (auto& it : *descs)
+			_guids.push_back(it);
+	};
 };
 #pragma pack(pop)
 
@@ -212,7 +229,7 @@ struct SRPkDataEntry
 {
 	uint64_t m_nOffset = -1; // set when added
 	uint64_t m_nDataSize = 0;
-	uint8_t* m_nDataPtr;
+	uint8_t* m_nDataPtr = nullptr;
 };
 
 enum class AssetType : uint32_t
@@ -243,43 +260,44 @@ enum class dtblcoltype_t : uint32_t
 #pragma pack(push, 1)
 struct TextureHeader
 {
-	uint64_t m_nAssetGUID = 0;
-	RPakPtr  m_pDebugName;
+	uint64_t guid = 0;
+	RPakPtr  pName;
 
-	uint16_t m_nWidth = 0;
-	uint16_t m_nHeight = 0;
+	uint16_t width = 0;
+	uint16_t height = 0;
 
 	uint16_t unk0 = 0;
-	uint16_t m_nFormat = 0;
+	uint16_t imgFormat = 0;
 
-	uint32_t m_nDataLength; // total data size across all sources
+	uint32_t dataSize; // total data size across all sources
 	uint8_t  unk1;
-	uint8_t  m_nOptStreamedMipLevels; // why is this here and not below? respawn moment
+	uint8_t  optStreamedMipLevels; // why is this here and not below? respawn moment
 
 	// d3d11 texture desc params
-	uint8_t  m_nArraySize;
-	uint8_t  m_nLayerCount;
+	uint8_t  arraySize;
+	uint8_t  layerCount;
 
 	uint8_t  unk2;
-	uint8_t  m_nPermanentMipLevels;
-	uint8_t  m_nStreamedMipLevels;
+	uint8_t  mipLevels;
+	uint8_t  streamedMipLevels;
 	uint8_t  unk3[0x15];
 };
 
 struct UIImageHeader
 {
-	float m_fWidthRatio; // 1 / m_nWidth
-	float m_fHeightRatio; // 1 / m_nHeight
-	uint16_t m_nWidth = 1;
-	uint16_t m_nHeight = 1;
-	uint16_t m_nTextureOffsetsCount = 0;
-	uint16_t m_nTextureCount = 0;
-	RPakPtr m_pTextureOffsets{};
-	RPakPtr m_pTextureDims{};
-	RPakPtr m_pUnkPtr{}; // per texture image uv
-	RPakPtr m_pTextureHashes{};
-	RPakPtr m_pTextureNames{};
-	uint64_t m_nAtlasGUID = 0;
+	float widthRatio; // 1 / m_nWidth
+	float heightRatio; // 1 / m_nHeight
+	uint16_t width = 1;
+	uint16_t height = 1;
+	uint16_t textureCount = 0;
+	uint16_t unkCount = 0;
+	RPakPtr pTextureOffsets{};
+	RPakPtr pTextureDimensions{};
+	uint32_t unk1 = 0;
+	uint32_t unk2 = 0;
+	RPakPtr pTextureHashes{};
+	RPakPtr pTextureNames{};
+	uint64_t atlasGUID = 0;
 };
 
 struct UIImageUV
@@ -386,38 +404,36 @@ struct ModelHeader
 {
 	// IDST data
 	// .mdl
-	RPakPtr SkeletonPtr;
+	RPakPtr pRMDL;
 	uint64_t Padding = 0;
 
 	// model path
 	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
-	RPakPtr NamePtr;
+	RPakPtr pName;
 	uint64_t Padding2 = 0;
 
 	// .phy
-	RPakPtr PhyPtr;
+	RPakPtr pPhyData;
 	uint64_t Padding3 = 0;
 
-	// this data is usually kept in a mandatory starpak, but there's also fallback(?) data here
-	// in rmdl v8, this is literally just .vtx and .vvd stuck together
-	// in v9+ it's an increasingly mutated version, although it contains roughly the same data
-	RPakPtr VGPtr;
+	// preload cache data for static props
+	RPakPtr pStaticPropVtxCache;
 
 	// pointer to data for the model's arig guid(s?)
-	RPakPtr AnimRigRefPtr;
+	RPakPtr pAnimRigs;
 
 	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
-	uint32_t AnimRigCount = 0;
+	uint32_t animRigCount = 0;
 
 	// size of the data kept in starpak
-	uint32_t StreamedDataSize = 0;
-	uint32_t DataCacheSize = 0; // when 97028: FS_CheckAsyncRequest returned error for model '<NOINFO>' offset -1 count 97028 -- Error 0x00000006
+	uint32_t unkDataSize = 0;
+	uint32_t alignedStreamingSize = 0; // full size of the starpak entry, aligned to 4096.
 
 	uint64_t Padding6 = 0;
 
 	// number of anim sequences directly associated with this model
-	uint32_t AnimSequenceCount = 0;
-	RPakPtr AnimSequencePtr;
+	uint32_t animSeqCount = 0;
+	RPakPtr pAnimSeqs;
 
 	uint64_t Padding7 = 0;
 	uint64_t Padding8 = 0;
@@ -425,71 +441,189 @@ struct ModelHeader
 };
 
 // modified source engine studio mdl header struct
-// majority of these members are the same as in the source sdk
-// so if you wanna know what any of it does, check there
 struct studiohdr_t
 {
-	studiohdr_t() {};
+	int id; // Model format ID, such as "IDST" (0x49 0x44 0x53 0x54)
+	int version; // Format version number, such as 48 (0x30,0x00,0x00,0x00)
+	int checksum; // This has to be the same in the phy and vtx files to load!
+	int sznameindex; // This has been moved from studiohdr2 to the front of the main header.
+	char name[64]; // The internal name of the model, padding with null bytes.
+	// Typically "my_model.mdl" will have an internal name of "my_model"
+	int length; // Data size of MDL file in bytes.
 
-	int id;
-	int version;
-	int checksum;
-	int nameTableOffset;
+	Vector3 eyeposition;	// ideal eye position
 
-	char name[0x40];
+	Vector3 illumposition;	// illumination center
 
-	int m_nDataLength;
-
-	Vector3 eyeposition;
-	Vector3 illumposition;
-	Vector3 hull_min;
+	Vector3 hull_min;		// ideal movement hull size
 	Vector3 hull_max;
-	Vector3 view_bbmin;
+
+	Vector3 view_bbmin;		// clipping bounding box
 	Vector3 view_bbmax;
 
-	int flags; // 0x9c
+	int flags;
 
-	int bone_count; // 0xa0
-	int bone_offset; // 0xa4
+	int numbones; // bones
+	int boneindex;
 
-	int bonecontroller_count;
-	int bonecontroller_offset;
+	int numbonecontrollers; // bone controllers
+	int bonecontrollerindex;
 
-	int hitboxset_count;
-	int hitboxset_offset;
+	int numhitboxsets;
+	int hitboxsetindex;
 
-	int localanim_count;
-	int localanim_offset;
+	int numlocalanim; // animations/poses
+	int localanimindex; // animation descriptions
 
-	int localseq_count;
-	int localseq_offset;
+	int numlocalseq; // sequences
+	int	localseqindex;
 
-	int activitylistversion;
-	int eventsindexed;
+	int activitylistversion; // initialization flag - have the sequences been indexed?
 
-	int texture_count;
-	int texture_offset;
+	// mstudiotexture_t
+	// short rpak path
+	// raw textures
+	int materialtypesindex;
+	int numtextures; // the material limit exceeds 128, probably 256.
+	int textureindex;
 
-	int texturedir_count;
-	int texturedir_offset;
+	// this should always only be one, unless using vmts.
+	// raw textures search paths
+	int numcdtextures;
+	int cdtextureindex;
 
-	int skinref_count;
-	int skinfamily_count;
-	int skinref_offset;
+	// replaceable textures tables
+	int numskinref;
+	int numskinfamilies;
+	int skinindex;
 
-	int bodypart_count;
-	int bodypart_offset;
+	int numbodyparts;
+	int bodypartindex;
 
-	int attachment_count;
-	int attachment_offset;
+	int numlocalattachments;
+	int localattachmentindex;
 
-	uint8_t unknown_1[0x14];
+	int numlocalnodes;
+	int localnodeindex;
+	int localnodenameindex;
 
-	int submeshlods_count;
+	int numflexdesc;
+	int flexdescindex;
 
-	uint8_t unknown_2[0x64];
-	int OffsetToBoneRemapInfo;
-	int boneremap_count;
+	int meshindex; // SubmeshLodsOffset, might just be a mess offset
+
+	int numflexcontrollers;
+	int flexcontrollerindex;
+
+	int numflexrules;
+	int flexruleindex;
+
+	int numikchains;
+	int ikchainindex;
+
+	// this is rui meshes
+	int numruimeshes;
+	int ruimeshindex;
+
+	int numlocalposeparameters;
+	int localposeparamindex;
+
+	int surfacepropindex;
+
+	int keyvalueindex;
+	int keyvaluesize;
+
+	int numlocalikautoplaylocks;
+	int localikautoplaylockindex;
+
+	float mass;
+	int contents;
+
+	// unused for packed models
+	int numincludemodels;
+	int includemodelindex;
+
+	uint32_t virtualModel;
+
+	int bonetablebynameindex;
+
+	// if STUDIOHDR_FLAGS_CONSTANT_DIRECTIONAL_LIGHT_DOT is set,
+	// this value is used to calculate directional components of lighting 
+	// on static props
+	byte constdirectionallightdot;
+
+	// set during load of mdl data to track *desired* lod configuration (not actual)
+	// the *actual* clamped root lod is found in studiohwdata
+	// this is stored here as a global store to ensure the staged loading matches the rendering
+	byte rootLOD;
+
+	// set in the mdl data to specify that lod configuration should only allow first numAllowRootLODs
+	// to be set as root LOD:
+	//	numAllowedRootLODs = 0	means no restriction, any lod can be set as root lod.
+	//	numAllowedRootLODs = N	means that lod0 - lod(N-1) can be set as root lod, but not lodN or lower.
+	byte numAllowedRootLODs;
+
+	byte unused;
+
+	float fadedistance;
+
+	float gathersize; // what. from r5r struct
+
+	int numunk_v54_early;
+	int unkindex_v54_early;
+
+	int unk_v54[2];
+
+	// this is in all shipped models, probably part of their asset bakery. it should be 0x2CC.
+	int mayaindex; // doesn't actually need to be written pretty sure, only four bytes when not present.
+
+	int numsrcbonetransform;
+	int srcbonetransformindex;
+
+	int	illumpositionattachmentindex;
+
+	int linearboneindex;
+
+	int m_nBoneFlexDriverCount; // unsure if that's what it is in apex
+	int m_nBoneFlexDriverIndex;
+
+	int unk1_v54[7];
+
+	// always "" or "Titan"
+	int unkstringindex;
+
+	// this is now used for combined files in rpak, vtx, vvd, and vvc are all combined while vphy is separate.
+	// the indexes are added to the offset in the rpak mdl_ header.
+	// vphy isn't vphy, looks like a heavily modified vphy.
+	int vtxindex; // VTX
+	int vvdindex; // VVD / IDSV
+	int vvcindex; // VVC / IDCV 
+	int vphyindex; // VPHY / IVPS
+
+	int vtxsize;
+	int vvdsize;
+	int vvcsize;
+	int vphysize; // still used in models using vg
+
+	// unk2_v54[3] is the chunk after following unkindex2's chunk
+	int unk2_v54[3]; // the same four unks in v53 I think, the first index being unused now probably
+
+	int unkindex3; // index to chunk after string block
+
+	// likely related to AABB
+	Vector3 mins; // min/max for Something
+	Vector3 maxs; // seem to be the same as hull size
+
+	int unk3_v54[3];
+
+	int unkindex4; // chunk before unkindex3 sometimes
+
+	int unk4_v54[3]; // same as unk3_v54_v121
+
+	//int vgindex; // 0tVG
+	//int unksize; // might be offset
+	//int unksize1; // might be offset
+
 };
 
 // used for referencing a material from within a model
@@ -847,3 +981,10 @@ static std::map<DXGI_FORMAT, uint16_t> s_txtrFormatMap{
 	{ DXGI_FORMAT_D32_FLOAT, 60 },
 	{ DXGI_FORMAT_D16_UNORM, 61 },
 };
+
+#define SF_HEAD   0 // :skull:
+#define SF_CPU    (1 << 0)
+#define SF_TEMP   (1 << 1)
+#define SF_SERVER (1 << 5)
+#define SF_CLIENT (1 << 6)
+#define SF_DEV    (1 << 7)
