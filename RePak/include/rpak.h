@@ -285,7 +285,8 @@ struct TextureHeader
 
 struct UIImageHeader
 {
-	uint64_t unk0 = 0;
+	float widthRatio; // 1 / m_nWidth
+	float heightRatio; // 1 / m_nHeight
 	uint16_t width = 1;
 	uint16_t height = 1;
 	uint16_t textureCount = 0;
