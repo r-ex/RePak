@@ -198,16 +198,30 @@ void Assets::AddModelAsset_v9(RPakFileBase* pak, std::vector<RPakAssetEntry>* as
     rmem dataBuf(pDataBuf);
     dataBuf.seek(fileNameDataSize + mdlhdr.textureindex, rseekdir::beg);
 
-    // register guid relations on each of the model's material guids
+    bool hasMaterialOverrides = mapEntry.HasMember("materials");
+
+    // handle material overrides register all material guids
     for (int i = 0; i < mdlhdr.numtextures; ++i)
     {
         dataBuf.seek(fileNameDataSize + mdlhdr.textureindex + (i * sizeof(materialref_t)), rseekdir::beg);
 
         materialref_t* material = dataBuf.get<materialref_t>();
 
-        //// temp material fix
-        //if (material->guid != 0)
-        //    material->guid = 0x15ba3e223a795c19;
+        // if material overrides are possible and this material has an entry in the array
+        if (hasMaterialOverrides && mapEntry["materials"].GetArray().Size() > i)
+        {
+            auto& matlEntry = mapEntry["materials"].GetArray()[i];
+            
+            // if string, calculate the guid
+            if (matlEntry.IsString())
+            {
+                if (matlEntry.GetStringLength() != 0) // if no material path, use the original model material
+                    material->guid = RTech::StringToGuid(std::string("material/" + matlEntry.GetStdString() + ".rpak").c_str()); // use user provided path
+            }
+            // if uint64, treat the value as the guid
+            else if (matlEntry.IsUint64())
+                material->guid = matlEntry.GetUint64();
+        }
 
         if(material->guid != 0)
             pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition()+ offsetof(materialref_t, guid));
