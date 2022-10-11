@@ -225,6 +225,11 @@ void Assets::AddModelAsset_v9(RPakFileBase* pak, std::vector<RPakAssetEntry>* as
 
         if(material->guid != 0)
             pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition()+ offsetof(materialref_t, guid));
+
+        RPakAssetEntry* asset = pak->GetAssetByGuid(material->guid);
+
+        if (asset)
+            asset->AddRelation(assetEntries->size());
     }
 
     RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
