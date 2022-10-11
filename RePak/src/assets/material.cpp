@@ -2,7 +2,7 @@
 #include "Assets.h"
 
 // VERSION 7
-void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
@@ -221,19 +221,19 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
 
     // ===============================
     // fill out the rest of the header
-    mtlHdr->m_pszName.m_nIndex = dataseginfo.index;
-    mtlHdr->m_pszName.m_nOffset = 0;
+    mtlHdr->m_pszName.index = dataseginfo.index;
+    mtlHdr->m_pszName.offset = 0;
 
-    mtlHdr->m_pszSurfaceProp.m_nIndex = dataseginfo.index;
-    mtlHdr->m_pszSurfaceProp.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
+    mtlHdr->m_pszSurfaceProp.index = dataseginfo.index;
+    mtlHdr->m_pszSurfaceProp.offset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
 
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszName));
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszSurfaceProp));
 
     if (mapEntry.HasMember("surface2")) {
 
-        mtlHdr->m_pszSurfaceProp2.m_nIndex = dataseginfo.index;
-        mtlHdr->m_pszSurfaceProp2.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2) + (surface.length() + 1);
+        mtlHdr->m_pszSurfaceProp2.index = dataseginfo.index;
+        mtlHdr->m_pszSurfaceProp2.offset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2) + (surface.length() + 1);
 
         pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszSurfaceProp2));
     }
@@ -575,11 +575,11 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         }
     }
 
-    mtlHdr->TextureGUIDs.m_nIndex = dataseginfo.index;
-    mtlHdr->TextureGUIDs.m_nOffset = guidPageOffset;
+    mtlHdr->TextureGUIDs.index = dataseginfo.index;
+    mtlHdr->TextureGUIDs.offset = guidPageOffset;
 
-    mtlHdr->TextureGUIDs2.m_nIndex = dataseginfo.index;
-    mtlHdr->TextureGUIDs2.m_nOffset = guidPageOffset + textureRefSize;
+    mtlHdr->TextureGUIDs2.index = dataseginfo.index;
+    mtlHdr->TextureGUIDs2.offset = guidPageOffset + textureRefSize;
 
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, TextureGUIDs));
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, TextureGUIDs2));
@@ -592,8 +592,8 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     _vseginfo_t cpuseginfo = pak->CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16);
 
     MaterialCPUHeader cpuhdr{};
-    cpuhdr.m_nUnknownRPtr.m_nIndex = cpuseginfo.index;
-    cpuhdr.m_nUnknownRPtr.m_nOffset = sizeof(MaterialCPUHeader);
+    cpuhdr.m_nUnknownRPtr.index = cpuseginfo.index;
+    cpuhdr.m_nUnknownRPtr.offset = sizeof(MaterialCPUHeader);
     cpuhdr.m_nDataSize = cpuDataSize;
 
     pak->AddPointer(cpuseginfo.index, 0);
@@ -692,7 +692,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
 }
 
 // VERSION 8
-void Assets::AddMaterialAsset_v15(RPakFileBase* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
@@ -804,11 +804,11 @@ void Assets::AddMaterialAsset_v15(RPakFileBase* pak, std::vector<RPakAssetEntry>
 
     // ===============================
     // fill out the rest of the header
-    mtlHdr->m_pszName.m_nIndex = dataseginfo.index;
-    mtlHdr->m_pszName.m_nOffset = 0;
+    mtlHdr->m_pszName.index = dataseginfo.index;
+    mtlHdr->m_pszName.offset = 0;
 
-    mtlHdr->m_pszSurfaceProp.m_nIndex = dataseginfo.index;
-    mtlHdr->m_pszSurfaceProp.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
+    mtlHdr->m_pszSurfaceProp.index = dataseginfo.index;
+    mtlHdr->m_pszSurfaceProp.offset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
 
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pszName));
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pszSurfaceProp));
@@ -900,11 +900,11 @@ void Assets::AddMaterialAsset_v15(RPakFileBase* pak, std::vector<RPakAssetEntry>
         }
     }
 
-    mtlHdr->m_pTextureHandles.m_nIndex = dataseginfo.index;
-    mtlHdr->m_pTextureHandles.m_nOffset = guidPageOffset;
+    mtlHdr->m_pTextureHandles.index = dataseginfo.index;
+    mtlHdr->m_pTextureHandles.offset = guidPageOffset;
 
-    mtlHdr->m_pStreamingTextureHandles.m_nIndex = dataseginfo.index;
-    mtlHdr->m_pStreamingTextureHandles.m_nOffset = guidPageOffset + textureRefSize;
+    mtlHdr->m_pStreamingTextureHandles.index = dataseginfo.index;
+    mtlHdr->m_pStreamingTextureHandles.offset = guidPageOffset + textureRefSize;
 
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pTextureHandles));
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pStreamingTextureHandles));
@@ -971,8 +971,8 @@ void Assets::AddMaterialAsset_v15(RPakFileBase* pak, std::vector<RPakAssetEntry>
     _vseginfo_t cpuseginfo = pak->CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, SF_CPU | SF_TEMP, 16);
 
     MaterialCPUHeader cpuhdr{};
-    cpuhdr.m_nUnknownRPtr.m_nIndex = cpuseginfo.index;
-    cpuhdr.m_nUnknownRPtr.m_nOffset = sizeof(MaterialCPUHeader);
+    cpuhdr.m_nUnknownRPtr.index = cpuseginfo.index;
+    cpuhdr.m_nUnknownRPtr.offset = sizeof(MaterialCPUHeader);
     cpuhdr.m_nDataSize = cpuDataSize;
 
     pak->AddPointer(cpuseginfo.index, 0);

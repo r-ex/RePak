@@ -4,33 +4,13 @@
 
 #define DEFAULT_RPAK_NAME "new"
 
-// vectors of stuff to get written
-//static std::vector<RPakVirtualSegment> g_vvSegments{};
-//static std::vector<RPakPageInfo> g_vPages{};
-//static std::vector<RPakDescriptor> g_vDescriptors{};
-//static std::vector<RPakGuidDescriptor> g_vGuidDescriptors{};
-static std::vector<RPakRelationBlock> g_vFileRelations{};
-static std::vector<RPakRawDataBlock> g_vSubHeaderBlocks{};
-static std::vector<RPakRawDataBlock> g_vRawDataBlocks{};
+// starpak data entry vector
 inline std::vector<SRPkDataEntry> g_vSRPkDataEntries{};
 
 struct _vseginfo_t
 {
-	uint32_t index = -1;
-	uint32_t size = -1;
-};
-
-namespace RePak
-{
-	//_vseginfo_t CreateNewSegment(uint32_t size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
-	//void AddStarpakReference(std::string path);
-	//void AddOptStarpakReference(std::string path);
-	//SRPkDataEntry AddStarpakDataEntry(SRPkDataEntry block);
-	//void AddRawDataBlock(RPakRawDataBlock block);
-	//void RegisterDescriptor(uint32_t pageIdx, uint32_t pageOffset);
-	//void RegisterGuidDescriptor(uint32_t pageIdx, uint32_t pageOffset);
-	//size_t AddFileRelation(uint32_t assetIdx, uint32_t count = 1);
-	//RPakAssetEntry* GetAssetByGuid(std::vector<RPakAssetEntry>* assets, uint64_t guid, uint32_t* idx);
+	unsigned int index = 0xFFFFFFFF;
+	unsigned int size = 0;
 };
 
 #define ASSET_HANDLER(ext, file, assetEntries, func_v7, func_v8) \
@@ -42,10 +22,10 @@ namespace RePak
 			func_v7(this, &assetEntries, file["path"].GetString(), file); \
 	}
 
-class RPakFileBase
+class CPakFile
 {
 public:
-	RPakFileBase(int version)
+	CPakFile(int version)
 	{
 		this->m_Header.fileVersion = version;
 		this->m_Version = version;
@@ -61,7 +41,9 @@ public:
 		ASSET_HANDLER("matl", file, m_Assets, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
 	};
 
-	size_t GetAssetCount() { return m_Assets.size(); };
+	inline bool IsFlagSet(int flag) { return this->flags & flag; };
+
+	inline size_t GetAssetCount() { return m_Assets.size(); };
 
 	std::string GetStarpakPath(int i) {
 		if (m_vStarpakPaths.size() > i)
@@ -70,23 +52,28 @@ public:
 			return ""; // if invalid starpak is requested, return empty string
 	};
 
-	inline bool IsFlagSet(int flag) { return this->flags & flag; };
-
-	void SetVersion(uint32_t version)
+	inline void SetVersion(uint32_t version)
 	{
 		this->m_Header.fileVersion = version;
 		this->m_Version = version;
 	}
 
-	void SetStarpakPathsSize(int len, int optLen)
+	inline void SetStarpakPathsSize(int len, int optLen)
 	{
 		this->m_Header.starpakPathsSize = len;
 		this->m_Header.optStarpakPathsSize = optLen;
 	}
 
+	void WriteRPakRawDataBlocks(BinaryIO& out)
+	{
+		for (auto it = m_vRawDataBlocks.begin(); it != m_vRawDataBlocks.end(); ++it)
+		{
+			out.getWriter()->write((char*)it->m_nDataPtr, it->m_nDataSize);
+		}
+	}
+
 	void WriteAssets(BinaryIO* io)
 	{
-		int i = 0;
 		for (auto& it : m_Assets)
 		{
 			io->write(it.guid);
@@ -109,12 +96,10 @@ public:
 			io->write(it.headDataSize);
 			io->write(it.version);
 			io->write(it.id);
-
-			i++;
 		}
 
 		// update header asset count with the assets we've just written
-		this->m_Header.assetCount += i;
+		this->m_Header.assetCount = m_Assets.size();
 	};
 
 	void WriteHeader(BinaryIO* io)
@@ -167,9 +152,7 @@ public:
 			io->write(m_Header.unk8count);
 		}
 		else if (version == 8)
-		{
 			io->write(m_Header.unk3);
-		}
 	};
 
 	inline void AddPointer(unsigned int pageIdx, unsigned int pageOffset)
@@ -196,7 +179,7 @@ public:
 			it.relStartIdx = m_vFileRelations.size();
 
 			for (int i = 0; i < it._relations.size(); ++i)
-				m_vFileRelations.push_back({ it._relations[i] });
+				m_vFileRelations.push_back( it._relations[i] );
 		}
 		m_Header.relationCount = m_vFileRelations.size();
 	}
@@ -233,7 +216,7 @@ public:
 		RPakPageInfo vsegblock{ vsegidx, alignment, size };
 
 		m_vPages.emplace_back(vsegblock);
-		uint32_t pageidx = (uint32_t)m_vPages.size() - 1;
+		unsigned int pageidx = m_vPages.size() - 1;
 
 		return { pageidx, size };
 	}
@@ -253,14 +236,6 @@ public:
 		}
 		Debug("failed to find asset with guid %llX\n", guid);
 		return nullptr;
-	}
-
-	void WriteRPakRawDataBlocks(BinaryIO& out)
-	{
-		for (auto it = m_vRawDataBlocks.begin(); it != m_vRawDataBlocks.end(); ++it)
-		{
-			out.getWriter()->write((char*)it->m_nDataPtr, it->m_nDataSize);
-		}
 	}
 
 	// starpaks
@@ -289,6 +264,7 @@ public:
 
 	SRPkDataEntry AddStarpakDataEntry(SRPkDataEntry block)
 	{
+		// starpak data is aligned to 4096 bytes
 		size_t ns = Utils::PadBuffer((char**)&block.m_nDataPtr, block.m_nDataSize, 4096);
 
 		block.m_nDataSize = ns;
@@ -319,13 +295,13 @@ private:
 		return { flags, alignment, 0 };
 	}
 
+	// next available starpak data offset
 	unsigned __int64 m_NextStarpakOffset = 0x1000;
-
 
 public:
 	std::vector<RPakAssetEntry> m_Assets{};
 
-	uint32_t m_Version = 0;
+	int m_Version = 0;
 
 	int flags = 0;
 
@@ -340,7 +316,7 @@ public:
 	std::vector<RPakPageInfo> m_vPages{};
 	std::vector<RPakDescriptor> m_vDescriptors{};
 	std::vector<RPakGuidDescriptor> m_vGuidDescriptors{};
-	std::vector<RPakRelationBlock> m_vFileRelations{}; // this will be reworked soonTM
+	std::vector<uint32_t> m_vFileRelations{};
 
 	std::vector<RPakRawDataBlock> m_vRawDataBlocks{};
 

@@ -2,7 +2,7 @@
 #include "Assets.h"
 
 // only tested for apex, should be identical on tf2
-void Assets::AddPatchAsset(RPakFileBase* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddPatchAsset(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding Ptch asset '%s'\n", assetPath);
 
@@ -48,7 +48,7 @@ void Assets::AddPatchAsset(RPakFileBase* pak, std::vector<RPakAssetEntry>* asset
         // write the ptr to the file name into the buffer
         dataBuf.write<RPakPtr>({ dataseginfo.index, fileNameOffset }, sizeof(RPakPtr) * i);
         // write the patch number for this entry into the buffer
-        dataBuf.write<uint8_t>(it.PatchNum, pHdr->pPakPatchNums.m_nOffset + i);
+        dataBuf.write<uint8_t>(it.PatchNum, pHdr->pPakPatchNums.offset + i);
 
         snprintf(pDataBuf + fileNameOffset, it.FileName.length() + 1, "%s", it.FileName.c_str());
 

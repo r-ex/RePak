@@ -53,7 +53,7 @@ uint8_t DataTable_GetEntrySize(dtblcoltype_t type)
     return 0; // should be unreachable
 }
 
-void Assets::AddDataTableAsset_v0(RPakFileBase* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 
@@ -277,7 +277,7 @@ void Assets::AddDataTableAsset_v0(RPakFileBase* pak, std::vector<RPakAssetEntry>
 }
 
 // VERSION 8
-void Assets::AddDataTableAsset_v1(RPakFileBase* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 

@@ -137,7 +137,7 @@ int main(int argc, char** argv)
 
     int rpakVersion = doc["version"].GetInt();
 
-    RPakFileBase* pak = new RPakFileBase(rpakVersion);
+    CPakFile* pak = new CPakFile(rpakVersion);
 
     // if keepDevOnly exists, is boolean, and is set to true
     if (doc.HasMember("keepDevOnly") && doc["keepDevOnly"].IsBool() && doc["keepDevOnly"].GetBool())

@@ -3,7 +3,7 @@
 #include "Assets.h"
 #include "dxutils.h"
 
-void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
 
@@ -54,7 +54,7 @@ void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* 
         }
 
         uint32_t nTotalSize = 0;
-        for (int ml = 0; ml < ddsh.dwMipMapCount; ml++)
+        for (unsigned int ml = 0; ml < ddsh.dwMipMapCount; ml++)
         {
             uint32_t nCurrentMipSize = (ddsh.dwPitchOrLinearSize / std::pow(4, ml));
 
@@ -67,12 +67,12 @@ void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* 
         }
 
         hdr->dataSize = nTotalSize;
-        hdr->width = ddsh.dwWidth;
-        hdr->height = ddsh.dwHeight;
+        hdr->width = (uint16_t)ddsh.dwWidth;
+        hdr->height = (uint16_t)ddsh.dwHeight;
 
         Log("-> dimensions: %ix%i\n", ddsh.dwWidth, ddsh.dwHeight);
 
-        hdr->mipLevels = (ddsh.dwMipMapCount - nStreamedMipCount);
+        hdr->mipLevels = (uint8_t)(ddsh.dwMipMapCount - nStreamedMipCount);
         hdr->streamedMipLevels = nStreamedMipCount;
 
         Log("-> total mipmaps permanent:streamed : %i:%i\n", hdr->mipLevels, hdr->streamedMipLevels);
@@ -183,10 +183,7 @@ void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* 
         sprintf_s(namebuf, sAssetName.length() + 1, "%s", sAssetName.c_str());
         nameseginfo = pak->CreateNewSegment(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
     }
-    else
-    {
-        delete[] namebuf;
-    }
+    else delete[] namebuf;
 
     // woo more segments
     // cpu data
@@ -203,7 +200,7 @@ void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* 
 
     for (int ml = 0; ml < (hdr->mipLevels + hdr->streamedMipLevels); ml++)
     {
-        uint32_t nCurrentMipSize = (nLargestMipSize / std::pow(4, ml));
+        uint32_t nCurrentMipSize = (unsigned int)(nLargestMipSize / std::pow(4, ml));
         uint32_t mipSizeDDS = 0;
         uint32_t mipSizeRpak = 0;
 
@@ -273,7 +270,7 @@ void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* 
         starpakOffset = de.m_nOffset;
     }
 
-    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TEXTURE);
+    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TXTR);
     asset.version = TXTR_VERSION;
 
     asset.pageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1

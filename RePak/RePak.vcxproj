@@ -161,7 +161,6 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="src\RePak.cpp" />
-    <ClCompile Include="src\rmem.cpp" />
     <ClCompile Include="src\rtech.cpp" />
     <ClCompile Include="src\Utils.cpp" />
   </ItemGroup>
