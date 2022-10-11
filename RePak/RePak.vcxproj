@@ -148,6 +148,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Assets.cpp" />
+    <ClCompile Include="src\assets\animation.cpp" />
     <ClCompile Include="src\assets\datatable.cpp" />
     <ClCompile Include="src\assets\material.cpp" />
     <ClCompile Include="src\assets\model.cpp" />

@@ -189,6 +189,8 @@ struct RPakAssetEntry
 	uint32_t id = 0;
 
 	// internal
+public:
+	int _assetidx;
 
 	// vector of indexes for local assets that use this asset
 	std::vector<unsigned int> _relations{};
@@ -231,6 +233,7 @@ enum class AssetType : uint32_t
 	PTCH = 0x68637450, // b'Ptch' - patch
 	DTBL = 0x6c627464, // b'dtbl' - datatable
 	MATL = 0x6c74616d, // b'matl' - material
+	ASEQ = 'qesa',	   // b'aseq' - animation sequence
 };
 
 // identifies the data type for each column in a datatable asset
@@ -895,6 +898,115 @@ struct MaterialCPUHeader
 	RPakPtr  m_nUnknownRPtr{}; // points to the rest of the cpu data. maybe for colour?
 	uint32_t m_nDataSize = 0;
 	uint32_t m_nVersionMaybe = 3; // every unknown is now either datasize, version, or flags
+};
+
+// animations
+
+struct AnimSequenceHeader
+{
+	RPakPtr data{}; // pointer to raw rseq.
+	RPakPtr szname{}; // pointer to debug name, placed before raw rseq normally.
+
+	// this can point to a group of guids and not one singular one.
+	RPakPtr modelGuid{};
+	uint32_t modelCount = 0;
+
+	uint32_t reserved = 0;
+
+	// this can point to a group of guids and not one singular one.
+	RPakPtr settingsGuid{};
+	uint32_t settingsCount = 0;
+
+	uint32_t reserved1 = 0; // assumed
+};
+
+struct mstudioseqdesc_t
+{
+	int baseptr;
+
+	int	szlabelindex;
+
+	int szactivitynameindex;
+
+	int flags; // looping/non-looping flags
+
+	int activity; // initialized at loadtime to game DLL values
+	int actweight;
+
+	int numevents;
+	int eventindex;
+
+	Vector3 bbmin; // per sequence bounding box
+	Vector3 bbmax;
+
+	int numblends;
+
+	// Index into array of shorts which is groupsize[0] x groupsize[1] in length
+	int animindexindex;
+
+	int movementindex; // [blend] float array for blended movement
+	int groupsize[2];
+	int paramindex[2]; // X, Y, Z, XR, YR, ZR
+	float paramstart[2]; // local (0..1) starting value
+	float paramend[2]; // local (0..1) ending value
+	int paramparent;
+
+	float fadeintime; // ideal cross fate in time (0.2 default)
+	float fadeouttime; // ideal cross fade out time (0.2 default)
+
+	int localentrynode; // transition node at entry
+	int localexitnode; // transition node at exit
+	int nodeflags; // transition rules
+
+	float entryphase; // used to match entry gait
+	float exitphase; // used to match exit gait
+
+	float lastframe; // frame that should generation EndOfSequence
+
+	int nextseq; // auto advancing sequences
+	int pose; // index of delta animation between end and nextseq
+
+	int numikrules;
+
+	int numautolayers;
+	int autolayerindex;
+
+	int weightlistindex;
+
+	int posekeyindex;
+
+	int numiklocks;
+	int iklockindex;
+
+	// Key values
+	int keyvalueindex;
+	int keyvaluesize;
+
+	int cycleposeindex; // index of pose parameter to use as cycle index
+
+	int activitymodifierindex;
+	int numactivitymodifiers;
+
+	int unk;
+	int unk1;
+
+	int unkindex;
+
+	int unk2;
+};
+
+struct mstudioautolayer_t
+{
+	uint64_t guid; // hashed aseq guid asset
+
+	short iSequence;
+	short iPose;
+
+	int flags;
+	float start; // beginning of influence
+	float peak;	 // start of full influence
+	float tail;	 // end of full influence
+	float end;	 // end of all influence
 };
 
 #pragma pack(pop)
