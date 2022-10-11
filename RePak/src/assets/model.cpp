@@ -1,14 +1,17 @@
 #include "pch.h"
 #include "Assets.h"
+#include "assets/model.h"
 
 void Assets::AddModelAsset_stub(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
+    Log("\n==============================\n");
     Error("RPak version 7 (Titanfall 2) cannot contain models");
 }
 
 void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding mdl_ asset '%s'\n", assetPath);
+    Log("\n==============================\n");
+    Log("Asset mdl_ -> '%s'\n", assetPath);
 
     std::string sAssetName = assetPath;
 
@@ -97,9 +100,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         phyInput.close();
     }
 
-    //
-    // Anim Rigs
-    //
     char* pAnimRigBuf = nullptr;
 
     if (mapEntry.HasMember("animrigs"))
@@ -127,10 +127,42 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
             arigBuf.write<uint64_t>(guid);
 
             // check if anim rig is a local asset so that the relation can be added
-            RPakAssetEntry* asset = pak->GetAssetByGuid(guid);
+            if (pak->DoesAssetExist(guid))
+                pak->GetAssetByGuid(guid)->AddRelation(assetEntries->size());
 
-            if (asset)
-                asset->AddRelation(assetEntries->size());
+            i++;
+        }
+    }
+
+    char* pAnimSeqBuf = nullptr;
+
+    if (mapEntry.HasMember("animseqs"))
+    {
+        if (!mapEntry["animseqs"].IsArray())
+            Error("found field 'animrigs' on model asset '%s' with invalid type. expected 'array'\n", assetPath);
+
+        pHdr->animSeqCount = mapEntry["animseqs"].Size();
+
+        pAnimSeqBuf = new char[mapEntry["animseqs"].Size() * sizeof(uint64_t)];
+
+        rmem aseqBuf(pAnimSeqBuf);
+
+        int i = 0;
+        for (auto& it : mapEntry["animseqs"].GetArray())
+        {
+            if (!it.IsString())
+                Error("invalid animseq entry for model '%s'\n", assetPath);
+
+            if (it.GetStringLength() == 0)
+                Error("anim seq #%i for model '%s' was defined as an invalid empty string\n", i, assetPath);
+
+            uint64_t guid = RTech::StringToGuid(it.GetStdString().c_str());
+
+            aseqBuf.write<uint64_t>(guid);
+
+            // check if anim rig is a local asset so that the relation can be added
+            if (pak->DoesAssetExist(guid))
+                pak->GetAssetByGuid(guid)->AddRelation(assetEntries->size());
 
             i++;
         }
@@ -144,16 +176,15 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     if (mapEntry.HasMember("starpakPath") && mapEntry["starpakPath"].IsString())
     {
         starpakPath = mapEntry["starpakPath"].GetStdString();
-
         pak->AddStarpakReference(starpakPath);
     }
 
     if (starpakPath.length() == 0)
         Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\n-- to fix: add 'starpakPath' as an rpak-wide variable\n-- or: add 'starpakPath' as an asset specific variable\n", assetPath);
+    else
+        pak->AddStarpakReference(starpakPath);
 
-
-    SRPkDataEntry de{ 0, vgFileSize, (uint8_t*)pVGBuf};
-    de = pak->AddStarpakDataEntry(de);
+    SRPkDataEntry de = pak->AddStarpakDataEntry({ 0, vgFileSize, (uint8_t*)pVGBuf });
 
     pHdr->alignedStreamingSize = de.m_nDataSize;
 
@@ -162,7 +193,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(ModelHeader), SF_HEAD, 16);
 
     // data segment
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(mdlhdr.length + fileNameDataSize, SF_CPU, 64);
+    size_t DataSize = mdlhdr.length + fileNameDataSize + sizeof(pVGBuf);
+
+    _vseginfo_t dataseginfo = pak->CreateNewSegment(DataSize, SF_CPU, 64);
 
     // .phy
     _vseginfo_t physeginfo;
@@ -174,8 +207,12 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     if (pAnimRigBuf)
         arigseginfo = pak->CreateNewSegment(pHdr->animRigCount * 8, SF_CPU, 64);
 
-    pHdr->pName = { dataseginfo.index, 0 };
+    // animation seqs
+    _vseginfo_t aseqseginfo;
+    if (pAnimSeqBuf)
+        aseqseginfo = pak->CreateNewSegment(pHdr->animSeqCount * 8, SF_CPU, 64);
 
+    pHdr->pName = { dataseginfo.index, 0 };
     pHdr->pRMDL = { dataseginfo.index, fileNameDataSize };
 
     pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pRMDL));
@@ -193,19 +230,25 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     {
         pHdr->pAnimRigs = { arigseginfo.index, 0 };
         pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pAnimRigs));
-
+        
         for (int i = 0; i < pHdr->animRigCount; ++i)
-        {
             pak->AddGuidDescriptor(&guids, arigseginfo.index, sizeof(uint64_t) * i);
-        }
     }
 
-    rmem dataBuf(pDataBuf);
-    dataBuf.seek(fileNameDataSize + mdlhdr.textureindex, rseekdir::beg);
+    if (pAnimSeqBuf)
+    {
+        pHdr->pAnimSeqs = { aseqseginfo.index, 0 };
+        pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pAnimSeqs));
+        
+        for (int i = 0; i < pHdr->animSeqCount; ++i)
+            pak->AddGuidDescriptor(&guids, aseqseginfo.index, sizeof(uint64_t) * i);
+    }
 
-    bool hasMaterialOverrides = mapEntry.HasMember("materials");
+
+    rmem dataBuf(pDataBuf);
 
     // handle material overrides register all material guids
+    Log("Materials -> %d\n", mdlhdr.numtextures);
     for (int i = 0; i < mdlhdr.numtextures; ++i)
     {
         dataBuf.seek(fileNameDataSize + mdlhdr.textureindex + (i * sizeof(materialref_t)), rseekdir::beg);
@@ -213,61 +256,63 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         materialref_t* material = dataBuf.get<materialref_t>();
 
         // if material overrides are possible and this material has an entry in the array
-        if (hasMaterialOverrides && mapEntry["materials"].GetArray().Size() > i)
+        if (material->guid != 0 && mapEntry.HasMember("materials") && mapEntry["materials"].GetArray().Size() > i)
         {
             auto& matlEntry = mapEntry["materials"].GetArray()[i];
             
             // if string, calculate the guid
-            if (matlEntry.IsString())
+            if (matlEntry.IsString() && matlEntry.GetStringLength() != 0)
             {
-                if (matlEntry.GetStringLength() != 0) // if no material path, use the original model material
-                    material->guid = RTech::StringToGuid(std::string("material/" + matlEntry.GetStdString() + ".rpak").c_str()); // use user provided path
+               // if no material path, use the original model material
+               if (matlEntry.GetStdString() == "none") // use wingman elite mat as placeholder
+                    material->guid = RTech::StringToGuid("material/models/Weapons_R2/wingman_elite/wingman_elite_sknp.rpak");
+               else
+                    material->guid = RTech::StringToGuid(("material/" + matlEntry.GetStdString() + ".rpak").c_str()); // use user provided path
             }
             // if uint64, treat the value as the guid
-            else if (matlEntry.IsUint64())
+            else if (matlEntry.IsUint64() && matlEntry.GetUint64() != 0x0)
                 material->guid = matlEntry.GetUint64();
         }
 
         if(material->guid != 0)
             pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(materialref_t, guid));
 
-        RPakAssetEntry* asset = pak->GetAssetByGuid(material->guid);
-
-        if (asset)
-            asset->AddRelation(assetEntries->size());
+        Log("Material Guid -> 0x%llX\n", material->guid);
     }
 
-    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
-    pak->AddRawDataBlock(shdb);
+	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
 
-    RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf };
-    pak->AddRawDataBlock(rdb);
+	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
 
-    uint32_t lastPageIdx = dataseginfo.index;
+	uint32_t lastPageIdx = dataseginfo.index;
 
-    if (phyBuf)
-    {
-        RPakRawDataBlock phydb{ physeginfo.index, physeginfo.size, (uint8_t*)phyBuf };
-        pak->AddRawDataBlock(phydb);
-        lastPageIdx = physeginfo.index;
-    }
+	if (phyBuf)
+	{
+		pak->AddRawDataBlock({ physeginfo.index, physeginfo.size, (uint8_t*)phyBuf });
+		lastPageIdx = physeginfo.index;
+	}
 
-    if (pAnimRigBuf)
-    {
-        RPakRawDataBlock arigdb{ arigseginfo.index, arigseginfo.size, (uint8_t*)pAnimRigBuf };
-        pak->AddRawDataBlock(arigdb);
-        lastPageIdx = arigseginfo.index;
-    }
+	if (pAnimRigBuf)
+	{
+		pak->AddRawDataBlock({ arigseginfo.index, arigseginfo.size, (uint8_t*)pAnimRigBuf });
+		lastPageIdx = arigseginfo.index;
+	}
+
+	if (pAnimSeqBuf)
+	{
+		pak->AddRawDataBlock({ aseqseginfo.index, aseqseginfo.size, (uint8_t*)pAnimSeqBuf });
+		lastPageIdx = aseqseginfo.index;
+	}
 
     RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, de.m_nOffset, -1, (std::uint32_t)AssetType::RMDL);
     asset.version = RMDL_VERSION;
+
     // i have literally no idea what these are
     asset.pageEnd = lastPageIdx + 1;
-    asset.unk1 = 2;
+    asset.unk1 = guids.size() + 1;
 
     asset.AddGuids(&guids);
-
     assetEntries->push_back(asset);
 }

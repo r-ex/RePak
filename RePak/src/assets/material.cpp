@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Assets.h"
+#include "assets/material.h"
 
 // VERSION 7
 void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
@@ -696,7 +697,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
-    uint32_t assetUsesCount = 0; // track how many other assets are used by this asset
     MaterialHeaderV15* mtlHdr = new MaterialHeaderV15();
     std::string sAssetPath = std::string(assetPath);
 
@@ -787,7 +787,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
             else
                 Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
 
-            assetUsesCount++;
         }
         dataBuf += sizeof(uint64_t);
         textureIdx++; // Next texture index coming up.
@@ -826,7 +825,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
-        assetUsesCount += 4;
 
         mtlHdr->m_pShaderSet = 0x1D9FFF314E152725;
     }
@@ -842,7 +840,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
-        assetUsesCount += 4;
 
         mtlHdr->m_pShaderSet = 0x4B0F3B4CBD009096;
     }
@@ -858,13 +855,19 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
-        assetUsesCount += 4;
 
         mtlHdr->m_pShaderSet = 0x2a2db3a47af9b3d5;
     }
 
+    if (mapEntry.HasMember("shaderset"))
+    {
+        if (mapEntry["shaderset"].IsString() && mapEntry["shaderset"].GetStdString() != "")
+            mtlHdr->m_pShaderSet = RTech::StringToGuid(mapEntry["shaderset"].GetStdString().c_str());
+        else if (mapEntry["shaderset"].IsUint64() && mapEntry["shaderset"].GetUint64() != 0)
+            mtlHdr->m_pShaderSet = mapEntry["shaderset"].GetUint64();
+    }
+
     pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_pShaderSet));
-    assetUsesCount++;
 
     if (mtlHdr->m_pShaderSet != 0)
     {
@@ -876,15 +879,14 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     // Is this a colpass asset?
     bool bColpass = false;
-    if (mapEntry.HasMember("colpass"))
+    if (mapEntry.HasMember("colpass") && mapEntry["colpass"].IsString())
     {
         std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + ".rpak";
         mtlHdr->m_GUIDRefs[4] = RTech::StringToGuid(colpassPath.c_str());
 
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 32);
-        assetUsesCount++;
 
-        bColpass = false;
+        bColpass = true;
     }
 
     for (int i = 0; i < 5; ++i)
@@ -917,55 +919,69 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         for (int j = 0; j < 8; ++j)
             mtlHdr->m_UnknownSections[i].m_Unknown1[j] = 0xf0000000;
 
-        uint32_t f1 = bColpass ? 0x5 : 0x17;
+        uint16_t visFlag = bColpass ? MatVisFlags::Colpass : MatVisFlags::Opaque;
+        uint16_t faceFlag = MatRenderFlags::NoCulling;
+
+        if (mapEntry.HasMember("visflags") && mapEntry["visflags"].IsString()) {
+            std::string vis = mapEntry["visflags"].GetStdString();
+
+            if (vis == "opaque")            visFlag = MatVisFlags::Opaque;
+            else if (vis == "transparent")  visFlag = MatVisFlags::Transparent;
+            else if (vis == "colpass")      visFlag = MatVisFlags::Colpass;
+            else if (vis == "none")         visFlag = MatVisFlags::None;
+        }
+
+        if (mapEntry.HasMember("drawflags") && mapEntry["drawflags"].IsString()) {
+            std::string draw = mapEntry["drawflags"].GetStdString();
+
+            if (draw == "culling")        faceFlag = MatRenderFlags::Culling;
+            else if (draw == "wireframe") faceFlag = MatRenderFlags::Wireframe;
+            else if (draw == "inverted")  faceFlag = MatRenderFlags::Inverted;
+            else if (draw == "unknown")   faceFlag = MatRenderFlags::Unknown;
+            else if (draw == "default")   faceFlag = MatRenderFlags::Default;
+        }
 
         mtlHdr->m_UnknownSections[i].m_UnkRenderFlags = 4;
-        mtlHdr->m_UnknownSections[i].m_VisibilityFlags = f1;
-        mtlHdr->m_UnknownSections[i].m_FaceDrawingFlags = 6;
+        mtlHdr->m_UnknownSections[i].m_VisibilityFlags = visFlag;
+        mtlHdr->m_UnknownSections[i].m_FaceDrawingFlags = faceFlag;
     }
 
     //////////////////////////////////////////
     /// cpu
 
-    // required for accurate colour
-    unsigned char testData[544] = {
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0xAB, 0xAA, 0x2A, 0x3E, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x1C, 0x46, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,
-        0x81, 0x95, 0xE3, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x00, 0x00, 0x66, 0x66, 0x66, 0x3F, 0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0x3F,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0xDE, 0x88, 0x1B, 0x3D, 0xDE, 0x88, 0x1B, 0x3D, 0xDE, 0x88, 0x1B, 0x3D,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-    };
+   // required for accurate colour
+    MaterialCPUDataV15 CpuData;
 
-    std::uint64_t cpuDataSize = sizeof(testData) / sizeof(unsigned char);
+    if (mapEntry.HasMember("cputype") && mapEntry["cputype"].IsString())
+    {
+        std::string entry = mapEntry["cputype"].GetStdString();
+
+        if (entry == "weapon")
+        {
+            CpuData.uv1.c_RotScaleX = { -0.000000, 1.000000 };
+            CpuData.uv1.c_RotScaleY = { 0.000000, 1.000000 };
+            CpuData.uv1.c_Translate = { 0.200000, 0.100000 };
+            CpuData.uv2.c_RotScaleX = { -0.000000, 1.000000 };
+            CpuData.uv2.c_RotScaleY = { 0.000000, 1.000000 };
+            CpuData.uv2.c_Translate = { 0.010000, -0.000000 };
+            CpuData.uv3.c_RotScaleX = { 1.000000, -0.000000 };
+            CpuData.uv3.c_RotScaleY = { 0.000000, 1.000000 };
+            CpuData.uv3.c_Translate = { -0.000000, -0.000000 };
+            CpuData.uv4.c_RotScaleX = { 1.000000, -0.000000 };
+            CpuData.uv4.c_RotScaleY = { 0.000000, 1.000000 };
+            CpuData.uv4.c_Translate = { -0.000000, -0.000000 };
+            CpuData.uv5.c_RotScaleX = { 1.000000, -0.000000 };
+            CpuData.uv5.c_RotScaleY = { 0.000000, 1.000000 };
+            CpuData.uv5.c_Translate = { -0.000000, -0.000000 };
+
+            CpuData.c_uvDistortionIntensity = { 0.300000, 0.300000 };
+
+            CpuData.c_emissiveEdgeFadeExponent = 2.000000;
+            CpuData.c_emissiveEdgeFadeOuter = 1.500000;
+        }
+    }
+
+    std::uint64_t cpuDataSize = sizeof(MaterialCPUDataV15);
 
     // cpu data
     _vseginfo_t cpuseginfo = pak->CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, SF_CPU | SF_TEMP, 16);
@@ -983,7 +999,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     memcpy_s(cpuData, sizeof(MaterialCPUHeader), &cpuhdr, sizeof(MaterialCPUHeader));
 
     // copy the rest of the data after the header
-    memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, testData, cpuDataSize);
+    memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, &CpuData, cpuDataSize);
 
     //////////////////////////////////////////
 

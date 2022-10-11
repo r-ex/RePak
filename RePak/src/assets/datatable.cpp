@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Assets.h"
+#include "assets/datatable.h"
 #include <regex>
 
 std::unordered_map<std::string, dtblcoltype_t> DataTableColumnMap =

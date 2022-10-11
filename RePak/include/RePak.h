@@ -22,6 +22,15 @@ struct _vseginfo_t
 			func_v7(this, &assetEntries, file["path"].GetString(), file); \
 	}
 
+#define NOPATH_ASSET_HANDLER(ext, file, assetEntries, func_v7, func_v8) \
+	if (file["$type"].GetStdString() == std::string(ext)) \
+	{ \
+		if(this->m_Version == 8 && func_v8) \
+			func_v8(this, &assetEntries, file); \
+		if(this->m_Version == 7 && func_v7) \
+			func_v7(this, &assetEntries, file); \
+	}
+
 class CPakFile
 {
 public:
@@ -34,12 +43,20 @@ public:
 	void AddAsset(rapidjson::Value& file)
 	{
 		ASSET_HANDLER("txtr", file, m_Assets, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
+		NOPATH_ASSET_HANDLER("txtrlist", file, m_Assets, Assets::AddTextureAssetList_v8, Assets::AddTextureAssetList_v8);
 		ASSET_HANDLER("uimg", file, m_Assets, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
 		ASSET_HANDLER("Ptch", file, m_Assets, Assets::AddPatchAsset, Assets::AddPatchAsset);
 		ASSET_HANDLER("dtbl", file, m_Assets, Assets::AddDataTableAsset_v0, Assets::AddDataTableAsset_v1);
 		ASSET_HANDLER("rmdl", file, m_Assets, Assets::AddModelAsset_stub, Assets::AddModelAsset_v9);
 		ASSET_HANDLER("matl", file, m_Assets, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
-		ASSET_HANDLER("rseq", file, m_Assets, Assets::AddAnimSeqAsset_stub, Assets::AddAnimSeqAsset_v7);
+
+		//ASSET_HANDLER("shds", file, m_Assets, Assets::AddShaderSetAsset_stub, Assets::AddShaderSetAsset_v11);
+		//ASSET_HANDLER("shdr", file, m_Assets, Assets::AddShaderSetAsset_stub, Assets::AddShaderAsset_v12);
+
+		//ASSET_HANDLER("stlt", file, assets, Assets::AddSettingsLayoutAsset_v0, Assets::AddSettingsLayoutAsset_v0);
+		//ASSET_HANDLER("stgs", file, m_Assets, Assets::AddSettingsAsset_v1, Assets::AddSettingsAsset_v1);
+		ASSET_HANDLER("arig", file, m_Assets, Assets::AddRigAsset_stub, Assets::AddRigAsset_v4);
+		ASSET_HANDLER("aseq", file, m_Assets, Assets::AddRseqAsset_stub, Assets::AddRseqAsset_v7);
 	};
 
 	inline bool IsFlagSet(int flag) { return this->flags & flag; };
@@ -237,6 +254,22 @@ public:
 		}
 		Debug("failed to find asset with guid %llX\n", guid);
 		return nullptr;
+	}
+
+	bool DoesAssetExist(uint64_t guid, uint32_t* idx = nullptr)
+	{
+		uint32_t i = 0;
+		for (auto& it : m_Assets)
+		{
+			if (it.guid == guid)
+			{
+				if (idx)
+					*idx = i;
+				return true;
+			}
+			i++;
+		}
+		return false;
 	}
 
 	// starpaks

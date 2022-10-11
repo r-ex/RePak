@@ -2,10 +2,29 @@
 #include "rmem.h"
 #include "Assets.h"
 #include "dxutils.h"
+#include "assets/texture.h"
+
+void Assets::AddTextureAssetList_v8(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, rapidjson::Value& mapEntry)
+{
+    if (mapEntry.HasMember("textures") && mapEntry["textures"].IsArray())
+    {
+        uint32_t count = mapEntry["textures"].Size();
+
+        if (count == 0)
+            Warning("invalid texture count must not be 0 for texture list\n");
+
+        for (auto& entry : mapEntry["textures"].GetArray())
+        {
+            if (entry.IsString() && !pak->DoesAssetExist(RTech::StringToGuid(entry.GetString())))
+                Assets::AddTextureAsset_v8(pak, assetEntries, entry.GetString(), mapEntry);
+        }
+    }
+}
 
 void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Log("Adding txtr asset '%s'\n", assetPath);
+    Log("\n==============================\n");
+    Log("Asset txtr -> '%s'\n", assetPath);
 
     std::string filePath = g_sAssetsDir + assetPath + ".dds";
 
@@ -167,7 +186,12 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
         hdr->imgFormat = s_txtrFormatMap[dxgiFormat];
     }
 
-    hdr->guid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
+    if (mapEntry.HasMember("guid") && mapEntry["guid"].IsUint64())
+        hdr->guid = mapEntry["guid"].GetUint64();
+    else
+        hdr->guid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
+
+    Log("-> GUID: 0x%llX\n", hdr->guid);
 
     bool bSaveDebugName = pak->IsFlagSet(PF_KEEP_DEV) || (mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool());
 
@@ -258,19 +282,20 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
         if (mapEntry.HasMember("starpakPath"))
         {
             sStarpakPath = mapEntry["starpakPath"].GetString();
-
             pak->AddStarpakReference(sStarpakPath);
         }
-
+           
         if (sStarpakPath.length() == 0)
             Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\nto fix: add 'starpakPath' as an rpak-wide variable\nor: add 'starpakPath' as an asset specific variable\n", assetPath);
+        else
+            pak->AddStarpakReference(sStarpakPath);
 
         SRPkDataEntry de{ 0, nStreamedMipSize, (uint8_t*)streamedbuf };
         de = pak->AddStarpakDataEntry(de);
         starpakOffset = de.m_nOffset;
     }
 
-    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TXTR);
+    asset.InitAsset(hdr->guid, subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TXTR);
     asset.version = TXTR_VERSION;
 
     asset.pageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1

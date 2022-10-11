@@ -1,100 +1,201 @@
 #include "pch.h"
-#include "rpak.h"
+#include "Assets.h"
+#include "assets/model.h"
+#include "assets/animation.h"
 
-
-void Assets::AddAnimSeqAsset_stub(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddRigAsset_stub(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-	Error("unsupported asset type 'aseq' for version 7\n");
+	Error("unsupported asset type 'rrig' for version 7");
 }
 
-void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddRseqAsset_stub(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding aseq asset '%s'\n", assetPath);
+	Error("unsupported asset type 'aseq' for version 7");
+}
 
-    std::string sAssetName = assetPath;
+void Assets::AddRigAsset_v4(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+{
+	std::vector<RPakGuidDescriptor> guids{};
 
-    AnimSequenceHeader* pHdr = new AnimSequenceHeader();
+	Log("\n==============================\n");
+	Log("Asset arig -> '%s'\n", assetPath);
 
-    std::string rseqFilePath = g_sAssetsDir + sAssetName;
+	std::string sAssetName = assetPath;
+	std::string skelFilePath = g_sAssetsDir + sAssetName;
 
-    // require rseq file to exist
-    REQUIRE_FILE(rseqFilePath);
+	REQUIRE_FILE(skelFilePath);
 
-    uint32_t fileNameDataSize = sAssetName.length() + 1;
-    uint32_t rseqFileSize = (uint32_t)Utils::GetFileSize(rseqFilePath);
+	AnimRigHeader* pHdr = new AnimRigHeader();
 
-    uint32_t bufAlign = 4 - (fileNameDataSize + rseqFileSize) % 4;
+	if (mapEntry.HasMember("animseqs") && mapEntry["animseqs"].IsArray())
+	{
+		pHdr->AseqRefCount = mapEntry["animseqs"].Size();
 
-    char* pDataBuf = new char[fileNameDataSize + rseqFileSize + bufAlign]{};
+		if (pHdr->AseqRefCount == 0)
+			Error("invalid animseq count must not be 0 for arig '%s'\n", assetPath);
 
-    // write the rseq file path into the data buffer
-    snprintf(pDataBuf, fileNameDataSize, "%s", sAssetName.c_str());
+		for (auto& entry : mapEntry["animseqs"].GetArray())
+		{
+			if (entry.IsString() && !pak->DoesAssetExist(RTech::StringToGuid(entry.GetString())))
+				Assets::AddRseqAsset_v7(pak, assetEntries, entry.GetString(), mapEntry);
+		}
+	}
 
-    // begin rseq input
-    BinaryIO rseqInput;
-    rseqInput.open(rseqFilePath, BinaryIOMode::Read);
+	// begin rrig input
+	BinaryIO skelInput;
+	skelInput.open(skelFilePath, BinaryIOMode::Read);
 
-    // go back to the beginning of the file to read all the data
-    rseqInput.seek(0);
+	studiohdr_t mdlhdr = skelInput.read<studiohdr_t>();
 
-    // write the rseq data into the data buffer
-    rseqInput.getReader()->read(pDataBuf + fileNameDataSize, rseqFileSize);
-    rseqInput.close();
+	if (mdlhdr.id != 0x54534449) // "IDST"
+	{
+		Warning("invalid file magic for arig asset '%s'. expected %x, found %x. skipping asset...\n", sAssetName.c_str(), 0x54534449, mdlhdr.id);
+		return;
+	}
 
-    mstudioseqdesc_t seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(pDataBuf + fileNameDataSize);
+	if (mdlhdr.version != 54)
+	{
+		Warning("invalid version for arig asset '%s'. expected %i, found %i. skipping asset...\n", sAssetName.c_str(), 54, mdlhdr.version);
+		return;
+	}
 
-    // Segments
-    // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(AnimSequenceHeader), SF_HEAD, 16);
+	uint32_t NameDataSize = sAssetName.length() + 1;
+	uint32_t NameAlignment = NameDataSize % 4;
+	NameDataSize += NameAlignment;
 
-    // data segment
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(rseqFileSize + fileNameDataSize + bufAlign, SF_CPU, 64);
+	size_t DataBufferSize = NameDataSize + mdlhdr.length + (pHdr->AseqRefCount * sizeof(uint64_t));
+	char* pDataBuf = new char[DataBufferSize];
 
-    pHdr->szname = { dataseginfo.index, 0 };
+	// go back to the beginning of the file to read all the data
+	skelInput.seek(0);
 
-    pHdr->data = { dataseginfo.index, fileNameDataSize };
+	// write the skeleton data into the data buffer
+	skelInput.getReader()->read(pDataBuf + NameDataSize, mdlhdr.length);
+	skelInput.close();
 
-    pak->AddPointer(subhdrinfo.index, offsetof(AnimSequenceHeader, szname));
-    pak->AddPointer(subhdrinfo.index, offsetof(AnimSequenceHeader, data));
+	// Segments
+	// asset header
+	_vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(AnimRigHeader), SF_HEAD, 16);
 
-    std::vector<RPakGuidDescriptor> guids{};
+	// data segment
+	_vseginfo_t dataseginfo = pak->CreateNewSegment(DataBufferSize, SF_CPU, 64);
 
-    rmem dataBuf(pDataBuf);
-    dataBuf.seek(fileNameDataSize + seqdesc.autolayerindex, rseekdir::beg);
+	// write the rrig file path into the data buffer
+	snprintf(pDataBuf, NameDataSize, "%s", sAssetName.c_str());
 
-    // register autolayer aseq guids
-    for (int i = 0; i < seqdesc.numautolayers; ++i)
-    {
-        dataBuf.seek(fileNameDataSize + seqdesc.autolayerindex + (i * sizeof(mstudioautolayer_t)), rseekdir::beg);
+	rmem DataWriter(pDataBuf);
+	//DataWriter.seek(NameDataSize + mdlhdr.length, rseekdir::beg);
 
-        mstudioautolayer_t* autolayer = dataBuf.get<mstudioautolayer_t>();
+	uint32_t SegmentOffset = 0;
+	pHdr->pName = { dataseginfo.index, SegmentOffset };
 
-        if (autolayer->guid != 0)
-            pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid));
+	SegmentOffset += NameDataSize;
+	pHdr->pSkeleton = { dataseginfo.index, SegmentOffset };
 
-        RPakAssetEntry* asset = pak->GetAssetByGuid(autolayer->guid);
+	SegmentOffset += mdlhdr.length;
+	pHdr->pAseqRefs = { dataseginfo.index, SegmentOffset };
 
-        if (asset)
-            asset->AddRelation(assetEntries->size());
-    }
+	pak->AddPointer(subhdrinfo.index, offsetof(AnimRigHeader, pName));
+	pak->AddPointer(subhdrinfo.index, offsetof(AnimRigHeader, pSkeleton));
+	pak->AddPointer(subhdrinfo.index, offsetof(AnimRigHeader, pAseqRefs));
 
-    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
-    pak->AddRawDataBlock(shdb);
+	for (int i = 0; i < pHdr->AseqRefCount; i++)
+	{
+		rapidjson::Value& Entry = mapEntry["animseqs"].GetArray()[i];
 
-    RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf };
-    pak->AddRawDataBlock(rdb);
+		if (!Entry.IsString())
+			Error("invalid animseq entry for arig '%s'\n", assetPath);
 
-    uint32_t lastPageIdx = dataseginfo.index;
+		uint64_t Offset = SegmentOffset + (i * sizeof(uint64_t));
+		uint64_t GUID = RTech::StringToGuid(Entry.GetString());
 
-    RPakAssetEntry asset;
+		if (GUID != 0)
+		{
+			RPakAssetEntry* asset = pak->GetAssetByGuid(GUID);
 
-    asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::ASEQ);
-    asset.version = 7;
-    // i have literally no idea what these are
-    asset.pageEnd = lastPageIdx + 1;
-    asset.unk1 = 2;
+			if (asset)
+			{
+				DataWriter.write<uint64_t>(GUID, Offset);
+				pak->AddGuidDescriptor(&guids, dataseginfo.index, Offset);
 
-    asset.AddGuids(&guids);
+				asset->AddRelation(assetEntries->size());
+			}
+		}
+	}
 
-    assetEntries->push_back(asset);
+	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
+	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
+
+	RPakAssetEntry asset;
+	asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::ARIG);
+
+	asset.version = 4;
+
+	asset.pageEnd = dataseginfo.index + 1;
+
+	asset.relationCount = pHdr->AseqRefCount + 1;
+	asset.unk1 = guids.size() + 1; // uses + 1
+
+	asset.AddGuids(&guids);
+	assetEntries->push_back(asset);
+}
+
+void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+{
+	std::string sAssetName = assetPath;
+	std::string FilePath = g_sAssetsDir + sAssetName;
+
+	REQUIRE_FILE(FilePath);
+
+	//Log("\n==============================\n");
+	Log("Asset aseq -> '%s'\n", assetPath);
+
+	AnimHeader* pHdr = new AnimHeader();
+
+	size_t RseqSize = Utils::GetFileSize(FilePath);
+
+	BinaryIO rseqInput;
+	rseqInput.open(FilePath, BinaryIOMode::Read);
+
+	uint32_t NameDataSize = sAssetName.length() + 1;
+	uint32_t NameAlignment = NameDataSize % 4;
+	NameDataSize += NameAlignment;
+
+	size_t DataBufferSize = NameDataSize + RseqSize;
+	char* pDataBuf = new char[DataBufferSize];
+
+	rseqInput.getReader()->read(pDataBuf + NameDataSize, DataBufferSize);
+	rseqInput.close();
+
+	// Segments
+	// asset header
+	_vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(AnimHeader), SF_HEAD, 16);
+
+	// data segment
+	_vseginfo_t dataseginfo = pak->CreateNewSegment(DataBufferSize, SF_CPU, 64);
+
+	// write the rrig file path into the data buffer
+	snprintf(pDataBuf, NameDataSize, "%s", sAssetName.c_str());
+
+	pHdr->pName = { dataseginfo.index, 0 };
+
+	pHdr->pAnimation = { dataseginfo.index, NameDataSize };
+
+	pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pName));
+	pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pAnimation));
+	//pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pModelGuid));
+	//pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pSettings));
+	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
+	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
+
+	RPakAssetEntry asset;
+	asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::ASEQ);
+
+	asset.version = 7;
+
+	asset.pageEnd = dataseginfo.index + 1;
+
+	asset.unk1 = 1; // uses + 1
+
+	assetEntries->push_back(asset);
 }

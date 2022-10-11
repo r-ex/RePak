@@ -34,6 +34,9 @@
     <Filter Include="Source Files\assets">
       <UniqueIdentifier>{e323149f-3c50-45c7-94ad-532908ecc5e8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\assets">
+      <UniqueIdentifier>{a509c167-7080-405c-a7fc-dff1ce80dfa7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\pch.cpp">
@@ -70,6 +73,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\assets\animation.cpp">
+      <Filter>Source Files\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\shader.cpp">
+      <Filter>Source Files\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\settings.cpp">
       <Filter>Source Files\assets</Filter>
     </ClCompile>
   </ItemGroup>
@@ -217,6 +226,33 @@
     </ClInclude>
     <ClInclude Include="include\dxutils.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\animation.h">
+      <Filter>Header Files\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\settings.h">
+      <Filter>Header Files\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\rui.h">
+      <Filter>Header Files\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\patch.h">
+      <Filter>Header Files\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\datatable.h">
+      <Filter>Header Files\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\shader.h">
+      <Filter>Header Files\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\texture.h">
+      <Filter>Header Files\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\material.h">
+      <Filter>Header Files\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\model.h">
+      <Filter>Header Files\assets</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
