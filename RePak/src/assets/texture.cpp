@@ -10,11 +10,7 @@ void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* 
     std::string filePath = g_sAssetsDir + assetPath + ".dds";
 
     if (!FILE_EXISTS(filePath))
-    {
-        // this is a fatal error because if this asset is a dependency for another asset and we just ignore it
-        // we will crash later when trying to reference it
         Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());
-    }
 
     TextureHeader* hdr = new TextureHeader();
 
@@ -23,7 +19,7 @@ void Assets::AddTextureAsset_v8(RPakFileBase* pak, std::vector<RPakAssetEntry>* 
 
     uint64_t nInputFileSize = Utils::GetFileSize(filePath);
 
-    std::string sAssetName = assetPath; // todo: this needs to be changed to the actual name
+    std::string sAssetName = assetPath;
 
     uint32_t nLargestMipSize = 0;
     uint32_t nStreamedMipSize = 0;

@@ -4,7 +4,7 @@
 #define TXTR_VERSION 8
 #define UIMG_VERSION 10
 #define DTBL_VERSION 1
-#define RMDL_VERSION 9
+#define RMDL_VERSION 10
 #define MATL_VERSION 15
 
 struct RPakFileBase;

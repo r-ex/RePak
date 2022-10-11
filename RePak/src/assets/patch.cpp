@@ -16,7 +16,7 @@ void Assets::AddPatchAsset(RPakFileBase* pak, std::vector<RPakAssetEntry>* asset
     for (auto& it : mapEntry["entries"].GetArray())
     {
         std::string name = it["name"].GetStdString();
-        uint8_t patchNum = it["patchnum"].GetInt();
+        uint8_t patchNum = it["version"].GetInt();
 
         patchEntries.push_back({ name, patchNum, entryNamesSectionSize });
 
