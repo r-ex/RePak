@@ -717,17 +717,6 @@ struct UnknownMaterialSectionV12
 
 	__int64 reserved = 0; // probably
 
-	/*uint32_t UnkRenderLighting = 0;
-	uint32_t UnkRenderAliasing = 0;
-	uint32_t UnkRenderDoF = 0;
-	uint32_t UnkRenderUnknown = 0;
-
-	uint32_t m_UnknownFlags = 0; // this changes sometimes.
-	uint16_t m_VisibilityFlags = 0x17; // different render settings, such as opacity and transparency.
-	uint16_t m_FaceDrawingFlags = 0x6; // how the face is drawn, culling, wireframe, etc.
-
-	uint64_t m_Padding = 0;*/
-
 	/*VisibilityFlags
 	0x0000 unknown
 	0x0001 inverted ignorez
