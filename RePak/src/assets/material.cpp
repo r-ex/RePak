@@ -6,16 +6,24 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
-    uint32_t assetUsesCount = 0; // track how many other assets are used by this asset
+    int assetUsesCount = 1; // track how many other assets are used by this asset, set to 1 because a material should always have a shaderset, and it if doesn't you have other problems.
+    int ExternalAssetUsesCount = 0; // number of assets not within this rpak
+
     MaterialHeaderV12* mtlHdr = new MaterialHeaderV12();
-    std::string sAssetPath = std::string(assetPath);
+    std::string AssetPath = std::string(assetPath);
 
+    // this should be replaced with getting the resolution from the color texture
+    if (mapEntry.HasMember("width")) // Set material width.
+        mtlHdr->width = mapEntry["width"].GetInt();
+
+    if (mapEntry.HasMember("height")) // Set material width.
+        mtlHdr->height = mapEntry["height"].GetInt();
+
+    //===============
+    // Type Handling
+    //===============
     std::string type = "skn";
-    std::string subtype = "";
-    std::string visibility = "opaque";
-    uint64_t shadersetGuid = 0x0;
-
-    int externalAssetCount = 0; // number of assets not within this rpak
+    std::string subtype = ""; // mostly phased out thankfully
 
     if (mapEntry.HasMember("type")) // Sets the type of the material, skn, fix, etc.
         type = mapEntry["type"].GetStdString();
@@ -25,88 +33,131 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     if (mapEntry.HasMember("subtype")) // Set subtype, mostly redundant now, only used for "nose_art".
         subtype = mapEntry["subtype"].GetStdString();
 
+    // type handling checks
+    if (type == "gen")
+        mtlHdr->unknown3 = 0xFBA63181;
+    else
+        mtlHdr->unknown3 = 0x40D33E8F;
+
+    if (type == "gen" || type == "wld" || subtype == "nose_art")
+    {
+        for (int i = 0; i < 2; ++i)
+        {
+            mtlHdr->unkSections[i].unkRenderLighting = 0xF0138286;
+            mtlHdr->unkSections[i].unkRenderAliasing = 0xF0138286;
+            mtlHdr->unkSections[i].unkRenderDoF = 0xF0008286;
+            mtlHdr->unkSections[i].unkRenderUnknown = 0x00138286;
+
+            mtlHdr->unkSections[i].unkFlags = 0x00000005;
+        }
+    }
+    else if ((type == "fix" || type == "skn") && subtype != "nose_art")
+    {
+        for (int i = 0; i < 2; ++i)
+        {
+            mtlHdr->unkSections[i].unkRenderLighting = 0xF0138004;
+            mtlHdr->unkSections[i].unkRenderAliasing = 0xF0138004;
+            mtlHdr->unkSections[i].unkRenderDoF = 0xF0138004;
+            mtlHdr->unkSections[i].unkRenderUnknown = 0x00138004;
+
+            mtlHdr->unkSections[i].unkFlags = 0x00000004;
+        }
+    }
+    else
+    {
+        // exit because of unsupported type
+        Warning("Type '%s' is not valid in Titanfall 2!!", type.c_str());
+        exit(EXIT_FAILURE);
+        return;
+    }
+
+
+    // do material guid after types so we can get the type for hashing
+    // get material path and guid
+    std::string FullAssetPath = "material/" + AssetPath + "_" + type + ".rpak"; // Make full rpak asset path.
+
+    mtlHdr->guid = RTech::StringToGuid(FullAssetPath.c_str()); // Convert full rpak asset path to textureGUID and set it in the material header.
+
 
     //===============
-    // Set ShaderSet.
+    // Set ShaderSet
     //===============
+    uint64_t ShaderSetGUID = 0x0;
+
     if (mapEntry.HasMember("shaderset") && mapEntry["shaderset"].GetStdString() != "")
     {
-        shadersetGuid = RTech::StringToGuid(("shaderset/" + mapEntry["shaderset"].GetStdString() + ".rpak").c_str());
+        ShaderSetGUID = RTech::StringToGuid(("shaderset/" + mapEntry["shaderset"].GetStdString() + ".rpak").c_str());
     }
     else if (mapEntry.HasMember("shadersetGUID") && mapEntry["shadersetGUID"].GetStdString() != "")
     {
-        shadersetGuid = strtoul((mapEntry["shadersetGUID"].GetStdString()).c_str(), NULL, 0);
+        ShaderSetGUID = strtoul((mapEntry["shadersetGUID"].GetStdString()).c_str(), NULL, 0);
     }
     else
     {
-        shadersetGuid = RTech::StringToGuid("shaderset/uberAoCavEmitEntcolmeSamp2222222_skn.rpak");
+        ShaderSetGUID = RTech::StringToGuid("shaderset/uberAoCavEmitEntcolmeSamp2222222_skn.rpak");
         Warning("Adding material without an explicitly defined shaderset, Assuming 'uberAoCavEmitEntcolmeSamp2222222_skn'... \n");
     }
 
+    mtlHdr->shadersetGuid = ShaderSetGUID;
+
     // check if shaderset is local.
-    RPakAssetEntry* shdsAsset = pak->GetAssetByGuid(shadersetGuid, nullptr);
+    RPakAssetEntry* shdsAsset = pak->GetAssetByGuid(mtlHdr->shadersetGuid, nullptr);
 
     if (!shdsAsset)
-        externalAssetCount++;
-     
+        ExternalAssetUsesCount++;
 
-    // get material path and guid
-    std::string sFullAssetRpakPath = "material/" + sAssetPath + "_" + type + ".rpak"; // Make full rpak asset path.
 
-    mtlHdr->m_nGUID = RTech::StringToGuid(sFullAssetRpakPath.c_str()); // Convert full rpak asset path to textureGUID and set it in the material header.
-
-    // resolution handling
-    if (mapEntry.HasMember("width")) // Set material width.
-        mtlHdr->m_nWidth = mapEntry["width"].GetInt();
-
-    if (mapEntry.HasMember("height")) // Set material width.
-        mtlHdr->m_nHeight = mapEntry["height"].GetInt();
-
-    // flag vars in material header
+    //===========
+    // Set Flags
+    //===========
     if (mapEntry.HasMember("flags") && mapEntry["flags"].GetStdString() != "") // Set flags properly. Responsible for texture stretching, tiling etc.
-        mtlHdr->m_Flags = strtoul(("0x" + mapEntry["flags"].GetStdString()).c_str(), NULL, 0);
+        mtlHdr->flags = strtoul(("0x" + mapEntry["flags"].GetStdString()).c_str(), NULL, 0);
     else
-        mtlHdr->m_Flags = 0x1D0300;
+        mtlHdr->flags = 0x1D0300;
 
     if (mapEntry.HasMember("flags2") && mapEntry["flags2"].GetStdString() != "") // This does a lot of very important stuff.
-        mtlHdr->m_Flags2 = strtoul(("0x" + mapEntry["flags2"].GetStdString()).c_str(), NULL, 0);
+        mtlHdr->flags2 = strtoul(("0x" + mapEntry["flags2"].GetStdString()).c_str(), NULL, 0);
     else
-        mtlHdr->m_Flags2 = 0x56000020;
+        mtlHdr->flags2 = 0x56000020;
 
+    // not always 0x100000, however if the material you're trying to do doesn't have this seek help
+    mtlHdr->flags2 += 0x10000000000000;
 
     // Visibility related flags, opacity and the like.
+    std::string visibility = "opaque";
+
     if (mapEntry.HasMember("visibilityflags"))
     {
         visibility = mapEntry["visibilityflags"].GetString();
-        uint16_t visFlag = 0x0017;
+        short visFlag = 0x0017;
 
         if (visibility == "opaque") 
         {
-            visFlag = 0x0017;
+            visFlag = 0x17;
         }
         else if (visibility == "transparent")
         {
             // this will not work properly unless some flags are set in Flags2
-            visFlag = 0x0007;
+            visFlag = 0x7;
         }
         else if (visibility == "colpass")
         {
-            visFlag = 0x0005;
+            visFlag = 0x5;
         }
         else if (visibility == "none")
         {
             // for loadscreens
-            visFlag = 0x0000;
+            visFlag = 0x0;
         }
         else
         {
-            Log("No valid visibility specified, defaulting to opaque... \n");
+            //Log("No valid visibility specified, defaulting to opaque... \n");
 
             visFlag = 0x0017;
         }
 
-        mtlHdr->m_UnknownSections[0].m_VisibilityFlags = visFlag;
-        mtlHdr->m_UnknownSections[1].m_VisibilityFlags = visFlag;
+        mtlHdr->unkSections[0].visibilityFlags = visFlag;
+        mtlHdr->unkSections[1].visibilityFlags = visFlag;
     }
 
 
@@ -119,9 +170,13 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
 
     }
 
-    mtlHdr->m_UnknownSections[0].m_FaceDrawingFlags = faceFlag;
-    mtlHdr->m_UnknownSections[1].m_FaceDrawingFlags = faceFlag;
+    mtlHdr->unkSections[0].faceFlags = faceFlag;
+    mtlHdr->unkSections[1].faceFlags = faceFlag;
 
+
+    //================
+    // Do Data Buffer
+    //================
     std::string surface = "default";
     std::string surface2 = "default";
 
@@ -153,7 +208,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         surfaceDataBuffLength += surface2.length() + 1;
 
 
-    uint32_t assetPathSize = (sAssetPath.length() + 1);
+    uint32_t assetPathSize = (AssetPath.length() + 1);
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + surfaceDataBuffLength;
 
     // asset header
@@ -167,16 +222,17 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
 
     // ===============================
     // write the material path into the buffer
-    snprintf(dataBuf, sAssetPath.length() + 1, "%s", assetPath);
+    snprintf(dataBuf, AssetPath.length() + 1, "%s", assetPath);
     uint8_t assetPathAlignment = (assetPathSize % 4);
-    dataBuf += sAssetPath.length() + 1 + assetPathAlignment;
+    dataBuf += AssetPath.length() + 1 + assetPathAlignment;
 
     // ===============================
     // add the texture guids to the buffer
-    size_t guidPageOffset = sAssetPath.length() + 1 + assetPathAlignment;
+    size_t guidPageOffset = AssetPath.length() + 1 + assetPathAlignment;
 
     std::vector<RPakGuidDescriptor> guids{};
-
+    
+    // write texture slots into buffer
     int textureIdx = 0;
     int fileRelationIdx = -1;
     for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the first TextureGUID Map.
@@ -192,7 +248,10 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
             if (txtrAsset)
                 txtrAsset->AddRelation(assetEntries->size());
             else
+            {
                 Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
+                ExternalAssetUsesCount++;
+            }
 
             assetUsesCount++;
         }
@@ -200,8 +259,8 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
         textureIdx++; // Next texture index coming up.
     }
 
-    textureIdx = 0; // reset index for next TextureGUID Section.
-    for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the second TextureGUID Map.
+    textureIdx = 0; // reset index for streamed texture slots
+    for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the streamed TextureGUID Map.
     {
         *(uint64_t*)dataBuf = 0;
 
@@ -219,108 +278,43 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     // get the original pointer back so it can be used later for writing the buffer
     dataBuf = tmp;
 
+
     // ===============================
     // fill out the rest of the header
-    mtlHdr->m_pszName.m_nIndex = dataseginfo.index;
-    mtlHdr->m_pszName.m_nOffset = 0;
+    mtlHdr->pName.m_nIndex = dataseginfo.index;
+    mtlHdr->pName.m_nOffset = 0;
 
-    mtlHdr->m_pszSurfaceProp.m_nIndex = dataseginfo.index;
-    mtlHdr->m_pszSurfaceProp.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
+    mtlHdr->pSurfaceProp.m_nIndex = dataseginfo.index;
+    mtlHdr->pSurfaceProp.m_nOffset = (AssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
 
-    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszName));
-    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszSurfaceProp));
+    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, pName));
+    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, pSurfaceProp));
 
     if (mapEntry.HasMember("surface2")) 
     {
-        mtlHdr->m_pszSurfaceProp2.m_nIndex = dataseginfo.index;
-        mtlHdr->m_pszSurfaceProp2.m_nOffset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2) + (surface.length() + 1);
+        mtlHdr->pSurfaceProp2.m_nIndex = dataseginfo.index;
+        mtlHdr->pSurfaceProp2.m_nOffset = (AssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2) + (surface.length() + 1);
 
-        pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pszSurfaceProp2));
+        pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, pSurfaceProp2));
     }
 
-    //=======================
-    // Depth material set up.
-    uint64_t guidRefs[3] = { 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
+    //==========================
+    // Material Reference Setup
+    //==========================
 
-    int mId = 0;
-    int usedMId = 0;
-
-    for (auto& gu : mapEntry["materialrefs"].GetArray())
+    // make this sizeof guidrefs that way it could easily be used for apex
+    for (int i = 0; i < 3; i++)
     {
-        if (gu.GetStdString() != "")
+        auto& MaterialReference = mapEntry["materialrefs"].GetArray()[i];
+
+        if (MaterialReference.GetStdString() != "")
         {
-            guidRefs[mId] = RTech::StringToGuid(("material/" + gu.GetStdString() + "_" + type + ".rpak").c_str());
+            mtlHdr->guidRefs[i] = RTech::StringToGuid(("material/" + MaterialReference.GetStdString() + "_" + type + ".rpak").c_str());
 
-            pak->AddGuidDescriptor(&guids, subhdrinfo.index, (offsetof(MaterialHeaderV12, m_GUIDRefs) + (mId * 8)));
+            pak->AddGuidDescriptor(&guids, subhdrinfo.index, (offsetof(MaterialHeaderV12, guidRefs) + (i * 8)));
 
-            usedMId++;
-        }
-
-        mId++;
-    }
-
-    for (int i = 0; i < 3; ++i) 
-    {
-        mtlHdr->m_GUIDRefs[i] = guidRefs[i];
-
-        // check if matRef is local.
-        RPakAssetEntry* matRefAsset = pak->GetAssetByGuid(guidRefs[i], nullptr);
-
-        if (!matRefAsset)
-            externalAssetCount++;          
-    }
-
-    mtlHdr->m_pShaderSet = shadersetGuid;
-
-    assetUsesCount += (usedMId + 1);
-
-    // V12 type handling, mostly stripped now.
-    if (type == "gen")
-        mtlHdr->m_Unknown3 = 0xFBA63181;
-    else
-        mtlHdr->m_Unknown3 = 0x40D33E8F;
-
-    if (type == "gen" || type == "wld" || subtype == "nose_art")
-    {
-        for (int i = 0; i < 2; ++i)
-        {
-            mtlHdr->m_UnknownSections[i].UnkRenderLighting = 0xF0138286;
-            mtlHdr->m_UnknownSections[i].UnkRenderAliasing = 0xF0138286;
-            mtlHdr->m_UnknownSections[i].UnkRenderDoF = 0xF0008286;
-            mtlHdr->m_UnknownSections[i].UnkRenderUnknown = 0x00138286;
-
-            mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000005;
-        }
-    }
-    else if ((type == "fix" || type == "skn") && subtype != "nose_art")
-    {
-        for (int i = 0; i < 2; ++i)
-        {
-            mtlHdr->m_UnknownSections[i].UnkRenderLighting = 0xF0138004;
-            mtlHdr->m_UnknownSections[i].UnkRenderAliasing = 0xF0138004;
-            mtlHdr->m_UnknownSections[i].UnkRenderDoF = 0xF0138004;
-            mtlHdr->m_UnknownSections[i].UnkRenderUnknown = 0x00138004;
-
-            mtlHdr->m_UnknownSections[i].m_UnknownFlags = 0x00000004;
-        }
-    }
-    else
-    {
-        // exit because of unsupported type
-        Warning("Type '%s' is not valid in Titanfall 2!!", type.c_str());
-        exit(EXIT_FAILURE);
-        return;
-    }
-
-    pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, m_pShaderSet));
-    assetUsesCount++;
-
-    if (mtlHdr->m_pShaderSet != 0)
-    {
-        RPakAssetEntry* asset = pak->GetAssetByGuid(mtlHdr->m_pShaderSet);
-
-        if (asset)
-            asset->AddRelation(assetEntries->size());
+            assetUsesCount++;
+        }        
     }
 
     // Is this a colpass asset?
@@ -328,18 +322,19 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     if (mapEntry.HasMember("colpass"))
     {
         std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + "_" + type + ".rpak";
-        mtlHdr->m_GUIDRefs[3] = RTech::StringToGuid(colpassPath.c_str());
+        mtlHdr->guidRefs[3] = RTech::StringToGuid(colpassPath.c_str());
 
         // todo, the relations count is not being set properly on the colpass for whatever reason.
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, m_GUIDRefs) + 24);
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, guidRefs) + 24);
         assetUsesCount++;
 
         bColpass = false;
     }
 
+    // add uses and relations for material refs
     for (int i = 0; i < 4; ++i)
     {
-        uint64_t guid = mtlHdr->m_GUIDRefs[i];
+        uint64_t guid = mtlHdr->guidRefs[i];
 
         if (guid != 0)
         {
@@ -347,20 +342,35 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
 
             if (asset)
                 asset->AddRelation(assetEntries->size());
+            else
+                ExternalAssetUsesCount++;
         }
     }
+
+    // add uses and relations for shaderset
+    if (mtlHdr->shadersetGuid != 0)
+    {
+        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, shadersetGuid));
+
+        assetUsesCount++;
+
+        RPakAssetEntry* asset = pak->GetAssetByGuid(mtlHdr->shadersetGuid);
+
+        if (asset)
+            asset->AddRelation(assetEntries->size());
+        else
+            ExternalAssetUsesCount++;
+    }
     
-    mtlHdr->m_pTextureHandles.m_nIndex = dataseginfo.index;
-    mtlHdr->m_pTextureHandles.m_nOffset = guidPageOffset;
+    mtlHdr->pTextureHandles.m_nIndex = dataseginfo.index;
+    mtlHdr->pTextureHandles.m_nOffset = guidPageOffset;
 
-    mtlHdr->m_pStreamingTextureHandles.m_nIndex = dataseginfo.index;
-    mtlHdr->m_pStreamingTextureHandles.m_nOffset = guidPageOffset + textureRefSize;
+    mtlHdr->pStreamingTextureHandles.m_nIndex = dataseginfo.index;
+    mtlHdr->pStreamingTextureHandles.m_nOffset = guidPageOffset + textureRefSize;
 
-    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pTextureHandles));
-    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, m_pStreamingTextureHandles));
+    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, pTextureHandles));
+    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, pStreamingTextureHandles));
 
-    // not always 0x100000, however if the material you're trying to do doesn't have this seek help
-    mtlHdr->something2 = 0x100000;
 
     //////////////////////////////////////////
     /// cpu
@@ -370,10 +380,15 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     _vseginfo_t cpuseginfo = pak->CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16);
 
     MaterialCPUHeader cpuhdr{};
-    cpuhdr.m_pData.m_nIndex = cpuseginfo.index;
-    cpuhdr.m_pData.m_nOffset = sizeof(MaterialCPUHeader);
-    cpuhdr.m_nDataSize = cpuDataSize;
-    cpuhdr.m_nType = 3; // hardcode this until more is known.
+    cpuhdr.pData.m_nIndex = cpuseginfo.index;
+    cpuhdr.pData.m_nOffset = sizeof(MaterialCPUHeader);
+    cpuhdr.size = cpuDataSize;
+
+    // for debuging in the meantime
+    if (mapEntry.HasMember("ForceCPUVersion"))
+        cpuhdr.version = mapEntry["ForceCPUVersion"].GetInt();
+    else
+        cpuhdr.version = 3; // hardcode this until more is known.
 
     pak->AddPointer(cpuseginfo.index, 0);
 
@@ -385,16 +400,19 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     // copy the rest of the data after the header
     MaterialCPUDataV12 cpudata{};
 
+    // fill in cpu data
+
+    // ideally we can find better solutions for all of these but for now I cleaned it up
+    // emissivetint
     std::float_t emissivetint[3] = { 0.0, 0.0, 0.0 };
 
     if (mapEntry.HasMember("emissivetint"))
     {
-        int tintId = 0;
-        for (auto& sitf : mapEntry["emissivetint"].GetArray())
+        for (int i = 0; i < 3; i++)
         {
-            emissivetint[tintId] = sitf.GetFloat();
-
-            tintId++;
+            auto& EmissiveFloat = mapEntry["emissivetint"].GetArray()[i];
+            
+            emissivetint[i] = EmissiveFloat.GetFloat();
         }
     }
     else 
@@ -404,16 +422,16 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     cpudata.c_emissiveTint.y = emissivetint[1];
     cpudata.c_emissiveTint.z = emissivetint[2];
 
+    // albedotint
     std::float_t albedotint[3] = { 1.0, 1.0, 1.0 };
 
     if (mapEntry.HasMember("albedotint")) 
     {
-        int color2Id = 0;
-        for (auto& c2f : mapEntry["albedotint"].GetArray())
+        for (int i = 0; i < 3; i++)
         {
-            albedotint[color2Id] = c2f.GetFloat();
+            auto& AlbedoFloat = mapEntry["albedotint"].GetArray()[i];
 
-            color2Id++;
+            albedotint[i] = AlbedoFloat.GetFloat();
         }
     }
 
@@ -421,16 +439,38 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     cpudata.c_albedoTint.y = albedotint[1];
     cpudata.c_albedoTint.z = albedotint[2];
 
+    // uv transforms
     std::float_t uv1Transform[6] = { 1.0, 0, -0, 1.0, 0.0, 0.0 };
+    std::float_t uv2Transform[6] = { 1.0, 0, -0, 1.0, 0.0, 0.0 };
+    std::float_t uv3Transform[6] = { 1.0, 0, -0, 1.0, 0.0, 0.0 };
 
     if (mapEntry.HasMember("uv1transform"))
     {
-        int detailId = 0;
-        for (auto& dtm : mapEntry["uv1transform"].GetArray())
+        for (int i = 0; i < 6; i++)
         {
-            uv1Transform[detailId] = dtm.GetFloat();
+            auto& UVFloat = mapEntry["uv1transform"].GetArray()[i];
 
-            detailId++;
+            uv1Transform[i] = UVFloat.GetFloat();
+        }
+    }
+
+    if (mapEntry.HasMember("uv2transform"))
+    {
+        for (int i = 0; i < 6; i++)
+        {
+            auto& UVFloat = mapEntry["uv2transform"].GetArray()[i];
+
+            uv2Transform[i] = UVFloat.GetFloat();
+        }
+    }
+
+    if (mapEntry.HasMember("uv3transform"))
+    {
+        for (int i = 0; i < 6; i++)
+        {
+            auto& UVFloat = mapEntry["uv3transform"].GetArray()[i];
+
+            uv3Transform[i] = UVFloat.GetFloat();
         }
     }
 
@@ -440,6 +480,20 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     cpudata.c_uv1.uvScaleY = uv1Transform[3];
     cpudata.c_uv1.uvTranslateX = uv1Transform[4];
     cpudata.c_uv1.uvTranslateY = uv1Transform[5];
+
+    cpudata.c_uv2.uvScaleX = uv2Transform[0];
+    cpudata.c_uv2.uvRotationX = uv2Transform[1];
+    cpudata.c_uv2.uvRotationY = uv2Transform[2];
+    cpudata.c_uv2.uvScaleY = uv2Transform[3];
+    cpudata.c_uv2.uvTranslateX = uv2Transform[4];
+    cpudata.c_uv2.uvTranslateY = uv2Transform[5];
+
+    cpudata.c_uv3.uvScaleX = uv3Transform[0];
+    cpudata.c_uv3.uvRotationX = uv3Transform[1];
+    cpudata.c_uv3.uvRotationY = uv3Transform[2];
+    cpudata.c_uv3.uvScaleY = uv3Transform[3];
+    cpudata.c_uv3.uvTranslateX = uv3Transform[4];
+    cpudata.c_uv3.uvTranslateY = uv3Transform[5];
 
     memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, &cpudata, cpuDataSize);
     //////////////////////////////////////////
@@ -452,7 +506,7 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
 
     RPakAssetEntry asset;
 
-    asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
+    asset.InitAsset(RTech::StringToGuid(FullAssetPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
     asset.version = 12;
 
     asset.pageEnd = cpuseginfo.index + 1;
@@ -460,11 +514,11 @@ void Assets::AddMaterialAsset_v12(RPakFileBase* pak, std::vector<RPakAssetEntry>
     //asset.unk1 = bColpass ? 7 : 8; // what
     // unk1 appears to be maxusecount, although seemingly nothing is affected by changing it unless you exceed 18.
     // In every TF|2 material asset entry I've looked at it's always UsesCount + 1.
-    asset.unk1 = (assetUsesCount - externalAssetCount) + 1;
+    asset.unk1 = (assetUsesCount - ExternalAssetUsesCount) + 1;
 
     asset.AddGuids(&guids);
 
-    Debug("External assets: %i\n", externalAssetCount);
+    Debug("External assets: %i\n", ExternalAssetUsesCount);
 
     assetEntries->push_back(asset);
 }
@@ -710,10 +764,10 @@ void Assets::AddMaterialAsset_v15(RPakFileBase* pak, std::vector<RPakAssetEntry>
     _vseginfo_t cpuseginfo = pak->CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, SF_CPU | SF_TEMP, 16);
 
     MaterialCPUHeader cpuhdr{};
-    cpuhdr.m_pData.m_nIndex = cpuseginfo.index;
-    cpuhdr.m_pData.m_nOffset = sizeof(MaterialCPUHeader);
-    cpuhdr.m_nDataSize = cpuDataSize;
-    cpuhdr.m_nType = 3; // hardcode this until more is known, for apex specifically this will vary much more.
+    cpuhdr.pData.m_nIndex = cpuseginfo.index;
+    cpuhdr.pData.m_nOffset = sizeof(MaterialCPUHeader);
+    cpuhdr.size = cpuDataSize;
+    cpuhdr.version = 3; // hardcode this until more is known, for apex specifically this will vary much more.
 
     pak->AddPointer(cpuseginfo.index, 0);
 

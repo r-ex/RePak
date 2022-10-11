@@ -703,7 +703,21 @@ struct UnknownMaterialSectionV12
 	// not sure how these work but 0xF0 -> 0x00 toggles them off and vice versa.
 	// they seem to affect various rendering filters, said filters might actually be the used shaders.
 	// the duplicate one is likely for streamed textures.
-	uint32_t UnkRenderLighting = 0;
+	// not sure how these work but 0xF0 -> 0x00 toggles them off and vice versa.
+	// they seem to affect various rendering filters, said filters might actually be the used shaders.
+	// the duplicate one is likely for streamed textures.
+	uint32_t unkRenderLighting = 0;
+	uint32_t unkRenderAliasing = 0;
+	uint32_t unkRenderDoF = 0;
+	uint32_t unkRenderUnknown = 0;
+
+	int unkFlags = 0; // this changes sometimes.
+	short visibilityFlags = 0x17; // different render settings, such as opacity and transparency.
+	short faceFlags = 0x6; // how the face is drawn, culling, wireframe, etc.
+
+	__int64 reserved = 0; // probably
+
+	/*uint32_t UnkRenderLighting = 0;
 	uint32_t UnkRenderAliasing = 0;
 	uint32_t UnkRenderDoF = 0;
 	uint32_t UnkRenderUnknown = 0;
@@ -712,7 +726,7 @@ struct UnknownMaterialSectionV12
 	uint16_t m_VisibilityFlags = 0x17; // different render settings, such as opacity and transparency.
 	uint16_t m_FaceDrawingFlags = 0x6; // how the face is drawn, culling, wireframe, etc.
 
-	uint64_t m_Padding = 0;
+	uint64_t m_Padding = 0;*/
 
 	/*VisibilityFlags
 	0x0000 unknown
@@ -739,51 +753,47 @@ struct UnknownMaterialSectionV12
 // should be size of 208
 struct MaterialHeaderV12
 {
-	uint64_t m_VtblReserved = 0; // Gets set to CMaterialGlue vtbl ptr
-	uint8_t m_Padding[0x8]{}; // unused
+	__int64 reservedVtbl; // Gets set to CMaterialGlue vtbl ptr
+	char padding[8]; // unused
 
-	uint64_t m_nGUID = 0; // guid of this material asset
+	uint64_t guid; // guid of this material asset
 
-	RPakPtr m_pszName{}; // pointer to partial asset path
-	RPakPtr m_pszSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.txt)
-	RPakPtr m_pszSurfaceProp2{}; // pointer to surfaceprop2 
+	RPakPtr pName{}; // pointer to partial asset path
+	RPakPtr pSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.txt)
+	RPakPtr pSurfaceProp2{}; // pointer to surfaceprop2 
 
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
 	// IDX 3: DepthVSM
 	// IDX 4: ColPass
-	// Titanfall is does not have 'DepthShadowTight'
 
-	uint64_t m_GUIDRefs[4]{}; // Required to have proper textures.
+	uint64_t guidRefs[4]{}; // Required to have proper textures.
 
-	// these blocks dont seem to change often but are the same?
 	// these blocks relate to different render filters and flags. still not well understood.
-	UnknownMaterialSectionV12 m_UnknownSections[2];
+	UnknownMaterialSectionV12 unkSections[2];
 
-	uint64_t m_pShaderSet = 0; // guid of the shaderset asset that this material uses
+	uint64_t shadersetGuid = 0; // guid of the shaderset asset that this material uses
 
-	RPakPtr m_pTextureHandles{}; // TextureGUID Map 1
+	RPakPtr pTextureHandles{}; // TextureGUID Map
+	RPakPtr pStreamingTextureHandles{}; // reserved slot for texture guids which have streamed mip levels
+	short streamingTextureCount = 0; // reserved slot for the number of textures with streamed mip levels
 
-	// should be reserved - used to store the handles for any textures that have streaming mip levels
-	RPakPtr m_pStreamingTextureHandles{};
+	int flags = 0x0; // related to cpu data
 
-	int16_t m_nStreamingTextureHandleCount = 0; // Number of textures with streamed mip levels.
-	uint32_t m_Flags = 0x0; // see ImageFlags in the apex struct.
-	int16_t m_Unk1 = 0; // might be "m_Unknown2"
+	short unknown2 = 0; // reserved texture count?
 
-	uint64_t m_Padding1 = 0; // haven't observed anything here, however I really doubt this is actually padding.
+	__int64 reserved = 0; // nothing is ever placed here (as I've seen so far), probably reserved for stuff on load.
 
 	// seems to be 0xFBA63181 for loadscreens
-	uint32_t m_Unknown3 = 0xFBA63181; // name carried over from apex struct.
+	int unknown3 = 0xFBA63181; // name carried over from apex struct.
+	int unknown4 = 0; // name carried over from apex struct.
 
-	uint32_t m_Unk2 = 0; // this might actually be "m_Unknown4"
+	__int64 flags2 = 0x0;
 
-	uint32_t m_Flags2 = 0;
-	uint32_t something2 = 0x0; // seems mostly unchanged between all materials, including apex, however there are some edge cases where this is 0x0.
+	short width = 2048;
+	short height = 2048;
 
-	int16_t m_nWidth = 2048;
-	int16_t m_nHeight = 2048;
-	uint32_t m_Unk3 = 0; // might be padding but could also be something else such as "m_Unknown1"?.
+	int unknown1 = 0; // reserved texture count?
 
 	/* ImageFlags
 	0x050300 for loadscreens, 0x1D0300 for normal materials.
@@ -793,9 +803,9 @@ struct MaterialHeaderV12
 // header struct for the material asset cpu data
 struct MaterialCPUHeader
 {
-	RPakPtr  m_pData{}; // points to the rest of the cpu data. maybe for colour?
-	uint32_t m_nDataSize = 0;
-	uint32_t m_nType; // every unknown is now either datasize, version, or flags
+	RPakPtr  pData{}; // points to the rest of the cpu data. maybe for colour?
+	uint32_t size = 0;
+	uint32_t version; // every unknown is now either datasize, version, or flags
 };
 
 // the following two structs are found in the ""cpu data"", they are very much alike to what you would use in normal source materials.
