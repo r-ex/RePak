@@ -72,6 +72,7 @@ enum class AssetType : uint32_t
 };
 
 #pragma pack(push, 1)
+
 // represents a "pointer" into a mempage by page index and offset
 // when loaded, these usually get converted to a real pointer
 struct RPakPtr
@@ -85,17 +86,18 @@ struct RPakPtr
 // which should be written depending on the version
 struct RPakFileHeader
 {
-	uint32_t magic = 0x6b615052;
-	uint16_t fileVersion = 0x8;
-	uint8_t  flags[0x2];
+	DWORD magic = 0x6b615052;
+
+	short fileVersion = 0x8;
+	char  flags[0x2];
 	uint64_t fileTime; // this is actually FILETIME, but if we don't make it uint64_t here, it'll break the struct when writing
-	uint8_t  unk0[0x8];
+	char  unk0[0x8];
 	uint64_t compressedSize; // size of the rpak file on disk before decompression
 	uint64_t embeddedStarpakOffset = 0;
-	uint8_t  unk1[0x8];
+	char  unk1[0x8];
 	uint64_t decompressedSize; // actual data size of the rpak file after decompression
 	uint64_t embeddedStarpakSize = 0;
-	uint8_t  unk2[0x8];
+	char  unk2[0x8];
 	uint16_t starpakPathsSize = 0; // size in bytes of the section containing mandatory starpak paths
 	uint16_t optStarpakPathsSize = 0; // size in bytes of the section containing optional starpak paths
 	uint16_t virtualSegmentCount = 0;
@@ -107,15 +109,15 @@ struct RPakFileHeader
 	uint32_t guidDescriptorCount = 0;
 	uint32_t relationCount = 0;
 
-	// only in tf2
+	// only in tf2, related to external
 	uint32_t unk7count = 0;
 	uint32_t unk8count = 0;
 
 	// only in apex
-	uint8_t  unk3[0x1c];
+	char  unk3[0x1c];
 };
 
-struct RPakPatchCompressedHeader // Comes after file header if its an patch rpak.
+struct RPakPatchCompressedHeader // follows immediately after the file header in patch rpaks
 {
 	uint64_t compressedSize;
 	uint64_t decompressedSize;
@@ -140,27 +142,17 @@ struct RPakVirtualSegment
 struct RPakPageInfo
 {
 	uint32_t segIdx; // index into vseg array
-	uint32_t pageAlignment; // no idea
+	uint32_t pageAlignment; // alignment size when buffer is allocated
 	uint32_t dataSize; // actual size of page in bytes
 };
 
 // defines the location of a data "pointer" within the pak's mem pages
 // allows the engine to read the index/offset pair and replace it with an actual memory pointer at runtime
-struct RPakDescriptor
-{
-	uint32_t index;	 // page index
-	uint32_t offset; // offset within page
-};
+typedef RPakPtr RPakDescriptor;
 
 // same kinda thing as RPakDescriptor, but this one tells the engine where
 // guid references to other assets are within mem pages
 typedef RPakDescriptor RPakGuidDescriptor;
-
-// this definitely doesn't need to be in a struct but whatever
-struct RPakRelationBlock
-{
-	uint32_t FileID;
-};
 
 // defines a bunch of values for registering/using an asset from the rpak
 struct RPakAssetEntry
@@ -198,28 +190,27 @@ struct RPakAssetEntry
 	uint8_t  unk0[0x8]{};
 
 	// page index and offset for where this asset's header is located
-	uint32_t headIdx = 0;
-	uint32_t headOffset = 0;
+	int headIdx = 0;
+	int headOffset = 0;
 
 	// page index and offset for where this asset's data is located
 	// note: this may not always be used for finding the data:
 	//		 some assets use their own idx/offset pair from within the subheader
 	//		 when adding pairs like this, you MUST register it as a descriptor
 	//		 otherwise the pointer won't be converted
-	uint32_t cpuIdx = 0;
-	uint32_t cpuOffset = 0;
+	int cpuIdx = 0;
+	int cpuOffset = 0;
 
 	// offset to any available streamed data
-	// m_nStarpakOffset    = "mandatory" starpak file offset
-	// m_nOptStarpakOffset = "optional" starpak file offset
-	//
+	// starpakOffset    = "mandatory" starpak file offset
+	// optStarpakOffset = "optional" starpak file offset
+	// 
 	// in reality both are mandatory but respawn likes to do a little trolling
 	// so "opt" starpaks are a thing
-	uint64_t starpakOffset = -1;
-	uint64_t optStarpakOffset = -1;
+	__int64 starpakOffset = -1;
+	__int64 optStarpakOffset = -1;
 
 	uint16_t pageEnd = 0; // highest mem page used by this asset
-
 	uint16_t unk1 = 0; // might be local "uses" + 1
 
 	uint32_t relStartIdx = 0;
@@ -233,12 +224,14 @@ struct RPakAssetEntry
 
 	// this isn't always changed when the asset gets changed
 	// but respawn calls it a version so i will as well
-	uint32_t version = 0;
+	int version = 0;
 
 	// see AssetType enum below
 	uint32_t id = 0;
 
 	// internal
+public:
+	int _assetidx;
 
 	// vector of indexes for local assets that use this asset
 	std::vector<unsigned int> _relations{};
@@ -255,7 +248,6 @@ struct RPakAssetEntry
 			_guids.push_back(it);
 	};
 };
-
 #pragma pack(pop)
 
 // internal data structure for referencing file data to be written
