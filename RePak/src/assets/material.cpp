@@ -1015,9 +1015,8 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     asset.version = MATL_VERSION;
 
     asset.pageEnd = cpuseginfo.index + 1;
-    asset.unk1 = bColpass ? 7 : 8; // what
+    asset.unk1 = guids.size() + 1;
 
     asset.AddGuids(&guids);
-
     assetEntries->push_back(asset);
 }

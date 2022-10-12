@@ -109,17 +109,13 @@ void Assets::AddRigAsset_v4(CPakFile* pak, std::vector<RPakAssetEntry>* assetEnt
 		uint64_t Offset = SegmentOffset + (i * sizeof(uint64_t));
 		uint64_t GUID = RTech::StringToGuid(Entry.GetString());
 
-		if (GUID != 0)
+		if (pak->DoesAssetExist(GUID))
 		{
+			DataWriter.write<uint64_t>(GUID, Offset);
+			pak->AddGuidDescriptor(&guids, dataseginfo.index, Offset);
+
 			RPakAssetEntry* asset = pak->GetAssetByGuid(GUID);
-
-			if (asset)
-			{
-				DataWriter.write<uint64_t>(GUID, Offset);
-				pak->AddGuidDescriptor(&guids, dataseginfo.index, Offset);
-
-				asset->AddRelation(assetEntries->size());
-			}
+			asset->AddRelation(assetEntries->size());
 		}
 	}
 

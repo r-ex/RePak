@@ -403,10 +403,12 @@ void Assets::AddSettingsAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* ass
 	RPakAssetEntry asset;
 	asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::STGS);
 	asset.version = 1;
-	asset.unk1 = 2;
 
+	
 	asset.pageEnd = stringbufinfo.index + 1; // number of the highest page that the asset references pageidx + 1
+	asset.unk1 = guids.size() + 1;
 
+	asset.AddGuids(&guids);
 	// add the asset entry
 	assetEntries->push_back(asset);
 }

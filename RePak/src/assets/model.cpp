@@ -187,13 +187,14 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     SRPkDataEntry de = pak->AddStarpakDataEntry({ 0, vgFileSize, (uint8_t*)pVGBuf });
 
     pHdr->alignedStreamingSize = de.m_nDataSize;
+    
 
     // Segments
     // asset header
     _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(ModelHeader), SF_HEAD, 16);
 
     // data segment
-    size_t DataSize = mdlhdr.length + fileNameDataSize + sizeof(pVGBuf);
+    size_t DataSize = mdlhdr.length + fileNameDataSize;
 
     _vseginfo_t dataseginfo = pak->CreateNewSegment(DataSize, SF_CPU, 64);
 
@@ -244,7 +245,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
             pak->AddGuidDescriptor(&guids, aseqseginfo.index, sizeof(uint64_t) * i);
     }
 
-
     rmem dataBuf(pDataBuf);
 
     // handle material overrides register all material guids
@@ -281,7 +281,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     }
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
-
 	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
 
 	uint32_t lastPageIdx = dataseginfo.index;
