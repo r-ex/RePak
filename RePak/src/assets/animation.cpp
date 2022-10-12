@@ -196,6 +196,7 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 		if (pak->DoesAssetExist(autolayer->guid))
 			pak->GetAssetByGuid(autolayer->guid)->AddRelation(assetEntries->size());
+		else Error("'%s' AutoLayer dependancy not found -> 0x%llX", assetPath, autolayer->guid);
 	}
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
