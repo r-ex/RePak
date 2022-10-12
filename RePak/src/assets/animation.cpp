@@ -143,8 +143,10 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 	REQUIRE_FILE(FilePath);
 
+	uint64_t GUID = RTech::StringToGuid(sAssetName.c_str());
+
 	//Log("\n==============================\n");
-	Log("Asset aseq -> '%s'\n", assetPath);
+	Log("Asset aseq -> 0x%llX -> '%s'\n", GUID , assetPath );
 
 	AnimHeader* pHdr = new AnimHeader();
 
@@ -196,14 +198,14 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 		if (pak->DoesAssetExist(autolayer->guid))
 			pak->GetAssetByGuid(autolayer->guid)->AddRelation(assetEntries->size());
-		else Error("'%s' AutoLayer dependancy not found -> 0x%llX", assetPath, autolayer->guid);
+		else Error("\n==============================\n0x%llX AutoLayer dependancy not found -> 0x%llX\n==============================\n", GUID, autolayer->guid);
 	}
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
 	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
 
 	RPakAssetEntry asset;
-	asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::ASEQ);
+	asset.InitAsset(GUID, subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::ASEQ);
 
 	asset.version = 7;
 
