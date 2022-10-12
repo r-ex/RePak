@@ -163,6 +163,10 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 	rseqInput.getReader()->read(pDataBuf + NameDataSize, DataBufferSize);
 	rseqInput.close();
 
+	std::vector<RPakGuidDescriptor> guids{};
+
+	mstudioseqdesc_t seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(pDataBuf + NameDataSize);
+
 	// Segments
 	// asset header
 	_vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(AnimHeader), SF_HEAD, 16);
@@ -179,8 +183,25 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 	pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pName));
 	pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pAnimation));
-	//pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pModelGuid));
-	//pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pSettings));
+
+	rmem dataBuf(pDataBuf);
+	dataBuf.seek(NameDataSize + seqdesc.autolayerindex, rseekdir::beg);
+	// register autolayer aseq guids
+	for (int i = 0; i < seqdesc.numautolayers; ++i)
+	{
+		dataBuf.seek(NameDataSize + seqdesc.autolayerindex + (i * sizeof(mstudioautolayer_t)), rseekdir::beg);
+
+		mstudioautolayer_t* autolayer = dataBuf.get<mstudioautolayer_t>();
+
+		if (autolayer->guid != 0)
+			pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid));
+
+		RPakAssetEntry* asset = pak->GetAssetByGuid(autolayer->guid);
+
+		if (asset)
+			asset->AddRelation(assetEntries->size());
+	}
+
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
 	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
 
@@ -190,8 +211,8 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 	asset.version = 7;
 
 	asset.pageEnd = dataseginfo.index + 1;
+	asset.unk1 = guids.size() + 1; // uses + 1
 
-	asset.unk1 = 1; // uses + 1
-
+	asset.AddGuids(&guids);
 	assetEntries->push_back(asset);
 }

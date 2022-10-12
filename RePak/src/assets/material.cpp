@@ -827,6 +827,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
 
         mtlHdr->m_pShaderSet = 0x1D9FFF314E152725;
+        mtlHdr->materialType = SKNP; // SKNP
     }
     else if (type == "wldc")
     {
@@ -842,6 +843,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
 
         mtlHdr->m_pShaderSet = 0x4B0F3B4CBD009096;
+        mtlHdr->materialType = WLDC; // WLDC
     }
     else if (type == "rgdp")
     {
@@ -857,6 +859,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
 
         mtlHdr->m_pShaderSet = 0x2a2db3a47af9b3d5;
+        mtlHdr->materialType = RGDP; // RGDP
     }
 
     if (mapEntry.HasMember("shaderset"))

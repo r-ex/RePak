@@ -154,6 +154,20 @@ enum MatRenderFlags : uint16_t
 	Unknown = 0x8,
 };
 
+enum MaterialShaderType_t : unsigned __int8
+{
+	RGDU = 0x0,
+	RGDP = 0x1,
+	RGDC = 0x2,
+	SKNU = 0x3,
+	SKNP = 0x4,
+	SKNC = 0x5,
+	WLDU = 0x6,
+	WLDC = 0x7,
+	PTCU = 0x8,
+	PTCS = 0x9,
+};
+
 // some repeated section at the end of the material header (CMaterialGlue) struct
 struct UnknownMaterialSectionV15
 {
@@ -213,7 +227,7 @@ struct MaterialHeaderV15
 	/* 0x90 */ UnknownMaterialSectionV15 m_UnknownSections[2]{};
 	/* 0xF0 */ uint8_t bytef0;
 	/* 0xF1 */ uint8_t bytef1;
-	/* 0xF2 */ uint8_t bytef2;
+	/* 0xF2 */ MaterialShaderType_t materialType;
 	/* 0xF3 */ uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
 	/* 0xF4 */ char pad_00F4[12];
 };
