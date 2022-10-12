@@ -148,24 +148,25 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 	AnimHeader* pHdr = new AnimHeader();
 
-	size_t RseqSize = Utils::GetFileSize(FilePath);
+
+	uint32_t fileNameDataSize = sAssetName.length() + 1;
+	uint32_t rseqFileSize = (uint32_t)Utils::GetFileSize(FilePath);
+	uint32_t bufAlign = 4 - (fileNameDataSize + rseqFileSize) % 4;
+
+	size_t DataBufferSize = fileNameDataSize + rseqFileSize + bufAlign;
+	char* pDataBuf = new char[DataBufferSize];
+
+	// write the rrig file path into the data buffer
+	snprintf(pDataBuf, fileNameDataSize, "%s", sAssetName.c_str());
 
 	BinaryIO rseqInput;
 	rseqInput.open(FilePath, BinaryIOMode::Read);
-
-	uint32_t NameDataSize = sAssetName.length() + 1;
-	uint32_t NameAlignment = NameDataSize % 4;
-	NameDataSize += NameAlignment;
-
-	size_t DataBufferSize = NameDataSize + RseqSize;
-	char* pDataBuf = new char[DataBufferSize];
-
-	rseqInput.getReader()->read(pDataBuf + NameDataSize, DataBufferSize);
+	rseqInput.getReader()->read(pDataBuf + fileNameDataSize, DataBufferSize);
 	rseqInput.close();
 
 	std::vector<RPakGuidDescriptor> guids{};
 
-	mstudioseqdesc_t seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(pDataBuf + NameDataSize);
+	mstudioseqdesc_t seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(pDataBuf + fileNameDataSize);
 
 	// Segments
 	// asset header
@@ -174,32 +175,27 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 	// data segment
 	_vseginfo_t dataseginfo = pak->CreateNewSegment(DataBufferSize, SF_CPU, 64);
 
-	// write the rrig file path into the data buffer
-	snprintf(pDataBuf, NameDataSize, "%s", sAssetName.c_str());
-
 	pHdr->pName = { dataseginfo.index, 0 };
 
-	pHdr->pAnimation = { dataseginfo.index, NameDataSize };
+	pHdr->pAnimation = { dataseginfo.index, fileNameDataSize };
 
 	pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pName));
 	pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pAnimation));
 
 	rmem dataBuf(pDataBuf);
-	dataBuf.seek(NameDataSize + seqdesc.autolayerindex, rseekdir::beg);
+	dataBuf.seek(fileNameDataSize + seqdesc.autolayerindex, rseekdir::beg);
 	// register autolayer aseq guids
 	for (int i = 0; i < seqdesc.numautolayers; ++i)
 	{
-		dataBuf.seek(NameDataSize + seqdesc.autolayerindex + (i * sizeof(mstudioautolayer_t)), rseekdir::beg);
+		dataBuf.seek(fileNameDataSize + seqdesc.autolayerindex + (i * sizeof(mstudioautolayer_t)), rseekdir::beg);
 
 		mstudioautolayer_t* autolayer = dataBuf.get<mstudioautolayer_t>();
 
 		if (autolayer->guid != 0)
 			pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid));
 
-		RPakAssetEntry* asset = pak->GetAssetByGuid(autolayer->guid);
-
-		if (asset)
-			asset->AddRelation(assetEntries->size());
+		if (pak->DoesAssetExist(autolayer->guid))
+			pak->GetAssetByGuid(autolayer->guid)->AddRelation(assetEntries->size());
 	}
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
