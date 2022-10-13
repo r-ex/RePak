@@ -185,6 +185,19 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 	pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pAnimation));
 
 	rmem dataBuf(pDataBuf);
+
+	bool OverrideHeader = false;
+
+	if (mapEntry.HasMember("autolayers") && mapEntry["autolayers"].IsBool() && !mapEntry["autolayers"].GetBool())
+	{
+		seqdesc.numautolayers = 0;
+		OverrideHeader = true;
+	}
+
+	if (OverrideHeader)
+		memcpy(pDataBuf + fileNameDataSize, &seqdesc, sizeof(mstudioseqdesc_t));
+
+
 	dataBuf.seek(fileNameDataSize + seqdesc.autolayerindex, rseekdir::beg);
 	// register autolayer aseq guids
 	for (int i = 0; i < seqdesc.numautolayers; ++i)
