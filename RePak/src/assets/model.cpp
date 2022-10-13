@@ -277,6 +277,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         if(material->guid != 0)
             pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(materialref_t, guid));
 
+        if (pak->DoesAssetExist(material->guid))
+            pak->GetAssetByGuid(material->guid)->AddRelation(assetEntries->size());
+
         Log("Material Guid -> 0x%llX\n", material->guid);
     }
 
