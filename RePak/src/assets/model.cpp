@@ -142,15 +142,12 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     std::string starpakPath = pak->primaryStarpakPath;
 
     if (mapEntry.HasMember("starpakPath") && mapEntry["starpakPath"].IsString())
-    {
         starpakPath = mapEntry["starpakPath"].GetStdString();
-
-        pak->AddStarpakReference(starpakPath);
-    }
 
     if (starpakPath.length() == 0)
         Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\n-- to fix: add 'starpakPath' as an rpak-wide variable\n-- or: add 'starpakPath' as an asset specific variable\n", assetPath);
 
+    pak->AddStarpakReference(starpakPath);
 
     SRPkDataEntry de{ 0, vgFileSize, (uint8_t*)pVGBuf};
     de = pak->AddStarpakDataEntry(de);

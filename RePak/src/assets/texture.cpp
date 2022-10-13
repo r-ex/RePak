@@ -252,18 +252,16 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 
     if (bStreamable)
     {
-        std::string sStarpakPath = pak->primaryStarpakPath;
+        std::string starpakPath = pak->primaryStarpakPath;
 
         // check per texture just in case for whatever reason you want stuff in different starpaks (if it ever gets fixed).
         if (mapEntry.HasMember("starpakPath"))
-        {
-            sStarpakPath = mapEntry["starpakPath"].GetString();
+            starpakPath = mapEntry["starpakPath"].GetString();
 
-            pak->AddStarpakReference(sStarpakPath);
-        }
-
-        if (sStarpakPath.length() == 0)
+        if (starpakPath.length() == 0)
             Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\nto fix: add 'starpakPath' as an rpak-wide variable\nor: add 'starpakPath' as an asset specific variable\n", assetPath);
+       
+        pak->AddStarpakReference(starpakPath);
 
         SRPkDataEntry de{ 0, nStreamedMipSize, (uint8_t*)streamedbuf };
         de = pak->AddStarpakDataEntry(de);
