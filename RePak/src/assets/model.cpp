@@ -74,17 +74,24 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     uint32_t vgFileSize = vgInput.tell();
     char* pVGBuf = new char[vgFileSize];
 
+
     vgInput.seek(0);
     vgInput.getReader()->read(pVGBuf, vgFileSize);
+    
+
+    char* pStaticVGBuf = nullptr;
+    if (mapEntry.HasMember("static") && mapEntry["static"].IsBool() && mapEntry["static"].GetBool())
+    {
+        pStaticVGBuf = new char[vgFileSize];
+        memcpy_s(pStaticVGBuf, vgFileSize, pVGBuf, vgFileSize);
+    }
     vgInput.close();
 
-    //
-    // Physics
-    //
+
     char* phyBuf = nullptr;
     size_t phyFileSize = 0;
 
-    if (mapEntry.HasMember("usePhysics") && mapEntry["usePhysics"].GetBool())
+    if (mapEntry.HasMember("usePhysics") && mapEntry["usePhysics"].IsBool() && mapEntry["usePhysics"].GetBool())
     {
         BinaryIO phyInput;
         phyInput.open(phyFilePath, BinaryIOMode::Read);
@@ -159,18 +166,20 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
             uint64_t guid = RTech::StringToGuid(it.GetStdString().c_str());
 
             aseqBuf.write<uint64_t>(guid);
+            // check if anim seq is a local asset so that the relation can be added
 
-            // check if anim rig is a local asset so that the relation can be added
-            if (pak->DoesAssetExist(guid))
+            std::string RseqPath = g_sAssetsDir + it.GetStdString();
+
+            if (!pak->DoesAssetExist(guid) && FILE_EXISTS(RseqPath))
+                Assets::AddRseqAsset_v7(pak, assetEntries, it.GetString(), mapEntry);
+
+            if(pak->DoesAssetExist(guid))
                 pak->GetAssetByGuid(guid)->AddRelation(assetEntries->size());
 
             i++;
         }
     }
 
-    //
-    // Starpak
-    //
     std::string starpakPath = pak->primaryStarpakPath;
 
     if (mapEntry.HasMember("starpakPath") && mapEntry["starpakPath"].IsString())
@@ -194,6 +203,10 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     size_t DataSize = mdlhdr.length + fileNameDataSize;
 
     _vseginfo_t dataseginfo = pak->CreateNewSegment(DataSize, SF_CPU, 64);
+
+    _vseginfo_t staticvgseginfo;
+    if(pStaticVGBuf)
+       staticvgseginfo = pak->CreateNewSegment(vgFileSize, SF_CPU, 64);
 
     // .phy
     _vseginfo_t physeginfo;
@@ -222,13 +235,14 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     {
         pHdr->pPhyData = { physeginfo.index, 0 };
         pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pPhyData));
+
     }
 
     if (pAnimRigBuf)
     {
         pHdr->pAnimRigs = { arigseginfo.index, 0 };
         pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pAnimRigs));
-        
+
         for (int i = 0; i < pHdr->animRigCount; ++i)
             pak->AddGuidDescriptor(&guids, arigseginfo.index, sizeof(uint64_t) * i);
     }
@@ -237,9 +251,15 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     {
         pHdr->pAnimSeqs = { aseqseginfo.index, 0 };
         pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pAnimSeqs));
-        
+
         for (int i = 0; i < pHdr->animSeqCount; ++i)
             pak->AddGuidDescriptor(&guids, aseqseginfo.index, sizeof(uint64_t) * i);
+    }
+
+    if (pStaticVGBuf)
+    {
+        pHdr->pStaticPropVtxCache = { staticvgseginfo.index , 0 };
+        pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pStaticPropVtxCache));
     }
 
     rmem dataBuf(pDataBuf);
@@ -282,8 +302,14 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
 	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
-
+   
 	uint32_t lastPageIdx = dataseginfo.index;
+
+    if (pStaticVGBuf)
+    {
+        pak->AddRawDataBlock({ staticvgseginfo.index, staticvgseginfo.size, (uint8_t*)pStaticVGBuf });
+        lastPageIdx = staticvgseginfo.index;
+    }
 
 	if (phyBuf)
 	{
