@@ -167,9 +167,10 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 	size_t DataBufferSize = fileNameDataSize + rseqFileSize + bufAlign + 2;
 	char* pDataBuf = new char[DataBufferSize + activityNameDataSize];
+	rmem dataBuf(pDataBuf);
 
 	// write the aseq file path into the data buffer
-	snprintf(pDataBuf, fileNameDataSize, "%s", sAssetName.c_str());
+	dataBuf.writestring(sAssetName, 0);
 
 	BinaryIO rseqInput;
 	rseqInput.open(FilePath, BinaryIOMode::Read);
@@ -178,8 +179,6 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 	std::vector<RPakGuidDescriptor> guids{};
 
-	rmem dataBuf(pDataBuf);
-
 	dataBuf.seek(fileNameDataSize, rseekdir::beg);
 	mstudioseqdesc_t seqdesc = dataBuf.read<mstudioseqdesc_t>();
 
@@ -187,8 +186,8 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 	if (mapEntry.HasMember("activity") && mapEntry["activity"].IsString())
 	{
-		snprintf(pDataBuf + fileNameDataSize + rseqFileSize, activityNameDataSize, "%s", ActivityOverride.c_str());
-		seqdesc.szactivitynameindex = rseqFileSize;
+		dataBuf.writestring(ActivityOverride, fileNameDataSize + rseqFileSize);
+		seqdesc.szactivitynameindex = rseqFileSize ;
 		OverrideHeader = true;
 	}
 

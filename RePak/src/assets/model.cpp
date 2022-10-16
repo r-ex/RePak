@@ -282,7 +282,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
             {
                // if no material path, use the original model material
                if (matlEntry.GetStdString() == "none") // use wingman elite mat as placeholder
-                    material->guid = RTech::StringToGuid("material/models/Weapons_R2/wingman_elite/wingman_elite_sknp.rpak");
+                   material->guid = RTech::StringToGuid("material/error_sknp.rpak");
                else
                     material->guid = RTech::StringToGuid(("material/" + matlEntry.GetStdString() + ".rpak").c_str()); // use user provided path
             }
