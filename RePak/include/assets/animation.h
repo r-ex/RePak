@@ -3,6 +3,9 @@
 #include <pch.h>
 #include <assert.h>
 
+
+void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, rapidjson::Value& mapEntry, std::string sAssetsDir, std::vector<std::string> AseqList);
+
 enum mstudioseqflags : uint32_t
 {
 	STUDIO_LOOPING = 0x0001,	// ending frame should be the same as the starting frame
@@ -24,8 +27,8 @@ enum mstudioseqflags : uint32_t
 	STUDIO_EVENT_CLIENT = 0x10000	// Has been updated at runtime to event index on client
 };
 
-#pragma pack(push, 2)
 
+#pragma pack(push, 2)
 // --- arig ---
 struct AnimRigHeader
 {
@@ -59,7 +62,9 @@ struct AnimHeader
 	uint32_t SettingCount = 0;
 	uint32_t Reserved1 = 0;
 };
+#pragma pack(pop)
 
+#pragma pack(push, 1)
 struct mstudioseqdesc_t
 {
 	int baseptr;

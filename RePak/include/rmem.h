@@ -29,6 +29,11 @@ public:
 		this->_bufsize = new_size;
 	}
 
+	inline unsigned __int64 GetBufferSize()
+	{
+		return this->_bufsize;
+	}
+
 	void seek(unsigned __int64 pos, rseekdir dir)
 	{
 		if (dir == rseekdir::cur && (this->_curpos + pos) < this->_bufsize)
@@ -101,6 +106,28 @@ public: // read/write
 
 
 		*(T*)((char*)_pbase + offset) = val;
+	}
+
+	void writestring(std::string val)
+	{
+		const int strlen = val.length() + 1;
+		if (_curpos + strlen > _bufsize)
+			throw "failed to write to buffer: attempted to write past the end of the buffer";
+
+		_pbuf = static_cast<char*>(_pbuf) + (val.length() + 1);
+
+		snprintf((char*)_pbuf, strlen, "%s", val.c_str());
+
+		_curpos += strlen;
+	}
+
+	void writestring(std::string val, unsigned __int64 offset)
+	{
+		const int strlen = val.length() + 1;
+		if (offset > _bufsize)
+			throw "failed to write to buffer: attempted to write past the end of the buffer";
+
+		snprintf((char*)_pbase + offset, strlen, "%s", val.c_str());
 	}
 
 //private: // internal helper stuff

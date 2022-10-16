@@ -39,8 +39,11 @@ void Assets::AddRigAsset_v4(CPakFile* pak, std::vector<RPakAssetEntry>* assetEnt
 		for (auto& entry : mapEntry["animseqs"].GetArray())
 		{
 			if (entry.IsString() && !pak->DoesAssetExist(RTech::StringToGuid(entry.GetString())))
-				Assets::AddRseqAsset_v7(pak, assetEntries, entry.GetString(), mapEntry);
+				AseqList.push_back(entry.GetString());
+				//Assets::AddRseqAsset_v7(pak, assetEntries, entry.GetString(), mapEntry);
 		}
+
+		AddRseqListAsset_v7(pak, assetEntries, mapEntry, g_sAssetsDir, AseqList);
 	}
 
 	
@@ -241,4 +244,112 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 	asset.AddGuids(&guids);
 	assetEntries->push_back(asset);
+}
+
+
+void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, rapidjson::Value& mapEntry, std::string sAssetsDir, std::vector<std::string> AseqList)
+{
+	// calculate databuf size
+	size_t DataSize = 0;
+	for (auto& AseqName : AseqList)
+	{
+		uint64_t GUID = RTech::StringToGuid(AseqName.c_str());
+		std::vector<RPakGuidDescriptor> guids{};
+
+		std::string FilePath = sAssetsDir + AseqName;
+		REQUIRE_FILE(FilePath);
+
+
+		uint32_t fileNameDataSize = AseqName.length() + 1;
+		uint32_t rseqFileSize = (uint32_t)Utils::GetFileSize(FilePath);
+		uint32_t bufAlign = 4 - (fileNameDataSize + rseqFileSize) % 4;
+		DataSize += fileNameDataSize + rseqFileSize + bufAlign;
+	}
+
+	size_t HeaderSize = sizeof(AnimHeader) * AseqList.size();
+	char* pHeaderBuf = new char[HeaderSize];
+	rmem hdrBuf(pHeaderBuf);
+
+	char* pDataBuf = new char[DataSize];
+	rmem dataBuf(pDataBuf);
+
+
+	// asset header
+	_vseginfo_t subhdrinfo = pak->CreateNewSegment(HeaderSize, SF_HEAD, 16);
+
+	// data segment
+	_vseginfo_t dataseginfo = pak->CreateNewSegment(DataSize, SF_CPU, 64);
+
+	uint32_t headeroffset = 0;
+	uint32_t baseoffset = 0;
+	for (auto& AseqName : AseqList)
+	{
+		std::vector<RPakGuidDescriptor> guids{};
+		uint64_t GUID = RTech::StringToGuid(AseqName.c_str());
+		std::string FilePath = sAssetsDir + AseqName;
+
+		uint32_t fileNameDataSize = AseqName.length() + 1;
+		uint32_t rseqFileSize = (uint32_t)Utils::GetFileSize(FilePath);
+		uint32_t bufAlign = 4 - (fileNameDataSize + rseqFileSize) % 4;
+		size_t DataBufferSize = fileNameDataSize + rseqFileSize + bufAlign;
+
+		// write the aseq file path into the data buffer
+		dataBuf.writestring(AseqName, baseoffset);
+
+		BinaryIO rseqInput;
+		rseqInput.open(FilePath, BinaryIOMode::Read);
+		rseqInput.getReader()->read(pDataBuf + baseoffset + fileNameDataSize, DataBufferSize);
+		rseqInput.close();
+
+		dataBuf.seek(baseoffset + fileNameDataSize, rseekdir::beg);
+		mstudioseqdesc_t seqdesc = dataBuf.read<mstudioseqdesc_t>();
+
+		AnimHeader pHdr;
+
+		pHdr.pName = { dataseginfo.index, baseoffset };
+		pHdr.pAnimation = { dataseginfo.index, baseoffset + fileNameDataSize };
+
+		pak->AddPointer( subhdrinfo.index, headeroffset + offsetof(AnimHeader, pName) );
+		pak->AddPointer( subhdrinfo.index, headeroffset + offsetof(AnimHeader, pAnimation) );
+
+		uint64_t AutoLayerOffset = baseoffset + fileNameDataSize + seqdesc.autolayerindex;
+
+		dataBuf.seek(AutoLayerOffset, rseekdir::beg);
+
+		// register autolayer aseq guids
+		for (int i = 0; i < seqdesc.numautolayers; ++i)
+		{
+			dataBuf.seek(AutoLayerOffset + (i * sizeof(mstudioautolayer_t)), rseekdir::beg);
+
+			mstudioautolayer_t* autolayer = dataBuf.get<mstudioautolayer_t>();
+
+			if (autolayer->guid != 0)
+				pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid));
+
+			if (pak->DoesAssetExist(autolayer->guid))
+				pak->GetAssetByGuid(autolayer->guid)->AddRelation(assetEntries->size());
+		}
+
+
+		memcpy(pHeaderBuf + headeroffset, &pHdr, sizeof(AnimHeader));
+
+
+		RPakAssetEntry asset;
+		asset.InitAsset(GUID, subhdrinfo.index, headeroffset, sizeof(AnimHeader), -1, 0, -1, -1, (std::uint32_t)AssetType::ASEQ);
+
+		asset.version = 7;
+
+		asset.pageEnd = dataseginfo.index + 1;
+		asset.unk1 = guids.size() + 1; // uses + 1
+
+		asset.AddGuids(&guids);
+		assetEntries->push_back(asset);
+
+		headeroffset += sizeof(AnimHeader);
+		baseoffset += DataBufferSize;
+		dataBuf.seek(baseoffset, rseekdir::beg);
+	}
+
+	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHeaderBuf });
+	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
 }
