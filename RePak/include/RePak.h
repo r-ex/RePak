@@ -151,7 +151,7 @@ public:
 		{
 			io->write(m_Header.externalAssetsCount);
 			io->write(m_Header.externalAssetsSize);
-                }
+		}
 		else if (version == 8)
 			io->write(m_Header.unk3);
 	};
