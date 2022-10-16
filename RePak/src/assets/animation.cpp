@@ -27,12 +27,14 @@ void Assets::AddRigAsset_v4(CPakFile* pak, std::vector<RPakAssetEntry>* assetEnt
 
 	AnimRigHeader* pHdr = new AnimRigHeader();
 
+	std::vector<std::string> AseqList;
 	if (mapEntry.HasMember("animseqs") && mapEntry["animseqs"].IsArray())
 	{
 		pHdr->AseqRefCount = mapEntry["animseqs"].Size();
 
 		if (pHdr->AseqRefCount == 0)
 			Error("invalid animseq count must not be 0 for arig '%s'\n", assetPath);
+
 
 		for (auto& entry : mapEntry["animseqs"].GetArray())
 		{
@@ -41,6 +43,7 @@ void Assets::AddRigAsset_v4(CPakFile* pak, std::vector<RPakAssetEntry>* assetEnt
 		}
 	}
 
+	
 	// begin rrig input
 	BinaryIO skelInput;
 	skelInput.open(skelFilePath, BinaryIOMode::Read);
@@ -162,7 +165,7 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 	size_t DataBufferSize = fileNameDataSize + rseqFileSize + bufAlign + 2;
 	char* pDataBuf = new char[DataBufferSize + activityNameDataSize];
 
-	// write the rrig file path into the data buffer
+	// write the aseq file path into the data buffer
 	snprintf(pDataBuf, fileNameDataSize, "%s", sAssetName.c_str());
 
 	BinaryIO rseqInput;
@@ -222,7 +225,7 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 		if (pak->DoesAssetExist(autolayer->guid))
 			pak->GetAssetByGuid(autolayer->guid)->AddRelation(assetEntries->size());
-		else Error("\n==============================\n0x%llX AutoLayer dependancy not found -> 0x%llX\n==============================\n", GUID, autolayer->guid);
+		//else Warning("\n==============================\n0x%llX AutoLayer dependancy not found -> 0x%llX\n==============================\n", GUID, autolayer->guid);
 	}
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });

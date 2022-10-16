@@ -3,8 +3,6 @@
 #include <pch.h>
 #include <assert.h>
 
-#pragma pack(push, 2)
-
 enum mstudioseqflags : uint32_t
 {
 	STUDIO_LOOPING = 0x0001,	// ending frame should be the same as the starting frame
@@ -25,6 +23,8 @@ enum mstudioseqflags : uint32_t
 	STUDIO_NOFORCELOOP = 0x8000,	// do not force the animation loop
 	STUDIO_EVENT_CLIENT = 0x10000	// Has been updated at runtime to event index on client
 };
+
+#pragma pack(push, 2)
 
 // --- arig ---
 struct AnimRigHeader
