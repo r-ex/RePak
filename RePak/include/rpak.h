@@ -36,8 +36,8 @@ struct Vector4
 // when loaded, these usually get converted to a real pointer
 struct RPakPtr
 {
-	uint32_t m_nIndex = 0;
-	uint32_t m_nOffset = 0;
+	uint32_t index = 0;
+	uint32_t offset = 0;
 };
 
 // generic header struct for both apex and titanfall 2
@@ -45,17 +45,18 @@ struct RPakPtr
 // which should be written depending on the version
 struct RPakFileHeader
 {
-	uint32_t magic = 0x6b615052;
-	uint16_t fileVersion = 0x8;
-	uint8_t  flags[0x2];
+	DWORD magic = 0x6b615052;
+
+	short fileVersion = 0x8;
+	char  flags[0x2];
 	uint64_t fileTime; // this is actually FILETIME, but if we don't make it uint64_t here, it'll break the struct when writing
-	uint8_t  unk0[0x8];
+	char  unk0[0x8];
 	uint64_t compressedSize; // size of the rpak file on disk before decompression
 	uint64_t embeddedStarpakOffset = 0;
-	uint8_t  unk1[0x8];
+	char  unk1[0x8];
 	uint64_t decompressedSize; // actual data size of the rpak file after decompression
 	uint64_t embeddedStarpakSize = 0;
-	uint8_t  unk2[0x8];
+	char  unk2[0x8];
 	uint16_t starpakPathsSize = 0; // size in bytes of the section containing mandatory starpak paths
 	uint16_t optStarpakPathsSize = 0; // size in bytes of the section containing optional starpak paths
 	uint16_t virtualSegmentCount = 0;
@@ -72,10 +73,10 @@ struct RPakFileHeader
 	uint32_t externalAssetsSize = 0;
 
 	// only in apex
-	uint8_t  unk3[0x1c];
+	char  unk3[0x1c];
 };
 
-struct RPakPatchCompressedHeader // Comes after file header if its an patch rpak.
+struct RPakPatchCompressedHeader // follows immediately after the file header in patch rpaks
 {
 	uint64_t compressedSize;
 	uint64_t decompressedSize;
@@ -100,27 +101,17 @@ struct RPakVirtualSegment
 struct RPakPageInfo
 {
 	uint32_t segIdx; // index into vseg array
-	uint32_t pageAlignment; // no idea
+	uint32_t pageAlignment; // alignment size when buffer is allocated
 	uint32_t dataSize; // actual size of page in bytes
 };
 
 // defines the location of a data "pointer" within the pak's mem pages
 // allows the engine to read the index/offset pair and replace it with an actual memory pointer at runtime
-struct RPakDescriptor
-{
-	uint32_t index;	 // page index
-	uint32_t offset; // offset within page
-};
+typedef RPakPtr RPakDescriptor;
 
 // same kinda thing as RPakDescriptor, but this one tells the engine where
 // guid references to other assets are within mem pages
 typedef RPakDescriptor RPakGuidDescriptor;
-
-// this definitely doesn't need to be in a struct but whatever
-struct RPakRelationBlock
-{
-	uint32_t FileID;
-};
 
 // defines a bunch of values for registering/using an asset from the rpak
 struct RPakAssetEntry
@@ -158,28 +149,28 @@ struct RPakAssetEntry
 	uint8_t  unk0[0x8]{};
 
 	// page index and offset for where this asset's header is located
-	uint32_t headIdx = 0;
-	uint32_t headOffset = 0;
+	int headIdx = 0;
+	int headOffset = 0;
 
 	// page index and offset for where this asset's data is located
 	// note: this may not always be used for finding the data:
 	//		 some assets use their own idx/offset pair from within the subheader
 	//		 when adding pairs like this, you MUST register it as a descriptor
 	//		 otherwise the pointer won't be converted
-	uint32_t cpuIdx = 0;
-	uint32_t cpuOffset = 0;
+	int cpuIdx = 0;
+	int cpuOffset = 0;
 
 	// offset to any available streamed data
-	// m_nStarpakOffset    = "mandatory" starpak file offset
-	// m_nOptStarpakOffset = "optional" starpak file offset
+	// starpakOffset    = "mandatory" starpak file offset
+	// optStarpakOffset = "optional" starpak file offset
 	// 
 	// in reality both are mandatory but respawn likes to do a little trolling
 	// so "opt" starpaks are a thing
-	uint64_t starpakOffset = -1;
-	uint64_t optStarpakOffset = -1;
+	__int64 starpakOffset = -1;
+	__int64 optStarpakOffset = -1;
 
 	uint16_t pageEnd = 0; // highest mem page used by this asset
-	uint16_t unk1 = 0;
+	uint16_t unk1 = 0; // might be local "uses" + 1
 
 	uint32_t relStartIdx = 0;
 
@@ -192,10 +183,29 @@ struct RPakAssetEntry
 
 	// this isn't always changed when the asset gets changed
 	// but respawn calls it a version so i will as well
-	uint32_t version = 0;
+	int version = 0;
 
 	// see AssetType enum below
 	uint32_t id = 0;
+
+	// internal
+public:
+	int _assetidx;
+
+	// vector of indexes for local assets that use this asset
+	std::vector<unsigned int> _relations{};
+
+	inline void AddRelation(unsigned int idx) { _relations.push_back({ idx }); };
+
+	std::vector<RPakGuidDescriptor> _guids{};
+
+	inline void AddGuid(RPakGuidDescriptor desc) { _guids.push_back(desc); };
+
+	inline void AddGuids(std::vector<RPakGuidDescriptor>* descs)
+	{
+		for (auto& it : *descs)
+			_guids.push_back(it);
+	};
 };
 #pragma pack(pop)
 
@@ -217,12 +227,13 @@ struct SRPkDataEntry
 
 enum class AssetType : uint32_t
 {
-	TEXTURE = 0x72747874, // b'txtr' - texture
-	RMDL = 0x5f6c646d,    // b'mdl_' - model
-	UIMG = 0x676d6975,    // b'uimg' - ui image atlas
-	PTCH = 0x68637450,	  // b'Ptch' - patch
-	DTBL = 0x6c627464,    // b'dtbl' - datatable
-	MATL = 0x6c74616d,    // b'matl' - material
+	TXTR = 0x72747874, // b'txtr' - texture
+	RMDL = 0x5f6c646d, // b'mdl_' - model
+	UIMG = 0x676d6975, // b'uimg' - ui image atlas
+	PTCH = 0x68637450, // b'Ptch' - patch
+	DTBL = 0x6c627464, // b'dtbl' - datatable
+	MATL = 0x6c74616d, // b'matl' - material
+	ASEQ = 'qesa',	   // b'aseq' - animation sequence
 };
 
 // identifies the data type for each column in a datatable asset
@@ -268,7 +279,8 @@ struct TextureHeader
 
 struct UIImageHeader
 {
-	uint64_t unk0 = 0;
+	float widthRatio; // 1 / m_nWidth
+	float heightRatio; // 1 / m_nHeight
 	uint16_t width = 1;
 	uint16_t height = 1;
 	uint16_t textureCount = 0;
@@ -705,6 +717,20 @@ struct MaterialCPUDataV15
 
 };
 
+enum MaterialShaderType_t : unsigned __int8
+{
+	RGDU = 0x0,
+	RGDP = 0x1,
+	RGDC = 0x2,
+	SKNU = 0x3,
+	SKNP = 0x4,
+	SKNC = 0x5,
+	WLDU = 0x6,
+	WLDC = 0x7,
+	PTCU = 0x8,
+	PTCS = 0x9,
+};
+
 // start of CMaterialGlue class
 struct MaterialHeaderV15
 {
@@ -747,7 +773,7 @@ struct MaterialHeaderV15
 	/* 0x90 */ UnknownMaterialSectionV15 m_UnknownSections[2]{};
 	/* 0xF0 */ uint8_t bytef0;
 	/* 0xF1 */ uint8_t bytef1;
-	/* 0xF2 */ uint8_t bytef2;
+	/* 0xF2 */ MaterialShaderType_t materialType;
 	/* 0xF3 */ uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
 	/* 0xF4 */ char pad_00F4[12];
 };
@@ -886,6 +912,115 @@ struct MaterialCPUHeader
 	RPakPtr  m_nUnknownRPtr{}; // points to the rest of the cpu data. maybe for colour?
 	uint32_t m_nDataSize = 0;
 	uint32_t m_nVersionMaybe = 3; // every unknown is now either datasize, version, or flags
+};
+
+// animations
+
+struct AnimSequenceHeader
+{
+	RPakPtr data{}; // pointer to raw rseq.
+	RPakPtr szname{}; // pointer to debug name, placed before raw rseq normally.
+
+	// this can point to a group of guids and not one singular one.
+	RPakPtr modelGuid{};
+	uint32_t modelCount = 0;
+
+	uint32_t reserved = 0;
+
+	// this can point to a group of guids and not one singular one.
+	RPakPtr settingsGuid{};
+	uint32_t settingsCount = 0;
+
+	uint32_t reserved1 = 0; // assumed
+};
+
+struct mstudioseqdesc_t
+{
+	int baseptr;
+
+	int	szlabelindex;
+
+	int szactivitynameindex;
+
+	int flags; // looping/non-looping flags
+
+	int activity; // initialized at loadtime to game DLL values
+	int actweight;
+
+	int numevents;
+	int eventindex;
+
+	Vector3 bbmin; // per sequence bounding box
+	Vector3 bbmax;
+
+	int numblends;
+
+	// Index into array of shorts which is groupsize[0] x groupsize[1] in length
+	int animindexindex;
+
+	int movementindex; // [blend] float array for blended movement
+	int groupsize[2];
+	int paramindex[2]; // X, Y, Z, XR, YR, ZR
+	float paramstart[2]; // local (0..1) starting value
+	float paramend[2]; // local (0..1) ending value
+	int paramparent;
+
+	float fadeintime; // ideal cross fate in time (0.2 default)
+	float fadeouttime; // ideal cross fade out time (0.2 default)
+
+	int localentrynode; // transition node at entry
+	int localexitnode; // transition node at exit
+	int nodeflags; // transition rules
+
+	float entryphase; // used to match entry gait
+	float exitphase; // used to match exit gait
+
+	float lastframe; // frame that should generation EndOfSequence
+
+	int nextseq; // auto advancing sequences
+	int pose; // index of delta animation between end and nextseq
+
+	int numikrules;
+
+	int numautolayers;
+	int autolayerindex;
+
+	int weightlistindex;
+
+	int posekeyindex;
+
+	int numiklocks;
+	int iklockindex;
+
+	// Key values
+	int keyvalueindex;
+	int keyvaluesize;
+
+	int cycleposeindex; // index of pose parameter to use as cycle index
+
+	int activitymodifierindex;
+	int numactivitymodifiers;
+
+	int unk;
+	int unk1;
+
+	int unkindex;
+
+	int unk2;
+};
+
+struct mstudioautolayer_t
+{
+	uint64_t guid; // hashed aseq guid asset
+
+	short iSequence;
+	short iPose;
+
+	int flags;
+	float start; // beginning of influence
+	float peak;	 // start of full influence
+	float tail;	 // end of full influence
+	float end;	 // end of all influence
 };
 
 #pragma pack(pop)

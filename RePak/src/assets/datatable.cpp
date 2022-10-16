@@ -53,7 +53,7 @@ uint8_t DataTable_GetEntrySize(dtblcoltype_t type)
     return 0; // should be unreachable
 }
 
-void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 
@@ -91,19 +91,19 @@ void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, con
     // make a page for the sub header
     //
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(DataTableHeader), SF_HEAD, 8);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(DataTableHeader), SF_HEAD, 8);
 
     // DataTableColumn entries
-    _vseginfo_t colhdrinfo = RePak::CreateNewSegment(sizeof(DataTableColumn) * columnCount, SF_CPU, 8, 64);
+    _vseginfo_t colhdrinfo = pak->CreateNewSegment(sizeof(DataTableColumn) * columnCount, SF_CPU, 8, 64);
 
     // column names
-    _vseginfo_t nameseginfo = RePak::CreateNewSegment(ColumnNameBufSize, SF_CPU, 8, 64);
+    _vseginfo_t nameseginfo = pak->CreateNewSegment(ColumnNameBufSize, SF_CPU, 8, 64);
 
     pHdr->ColumnCount = columnCount;
     pHdr->RowCount = rowCount - 1;
     pHdr->ColumnHeaderPtr = { colhdrinfo.index, 0 };
 
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(DataTableHeader, ColumnHeaderPtr));
+    pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeader, ColumnHeaderPtr));
 
     // allocate buffers for the loop
     char* namebuf = new char[ColumnNameBufSize];
@@ -137,7 +137,7 @@ void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, con
         columns.emplace_back(col);
 
         // register name pointer
-        RePak::RegisterDescriptor(colhdrinfo.index, (sizeof(DataTableColumn) * colIdx) + offsetof(DataTableColumn, NamePtr));
+        pak->AddPointer(colhdrinfo.index, (sizeof(DataTableColumn) * colIdx) + offsetof(DataTableColumn, NamePtr));
 
         if (type == dtblcoltype_t::StringT || type == dtblcoltype_t::Asset || type == dtblcoltype_t::AssetNoPrecache)
         {
@@ -164,10 +164,10 @@ void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, con
     }
 
     // page for Row Data
-    _vseginfo_t rawdatainfo = RePak::CreateNewSegment(rowDataPageSize, SF_CPU, 8, 64);
+    _vseginfo_t rawdatainfo = pak->CreateNewSegment(rowDataPageSize, SF_CPU, 8, 64);
 
     // page for string entries
-    _vseginfo_t stringsinfo = RePak::CreateNewSegment(stringEntriesSize, SF_CPU, 8, 64);
+    _vseginfo_t stringsinfo = pak->CreateNewSegment(stringEntriesSize, SF_CPU, 8, 64);
 
     char* rowDataBuf = new char[rowDataPageSize];
 
@@ -245,7 +245,7 @@ void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, con
                 snprintf(stringEntryBuf + nextStringEntryOffset, val.length() + 1, "%s", val.c_str());
 
                 valbuf.write(stringPtr);
-                RePak::RegisterDescriptor(rawdatainfo.index, (pHdr->RowStride * rowIdx) + col.RowOffset);
+                pak->AddPointer(rawdatainfo.index, (pHdr->RowStride * rowIdx) + col.RowOffset);
 
                 nextStringEntryOffset += val.length() + 1;
                 break;
@@ -256,14 +256,14 @@ void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, con
 
     pHdr->RowHeaderPtr = { rawdatainfo.index, 0 };
 
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(DataTableHeader, RowHeaderPtr));
+    pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeader, RowHeaderPtr));
 
     // add raw data blocks
-    RePak::AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
-    RePak::AddRawDataBlock({ colhdrinfo.index, colhdrinfo.size, (uint8_t*)columnHeaderBuf });
-    RePak::AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
-    RePak::AddRawDataBlock({ rawdatainfo.index, rowDataPageSize, (uint8_t*)rowDataBuf });
-    RePak::AddRawDataBlock({ stringsinfo.index, stringEntriesSize, (uint8_t*)stringEntryBuf });
+    pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
+    pak->AddRawDataBlock({ colhdrinfo.index, colhdrinfo.size, (uint8_t*)columnHeaderBuf });
+    pak->AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
+    pak->AddRawDataBlock({ rawdatainfo.index, rowDataPageSize, (uint8_t*)rowDataBuf });
+    pak->AddRawDataBlock({ stringsinfo.index, stringEntriesSize, (uint8_t*)stringEntryBuf });
 
     RPakAssetEntry asset;
 
@@ -277,7 +277,7 @@ void Assets::AddDataTableAsset_v0(std::vector<RPakAssetEntry>* assetEntries, con
 }
 
 // VERSION 8
-void Assets::AddDataTableAsset_v1(std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 
@@ -315,19 +315,19 @@ void Assets::AddDataTableAsset_v1(std::vector<RPakAssetEntry>* assetEntries, con
     // make a page for the sub header
     //
     // asset header
-    _vseginfo_t subhdrinfo = RePak::CreateNewSegment(sizeof(DataTableHeader), SF_HEAD, 8);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(DataTableHeader), SF_HEAD, 8);
 
     // DataTableColumn entries
-    _vseginfo_t colhdrinfo = RePak::CreateNewSegment(sizeof(DataTableColumn) * columnCount, SF_CPU, 8, 64);
+    _vseginfo_t colhdrinfo = pak->CreateNewSegment(sizeof(DataTableColumn) * columnCount, SF_CPU, 8, 64);
 
     // column names
-    _vseginfo_t nameseginfo = RePak::CreateNewSegment(ColumnNameBufSize, SF_CPU, 8, 64);
+    _vseginfo_t nameseginfo = pak->CreateNewSegment(ColumnNameBufSize, SF_CPU, 8, 64);
 
     pHdr->ColumnCount = columnCount;
     pHdr->RowCount = rowCount - 1;
     pHdr->ColumnHeaderPtr = { colhdrinfo.index, 0 };
 
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(DataTableHeader, ColumnHeaderPtr));
+    pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeader, ColumnHeaderPtr));
 
     // allocate buffers for the loop
     char* namebuf = new char[ColumnNameBufSize];
@@ -361,7 +361,7 @@ void Assets::AddDataTableAsset_v1(std::vector<RPakAssetEntry>* assetEntries, con
         columns.emplace_back(col);
 
         // register name pointer
-        RePak::RegisterDescriptor(colhdrinfo.index, (sizeof(DataTableColumn) * colIdx) + offsetof(DataTableColumn, NamePtr));
+        pak->AddPointer(colhdrinfo.index, (sizeof(DataTableColumn) * colIdx) + offsetof(DataTableColumn, NamePtr));
 
         if (type == dtblcoltype_t::StringT || type == dtblcoltype_t::Asset || type == dtblcoltype_t::AssetNoPrecache)
         {
@@ -388,10 +388,10 @@ void Assets::AddDataTableAsset_v1(std::vector<RPakAssetEntry>* assetEntries, con
     }
 
     // page for Row Data
-    _vseginfo_t rawdatainfo = RePak::CreateNewSegment(rowDataPageSize, SF_CPU, 8, 64);
+    _vseginfo_t rawdatainfo = pak->CreateNewSegment(rowDataPageSize, SF_CPU, 8, 64);
 
     // page for string entries
-    _vseginfo_t stringsinfo = RePak::CreateNewSegment(stringEntriesSize, SF_CPU, 8, 64);
+    _vseginfo_t stringsinfo = pak->CreateNewSegment(stringEntriesSize, SF_CPU, 8, 64);
 
     char* rowDataBuf = new char[rowDataPageSize];
 
@@ -469,7 +469,7 @@ void Assets::AddDataTableAsset_v1(std::vector<RPakAssetEntry>* assetEntries, con
                 snprintf(stringEntryBuf + nextStringEntryOffset, val.length() + 1, "%s", val.c_str());
 
                 valbuf.write(stringPtr);
-                RePak::RegisterDescriptor(rawdatainfo.index, (pHdr->RowStride * rowIdx) + col.RowOffset);
+                pak->AddPointer(rawdatainfo.index, (pHdr->RowStride * rowIdx) + col.RowOffset);
 
                 nextStringEntryOffset += val.length() + 1;
                 break;
@@ -480,14 +480,14 @@ void Assets::AddDataTableAsset_v1(std::vector<RPakAssetEntry>* assetEntries, con
 
     pHdr->RowHeaderPtr = { rawdatainfo.index, 0 };
 
-    RePak::RegisterDescriptor(subhdrinfo.index, offsetof(DataTableHeader, RowHeaderPtr));
+    pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeader, RowHeaderPtr));
 
     // add raw data blocks
-    RePak::AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
-    RePak::AddRawDataBlock({ colhdrinfo.index, colhdrinfo.size, (uint8_t*)columnHeaderBuf });
-    RePak::AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
-    RePak::AddRawDataBlock({ rawdatainfo.index, rowDataPageSize, (uint8_t*)rowDataBuf });
-    RePak::AddRawDataBlock({ stringsinfo.index, stringEntriesSize, (uint8_t*)stringEntryBuf });
+    pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
+    pak->AddRawDataBlock({ colhdrinfo.index, colhdrinfo.size, (uint8_t*)columnHeaderBuf });
+    pak->AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
+    pak->AddRawDataBlock({ rawdatainfo.index, rowDataPageSize, (uint8_t*)rowDataBuf });
+    pak->AddRawDataBlock({ stringsinfo.index, stringEntriesSize, (uint8_t*)stringEntryBuf });
 
     RPakAssetEntry asset;
 
