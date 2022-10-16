@@ -35,18 +35,15 @@ void Assets::AddRigAsset_v4(CPakFile* pak, std::vector<RPakAssetEntry>* assetEnt
 		if (pHdr->AseqRefCount == 0)
 			Error("invalid animseq count must not be 0 for arig '%s'\n", assetPath);
 
-
 		for (auto& entry : mapEntry["animseqs"].GetArray())
 		{
 			if (entry.IsString() && !pak->DoesAssetExist(RTech::StringToGuid(entry.GetString())))
 				AseqList.push_back(entry.GetString());
-				//Assets::AddRseqAsset_v7(pak, assetEntries, entry.GetString(), mapEntry);
 		}
 
 		AddRseqListAsset_v7(pak, assetEntries, mapEntry, g_sAssetsDir, AseqList);
 	}
 
-	
 	// begin rrig input
 	BinaryIO skelInput;
 	skelInput.open(skelFilePath, BinaryIOMode::Read);
@@ -187,7 +184,7 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 	if (mapEntry.HasMember("activity") && mapEntry["activity"].IsString())
 	{
 		dataBuf.writestring(ActivityOverride, fileNameDataSize + rseqFileSize);
-		seqdesc.szactivitynameindex = rseqFileSize ;
+		seqdesc.szactivitynameindex = rseqFileSize;
 		OverrideHeader = true;
 	}
 
@@ -204,12 +201,6 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 	pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pName));
 	pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pAnimation));
-
-	if (mapEntry.HasMember("autolayers") && mapEntry["autolayers"].IsBool() && !mapEntry["autolayers"].GetBool())
-	{
-		seqdesc.numautolayers = 0;
-		OverrideHeader = true;
-	}
 
 	if (OverrideHeader)
 		memcpy(pDataBuf + fileNameDataSize, &seqdesc, sizeof(mstudioseqdesc_t));
@@ -245,7 +236,6 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 	assetEntries->push_back(asset);
 }
 
-
 void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, rapidjson::Value& mapEntry, std::string sAssetsDir, std::vector<std::string> AseqList)
 {
 	// calculate databuf size
@@ -253,11 +243,12 @@ void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntrie
 	for (auto& AseqName : AseqList)
 	{
 		uint64_t GUID = RTech::StringToGuid(AseqName.c_str());
+
+		Log("Asset aseq -> '%s'\n", AseqName.c_str());
 		std::vector<RPakGuidDescriptor> guids{};
 
 		std::string FilePath = sAssetsDir + AseqName;
 		REQUIRE_FILE(FilePath);
-
 
 		uint32_t fileNameDataSize = AseqName.length() + 1;
 		uint32_t rseqFileSize = (uint32_t)Utils::GetFileSize(FilePath);
@@ -271,7 +262,6 @@ void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntrie
 
 	char* pDataBuf = new char[DataSize];
 	rmem dataBuf(pDataBuf);
-
 
 	// asset header
 	_vseginfo_t subhdrinfo = pak->CreateNewSegment(HeaderSize, SF_HEAD, 16);
@@ -308,8 +298,8 @@ void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntrie
 		pHdr.pName = { dataseginfo.index, baseoffset };
 		pHdr.pAnimation = { dataseginfo.index, baseoffset + fileNameDataSize };
 
-		pak->AddPointer( subhdrinfo.index, headeroffset + offsetof(AnimHeader, pName) );
-		pak->AddPointer( subhdrinfo.index, headeroffset + offsetof(AnimHeader, pAnimation) );
+		pak->AddPointer(subhdrinfo.index, headeroffset + offsetof(AnimHeader, pName));
+		pak->AddPointer(subhdrinfo.index, headeroffset + offsetof(AnimHeader, pAnimation));
 
 		uint64_t AutoLayerOffset = baseoffset + fileNameDataSize + seqdesc.autolayerindex;
 
@@ -329,9 +319,7 @@ void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntrie
 				pak->GetAssetByGuid(autolayer->guid)->AddRelation(assetEntries->size());
 		}
 
-
 		memcpy(pHeaderBuf + headeroffset, &pHdr, sizeof(AnimHeader));
-
 
 		RPakAssetEntry asset;
 		asset.InitAsset(GUID, subhdrinfo.index, headeroffset, sizeof(AnimHeader), -1, 0, -1, -1, (std::uint32_t)AssetType::ASEQ);
