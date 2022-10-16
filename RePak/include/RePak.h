@@ -171,6 +171,18 @@ public:
 		m_vRawDataBlocks.push_back(block);
 	};
 
+	inline void AddExternalAsset(std::string path)
+	{
+		// check for duplicates
+		for (auto& it : m_vExternalAssetPaths)
+		{
+			if (it == path)
+				return;
+		}
+		// no duplicates, add to vector
+		m_vExternalAssetPaths.push_back(path);
+	}
+
 	// purpose: populates m_vFileRelations vector with combined asset relation data
 	inline void GenerateFileRelations()
 	{
@@ -184,18 +196,6 @@ public:
 		}
 		m_Header.relationCount = m_vFileRelations.size();
 	}
-  
-  inline void AddExternalAsset(std::string path)
-  {
-    // check for duplicates
-    for (auto& it : g_vExternalAssetPaths)
-    {
-        if (it == path)
-            return;
-    }
-    // no duplicates, add to vector
-    g_vExternalAssetPaths.push_back(path);
-  }
 
 	inline void GenerateGuidData()
 	{
@@ -330,7 +330,7 @@ public:
 	std::vector<RPakDescriptor> m_vDescriptors{};
 	std::vector<RPakGuidDescriptor> m_vGuidDescriptors{};
 	std::vector<uint32_t> m_vFileRelations{};
-  std::vector<std::string> g_vExternalAssetPaths{};
+	std::vector<std::string> m_vExternalAssetPaths{};
 
 	std::vector<RPakRawDataBlock> m_vRawDataBlocks{};
 

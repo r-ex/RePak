@@ -185,15 +185,15 @@ int main(int argc, char** argv)
 
     // write the external asset references
     uint32_t offset = 0;
-    rpakFile->header.externalAssetsCount = g_vExternalAssetPaths.size();
-    for (auto& it : g_vExternalAssetPaths)
+    pak->m_Header.externalAssetsCount = pak->m_vExternalAssetPaths.size();
+    for (auto& it : pak->m_vExternalAssetPaths)
     {
         // why in the fuck cant i do out.write(0); this is stupid
         uint32_t zero = 0;
         out.write(zero);
         offset += it.length() + 1;
     }
-    rpakFile->header.externalAssetsSize = offset;
+    pak->m_Header.externalAssetsSize = offset;
     // write the reserved space
     while(offset--)
     {
