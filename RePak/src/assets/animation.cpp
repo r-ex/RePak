@@ -152,18 +152,17 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 	AnimHeader* pHdr = new AnimHeader();
 
-	std::string ActivityOverride = "";
-
+	uint32_t ActivityNameLen = 0;
 	if (mapEntry.HasMember("activity") && mapEntry["activity"].IsString())
-		ActivityOverride = mapEntry["activity"].GetStdString();
+		ActivityNameLen = mapEntry["activity"].GetStdString().length() + 1;
 
-	uint32_t activityNameDataSize = ActivityOverride.length() + 1;
+	uint64_t EventDataSize = CalculateAllocSizeForEvents(mapEntry);
 	uint32_t fileNameDataSize = sAssetName.length() + 1;
 	uint32_t rseqFileSize = (uint32_t)Utils::GetFileSize(FilePath);
-	uint32_t bufAlign = 4 - (fileNameDataSize + rseqFileSize) % 4;
+	uint32_t bufAlign = 4 - (fileNameDataSize + rseqFileSize + ActivityNameLen + EventDataSize) % 4;
 
-	size_t DataBufferSize = fileNameDataSize + rseqFileSize + bufAlign + 2;
-	char* pDataBuf = new char[DataBufferSize + activityNameDataSize];
+	size_t DataBufferSize = fileNameDataSize + rseqFileSize + ActivityNameLen + EventDataSize + bufAlign;
+	char* pDataBuf = new char[DataBufferSize];
 	rmem dataBuf(pDataBuf);
 
 	// write the aseq file path into the data buffer
@@ -171,7 +170,7 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 	BinaryIO rseqInput;
 	rseqInput.open(FilePath, BinaryIOMode::Read);
-	rseqInput.getReader()->read(pDataBuf + fileNameDataSize, DataBufferSize);
+	rseqInput.getReader()->read(pDataBuf + fileNameDataSize, rseqFileSize);
 	rseqInput.close();
 
 	std::vector<RPakGuidDescriptor> guids{};
@@ -179,21 +178,24 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 	dataBuf.seek(fileNameDataSize, rseekdir::beg);
 	mstudioseqdesc_t seqdesc = dataBuf.read<mstudioseqdesc_t>();
 
-	bool OverrideHeader = false;
-
 	if (mapEntry.HasMember("activity") && mapEntry["activity"].IsString())
 	{
-		dataBuf.writestring(ActivityOverride, fileNameDataSize + rseqFileSize);
+		std::string ActivityName = mapEntry["activity"].GetStdString();
+
+		dataBuf.writestring(ActivityName, fileNameDataSize + rseqFileSize);
 		seqdesc.szactivitynameindex = rseqFileSize;
-		OverrideHeader = true;
 	}
+
+	AddCustomEventsToAseq(seqdesc, dataBuf, fileNameDataSize, rseqFileSize + ActivityNameLen, mapEntry);
+
+	memcpy(pDataBuf + fileNameDataSize, &seqdesc, sizeof(mstudioseqdesc_t));
 
 	// Segments
 	// asset header
 	_vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(AnimHeader), SF_HEAD, 16);
 
 	// data segment
-	_vseginfo_t dataseginfo = pak->CreateNewSegment(DataBufferSize + activityNameDataSize, SF_CPU, 64);
+	_vseginfo_t dataseginfo = pak->CreateNewSegment(DataBufferSize, SF_CPU, 64);
 
 	pHdr->pName = { dataseginfo.index, 0 };
 
@@ -201,9 +203,6 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 	pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pName));
 	pak->AddPointer(subhdrinfo.index, offsetof(AnimHeader, pAnimation));
-
-	if (OverrideHeader)
-		memcpy(pDataBuf + fileNameDataSize, &seqdesc, sizeof(mstudioseqdesc_t));
 
 	dataBuf.seek(fileNameDataSize + seqdesc.autolayerindex, rseekdir::beg);
 	// register autolayer aseq guids
@@ -218,7 +217,6 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 		if (pak->DoesAssetExist(autolayer->guid))
 			pak->GetAssetByGuid(autolayer->guid)->AddRelation(assetEntries->size());
-		//else Warning("\n==============================\n0x%llX AutoLayer dependancy not found -> 0x%llX\n==============================\n", GUID, autolayer->guid);
 	}
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
@@ -339,4 +337,87 @@ void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntrie
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHeaderBuf });
 	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
+}
+
+uint64_t CalculateAllocSizeForEvents(rapidjson::Value& mapEntry)
+{
+	uint64_t datasize = 0;
+	if (mapEntry.HasMember("events") && mapEntry["events"].IsArray() && mapEntry["events"].GetArray().Size() > 0)
+	{
+		auto EventEntries = mapEntry["events"].GetArray();
+		datasize += EventEntries.Size() * sizeof(mstudioeventv54_t);
+
+		for (auto& EventData : EventEntries)
+		{
+			std::string EventName = "AE_EMPTY";
+			if (EventData.HasMember("event") && EventData["event"].IsString())
+				EventName = EventData["event"].GetStdString();
+
+			datasize += EventName.length() + 1;
+		}
+	}
+
+	return datasize;
+}
+
+void AddCustomEventsToAseq(mstudioseqdesc_t& seqdesc, rmem& writer, uint64_t filenamedatasize, uint64_t eventoffset, rapidjson::Value& mapEntry)
+{
+	if (mapEntry.HasMember("events") && mapEntry["events"].IsArray() && mapEntry["events"].GetArray().Size() > 0)
+	{
+		auto EventEntries = mapEntry["events"].GetArray();
+
+		// register new events index
+		seqdesc.eventindex = eventoffset;
+		seqdesc.numevents = EventEntries.Size();
+
+		eventoffset += filenamedatasize;
+
+		uint64_t stringpoolsize = 0;
+		for (int i = 0; i < EventEntries.Size(); i++)
+		{
+			auto& Entry = EventEntries[i];
+
+			std::string EventName = "AE_EMPTY";
+			if (Entry.HasMember("event") && Entry["event"].IsString())
+				EventName = Entry["event"].GetStdString();
+			stringpoolsize += EventName.length() + 1;
+		}
+
+		writer.seek(eventoffset + (EventEntries.Size() * sizeof(mstudioeventv54_t)), rseekdir::beg);
+
+		size_t evennameoffset = 0;
+		for (int i = 0; i < EventEntries.Size(); i++)
+		{
+			uint64_t eventdataoffset = eventoffset + (i * sizeof(mstudioeventv54_t));
+
+			writer.seek(eventdataoffset, rseekdir::beg);
+			auto& Entry = EventEntries[i];
+
+			mstudioeventv54_t NewEvent;
+			if (Entry.HasMember("cycle") && Entry["cycle"].IsFloat())
+				NewEvent.cycle = Entry["cycle"].GetFloat();
+
+			if (Entry.HasMember("options") && Entry["options"].IsString() && Entry["options"].GetStringLength() < 256)
+			{
+				std::string entry = Entry["options"].GetStdString();
+
+				for (int i = 0; i < 256; i++)
+					NewEvent.options[i] = 0;
+
+				snprintf((char*)NewEvent.options, 256, "%s", entry.c_str());
+			}
+
+			std::string EventName = "AE_EMPTY";
+			if (Entry.HasMember("event") && Entry["event"].IsString())
+				EventName = Entry["event"].GetStdString();
+
+			uint64_t eventnameoffset = eventoffset + (EventEntries.Size() * sizeof(mstudioeventv54_t)) + evennameoffset;
+			writer.writestring(EventName, eventnameoffset);
+
+			NewEvent.szeventindex = eventnameoffset - eventdataoffset;
+
+			writer.write(NewEvent, eventdataoffset);
+			evennameoffset += EventName.length() + 1;
+		}
+	}
 }

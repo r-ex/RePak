@@ -129,7 +129,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
             if (it.GetStringLength() == 0)
                 Error("anim rig #%i for model '%s' was defined as an invalid empty string\n", i, assetPath);
 
-            uint64_t guid = RTech::StringToGuid(it.GetStdString().c_str());
+            uint64_t guid = RTech::StringToGuid(it.GetString());
 
             arigBuf.write<uint64_t>(guid);
 
@@ -163,16 +163,11 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
             if (it.GetStringLength() == 0)
                 Error("anim seq #%i for model '%s' was defined as an invalid empty string\n", i, assetPath);
 
-            uint64_t guid = RTech::StringToGuid(it.GetStdString().c_str());
+            uint64_t guid = RTech::StringToGuid(it.GetString());
 
             aseqBuf.write<uint64_t>(guid);
+
             // check if anim seq is a local asset so that the relation can be added
-
-            std::string RseqPath = g_sAssetsDir + it.GetStdString();
-
-            if (!pak->DoesAssetExist(guid) && FILE_EXISTS(RseqPath))
-                Assets::AddRseqAsset_v7(pak, assetEntries, it.GetString(), mapEntry);
-
             if(pak->DoesAssetExist(guid))
                 pak->GetAssetByGuid(guid)->AddRelation(assetEntries->size());
 
@@ -253,7 +248,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pAnimSeqs));
 
         for (int i = 0; i < pHdr->animSeqCount; ++i)
-            pak->AddGuidDescriptor(&guids, aseqseginfo.index, sizeof(uint64_t) * i);
+            pak->AddGuidDescriptor(&guids, aseqseginfo.index, sizeof(uint64_t)* i);
+            
     }
 
     if (pStaticVGBuf)

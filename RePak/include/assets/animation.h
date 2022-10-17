@@ -166,6 +166,16 @@ struct mstudioanimdescv54_t
 	uint64_t SomeDataOffset;
 };
 
+struct mstudioeventv54_t
+{
+	float cycle = 0.0;
+	int	event = 0;
+	int type = 0x400; // this will be 0 if old style I'd imagine
+	char options[256];
+
+	int szeventindex;
+};
+
 struct mstudioautolayer_t
 {
 	uint64_t guid; // hashed aseq guid asset
@@ -216,3 +226,7 @@ struct RAnimBoneHeader
 	uint32_t DataSize;
 };
 #pragma pack(pop)
+
+uint64_t CalculateAllocSizeForEvents(rapidjson::Value& mapEntry);
+
+void AddCustomEventsToAseq(mstudioseqdesc_t& seqdesc, rmem& writer, uint64_t filenamedatasize, uint64_t eventoffset, rapidjson::Value& mapEntry);
