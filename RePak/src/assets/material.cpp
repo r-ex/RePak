@@ -766,10 +766,10 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + surfaceDataBuffLength;
 
     // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(MaterialHeaderV15), SF_HEAD /*| SF_CLIENT*/,4, 4);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(MaterialHeaderV15), SF_HEAD /*| SF_CLIENT*/, 8);
 
     // asset data
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8, 16);
+    _vseginfo_t dataseginfo = pak->CreateNewSegment(dataBufSize, SF_CPU /*| SF_CLIENT*/, 64);
 
     char* dataBuf = new char[dataBufSize] {};
     char* tmp = dataBuf;
