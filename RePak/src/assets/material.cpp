@@ -731,10 +731,23 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         mtlHdr->m_SomeFlags = mapEntry["flags"].GetUint();
 
     std::string surface = "default";
+    std::string surface2 = "default";
 
     // surfaces are defined in scripts/surfaceproperties.rson
     if (mapEntry.HasMember("surface"))
         surface = mapEntry["surface"].GetStdString();
+
+    // rarely used edge case but it's good to have.
+    if (mapEntry.HasMember("surface2"))
+        surface2 = mapEntry["surface2"].GetStdString();
+
+    int surfaceDataBuffLength = 0;
+    // surfaceDataBuffLength = (surface.length() + 1);
+
+    if (mapEntry.HasMember("surface2"))
+        surfaceDataBuffLength = (surface.length() + 1) + (surface2.length() + 1);
+    else
+        surfaceDataBuffLength = (surface.length() + 1);
 
     // Get the size of the texture guid section.
     size_t textureRefSize = 0;
@@ -750,13 +763,13 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     }
 
     uint32_t assetPathSize = (sAssetPath.length() + 1);
-    uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + (surface.length() + 1);
+    uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + surfaceDataBuffLength;
 
     // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(MaterialHeaderV15), SF_HEAD /*| SF_CLIENT*/, 8);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(MaterialHeaderV15), SF_HEAD /*| SF_CLIENT*/,4, 4);
 
     // asset data
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
+    _vseginfo_t dataseginfo = pak->CreateNewSegment(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8, 16);
 
     char* dataBuf = new char[dataBufSize] {};
     char* tmp = dataBuf;
@@ -798,7 +811,17 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     // ===============================
     // write the surface name into the buffer
-    snprintf(dataBuf, surface.length() + 1, "%s", surface.c_str());
+    if (mapEntry.HasMember("surface2"))
+    {
+        std::string surfaceStrTmp = surface + "." + surface2;
+
+        snprintf(dataBuf, (surface.length() + 1) + (surface2.length() + 1), "%s", surfaceStrTmp.c_str());
+        snprintf(dataBuf, surface.length() + 1, "%s", surface.c_str());
+    }
+    else {
+        snprintf(dataBuf, surface.length() + 1, "%s", surface.c_str());
+    }
+
 
     // get the original pointer back so it can be used later for writing the buffer
     dataBuf = tmp;
@@ -810,6 +833,14 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     mtlHdr->m_pszSurfaceProp.index = dataseginfo.index;
     mtlHdr->m_pszSurfaceProp.offset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
+
+    if (mapEntry.HasMember("surface2")) {
+
+        mtlHdr->m_pszSurfaceProp2.index = dataseginfo.index;
+        mtlHdr->m_pszSurfaceProp2.offset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2) + (surface.length() + 1);
+
+        pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pszSurfaceProp2));
+    }
 
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pszName));
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pszSurfaceProp));

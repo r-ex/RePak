@@ -15,6 +15,12 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
     std::string sAssetName = assetPath;
 
+    if (pak->DoesAssetExist(RTech::StringToGuid(sAssetName.c_str())))
+    {
+        Warning("Asset mdl_ -> '%s' already exists skipping\n", assetPath);
+        return;
+    }
+
     ModelHeader* pHdr = new ModelHeader();
 
     std::string rmdlFilePath = g_sAssetsDir + sAssetName;

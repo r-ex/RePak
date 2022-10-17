@@ -25,6 +25,12 @@ void Assets::AddRigAsset_v4(CPakFile* pak, std::vector<RPakAssetEntry>* assetEnt
 
 	REQUIRE_FILE(skelFilePath);
 
+	if (pak->DoesAssetExist(RTech::StringToGuid(sAssetName.c_str())))
+	{
+		Warning("Asset arig -> '%s' already exists skipping\n", assetPath);
+		return;
+	}
+		
 	AnimRigHeader* pHdr = new AnimRigHeader();
 
 	std::vector<std::string> AseqList;
