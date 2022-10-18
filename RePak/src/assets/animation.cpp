@@ -43,7 +43,7 @@ void Assets::AddRigAsset_v4(CPakFile* pak, std::vector<RPakAssetEntry>* assetEnt
 
 		for (auto& entry : mapEntry["animseqs"].GetArray())
 		{
-			if (entry.IsString() && pak->GetAssetByGuid(RTech::StringToGuid(entry.GetString())) != nullptr)
+			if (entry.IsString() && pak->GetAssetByGuid(RTech::StringToGuid(entry.GetString())) == nullptr)
 				AseqList.push_back(entry.GetString());
 		}
 
@@ -119,12 +119,10 @@ void Assets::AddRigAsset_v4(CPakFile* pak, std::vector<RPakAssetEntry>* assetEnt
 		uint64_t GUID = RTech::StringToGuid(Entry.GetString());
 
 		auto Asset = pak->GetAssetByGuid(GUID);
-
 		if (Asset)
 		{
 			DataWriter.write<uint64_t>(GUID, Offset);
 			pak->AddGuidDescriptor(&guids, dataseginfo.index, Offset);
-
 			Asset->AddRelation(assetEntries->size());
 		}
 	}
