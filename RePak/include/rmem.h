@@ -114,7 +114,7 @@ public: // read/write
 		if (_curpos + strlen > _bufsize)
 			throw "failed to write to buffer: attempted to write past the end of the buffer";
 
-		_pbuf = static_cast<char*>(_pbuf) + (val.length() + 1);
+		_pbuf = static_cast<char*>(_pbuf) + strlen;
 
 		snprintf((char*)_pbuf, strlen, "%s", val.c_str());
 
