@@ -191,10 +191,7 @@ void Assets::AddSettingsLayoutAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry
 	asset.version = 0;
 
 	asset.pageEnd = stringbufferinfo.index + 1; // number of the highest page that the asset references pageidx + 1
-	asset.unk1 = 2;
-
-	asset.usesStartIdx = 0;
-	asset.usesCount = 0; // the asset should only use 1 other asset for the atlas
+	asset.unk1 = 1;
 
 	// add the asset entry
 	assetEntries->push_back(asset);
@@ -219,14 +216,7 @@ void Assets::AddSettingsAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* ass
 
 	pak->AddPointer(subhdrinfo.index, 0);
 
-	if (mapEntry.HasMember("kvp")) // KVP Buffer Size
-	{
-		if (mapEntry["kvp"].IsUint64() && mapEntry["kvp"].GetUint64() != 0)
-			hdr->KvpBufferSize = mapEntry["kvp"].GetUint64();
-
-		else Error("Required field 'layout' has to be type 'Uint64' for settings item. Exiting...\n");
-	}
-	else hdr->KvpBufferSize = 0x1024 + (0x8 * assetEntries->size());
+	hdr->KvpBufferSize = 0x1024 + (0x8 * assetEntries->size());
 
 	if (mapEntry.HasMember("layout")) // layout guid
 	{

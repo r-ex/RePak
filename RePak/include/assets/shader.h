@@ -8,7 +8,7 @@ enum ShaderType : uint8_t
 	Pixel,
 	Vertex,
 	Geometry,
-	Hardware,
+	Hull,
 	Domain,
 	Compute
 };

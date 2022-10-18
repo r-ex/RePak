@@ -1019,6 +1019,24 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     std::uint64_t cpuDataSize = sizeof(MaterialCPUDataV15);
 
+    if (mapEntry.HasMember("cpu") && mapEntry["cpu"].IsString())
+    {
+        std::string cpudataFilePath = g_sAssetsDir + mapEntry["cpu"].GetStdString() + ".cpu";
+
+        REQUIRE_FILE(cpudataFilePath);
+
+        if (Utils::GetFileSize(cpudataFilePath) != cpuDataSize)
+            Error("Provided Cpu Data for Material '%s' has invalid size expected : '%d' got : '%d' ", assetPath, cpuDataSize, Utils::GetFileSize(cpudataFilePath));
+
+        // begin rmdl input
+        BinaryIO cpuInput;
+        cpuInput.open(cpudataFilePath, BinaryIOMode::Read);
+        MaterialCPUDataV15 newcpudata = cpuInput.read<MaterialCPUDataV15>();
+        cpuInput.close();
+
+        memcpy_s(&CpuData, cpuDataSize, &newcpudata, cpuDataSize);
+    }
+
     // cpu data
     _vseginfo_t cpuseginfo = pak->CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, SF_CPU | SF_TEMP, 16);
 

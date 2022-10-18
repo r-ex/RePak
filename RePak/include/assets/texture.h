@@ -2,7 +2,7 @@
 
 #include <pch.h>
 
-#pragma pack(push, 2)
+#pragma pack(push, 1)
 struct TextureHeader
 {
 	uint64_t guid = 0;
@@ -27,7 +27,6 @@ struct TextureHeader
 	uint8_t  streamedMipLevels;
 	uint8_t  unk3[0x15];
 };
-
 #pragma pack(pop)
 
 // map of dxgi format to the corresponding txtr asset format value

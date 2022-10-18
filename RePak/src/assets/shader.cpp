@@ -2,12 +2,12 @@
 #include "Assets.h"
 #include "assets/shader.h"
 
-std::unordered_map<std::string, ShaderType> DataTableColumnMap =
+std::unordered_map<std::string, ShaderType> ShaderTypeMap =
 {
 	{ "pixel",   ShaderType::Pixel },
 	{ "vertex",   ShaderType::Vertex },
 	{ "geometry",   ShaderType::Geometry },
-	{ "hardware",   ShaderType::Hardware },
+	{ "hull",   ShaderType::Hull },
 	{ "domain",   ShaderType::Domain },
 	{ "compute",   ShaderType::Compute },
 };
@@ -16,7 +16,7 @@ ShaderType GetShaderTypeFromString(std::string sType)
 {
 	std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
 
-	for (const auto& [key, value] : DataTableColumnMap) // Iterate through unordered_map.
+	for (const auto& [key, value] : ShaderTypeMap) // Iterate through unordered_map.
 	{
 		if (sType.compare(key) == 0) // Do they equal?
 			return value;
@@ -65,8 +65,8 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, std::vector<RPakAssetEntry>* a
 	if (mapEntry.HasMember("textures") && mapEntry["textures"].IsInt() && mapEntry["textures"].GetInt() != 0)
 		pHdr->TextureInputCount = (uint16_t)mapEntry["textures"].GetInt();
 
-	pHdr->Count1 = pHdr->TextureInputCount;
-	pHdr->Count3 = 3;
+	//pHdr->Count1 = pHdr->TextureInputCount;
+	//pHdr->Count3 = 3;
 
 	uint32_t Relations = 0;
 	if (mapEntry.HasMember("vertex") && mapEntry["vertex"].IsString())
@@ -118,31 +118,23 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, std::vector<RPakAssetEntry>* a
 
 	asset.version = 11;
 
-	asset.AddRelation(assetEntries->size());
-	asset.AddRelation(assetEntries->size());
-
-	asset.relationCount = Relations;
-	asset.usesCount = Relations;
-
 	asset.AddGuids(&guids);
 	assetEntries->push_back(asset);
 }
 
 void Assets::AddShaderAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-	std::string AssetName = assetPath;
-	AssetName = AssetName;
-
 	Log("\n==============================\n");
-	Log("Asset shdr -> '%s'\n", AssetName.c_str());
+	Log("Asset shdr -> '%s'\n", assetPath);
+
 	uint64_t GUID = RTech::StringToGuid(assetPath);
 
+	std::string AssetName = assetPath;
 	std::string shaderFilePath = g_sAssetsDir + AssetName + ".fxc";
-
 	REQUIRE_FILE(shaderFilePath);
 
 	uint32_t Textures = 0;
-	if (mapEntry.HasMember("textures") && mapEntry["textures"].IsInt() && mapEntry["textures"].GetInt() != 0)
+	if (mapEntry.HasMember("textures") && mapEntry["textures"].IsInt())
 		Textures = (uint16_t)mapEntry["textures"].GetInt();
 
 	ShaderHeader* pHdr = new ShaderHeader();
@@ -172,15 +164,15 @@ void Assets::AddShaderAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 			Log("-> max dimensions: %ix%i\n", pHdr->max_width, pHdr->max_height);
 			break;
 		}
-		case ShaderType::Vertex:
-		{
-			uint8_t unk = 255;
-			uint16_t min_widthheight = 256;
-
-			uint16_t max_width = 0;
-			uint16_t max_height = 2;
-			break;
-		}
+		//case ShaderType::Vertex:
+		//{
+		//	uint8_t unk = 255;
+		//	uint16_t min_widthheight = 256;
+		//
+		//	uint16_t max_width = 0;
+		//	uint16_t max_height = 2;
+		//	break;
+		//}
 
 		default:
 			return;
@@ -200,7 +192,7 @@ void Assets::AddShaderAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 	size_t DataBufferSize = sizeof(ShaderDataHeader) + shdrFileSize;
 	char* pDataBuf = new char[DataBufferSize];
 
-	// write the skeleton data into the data buffer
+	// write the shader data into the data buffer
 	shdrInput.getReader()->read(pDataBuf + sizeof(ShaderDataHeader), shdrFileSize);
 	shdrInput.close();
 
@@ -215,7 +207,7 @@ void Assets::AddShaderAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 	rmem metawriter(pMetaDataBuf);
 
 	// data segment
-	_vseginfo_t dataseginfo = pak->CreateNewSegment(DataBufferSize, SF_CPU | SF_TEMP | SF_CLIENT, 1);
+	_vseginfo_t dataseginfo = pak->CreateNewSegment(DataBufferSize, SF_CPU, 64);
 
 	ShaderDataHeader SDRData;
 	{
