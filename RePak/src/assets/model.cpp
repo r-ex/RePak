@@ -15,7 +15,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
     std::string sAssetName = assetPath;
 
-    if (pak->DoesAssetExist(RTech::StringToGuid(sAssetName.c_str())))
+    if (pak->GetAssetByGuid(RTech::StringToGuid(sAssetName.c_str())) != nullptr)
     {
         Warning("Asset mdl_ -> '%s' already exists skipping\n", assetPath);
         return;
@@ -140,9 +140,10 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
             arigBuf.write<uint64_t>(guid);
 
             // check if anim rig is a local asset so that the relation can be added
-            if (pak->DoesAssetExist(guid))
-                pak->GetAssetByGuid(guid)->AddRelation(assetEntries->size());
+            auto Asset = pak->GetAssetByGuid(guid);
 
+            if (Asset)
+                Asset->AddRelation(assetEntries->size());
             i++;
         }
     }
@@ -174,9 +175,10 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
             aseqBuf.write<uint64_t>(guid);
 
             // check if anim seq is a local asset so that the relation can be added
-            if(pak->DoesAssetExist(guid))
-                pak->GetAssetByGuid(guid)->AddRelation(assetEntries->size());
+            auto Asset = pak->GetAssetByGuid(guid);
 
+            if (Asset)
+                Asset->AddRelation(assetEntries->size());
             i++;
         }
     }
@@ -296,8 +298,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         if(material->guid != 0)
             pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(materialref_t, guid));
 
-        if (pak->DoesAssetExist(material->guid))
-            pak->GetAssetByGuid(material->guid)->AddRelation(assetEntries->size());
+        auto Asset = pak->GetAssetByGuid(material->guid);
+        if (Asset)
+            Asset->AddRelation(assetEntries->size());
 
         Log("Material Guid -> 0x%llX\n", material->guid);
     }

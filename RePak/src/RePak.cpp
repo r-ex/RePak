@@ -202,7 +202,7 @@ int main(int argc, char** argv)
 
     out.close();
 
-    Debug("written rpak file with size %lld\n", pak->m_Header.compressedSize);
+    Log("\nwritten rpak file with size %lld\n", pak->m_Header.compressedSize);
 
     // free the memory
     for (auto& it : pak->m_vRawDataBlocks)
@@ -218,7 +218,7 @@ int main(int argc, char** argv)
 
         std::string filename = path.filename().u8string();
 
-        Debug("writing starpak %s with %lld data entries\n", filename.c_str(), pak->m_vStarpakDataBlocks.size());
+        Log("writing starpak %s with %lld data entries\n", filename.c_str(), pak->m_vStarpakDataBlocks.size());
         BinaryIO srpkOut;
 
         srpkOut.open(sOutputDir + filename, BinaryIOMode::Write);
@@ -255,7 +255,7 @@ int main(int argc, char** argv)
 
         srpkOut.write(entryCount);
 
-        Debug("written starpak file with size %lld\n", srpkOut.tell());
+        Log("written starpak file with size %lld\n", srpkOut.tell());
 
         srpkOut.close();
     }

@@ -25,12 +25,12 @@ void Assets::AddRigAsset_v4(CPakFile* pak, std::vector<RPakAssetEntry>* assetEnt
 
 	REQUIRE_FILE(skelFilePath);
 
-	if (pak->DoesAssetExist(RTech::StringToGuid(sAssetName.c_str())))
+	if (pak->GetAssetByGuid(RTech::StringToGuid(sAssetName.c_str())) != nullptr)
 	{
 		Warning("Asset arig -> '%s' already exists skipping\n", assetPath);
 		return;
 	}
-		
+
 	AnimRigHeader* pHdr = new AnimRigHeader();
 
 	std::vector<std::string> AseqList;
@@ -43,11 +43,11 @@ void Assets::AddRigAsset_v4(CPakFile* pak, std::vector<RPakAssetEntry>* assetEnt
 
 		for (auto& entry : mapEntry["animseqs"].GetArray())
 		{
-			if (entry.IsString() && !pak->DoesAssetExist(RTech::StringToGuid(entry.GetString())))
+			if (entry.IsString() && pak->GetAssetByGuid(RTech::StringToGuid(entry.GetString())) != nullptr)
 				AseqList.push_back(entry.GetString());
 		}
 
-		AddRseqListAsset_v7(pak, assetEntries, mapEntry, g_sAssetsDir, AseqList);
+		AddRseqListAsset_v7(pak, assetEntries, g_sAssetsDir, AseqList);
 	}
 
 	// begin rrig input
@@ -118,12 +118,14 @@ void Assets::AddRigAsset_v4(CPakFile* pak, std::vector<RPakAssetEntry>* assetEnt
 		uint64_t Offset = SegmentOffset + (i * sizeof(uint64_t));
 		uint64_t GUID = RTech::StringToGuid(Entry.GetString());
 
-		if (pak->DoesAssetExist(GUID))
+		auto Asset = pak->GetAssetByGuid(GUID);
+
+		if (Asset)
 		{
 			DataWriter.write<uint64_t>(GUID, Offset);
 			pak->AddGuidDescriptor(&guids, dataseginfo.index, Offset);
 
-			pak->GetAssetByGuid(GUID)->AddRelation(assetEntries->size());
+			Asset->AddRelation(assetEntries->size());
 		}
 	}
 
@@ -153,7 +155,7 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 
 	uint64_t GUID = RTech::StringToGuid(sAssetName.c_str());
 
-	//Log("\n==============================\n");
+	Log("\n==============================\n");
 	Log("Asset aseq -> 0x%llX -> '%s'\n", GUID, assetPath);
 
 	AnimHeader* pHdr = new AnimHeader();
@@ -221,8 +223,10 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 		if (autolayer->guid != 0)
 			pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid));
 
-		if (pak->DoesAssetExist(autolayer->guid))
-			pak->GetAssetByGuid(autolayer->guid)->AddRelation(assetEntries->size());
+		auto Asset = pak->GetAssetByGuid(autolayer->guid);
+
+		if (Asset)
+			Asset->AddRelation(assetEntries->size());
 	}
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
@@ -240,7 +244,7 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 	assetEntries->push_back(asset);
 }
 
-void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, rapidjson::Value& mapEntry, std::string sAssetsDir, std::vector<std::string> AseqList)
+void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, std::string sAssetsDir, std::vector<std::string> AseqList)
 {
 	// calculate databuf size
 	size_t DataSize = 0;
@@ -319,8 +323,9 @@ void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntrie
 			if (autolayer->guid != 0)
 				pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid));
 
-			if (pak->DoesAssetExist(autolayer->guid))
-				pak->GetAssetByGuid(autolayer->guid)->AddRelation(assetEntries->size());
+			auto Asset = pak->GetAssetByGuid(autolayer->guid);
+			if (Asset)
+				Asset->AddRelation(assetEntries->size());
 		}
 
 		memcpy(pHeaderBuf + headeroffset, &pHdr, sizeof(AnimHeader));

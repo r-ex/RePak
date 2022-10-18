@@ -3,7 +3,7 @@
 #include <pch.h>
 #include <assert.h>
 
-void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, rapidjson::Value& mapEntry, std::string sAssetsDir, std::vector<std::string> AseqList);
+void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, std::string sAssetsDir, std::vector<std::string> AseqList);
 
 enum mstudioseqflags : uint32_t
 {

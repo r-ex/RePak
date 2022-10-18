@@ -252,24 +252,9 @@ public:
 			}
 			i++;
 		}
+
 		Debug("failed to find asset with guid %llX\n", guid);
 		return nullptr;
-	}
-
-	bool DoesAssetExist(uint64_t guid, uint32_t* idx = nullptr)
-	{
-		uint32_t i = 0;
-		for (auto& it : m_Assets)
-		{
-			if (it.guid == guid)
-			{
-				if (idx)
-					*idx = i;
-				return true;
-			}
-			i++;
-		}
-		return false;
 	}
 
 	// starpaks
