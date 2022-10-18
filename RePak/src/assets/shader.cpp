@@ -101,12 +101,16 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, std::vector<RPakAssetEntry>* a
 			pHdr->VertexShaderGUID = mapEntry["vertex"].GetUint64();
 		else Error("Asset '%s' 'vertex' field is using invalid type expected 'string , uint64'\n", assetPath);
 
+		if (pHdr->VertexShaderGUID == 0)
+			Error("Asset '%s' 'vertex' field cannot be 0\n", assetPath);
+
 		pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(ShaderSetHeader, VertexShaderGUID));
 
 		RPakAssetEntry* shaderAsset = pak->GetAssetByGuid(pHdr->VertexShaderGUID);
 		if (shaderAsset)
 			shaderAsset->AddRelation(assetEntries->size());
-	}
+
+	} else Error("Asset '%s' 'vertex' field is missing\n", assetPath);
 
 	if (mapEntry.HasMember("pixel"))
 	{
@@ -116,11 +120,15 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, std::vector<RPakAssetEntry>* a
 			pHdr->PixelShaderGUID = mapEntry["pixel"].GetUint64();
 		else Error("Asset '%s' 'pixel' field is using invalid type expected 'string , uint64'\n", assetPath);
 
+		if(pHdr->PixelShaderGUID == 0)
+			Error("Asset '%s' 'pixel' field cannot be 0\n", assetPath);
+
 		pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(ShaderSetHeader, PixelShaderGUID));
 
 		RPakAssetEntry* shaderAsset = pak->GetAssetByGuid(pHdr->PixelShaderGUID);
 		if (shaderAsset)
 			shaderAsset->AddRelation(assetEntries->size());
+
 	} else Error("Asset '%s' 'pixel' field is missing\n", assetPath);
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
