@@ -198,15 +198,15 @@ void Assets::AddShaderAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 			Log("-> max dimensions: %ix%i\n", pHdr->max_width, pHdr->max_height);
 			break;
 		}
-		//case ShaderType::Vertex:
-		//{
-		//	uint8_t unk = 255;
-		//	uint16_t min_widthheight = 256;
-		//
-		//	uint16_t max_width = 0;
-		//	uint16_t max_height = 2;
-		//	break;
-		//}
+		case ShaderType::Vertex:
+		{
+			uint8_t unk = 255;
+			uint16_t min_widthheight = 256;
+		
+			uint16_t max_width = 0;
+			uint16_t max_height = 2;
+			break;
+		}
 
 		default:
 			return;
@@ -275,6 +275,7 @@ void Assets::AddShaderAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 	RPakAssetEntry asset;
 	asset.InitAsset(GUID, subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::SHDR);
 
+	asset.pageEnd = dataseginfo.index + 1;
 	asset.version = 12;
 
 	assetEntries->push_back(asset);
