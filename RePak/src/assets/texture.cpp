@@ -15,7 +15,7 @@ void Assets::AddTextureAssetList_v8(CPakFile* pak, std::vector<RPakAssetEntry>* 
 
         for (auto& entry : mapEntry["textures"].GetArray())
         {
-            if (entry.IsString() && !pak->GetAssetByGuid(RTech::StringToGuid(entry.GetString())))
+            if (entry.IsString() && pak->GetAssetByGuid(RTech::StringToGuid(entry.GetString())) == nullptr)
                 Assets::AddTextureAsset_v8(pak, assetEntries, entry.GetString(), mapEntry);
         }
     }

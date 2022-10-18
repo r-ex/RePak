@@ -2,7 +2,7 @@
 
 #include <pch.h>
 
-#pragma pack(push, 2)
+#pragma pack(push, 1)
 enum ShaderType : uint8_t
 {
 	Pixel,
@@ -55,14 +55,15 @@ struct ShaderSetHeader {
 
 	RPakPtr pName{};
 
-	uint8_t Unknown1[0x8];
-	uint16_t Count1;  // if Count3 = 3 then Count1 = TextureInputCount
-	uint16_t TextureInputCount;
-	uint16_t Count3 = 3;
-	uint8_t Byte1 = 0;
-	uint8_t Byte2 = 0;
+	uint8_t pad_0008[8];        // Dispatcher Context, Some SEH try and catch thing.
+	uint16_t Count1;            // TextureInputCount
+	uint16_t TextureInputCount = 7;
+	uint16_t NumSamplers = 3;   // Used by ID3D11DeviceContext::PSSetSamplers to set NumSamplers
+	uint8_t StartSlot;       // Used by ID3D11DeviceContext::PSSetShaderResources to set StartSlot.
+	uint8_t NumViews;        // Used by ID3D11DeviceContext::PSSetShaderResources to set NumViews.
+	uint8_t Byte1;           //
 
-	uint8_t Unknown2[0x10];
+	uint8_t pad_0021[15]; //0x0021
 
 	uint64_t VertexShaderGUID;
 	uint64_t PixelShaderGUID;

@@ -50,7 +50,7 @@ public:
 		ASSET_HANDLER("rmdl", file, m_Assets, Assets::AddModelAsset_stub, Assets::AddModelAsset_v9);
 		ASSET_HANDLER("matl", file, m_Assets, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
 
-		//ASSET_HANDLER("shds", file, m_Assets, Assets::AddShaderSetAsset_stub, Assets::AddShaderSetAsset_v11);
+		ASSET_HANDLER("shds", file, m_Assets, Assets::AddShaderSetAsset_stub, Assets::AddShaderSetAsset_v11);
 		//ASSET_HANDLER("shdr", file, m_Assets, Assets::AddShaderSetAsset_stub, Assets::AddShaderAsset_v12);
 
 		//ASSET_HANDLER("stlt", file, assets, Assets::AddSettingsLayoutAsset_v0, Assets::AddSettingsLayoutAsset_v0);

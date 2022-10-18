@@ -141,7 +141,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
             // check if anim rig is a local asset so that the relation can be added
             auto Asset = pak->GetAssetByGuid(guid);
-
             if (Asset)
                 Asset->AddRelation(assetEntries->size());
             i++;
@@ -176,7 +175,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
             // check if anim seq is a local asset so that the relation can be added
             auto Asset = pak->GetAssetByGuid(guid);
-
             if (Asset)
                 Asset->AddRelation(assetEntries->size());
             i++;

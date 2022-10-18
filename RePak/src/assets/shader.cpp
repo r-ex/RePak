@@ -48,75 +48,101 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, std::vector<RPakAssetEntry>* a
 
 	// Segments
 	// asset header
-	_vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(ShaderSetHeader), SF_HEAD, 16);
+	_vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(ShaderSetHeader), SF_HEAD, 16, 16);
+
+
+	bool SaveName = false;
+	if (mapEntry.HasMember("savename"))
+	{
+		if (mapEntry["savename"].IsBool())
+			SaveName = mapEntry["savename"].GetBool();
+		else Error("Asset '%s' 'savename' field is using invalid type expected 'bool'\n", assetPath);
+	}
 
 	// data segment
-	_vseginfo_t dataseginfo = pak->CreateNewSegment(NameDataSize, SF_CPU, 64);
+	_vseginfo_t dataseginfo;
+	if (SaveName)
+	{
+		dataseginfo = pak->CreateNewSegment(NameDataSize, SF_CPU, 64);
 
-	// Write Shader Set Name
-	snprintf(pDataBuf, NameDataSize, "%s", sAssetName.c_str());
+		// Write Shader Set Name
+		snprintf(pDataBuf, NameDataSize, "%s", sAssetName.c_str());
 
-	pHdr->pName = { dataseginfo.index, 0 };
+		pHdr->pName = { dataseginfo.index, 0 };
+		pak->AddPointer(subhdrinfo.index, offsetof(ShaderSetHeader, pName));
+	}
 
-	pak->AddPointer(subhdrinfo.index, offsetof(ShaderSetHeader, pName));
+	if (mapEntry.HasMember("textures"))
+	{
+		if(mapEntry["textures"].IsInt())
+			pHdr->TextureInputCount = (uint16_t)mapEntry["textures"].GetInt();
+		else Error("Asset '%s' 'textures' field is using invalid type expected 'uint'\n", assetPath);
+	} else Error("Asset '%s' 'textures' field is missing\n", assetPath); 
+		
+	pHdr->Count1 = pHdr->TextureInputCount;
 
-	pHdr->TextureInputCount = 7;
-
-	if (mapEntry.HasMember("textures") && mapEntry["textures"].IsInt() && mapEntry["textures"].GetInt() != 0)
-		pHdr->TextureInputCount = (uint16_t)mapEntry["textures"].GetInt();
-
-	//pHdr->Count1 = pHdr->TextureInputCount;
-	//pHdr->Count3 = 3;
+	if (mapEntry.HasMember("samplers"))
+	{
+		if (mapEntry["samplers"].IsInt())
+			pHdr->NumSamplers = (uint16_t)mapEntry["samplers"].GetInt();
+		else Error("Asset '%s' 'samplers' field is using invalid type expected 'uint'\n", assetPath);
+	}
+	
+	// ensure if texture count is 0 use 0 samplers
+	if (pHdr->TextureInputCount == 0)
+		pHdr->NumSamplers = 0;
 
 	uint32_t Relations = 0;
-	if (mapEntry.HasMember("vertex") && mapEntry["vertex"].IsString())
+	if (mapEntry.HasMember("vertex"))
 	{
-		std::string PixelShaderName = mapEntry["vertex"].GetStdString();
+		if (mapEntry["vertex"].IsString())
+			pHdr->VertexShaderGUID = RTech::StringToGuid(mapEntry["vertex"].GetString());
+		else if (mapEntry["vertex"].IsUint64())
+			pHdr->VertexShaderGUID = mapEntry["vertex"].GetUint64();
+		else Error("Asset '%s' 'vertex' field is using invalid type expected 'string , uint64'\n", assetPath);
 
-		pHdr->VertexShaderGUID = RTech::StringToGuid(PixelShaderName.c_str());
+		pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(ShaderSetHeader, VertexShaderGUID));
 
-		RPakAssetEntry* shaderAsset = pak->GetAssetByGuid(pHdr->VertexShaderGUID, nullptr);
-
+		RPakAssetEntry* shaderAsset = pak->GetAssetByGuid(pHdr->VertexShaderGUID);
 		if (shaderAsset)
-		{
 			shaderAsset->AddRelation(assetEntries->size());
-			pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(ShaderSetHeader, VertexShaderGUID));
-			Relations++;
-		}
-		else
-			Warning("unable to find vertex shader '%s' for shaderset '%s' within the local assets\n", PixelShaderName.c_str(), sAssetName.c_str());
 	}
 
-	if (mapEntry.HasMember("pixel") && mapEntry["pixel"].IsString())
+	if (mapEntry.HasMember("pixel"))
 	{
-		std::string PixelShaderName = mapEntry["pixel"].GetStdString();
+		if (mapEntry["pixel"].IsString())
+			pHdr->PixelShaderGUID = RTech::StringToGuid(mapEntry["pixel"].GetString());
+		else if (mapEntry["pixel"].IsUint64())
+			pHdr->PixelShaderGUID = mapEntry["pixel"].GetUint64();
+		else Error("Asset '%s' 'pixel' field is using invalid type expected 'string , uint64'\n", assetPath);
 
-		pHdr->PixelShaderGUID = RTech::StringToGuid(PixelShaderName.c_str());
+		pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(ShaderSetHeader, PixelShaderGUID));
 
-		RPakAssetEntry* shaderAsset = pak->GetAssetByGuid(pHdr->PixelShaderGUID, nullptr);
-
+		RPakAssetEntry* shaderAsset = pak->GetAssetByGuid(pHdr->PixelShaderGUID);
 		if (shaderAsset)
-		{
 			shaderAsset->AddRelation(assetEntries->size());
-			pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(ShaderSetHeader, PixelShaderGUID));
-			Relations++;
-		}
-		else
-			Warning("unable to find pixel shader '%s' for shaderset '%s' within the local assets\n", PixelShaderName.c_str(), sAssetName.c_str());
-	}
-
-	// write shaderdata
+	} else Error("Asset '%s' 'pixel' field is missing\n", assetPath);
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
-	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
+	uint32_t lastPageIdx = subhdrinfo.index;
 
+	if (SaveName)
+	{
+		pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
+		lastPageIdx = dataseginfo.index;
+	}
+	
 	uint64_t GUID = RTech::StringToGuid(sAssetName.c_str());
 	Log("-> GUID: 0x%llX\n", GUID);
 
 	RPakAssetEntry asset;
 	asset.InitAsset(GUID, subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::SHDS);
 
+	asset.pageEnd = lastPageIdx + 1;
+
 	asset.version = 11;
+
+	asset.unk1 = guids.size() + 1;
 
 	asset.AddGuids(&guids);
 	assetEntries->push_back(asset);

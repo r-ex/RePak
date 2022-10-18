@@ -898,20 +898,19 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     if (mapEntry.HasMember("shaderset"))
     {
         if (mapEntry["shaderset"].IsString() && mapEntry["shaderset"].GetStdString() != "")
-            mtlHdr->m_pShaderSet = RTech::StringToGuid(mapEntry["shaderset"].GetStdString().c_str());
+            mtlHdr->m_pShaderSet = RTech::StringToGuid(mapEntry["shaderset"].GetString());
         else if (mapEntry["shaderset"].IsUint64() && mapEntry["shaderset"].GetUint64() != 0)
             mtlHdr->m_pShaderSet = mapEntry["shaderset"].GetUint64();
     }
 
     pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_pShaderSet));
 
-    if (mtlHdr->m_pShaderSet != 0)
-    {
-        RPakAssetEntry* asset = pak->GetAssetByGuid(mtlHdr->m_pShaderSet);
-
-        if (asset)
-            asset->AddRelation(assetEntries->size());
-    }
+   if (mtlHdr->m_pShaderSet)
+   {
+       RPakAssetEntry* asset = pak->GetAssetByGuid(mtlHdr->m_pShaderSet);
+       if (asset)
+           asset->AddRelation(assetEntries->size());
+   }
 
     // Is this a colpass asset?
     bool bColpass = false;
@@ -921,9 +920,10 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         mtlHdr->m_GUIDRefs[4] = RTech::StringToGuid(colpassPath.c_str());
 
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 32);
-
-        bColpass = true;
     }
+
+    if (sAssetPath.find("colpass") != -1)
+        bColpass = true;
 
     for (int i = 0; i < 5; ++i)
     {
