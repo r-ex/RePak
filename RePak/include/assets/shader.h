@@ -2,8 +2,18 @@
 
 #include <pch.h>
 
-#pragma pack(push, 1)
-enum ShaderType : uint8_t
+// DX Shader Types
+enum ShaderType : uint16_t
+{
+	ComputeShader = 0x4353,
+	DomainShader = 0x4453,
+	GeometryShader = 0x4753,
+	HullShader = 0x4853,
+	VertexShader = 0xFFFE,
+	PixelShader = 0xFFFF,
+};
+
+enum HdrShaderType : uint8_t
 {
 	Pixel,
 	Vertex,
@@ -13,6 +23,32 @@ enum ShaderType : uint8_t
 	Compute
 };
 
+struct DXBCHeader
+{
+	uint32_t Magic;
+	uint32_t Checksum[4];
+	uint32_t One;
+	uint32_t DataSize;
+	uint32_t ChunkCount;
+};
+
+struct RDefHeader
+{
+	uint32_t Magic; // RDEF
+	uint32_t DataSize;
+	uint32_t ConstBufferCount;
+	uint32_t ConstBufferOffset;
+	uint32_t ResBindingCount;
+	uint32_t ResBindingOffset;
+	uint8_t  MinorVersion;
+	uint8_t  MajorVersion;
+	ShaderType ShaderType;
+	uint32_t Flags;
+	uint32_t CompilerStringOffset;
+};
+
+#pragma pack(push, 1)
+// shader "DXBC" header
 struct TextureSlotData
 {
 	uint16_t unk1;
@@ -31,7 +67,7 @@ struct ShaderHeader
 {
 	RPakPtr pName{};
 
-	ShaderType ShaderType;
+	HdrShaderType ShaderType;
 	uint8_t unk = 255;
 	uint16_t min_widthheight = 1;
 
@@ -43,10 +79,15 @@ struct ShaderHeader
 	RPakPtr pTextureSlotData{};
 };
 
-int size = sizeof(ShaderHeader);
-
 struct TextureSlot
 {
+};
+
+struct ShaderDataHeader
+{
+	RPakPtr pData{};
+
+	uint32_t DataSize;
 };
 
 // --- shds ---
@@ -89,20 +130,3 @@ struct ShaderSetHeaderTF {
 };
 
 #pragma pack(pop)
-
-struct RShaderImage
-{
-	RPakPtr pData{};
-
-	uint32_t DataSize;
-	uint32_t DataSize2;
-
-	RPakPtr pData2{};
-};
-
-struct ShaderDataHeader
-{
-	RPakPtr pData{};
-
-	uint32_t DataSize;
-};

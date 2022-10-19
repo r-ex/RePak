@@ -2,29 +2,6 @@
 #include "Assets.h"
 #include "assets/shader.h"
 
-std::unordered_map<std::string, ShaderType> ShaderTypeMap =
-{
-	{ "pixel",   ShaderType::Pixel },
-	{ "vertex",   ShaderType::Vertex },
-	{ "geometry",   ShaderType::Geometry },
-	{ "hull",   ShaderType::Hull },
-	{ "domain",   ShaderType::Domain },
-	{ "compute",   ShaderType::Compute },
-};
-
-ShaderType GetShaderTypeFromString(std::string sType)
-{
-	std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
-
-	for (const auto& [key, value] : ShaderTypeMap) // Iterate through unordered_map.
-	{
-		if (sType.compare(key) == 0) // Do they equal?
-			return value;
-	}
-
-	return ShaderType::Pixel;
-}
-
 void Assets::AddShaderSetAsset_stub(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
 	Error("RPak version 7 (Titanfall 2) Shader Set !!!!NOT IMPLEMENTED!!!!");
@@ -166,108 +143,123 @@ void Assets::AddShaderAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 	std::string AssetName = assetPath;
 	std::string shaderFilePath = g_sAssetsDir + AssetName + ".fxc";
 	REQUIRE_FILE(shaderFilePath);
+	uint32_t ShaderSize = Utils::GetFileSize(shaderFilePath);
+
+	// Read ShaderData
+	BinaryIO shdrInput;
+	shdrInput.open(shaderFilePath, BinaryIOMode::Read);
+
+	DXBCHeader shdrhdr = shdrInput.read<DXBCHeader>();
+
+	if (shdrhdr.Magic != 0x43425844) // "DXBC"
+		Error("invalid file magic for shader asset '%s'. expected %x, found %x\n", assetPath, 0x54534449, shdrhdr.Magic);
+
+	shdrInput.seek(0);
+
+	size_t DataBufferSize = sizeof(ShaderDataHeader) + ShaderSize;
+	char* pDataBuf = new char[DataBufferSize];
+
+	// write the shader data into the data buffer
+	shdrInput.getReader()->read(pDataBuf + sizeof(ShaderDataHeader), ShaderSize);
+	shdrInput.close();
+
+	//while (!IsDebuggerPresent())
+	//	::Sleep(100);
+
+	rmem writer(pDataBuf);
+	uint64_t offset = sizeof(ShaderDataHeader);
+
+	// go to first chunk and read the header
+	writer.seek(offset + 0x34, rseekdir::beg);
+	RDefHeader RDefHdr = writer.read<RDefHeader>();
+
+	if (RDefHdr.Magic != 'FEDR')
+		Error("invalid RDef magic for shader asset '%s'. expected %x, found %x\n", assetPath, 'FEDR', RDefHdr.Magic);
+
+	if (RDefHdr.MajorVersion >= 5)
+		writer.seek(32, rseekdir::cur); // skip RD11 header
 
 	uint32_t Textures = 0;
 	if (mapEntry.HasMember("textures") && mapEntry["textures"].IsInt())
 		Textures = (uint16_t)mapEntry["textures"].GetInt();
 
 	ShaderHeader* pHdr = new ShaderHeader();
+
+	switch (RDefHdr.ShaderType)
 	{
-		if (mapEntry.HasMember("type") && mapEntry["type"].IsString())
-			pHdr->ShaderType = GetShaderTypeFromString(mapEntry["type"].GetStdString());
-		else
-		{
-			Warning("Type Not Found Using Pixel");
-			pHdr->ShaderType = ShaderType::Pixel;
-		}
+	case ShaderType::PixelShader:
+	{
+		Log("ShaderType -> Pixel'\n");
+		pHdr->ShaderType = HdrShaderType::Pixel;
 
-		switch (pHdr->ShaderType)
-		{
-		case ShaderType::Pixel:
-		{
-			if (mapEntry.HasMember("width") && mapEntry["width"].IsNumber())
-				pHdr->max_width = mapEntry["width"].GetInt();
 
-			if (mapEntry.HasMember("height") && mapEntry["height"].IsNumber())
-				pHdr->max_height = mapEntry["height"].GetInt();
+		if (mapEntry.HasMember("width") && mapEntry["width"].IsNumber())
+			pHdr->max_width = mapEntry["width"].GetInt();
 
-			if (mapEntry.HasMember("minsize") && mapEntry["minsize"].IsNumber())
-				pHdr->min_widthheight = mapEntry["minsize"].GetInt();
+		if (mapEntry.HasMember("height") && mapEntry["height"].IsNumber())
+			pHdr->max_height = mapEntry["height"].GetInt();
 
-			Log("-> min dimensions: %ix%i\n", pHdr->min_widthheight, pHdr->min_widthheight);
-			Log("-> max dimensions: %ix%i\n", pHdr->max_width, pHdr->max_height);
-			break;
-		}
-		case ShaderType::Vertex:
-		{
-			uint8_t unk = 255;
-			uint16_t min_widthheight = 256;
-		
-			uint16_t max_width = 0;
-			uint16_t max_height = 2;
-			break;
-		}
+		if (mapEntry.HasMember("minsize") && mapEntry["minsize"].IsNumber())
+			pHdr->min_widthheight = mapEntry["minsize"].GetInt();
 
-		default:
-			return;
-		}
+		Log("-> min dimensions: %ix%i\n", pHdr->min_widthheight, pHdr->min_widthheight);
+		Log("-> max dimensions: %ix%i\n", pHdr->max_width, pHdr->max_height);
+		break;
+	}
+	case ShaderType::VertexShader:
+	{
+		Log("ShaderType -> Vertex'\n");
+		pHdr->ShaderType = HdrShaderType::Vertex;
+
+		pHdr->unk = 255;
+		pHdr->min_widthheight = 100;
+	
+		pHdr->max_width = 0;
+		pHdr->max_height = 2;
+		break;
 	}
 
-	// Read ShaderData
-	BinaryIO shdrInput;
-	shdrInput.open(shaderFilePath, BinaryIOMode::Read);
-
-	shdrInput.seek(0, std::ios::end);
-
-	uint32_t shdrFileSize = shdrInput.tell();
-
-	shdrInput.seek(0);
-
-	size_t DataBufferSize = sizeof(ShaderDataHeader) + shdrFileSize;
-	char* pDataBuf = new char[DataBufferSize];
-
-	// write the shader data into the data buffer
-	shdrInput.getReader()->read(pDataBuf + sizeof(ShaderDataHeader), shdrFileSize);
-	shdrInput.close();
-
-	rmem writer(pDataBuf);
+	default:
+		Error("!!! 'Compute, Domain, Geometry, Hull Shaders are not supported !!!'\n");
+		return;
+	}
 
 	// Segments
 	// asset header
 	_vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(ShaderHeader), SF_HEAD, 16);
 
-	_vseginfo_t metadataseginfo = pak->CreateNewSegment((16 * Textures) + (16 * Textures), SF_CPU, 64);
-	char* pMetaDataBuf = new char[(16 * Textures) + (16 * Textures)];
-	rmem metawriter(pMetaDataBuf);
+	//_vseginfo_t metadataseginfo = pak->CreateNewSegment((16 * Textures) + (16 * Textures), SF_CPU, 64);
+	//char* pMetaDataBuf = new char[(16 * Textures) + (16 * Textures)];
+	//rmem metawriter(pMetaDataBuf);
 
 	// data segment
 	_vseginfo_t dataseginfo = pak->CreateNewSegment(DataBufferSize, SF_CPU, 64);
 
 	ShaderDataHeader SDRData;
 	{
-		SDRData.DataSize = shdrFileSize;
+		SDRData.DataSize = ShaderSize;
 		SDRData.pData = { dataseginfo.index, sizeof(ShaderDataHeader) };
 		// write shaderdata
 		writer.write(SDRData, 0);
 
-		pHdr->pIndex0 = { metadataseginfo.index, 0 };
-		pHdr->pTextureSlotData = { metadataseginfo.index, (16 * Textures) };
+		//pHdr->pIndex0 = { metadataseginfo.index, 0 };
+		//pHdr->pTextureSlotData = { metadataseginfo.index, (16 * Textures) };
 
-		for (int i = 0; i < Textures * 2; i++)
-		{
-			TextureSlotData Data{};
-			metawriter.write(Data, (16 * i));
-		}
+		//for (int i = 0; i < Textures * 2; i++)
+		//{
+		//	TextureSlotData Data{};
+		//	metawriter.write(Data, (16 * i));
+		//}
 	}
 
 	pak->AddPointer(subhdrinfo.index, offsetof(ShaderHeader, pName));
-	pak->AddPointer(subhdrinfo.index, offsetof(ShaderHeader, pIndex0));
-	pak->AddPointer(subhdrinfo.index, offsetof(ShaderHeader, pTextureSlotData));
+	//pak->AddPointer(subhdrinfo.index, offsetof(ShaderHeader, pIndex0));
+	//pak->AddPointer(subhdrinfo.index, offsetof(ShaderHeader, pTextureSlotData));
 
 	pak->AddPointer(dataseginfo.index, offsetof(ShaderDataHeader, pData));
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
-	pak->AddRawDataBlock({ metadataseginfo.index, metadataseginfo.size, (uint8_t*)pMetaDataBuf });
+	//pak->AddRawDataBlock({ metadataseginfo.index, metadataseginfo.size, (uint8_t*)pMetaDataBuf });
 	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
 
 	Log("-> GUID: 0x%llX\n", GUID);
