@@ -728,7 +728,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         mtlHdr->m_nHeight = mapEntry["height"].GetInt();
 
     if (mapEntry.HasMember("flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
-        mtlHdr->m_SomeFlags = mapEntry["flags"].GetUint();
+        mtlHdr->m_ImageFlags = mapEntry["flags"].GetUint();
 
     std::string surface = "default";
     std::string surface2 = "default";
@@ -753,9 +753,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     size_t textureRefSize = 0;
 
     if (mapEntry.HasMember("textures"))
-    {
         textureRefSize = mapEntry["textures"].GetArray().Size() * 8;
-    }
     else
     {
         Warning("Trying to add material with no textures. Skipping asset...\n");
@@ -821,7 +819,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     else {
         snprintf(dataBuf, surface.length() + 1, "%s", surface.c_str());
     }
-
 
     // get the original pointer back so it can be used later for writing the buffer
     dataBuf = tmp;
@@ -947,8 +944,8 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pTextureHandles));
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pStreamingTextureHandles));
 
-    mtlHdr->something = 0x72000000;
-    mtlHdr->something2 = 0x100000;
+    mtlHdr->m_Flags2 = 0x56000020;
+    mtlHdr->something = 0x100000;
 
     for (int i = 0; i < 2; ++i)
     {
@@ -1019,26 +1016,19 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     std::uint64_t cpuDataSize = sizeof(MaterialCPUDataV15);
 
-
-
     char* CpuDataBuf = nullptr;
     if (mapEntry.HasMember("cpu") && mapEntry["cpu"].IsString())
     {
         std::string cpudataFilePath = g_sAssetsDir + mapEntry["cpu"].GetStdString() + ".cpu";
-
         REQUIRE_FILE(cpudataFilePath);
 
         cpuDataSize = Utils::GetFileSize(cpudataFilePath);
-
-        // begin rmdl input
         CpuDataBuf = new char[cpuDataSize];
 
         BinaryIO cpuInput;
         cpuInput.open(cpudataFilePath, BinaryIOMode::Read);
         cpuInput.getReader()->read(CpuDataBuf, cpuDataSize);
         cpuInput.close();
-
-       // memcpy_s(&CpuData, cpuDataSize, &newcpudata, cpuDataSize);
     }
     else
     {

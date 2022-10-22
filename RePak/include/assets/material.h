@@ -18,6 +18,39 @@ struct RGBA
 };
 
 #pragma pack(push, 1)
+
+enum MatVisFlags : uint16_t
+{
+	None = 0x0,
+	Colpass = 0x5,
+	Transparent = 0x7,
+	Opaque = 0x17
+};
+
+enum MatRenderFlags : uint16_t
+{
+	Default = 0x0,
+	Wireframe = 0x1,
+	Culling = 0x2,
+	Inverted = 0x4,
+	NoCulling = 0x6,
+	Unknown = 0x8,
+};
+
+enum MaterialShaderType_t : unsigned __int8
+{
+	RGDU = 0x0,
+	RGDP = 0x1,
+	RGDC = 0x2,
+	SKNU = 0x3,
+	SKNP = 0x4,
+	SKNC = 0x5,
+	WLDU = 0x6,
+	WLDC = 0x7,
+	PTCU = 0x8,
+	PTCS = 0x9,
+};
+
 // header struct for the material asset cpu data
 struct MaterialCPUHeader
 {
@@ -129,43 +162,11 @@ struct MaterialHeaderV12
 	int16_t Width = 2048;
 	int16_t Height = 2048;
 
-	uint32_t Unk3 = 0; // might be padding but could also be something else.
+	uint32_t Unk3 = 0; // might be padding but could also be m_Flags2 else.
 
 	/* ImageFlags
 	0x050300 for loadscreens, 0x1D0300 for normal materials.
 	0x1D has been observed, seems to invert lighting? used on some exceptionally weird materials.*/
-};
-
-enum MatVisFlags : uint16_t
-{
-	None = 0x0,
-	Colpass = 0x5,
-	Transparent = 0x7,
-	Opaque = 0x17
-};
-
-enum MatRenderFlags : uint16_t
-{
-	Default = 0x0,
-	Wireframe = 0x1,
-	Culling = 0x2,
-	Inverted = 0x4,
-	NoCulling = 0x6,
-	Unknown = 0x8,
-};
-
-enum MaterialShaderType_t : unsigned __int8
-{
-	RGDU = 0x0,
-	RGDP = 0x1,
-	RGDC = 0x2,
-	SKNU = 0x3,
-	SKNP = 0x4,
-	SKNC = 0x5,
-	WLDU = 0x6,
-	WLDC = 0x7,
-	PTCU = 0x8,
-	PTCS = 0x9,
 };
 
 // some repeated section at the end of the material header (CMaterialGlue) struct
@@ -213,7 +214,7 @@ struct MaterialHeaderV15
 	/* 0x74 */ int16_t m_nHeight = 2048;
 	/* 0x76 */ int16_t m_Unknown1 = 0;
 
-	/* 0x78 */ uint32_t m_SomeFlags = 0x1D0300;
+	/* 0x78 */ uint32_t m_ImageFlags = 0x1D0300;
 	/* 0x7C */ uint32_t m_Unknown2 = 0;
 
 	/* 0x80 */ uint32_t m_Unknown3 = 0x1F5A92BD; // REQUIRED but why?
@@ -221,15 +222,16 @@ struct MaterialHeaderV15
 	/* 0x84 */ uint32_t m_Unknown4 = 0;
 
 	// neither of these 2 seem to be required
-	/* 0x88 */ uint32_t something = 0;
-	/* 0x8C */ uint32_t something2 = 0;
+	/* 0x88 */ uint32_t m_Flags2 = 0;
+	/* 0x8C */ uint32_t something = 0;
 
 	/* 0x90 */ UnknownMaterialSectionV15 m_UnknownSections[2]{};
 	/* 0xF0 */ uint8_t bytef0;
 	/* 0xF1 */ uint8_t bytef1;
 	/* 0xF2 */ MaterialShaderType_t materialType;
 	/* 0xF3 */ uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
-	/* 0xF4 */ char pad_00F4[12];
+	/* 0xF4 */ char pad_00F4[4];
+	uint64_t textureAnimationGuid = 0;
 };
 
 struct MaterialCPUDataV12
