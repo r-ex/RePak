@@ -103,7 +103,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
         switch (ddsh.ddspf.dwFourCC)
         {
         case '1TXD': // DXT1
-            dxgiFormat = DXGI_FORMAT_BC1_UNORM;
+            dxgiFormat = DXGI_FORMAT_BC1_UNORM_SRGB;
             break;
         case '3TXD': // DXT3
             dxgiFormat = DXGI_FORMAT_BC2_UNORM;
