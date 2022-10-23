@@ -148,13 +148,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Assets.cpp" />
+    <ClCompile Include="src\assets\animation.cpp" />
     <ClCompile Include="src\assets\datatable.cpp" />
     <ClCompile Include="src\assets\material.cpp" />
     <ClCompile Include="src\assets\model.cpp" />
     <ClCompile Include="src\assets\patch.cpp" />
     <ClCompile Include="src\assets\rui.cpp" />
     <ClCompile Include="src\assets\texture.cpp" />
-    <ClCompile Include="src\components\starpak.cpp" />
     <ClCompile Include="src\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">pch.h</PrecompiledHeaderFile>
@@ -162,7 +162,6 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="src\RePak.cpp" />
-    <ClCompile Include="src\rmem.cpp" />
     <ClCompile Include="src\rtech.cpp" />
     <ClCompile Include="src\Utils.cpp" />
   </ItemGroup>

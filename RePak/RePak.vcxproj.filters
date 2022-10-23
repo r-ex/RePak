@@ -34,21 +34,12 @@
     <Filter Include="Source Files\assets">
       <UniqueIdentifier>{e323149f-3c50-45c7-94ad-532908ecc5e8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\components">
-      <UniqueIdentifier>{148b41e6-3017-4a50-9022-f6d1559e5a4e}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Assets.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\RePak.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\rmem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\rtech.cpp">
@@ -75,8 +66,11 @@
     <ClCompile Include="src\assets\patch.cpp">
       <Filter>Source Files\assets</Filter>
     </ClCompile>
-    <ClCompile Include="src\components\starpak.cpp">
-      <Filter>Source Files\components</Filter>
+    <ClCompile Include="src\Assets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\animation.cpp">
+      <Filter>Source Files\assets</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

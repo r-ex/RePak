@@ -59,6 +59,10 @@ void Utils::AppendSlash(std::string& in)
 		in.append("\\");
 }
 
+std::string Utils::ChangeExtension(const std::string& in, const std::string& ext)
+{
+	return std::filesystem::path(in).replace_extension(ext).u8string();
+}
 
 void Warning(const char* fmt, ...)
 {
