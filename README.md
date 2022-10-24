@@ -2,14 +2,14 @@
 rpak building tool
 ---
 
-disclaimer: the code is bad and the tool doesn't really work that well
+## Using RePak:
+* tbh no one knows how the file structure really works
+* look at something like [common_sdk.rpak](https://github.com/kralrindo/common_sdk.rpak) or [ui_sdk.rpak](https://github.com/AyeZeeBB/ui_sdk.rpak) for examples
+* You can use [Zee's atlas creator](https://atlas.r5reloaded.com/) to easily generate the atlas and json
+* Drag the json on to repak.exe to create the rpak
 
-i am fully aware that the entire structure of this project is not good and could be improved massively, but it works well enough for now
-
-if you can make any improvements, please PR them and i'll probably ignore it until someone tells me to look at it (just kidding, ~~unless?~~)
-
-i don't plan on documenting much of anything to do with the input json files for this ***YET***, because i don't feel like it
-
-enjoy?
-
-idk
+## Loading The rpak:
+* Place the created rpak in `R5R\paks\Win32` or `\Win64`
+* In the scripts, write `pak_requestload( "name" )` somewhere 
+    * Probably in some initialization file, like loading the survival game mode
+* Call the asset from the path specified in the json config
