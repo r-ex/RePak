@@ -842,6 +842,11 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pszName));
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pszSurfaceProp));
 
+
+    mtlHdr->m_Flags2 = 0x56000020;
+    mtlHdr->something = 0x100000;
+
+
     // Shader Type Handling
     if (type == "sknp")
     {
@@ -871,6 +876,8 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
         pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
+
+        mtlHdr->m_Flags2 = 0x72000000;
 
         mtlHdr->m_pShaderSet = 0x4B0F3B4CBD009096;
         mtlHdr->materialType = WLDC; // WLDC
@@ -943,9 +950,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pTextureHandles));
     pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, m_pStreamingTextureHandles));
-
-    mtlHdr->m_Flags2 = 0x56000020;
-    mtlHdr->something = 0x100000;
 
     for (int i = 0; i < 2; ++i)
     {
