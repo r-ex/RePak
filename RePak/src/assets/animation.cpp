@@ -420,6 +420,16 @@ void AddCustomEventsToAseq(mstudioseqdesc_t& seqdesc, rmem& writer, uint64_t fil
 			if (Entry.HasMember("event") && Entry["event"].IsString())
 				EventName = Entry["event"].GetStdString();
 
+			NewEvent.type = 0x400;
+			if (Entry.HasMember("type") && Entry["type"].IsString())
+			{
+				std::string type = Entry["type"].GetStdString();
+
+				if (type == "new") NewEvent.type = 0x400;
+				if (type == "old") NewEvent.type = 0x0;
+			}
+				
+
 			uint64_t eventnameoffset = eventoffset + (EventEntries.Size() * sizeof(mstudioeventv54_t)) + evennameoffset;
 			writer.writestring(EventName, eventnameoffset);
 
