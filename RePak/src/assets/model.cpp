@@ -192,6 +192,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         pak->AddStarpakReference(starpakPath);
 
     SRPkDataEntry de = pak->AddStarpakDataEntry({ 0, vgFileSize, (uint8_t*)pVGBuf });
+    
+    pak->AddStarpakReference(starpakPath);
 
     pHdr->alignedStreamingSize = de.m_nDataSize;
     
