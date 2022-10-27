@@ -280,17 +280,14 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 
         // check per texture just in case for whatever reason you want stuff in different starpaks (if it ever gets fixed).
         if (mapEntry.HasMember("starpakPath"))
-            sStarpakPath = mapEntry["starpakPath"].GetString();
+            starpakPath = mapEntry["starpakPath"].GetString();
            
-        if (sStarpakPath.length() == 0)
+        if (starpakPath.length() == 0)
             Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\nto fix: add 'starpakPath' as an rpak-wide variable\nor: add 'starpakPath' as an asset specific variable\n", assetPath);
         else
-            pak->AddStarpakReference(sStarpakPath);
+            pak->AddStarpakReference(starpakPath);
 
-
-        SRPkDataEntry de{ 0, nStreamedMipSize, (uint8_t*)streamedbuf };
-        de = pak->AddStarpakDataEntry(de);
-        starpakOffset = de.m_nOffset;
+        starpakOffset = pak->AddStarpakDataEntry({ 0, nStreamedMipSize, (uint8_t*)streamedbuf }).m_nOffset;
     }
 
     asset.InitAsset(hdr->guid, subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TXTR);
