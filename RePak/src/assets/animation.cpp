@@ -264,7 +264,6 @@ void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntrie
 
 	size_t HeaderSize = sizeof(AnimHeader) * AseqList.size();
 	char* pHeaderBuf = new char[HeaderSize];
-	rmem hdrBuf(pHeaderBuf);
 
 	char* pDataBuf = new char[DataSize];
 	rmem dataBuf(pDataBuf);

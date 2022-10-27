@@ -29,6 +29,10 @@ struct TextureHeader
 };
 #pragma pack(pop)
 
+void AddTextureListAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, std::string sAssetsDir, std::vector<std::string> TextureList);
+void ParseImage(BinaryIO& input, TextureHeader*& hdr, uint32_t& nLargestMipSize, uint32_t& nStreamedMipSize, uint32_t& nDDSHeaderSize, bool& bStreamable, const char* assetPath, bool printlogs = false);
+
+
 // map of dxgi format to the corresponding txtr asset format value
 static std::map<DXGI_FORMAT, uint16_t> s_txtrFormatMap{
 	{ DXGI_FORMAT_BC1_UNORM, 0 },
