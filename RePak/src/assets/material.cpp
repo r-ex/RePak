@@ -764,10 +764,10 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + surfaceDataBuffLength;
 
     // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(MaterialHeaderV15), SF_HEAD /*| SF_CLIENT*/, 4, 4);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(MaterialHeaderV15), SF_HEAD /*| SF_CLIENT*/, 16, 16);
 
     // asset data
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8, 16);
+    _vseginfo_t dataseginfo = pak->CreateNewSegment(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8, 64);
 
     char* dataBuf = new char[dataBufSize] {};
     char* tmp = dataBuf;
@@ -1043,7 +1043,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         
 
     // cpu data
-    _vseginfo_t cpuseginfo = pak->CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, SF_CPU | SF_TEMP, 16);
+    _vseginfo_t cpuseginfo = pak->CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, SF_CPU | SF_TEMP, 8,16);
 
     MaterialCPUHeader cpuhdr{};
     cpuhdr.m_nUnknownRPtr.index = cpuseginfo.index;
