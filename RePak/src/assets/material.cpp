@@ -1040,8 +1040,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         memcpy_s(CpuDataBuf, cpuDataSize, &CpuData, cpuDataSize);
     }
 
-        
-
     // cpu data
     _vseginfo_t cpuseginfo = pak->CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, SF_CPU | SF_TEMP, 8,16);
 

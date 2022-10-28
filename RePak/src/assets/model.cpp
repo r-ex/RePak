@@ -84,6 +84,14 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     vgInput.seek(0);
     vgInput.getReader()->read(pVGBuf, vgFileSize);
     
+    if (mapEntry.HasMember("solid") && mapEntry["solid"].IsBool() && !mapEntry["solid"].GetBool())
+    {
+        mdlhdr.contents = 0; // CONTENTS_EMPTY
+
+        // remove static model flag
+        if (mdlhdr.HasFlag(STUDIOHDR_FLAGS_STATIC_PROP))
+            mdlhdr.flags = mdlhdr.RemoveFlag(STUDIOHDR_FLAGS_STATIC_PROP);
+    }
 
     char* pStaticVGBuf = nullptr;
     if (mapEntry.HasMember("static") && mapEntry["static"].IsBool() && mapEntry["static"].GetBool())
@@ -302,6 +310,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
         Log("Material Guid -> 0x%llX\n", material->guid);
     }
+
+    // write modified header
+    dataBuf.write<studiohdr_t>(mdlhdr, fileNameDataSize);
 
 	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
 	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
