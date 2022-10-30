@@ -89,8 +89,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         mdlhdr.contents = 0; // CONTENTS_EMPTY
 
         // remove static model flag
-        if (mdlhdr.HasFlag(STUDIOHDR_FLAGS_STATIC_PROP))
-            mdlhdr.flags = mdlhdr.RemoveFlag(STUDIOHDR_FLAGS_STATIC_PROP);
+        mdlhdr.RemoveFlag(STUDIOHDR_FLAGS_STATIC_PROP);
     }
 
     char* pStaticVGBuf = nullptr;

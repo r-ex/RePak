@@ -270,7 +270,7 @@ struct studiohdr_t
 		return false;
 	}
 
-	inline int RemoveFlag(StudioHDR_Flags inputflag)
+	inline void RemoveFlag(StudioHDR_Flags inputflag)
 	{
 		int newflags = 0;
 
@@ -283,7 +283,7 @@ struct studiohdr_t
 			newflags = newflags | flag;
 		}
 
-		return newflags;
+		this->flags = newflags;
 	}
 
 };
