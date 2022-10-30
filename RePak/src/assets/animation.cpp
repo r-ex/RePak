@@ -242,6 +242,32 @@ void Assets::AddRseqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEn
 	assetEntries->push_back(asset);
 }
 
+void Assets::AddRseqAssetList_stub(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, rapidjson::Value& mapEntry)
+{
+	Error("unsupported asset type 'aseqlist' for version 7");
+}
+
+void Assets::AddRseqAssetList_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, rapidjson::Value& mapEntry)
+{
+	if (mapEntry.HasMember("animseqs") && mapEntry["animseqs"].IsArray())
+	{
+		uint32_t count = mapEntry["animseqs"].Size();
+
+		if (count == 0)
+			Warning("invalid aseq count must not be 0 for aseq list\n");
+
+		std::vector<std::string> AseqList{};
+
+		for (auto& entry : mapEntry["animseqs"].GetArray())
+		{
+			if (entry.IsString() && pak->GetAssetByGuid(RTech::StringToGuid(entry.GetString())) == nullptr)
+				AseqList.push_back(entry.GetStdString());
+		}
+
+		AddRseqListAsset_v7(pak, assetEntries, g_sAssetsDir, AseqList);
+	}
+}
+
 void AddRseqListAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, std::string sAssetsDir, std::vector<std::string> AseqList)
 {
 	// calculate databuf size

@@ -57,6 +57,7 @@ public:
 		//ASSET_HANDLER("stgs", file, m_Assets, Assets::AddSettingsAsset_v1, Assets::AddSettingsAsset_v1);
 		ASSET_HANDLER("arig", file, m_Assets, Assets::AddRigAsset_stub, Assets::AddRigAsset_v4);
 		ASSET_HANDLER("aseq", file, m_Assets, Assets::AddRseqAsset_stub, Assets::AddRseqAsset_v7);
+		NOPATH_ASSET_HANDLER("aseqlist", file, m_Assets, Assets::AddRseqAssetList_stub, Assets::AddRseqAssetList_v7);
 	};
 
 	inline bool IsFlagSet(int flag) { return this->flags & flag; };
