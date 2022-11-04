@@ -693,6 +693,33 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
     assetEntries->push_back(asset);
 }
 
+
+std::unordered_map<std::string, MaterialShaderType_t> ShaderTypeMap =
+{
+    { "rgdu",   MaterialShaderType_t::RGDU },
+    { "rgdp",   MaterialShaderType_t::RGDP },
+    { "rgdc",   MaterialShaderType_t::RGDC },
+    { "sknu",   MaterialShaderType_t::SKNU },
+    { "sknp",   MaterialShaderType_t::SKNP },
+    { "wldu",   MaterialShaderType_t::WLDU },
+    { "wldc",   MaterialShaderType_t::WLDC },
+    { "ptcu",   MaterialShaderType_t::PTCU },
+    { "ptcs",   MaterialShaderType_t::PTCS },
+};
+
+MaterialShaderType_t GetShaderTypeFromString(std::string sType)
+{
+    std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
+
+    for (const auto& [key, value] : ShaderTypeMap) // Iterate through unordered_map.
+    {
+        if (sType.compare(key) == 0) // Do they equal?
+            return value;
+    }
+
+    return MaterialShaderType_t::SKNP;
+}
+
 // VERSION 8
 void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
@@ -851,58 +878,51 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     mtlHdr->m_Flags2 = 0x56000020;
     mtlHdr->something = 0x100000;
 
+    MaterialShaderType_t shadertype = GetShaderTypeFromString(type);
 
-    // Shader Type Handling
-    if (type == "sknp")
+    mtlHdr->materialType = shadertype;
+
+    switch ( shadertype )
     {
-        // GUIDRefs[4] is Colpass entry.
-        mtlHdr->m_GUIDRefs[0] = 0x2B93C99C67CC8B51;
-        mtlHdr->m_GUIDRefs[1] = 0x1EBD063EA03180C7;
-        mtlHdr->m_GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
-        mtlHdr->m_GUIDRefs[3] = 0x227C27B608B3646B;
+        case SKNP:
+        {
+            mtlHdr->m_GUIDRefs[0] = 0x2B93C99C67CC8B51;
+            mtlHdr->m_GUIDRefs[1] = 0x1EBD063EA03180C7;
+            mtlHdr->m_GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
+            mtlHdr->m_GUIDRefs[3] = 0x227C27B608B3646B;
 
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
+            mtlHdr->m_pShaderSet = 0x1D9FFF314E152725;
+            break;
+        }
+        case WLDC:
+        {
+            mtlHdr->m_GUIDRefs[0] = 0x435FA77E363BEA48;
+            mtlHdr->m_GUIDRefs[1] = 0xF734F96BE92E0E71;
+            mtlHdr->m_GUIDRefs[2] = 0xD306370918620EC0;
+            mtlHdr->m_GUIDRefs[3] = 0xDAB17AEAD2D3387A;
 
-        mtlHdr->m_pShaderSet = 0x1D9FFF314E152725;
-        mtlHdr->materialType = SKNP; // SKNP
+            mtlHdr->m_pShaderSet = 0x4B0F3B4CBD009096;
+            break;
+        }
+        case RGDP:
+        {
+            mtlHdr->m_GUIDRefs[0] = 0x251FBE09EFFE8AB1; // DepthShadow
+            mtlHdr->m_GUIDRefs[1] = 0xE2D52641AFC77395; // DepthPrepass
+            mtlHdr->m_GUIDRefs[2] = 0xBDBF90B97E7D9280; // DepthVSM
+            mtlHdr->m_GUIDRefs[3] = 0x85654E05CF9B40E7; // DepthShadowTight
+
+            mtlHdr->m_pShaderSet = 0x2a2db3a47af9b3d5;
+            break;
+        }
     }
-    else if (type == "wldc")
+
+    for (int i = 0; i < 4; i++)
     {
-        // GUIDRefs[4] is Colpass entry which is optional for wldc.
-        mtlHdr->m_GUIDRefs[0] = 0x435FA77E363BEA48; // DepthShadow
-        mtlHdr->m_GUIDRefs[1] = 0xF734F96BE92E0E71; // DepthPrepass
-        mtlHdr->m_GUIDRefs[2] = 0xD306370918620EC0; // DepthVSM
-        mtlHdr->m_GUIDRefs[3] = 0xDAB17AEAD2D3387A; // DepthShadowTight
-
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
-
-        mtlHdr->m_Flags2 = 0x72000000;
-
-        mtlHdr->m_pShaderSet = 0x4B0F3B4CBD009096;
-        mtlHdr->materialType = WLDC; // WLDC
+        if( mtlHdr->m_GUIDRefs[i] )
+           pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + (i * 0x8));
     }
-    else if (type == "rgdp")
-    {
-        // GUIDRefs[4] is Colpass entry which is optional for wldc.
-        mtlHdr->m_GUIDRefs[0] = 0x251FBE09EFFE8AB1; // DepthShadow
-        mtlHdr->m_GUIDRefs[1] = 0xE2D52641AFC77395; // DepthPrepass
-        mtlHdr->m_GUIDRefs[2] = 0xBDBF90B97E7D9280; // DepthVSM
-        mtlHdr->m_GUIDRefs[3] = 0x85654E05CF9B40E7; // DepthShadowTight
 
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
 
-        mtlHdr->m_pShaderSet = 0x2a2db3a47af9b3d5;
-        mtlHdr->materialType = RGDP; // RGDP
-    }
 
     if (mapEntry.HasMember("shaderset"))
     {
