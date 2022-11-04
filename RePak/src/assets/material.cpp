@@ -787,9 +787,15 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     int textureIdx = 0;
     for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the first TextureGUID Map.
     {
-        if (it.GetStdString() != "")
+        uint64_t textureGUID = 0;
+
+        if (it.IsString() && it.GetStringLength() > 0)
+            textureGUID = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str());
+        else if(it.IsUint64() && it.GetUint64() > 0)
+            textureGUID = it.GetUint64();
+
+        if (textureGUID)
         {
-            uint64_t textureGUID = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str()); // Convert texture path to guid.
             *(uint64_t*)dataBuf = textureGUID;
             pak->AddGuidDescriptor(&guids, dataseginfo.index, guidPageOffset + (textureIdx * sizeof(uint64_t))); // Register GUID descriptor for current texture index.
 
@@ -797,13 +803,12 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
             if (txtrAsset)
                 txtrAsset->AddRelation(assetEntries->size());
-            else
-                Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
-
         }
+
         dataBuf += sizeof(uint64_t);
         textureIdx++; // Next texture index coming up.
     }
+
     dataBuf += sizeof(uint64_t) * mapEntry["textures"].Size();
 
 
