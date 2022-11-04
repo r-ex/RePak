@@ -2,6 +2,32 @@
 #include "Assets.h"
 #include "assets/material.h"
 
+std::unordered_map<std::string, MaterialShaderType_t> ShaderTypeMap =
+{
+    { "rgdu",   MaterialShaderType_t::RGDU },
+    { "rgdp",   MaterialShaderType_t::RGDP },
+    { "rgdc",   MaterialShaderType_t::RGDC },
+    { "sknu",   MaterialShaderType_t::SKNU },
+    { "sknp",   MaterialShaderType_t::SKNP },
+    { "wldu",   MaterialShaderType_t::WLDU },
+    { "wldc",   MaterialShaderType_t::WLDC },
+    { "ptcu",   MaterialShaderType_t::PTCU },
+    { "ptcs",   MaterialShaderType_t::PTCS },
+};
+
+MaterialShaderType_t GetShaderTypeFromString(std::string sType)
+{
+    std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
+
+    for (const auto& [key, value] : ShaderTypeMap) // Iterate through unordered_map.
+    {
+        if (sType.compare(key) == 0) // Do they equal?
+            return value;
+    }
+
+    return MaterialShaderType_t::SKNP;
+}
+
 // VERSION 7
 void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
@@ -693,33 +719,6 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
     assetEntries->push_back(asset);
 }
 
-
-std::unordered_map<std::string, MaterialShaderType_t> ShaderTypeMap =
-{
-    { "rgdu",   MaterialShaderType_t::RGDU },
-    { "rgdp",   MaterialShaderType_t::RGDP },
-    { "rgdc",   MaterialShaderType_t::RGDC },
-    { "sknu",   MaterialShaderType_t::SKNU },
-    { "sknp",   MaterialShaderType_t::SKNP },
-    { "wldu",   MaterialShaderType_t::WLDU },
-    { "wldc",   MaterialShaderType_t::WLDC },
-    { "ptcu",   MaterialShaderType_t::PTCU },
-    { "ptcs",   MaterialShaderType_t::PTCS },
-};
-
-MaterialShaderType_t GetShaderTypeFromString(std::string sType)
-{
-    std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
-
-    for (const auto& [key, value] : ShaderTypeMap) // Iterate through unordered_map.
-    {
-        if (sType.compare(key) == 0) // Do they equal?
-            return value;
-    }
-
-    return MaterialShaderType_t::SKNP;
-}
-
 // VERSION 8
 void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
@@ -878,42 +877,71 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     mtlHdr->m_Flags2 = 0x56000020;
     mtlHdr->something = 0x100000;
 
-    MaterialShaderType_t shadertype = GetShaderTypeFromString(type);
-
-    mtlHdr->materialType = shadertype;
-
-    switch ( shadertype )
+    mtlHdr->materialType = GetShaderTypeFromString(type);
+    switch ( mtlHdr->materialType )
     {
-        case SKNP:
-        {
-            mtlHdr->m_GUIDRefs[0] = 0x2B93C99C67CC8B51;
-            mtlHdr->m_GUIDRefs[1] = 0x1EBD063EA03180C7;
-            mtlHdr->m_GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
-            mtlHdr->m_GUIDRefs[3] = 0x227C27B608B3646B;
+    case RGDU:
+    {
+        mtlHdr->m_pShaderSet = 0xbdd6a5af5c897e2f;
+        break;
+    }
 
-            mtlHdr->m_pShaderSet = 0x1D9FFF314E152725;
-            break;
-        }
-        case WLDC:
-        {
-            mtlHdr->m_GUIDRefs[0] = 0x435FA77E363BEA48;
-            mtlHdr->m_GUIDRefs[1] = 0xF734F96BE92E0E71;
-            mtlHdr->m_GUIDRefs[2] = 0xD306370918620EC0;
-            mtlHdr->m_GUIDRefs[3] = 0xDAB17AEAD2D3387A;
+    case RGDP:
+    {
+        mtlHdr->m_GUIDRefs[0] = 0x251FBE09EFFE8AB1;
+        mtlHdr->m_GUIDRefs[1] = 0xE2D52641AFC77395;
+        mtlHdr->m_GUIDRefs[2] = 0xBDBF90B97E7D9280;
+        mtlHdr->m_GUIDRefs[3] = 0x85654E05CF9B40E7;
+    
+        mtlHdr->m_pShaderSet = 0x2a2db3a47af9b3d5;
+        break;
+    }
 
-            mtlHdr->m_pShaderSet = 0x4B0F3B4CBD009096;
-            break;
-        }
-        case RGDP:
-        {
-            mtlHdr->m_GUIDRefs[0] = 0x251FBE09EFFE8AB1; // DepthShadow
-            mtlHdr->m_GUIDRefs[1] = 0xE2D52641AFC77395; // DepthPrepass
-            mtlHdr->m_GUIDRefs[2] = 0xBDBF90B97E7D9280; // DepthVSM
-            mtlHdr->m_GUIDRefs[3] = 0x85654E05CF9B40E7; // DepthShadowTight
+    case RGDC:
+    {
+        mtlHdr->m_pShaderSet = 0xb703d7a7941109ee;
+        break;
+    }
 
-            mtlHdr->m_pShaderSet = 0x2a2db3a47af9b3d5;
-            break;
-        }
+    case SKNP:
+    {
+        mtlHdr->m_GUIDRefs[0] = 0x2B93C99C67CC8B51;
+        mtlHdr->m_GUIDRefs[1] = 0x1EBD063EA03180C7;
+        mtlHdr->m_GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
+        mtlHdr->m_GUIDRefs[3] = 0x227C27B608B3646B;
+
+        mtlHdr->m_pShaderSet = 0x1D9FFF314E152725;
+        break;
+    }
+
+    case SKNC:
+    {
+        mtlHdr->m_GUIDRefs[0] = 0x15e452d19fb86630;
+        mtlHdr->m_GUIDRefs[1] = 0xb0435c3828a6f687;
+        mtlHdr->m_GUIDRefs[2] = 0x8b2dc6aff75d1572;
+        mtlHdr->m_GUIDRefs[3] = 0x22773407baf4f85c;
+
+        mtlHdr->m_pShaderSet = 0x941f952e8193e080;
+        break;
+    }
+
+    case WLDU:
+    {
+        mtlHdr->m_pShaderSet = 0x2cbb9f90f1aaac47;
+        break;
+    }
+
+    case WLDC:
+    {
+        mtlHdr->m_GUIDRefs[0] = 0x435FA77E363BEA48;
+        mtlHdr->m_GUIDRefs[1] = 0xF734F96BE92E0E71;
+        mtlHdr->m_GUIDRefs[2] = 0xD306370918620EC0;
+        mtlHdr->m_GUIDRefs[3] = 0xDAB17AEAD2D3387A;
+
+        mtlHdr->m_pShaderSet = 0x4B0F3B4CBD009096;
+        break;
+    }
+
     }
 
     for (int i = 0; i < 4; i++)
@@ -921,8 +949,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         if( mtlHdr->m_GUIDRefs[i] )
            pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + (i * 0x8));
     }
-
-
 
     if (mapEntry.HasMember("shaderset"))
     {
