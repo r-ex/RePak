@@ -2,9 +2,7 @@
 
 #include <pch.h>
 
-#pragma pack(push, 1)
-// identifies the data type for each column in a datatable asset
-enum class dtblcoltype_t : uint32_t
+enum dtblcoltype_t : uint32_t
 {
 	Bool,
 	Int,
@@ -15,6 +13,9 @@ enum class dtblcoltype_t : uint32_t
 	AssetNoPrecache
 };
 
+
+#pragma pack(push, 1)
+// identifies the data type for each column in a datatable asset
 struct DataTableHeader
 {
 	uint32_t ColumnCount;

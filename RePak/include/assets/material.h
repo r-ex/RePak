@@ -17,8 +17,6 @@ struct RGBA
 	RGBA() {};
 };
 
-#pragma pack(push, 1)
-
 enum MatVisFlags : uint16_t
 {
 	None = 0x0,
@@ -51,6 +49,7 @@ enum MaterialShaderType_t : unsigned __int8
 	PTCS = 0x9,
 };
 
+#pragma pack(push, 2)
 // header struct for the material asset cpu data
 struct MaterialCPUHeader
 {

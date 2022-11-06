@@ -72,7 +72,9 @@ struct ModelHeader
 
 	uint64_t Padding7 = 0;
 };
+#pragma pack(pop)
 
+#pragma pack(push, 1)
 // modified source engine studio mdl header struct
 struct studiohdr_t
 {
