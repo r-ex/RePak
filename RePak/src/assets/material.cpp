@@ -1014,7 +1014,11 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
             std::string vis = mapEntry["visflags"].GetStdString();
 
             if (vis == "opaque")            visFlag = MatVisFlags::Opaque;
-            else if (vis == "transparent")  visFlag = MatVisFlags::Transparent;
+            else if (vis == "transparent")
+            {
+                visFlag = MatVisFlags::Transparent;
+                mtlHdr->m_Flags2 = 0x56000022;
+            }
             else if (vis == "colpass")      visFlag = MatVisFlags::Colpass;
             else if (vis == "none")         visFlag = MatVisFlags::None;
         }
@@ -1023,6 +1027,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
             std::string draw = mapEntry["drawflags"].GetStdString();
 
             if (draw == "culling")        faceFlag = MatRenderFlags::Culling;
+            else if (draw == "noculling")  faceFlag = MatRenderFlags::NoCulling;
             else if (draw == "wireframe") faceFlag = MatRenderFlags::Wireframe;
             else if (draw == "inverted")  faceFlag = MatRenderFlags::Inverted;
             else if (draw == "unknown")   faceFlag = MatRenderFlags::Unknown;
