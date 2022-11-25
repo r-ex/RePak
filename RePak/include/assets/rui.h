@@ -2,22 +2,22 @@
 
 #include <pch.h>
 
-#pragma pack(push, 1)
+#pragma pack(push, 2)
 struct UIImageHeader
 {
-	float widthRatio; // 1 / m_nWidth
-	float heightRatio; // 1 / m_nHeight
-	uint16_t width = 1;
-	uint16_t height = 1;
-	uint16_t textureCount = 0;
-	uint16_t unkCount = 0;
+	float WidthRatio = 0.0;
+	float HeightRatio = 0.0;
+	uint16_t Width = 1;
+	uint16_t Height = 1;
+	uint16_t TextureOffsetsCount = 0;
+	uint16_t TextureCount = 0;
 	RPakPtr pTextureOffsets{};
 	RPakPtr pTextureDimensions{};
-	uint32_t unk1 = 0;
-	uint32_t unk2 = 0;
+	uint32_t Unk20 = 0;
+	uint32_t Unk24 = 0;
 	RPakPtr pTextureHashes{};
 	RPakPtr pTextureNames{};
-	uint64_t atlasGUID = 0;
+	uint64_t TextureGuid = 0;
 };
 
 struct UIImageUV

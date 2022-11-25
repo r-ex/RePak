@@ -1010,31 +1010,48 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         uint16_t visFlag = bColpass ? MatVisFlags::Colpass : MatVisFlags::Opaque;
         uint16_t faceFlag = MatRenderFlags::NoCulling;
 
-        if (mapEntry.HasMember("visflags") && mapEntry["visflags"].IsString()) {
-            std::string vis = mapEntry["visflags"].GetStdString();
+        if (mapEntry.HasMember("visflags")) 
+        {
+            auto& value = mapEntry["visflags"];
 
-            if (vis == "opaque")            visFlag = MatVisFlags::Opaque;
-            else if (vis == "transparent")
+            if (value.IsString())
             {
-                visFlag = MatVisFlags::Transparent;
-                mtlHdr->m_Flags2 = 0x56000022;
+                std::string vis = value.GetStdString();
+
+                if (vis == "opaque")  visFlag = MatVisFlags::Opaque;
+                else if (vis == "transparent")  visFlag = MatVisFlags::Transparent;
+                else if (vis == "colpass")      visFlag = MatVisFlags::Colpass;
+                else if (vis == "none")         visFlag = MatVisFlags::None;
             }
-            else if (vis == "colpass")      visFlag = MatVisFlags::Colpass;
-            else if (vis == "none")         visFlag = MatVisFlags::None;
+            else if (value.IsInt())
+                visFlag = value.GetInt();
+
         }
 
-        if (mapEntry.HasMember("drawflags") && mapEntry["drawflags"].IsString()) {
-            std::string draw = mapEntry["drawflags"].GetStdString();
+        if (mapEntry.HasMember("drawflags")) 
+        {
+            auto& value = mapEntry["drawflags"];
 
-            if (draw == "culling")        faceFlag = MatRenderFlags::Culling;
-            else if (draw == "noculling")  faceFlag = MatRenderFlags::NoCulling;
-            else if (draw == "wireframe") faceFlag = MatRenderFlags::Wireframe;
-            else if (draw == "inverted")  faceFlag = MatRenderFlags::Inverted;
-            else if (draw == "unknown")   faceFlag = MatRenderFlags::Unknown;
-            else if (draw == "default")   faceFlag = MatRenderFlags::Default;
+            if (value.IsString())
+            {
+                std::string draw = value.GetStdString();
+
+                if (draw == "culling")        faceFlag = MatRenderFlags::Culling;
+                else if (draw == "noculling")  faceFlag = MatRenderFlags::NoCulling;
+                else if (draw == "wireframe") faceFlag = MatRenderFlags::Wireframe;
+                else if (draw == "inverted")  faceFlag = MatRenderFlags::Inverted;
+                else if (draw == "unknown")   faceFlag = MatRenderFlags::Unknown;
+                else if (draw == "default")   faceFlag = MatRenderFlags::Default;
+            }
+            else if (value.IsInt())
+                faceFlag = value.GetInt();
         }
 
         mtlHdr->m_UnknownSections[i].m_UnkRenderFlags = 4;
+
+        if (mapEntry.HasMember("unkflags") && mapEntry["unkflags"].IsInt())
+            mtlHdr->m_UnknownSections[i].m_UnkRenderFlags = mapEntry["unkflags"].GetInt();
+
         mtlHdr->m_UnknownSections[i].m_VisibilityFlags = visFlag;
         mtlHdr->m_UnknownSections[i].m_FaceDrawingFlags = faceFlag;
     }

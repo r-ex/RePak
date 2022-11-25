@@ -77,18 +77,18 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     atlas.close();
 
     UIImageHeader* pHdr = new UIImageHeader();
-    pHdr->width = ddsh.dwWidth;
-    pHdr->height = ddsh.dwHeight;
+    pHdr->Width = ddsh.dwWidth;
+    pHdr->Height = ddsh.dwHeight;
 
-    pHdr->widthRatio = 1 / pHdr->width;
-    pHdr->heightRatio = 1 / pHdr->height;
+    pHdr->WidthRatio = 1 / pHdr->Width;
+    pHdr->HeightRatio = 1 / pHdr->Height;
 
     // legion uses this to get the texture count, so its probably set correctly
-    pHdr->textureCount = nTexturesCount;
+    pHdr->TextureOffsetsCount = nTexturesCount;
     // unused by legion? - might not be correct
     //pHdr->textureCount = nTexturesCount <= 1 ? 0 : nTexturesCount - 1; // don't even ask
-    pHdr->unkCount = 0;
-    pHdr->atlasGUID = atlasGuid;
+    pHdr->TextureCount = 0;
+    pHdr->TextureGuid = atlasGuid;
 
     // calculate data sizes so we can allocate a page and segment
     uint32_t textureOffsetsDataSize = sizeof(UIImageOffset) * nTexturesCount;
@@ -99,13 +99,13 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     uint32_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
 
     // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(UIImageHeader), SF_HEAD | SF_CLIENT, 8);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(UIImageHeader), SF_HEAD | SF_CLIENT, 8, 8);
 
     // ui image/texture info
-    _vseginfo_t tiseginfo = pak->CreateNewSegment(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
+    _vseginfo_t tiseginfo = pak->CreateNewSegment(textureInfoPageSize, SF_CPU | SF_CLIENT, 32, 32);
 
     // cpu data
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(nTexturesCount * 0x10, SF_CPU | SF_TEMP | SF_CLIENT, 4);
+    _vseginfo_t dataseginfo = pak->CreateNewSegment(nTexturesCount * 0x10, SF_CPU | SF_TEMP | SF_CLIENT, 4, 4);
     
     // register our descriptors so they get converted properly
     pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureOffsets));
@@ -128,11 +128,11 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     for (auto& it : mapEntry["textures"].GetArray())
     {
         UIImageOffset uiio{};
-        float startX = it["posX"].GetFloat() / pHdr->width;
-        float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->width;
+        float startX = it["posX"].GetFloat() / pHdr->Width;
+        float endX = it["width"].GetFloat() / pHdr->Width;
 
-        float startY = it["posY"].GetFloat() / pHdr->height;
-        float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->height;
+        float startY = it["posY"].GetFloat() / pHdr->Height;
+        float endY = it["height"].GetFloat() / pHdr->Height;
 
         // this doesnt affect legion but does affect game?
         //uiio.InitUIImageOffset(startX, startY, endX, endY);
@@ -184,11 +184,11 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     for (auto& it : mapEntry["textures"].GetArray())
     {
         UIImageUV uiiu{};
-        float uv0x = it["posX"].GetFloat() / pHdr->width;
-        float uv1x = it["width"].GetFloat() / pHdr->width;
+        float uv0x = it["posX"].GetFloat() / pHdr->Width;
+        float uv1x = it["width"].GetFloat() / pHdr->Width;
         Log("X: %f -> %f\n", uv0x, uv0x + uv1x);
-        float uv0y = it["posY"].GetFloat() / pHdr->height;
-        float uv1y = it["height"].GetFloat() / pHdr->height;
+        float uv0y = it["posY"].GetFloat() / pHdr->Height;
+        float uv1y = it["height"].GetFloat() / pHdr->Height;
         Log("Y: %f -> %f\n", uv0y, uv0y + uv1y);
         uiiu.InitUIImageUV(uv0x, uv0y, uv1x, uv1y);
         uvBuf.write(uiiu);
@@ -213,7 +213,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     asset.unk1 = 2;
 
     // this asset only has one guid reference so im just gonna do it here
-    asset.AddGuid({ subhdrinfo.index, offsetof(UIImageHeader, atlasGUID) });
+    asset.AddGuid({ subhdrinfo.index, offsetof(UIImageHeader, TextureGuid) });
 
     // add the asset entry
     assetEntries->push_back(asset);
