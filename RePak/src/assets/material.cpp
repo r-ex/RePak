@@ -1091,6 +1091,29 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         }
     }
 
+    if (mapEntry.HasMember("ilmtint"))
+    {
+        auto& entry = mapEntry["ilmtint"];
+
+        if (entry.IsFloat())
+            CpuData.c_L0_emissiveTint = { entry.GetFloat(), entry.GetFloat() , entry.GetFloat() };
+        else if (entry.IsArray())
+        {
+            auto vector = entry.GetArray();
+
+            if (vector.Size() < 3)
+                Error("'%s' ilmtint Vector Size : '%d' expected '3' ", assetPath, vector.Size());
+
+            for (auto& rgb : vector)
+            {
+                if(!rgb.IsFloat())
+                    Error("'%s' ilmtint Vector doesn't contain 'float'", assetPath);
+            }
+
+            CpuData.c_L0_emissiveTint = { vector[0].GetFloat(), vector[1].GetFloat() ,vector[2].GetFloat() };
+        }
+    }
+
     std::uint64_t cpuDataSize = sizeof(MaterialCPUDataV15);
 
     char* CpuDataBuf = nullptr;
