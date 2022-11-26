@@ -59,7 +59,7 @@ struct ModelHeader
 	uint32_t animRigCount = 0;
 
 	// size of the data kept in starpak
-	uint32_t unkDataSize = 0;
+	uint32_t StaticCacheSize = 0;
 	uint32_t alignedStreamingSize = 0; // full size of the starpak entry, aligned to 4096.
 
 	uint64_t Padding4 = 0;
