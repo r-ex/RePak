@@ -129,10 +129,10 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     {
         UIImageOffset uiio{};
         float startX = it["posX"].GetFloat() / pHdr->Width;
-        float endX = it["width"].GetFloat() / pHdr->Width;
+        float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->Width;
 
         float startY = it["posY"].GetFloat() / pHdr->Height;
-        float endY = it["height"].GetFloat() / pHdr->Height;
+        float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->Height;
 
         // this doesnt affect legion but does affect game?
         //uiio.InitUIImageOffset(startX, startY, endX, endY);
@@ -173,8 +173,6 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     // add the file relation from this uimg asset to the atlas txtr
     if (atlasAsset)
         atlasAsset->AddRelation(assetEntries->size());
-    else
-        Warning("unable to find texture asset locally for uimg asset. assuming it is external...\n");
 
     char* pUVBuf = new char[nTexturesCount * sizeof(UIImageUV)];
     rmem uvBuf(pUVBuf);
@@ -194,14 +192,11 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
         uvBuf.write(uiiu);
     }
 
-    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
-    pak->AddRawDataBlock(shdb);
+    pak->AddRawDataBlock( { subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr } );
 
-    RPakRawDataBlock tib{ tiseginfo.index, tiseginfo.size, (uint8_t*)pTextureInfoBuf };
-    pak->AddRawDataBlock(tib);
+    pak->AddRawDataBlock( { tiseginfo.index, tiseginfo.size, (uint8_t*)pTextureInfoBuf } );
 
-    RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pUVBuf };
-    pak->AddRawDataBlock(rdb);
+    pak->AddRawDataBlock( { dataseginfo.index, dataseginfo.size, (uint8_t*)pUVBuf } );
 
 
     // create and init the asset entry

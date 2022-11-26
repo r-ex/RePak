@@ -237,6 +237,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pRMDL));
     pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pName));
 
+    rmem dataBuf(pDataBuf);
+
     std::vector<RPakGuidDescriptor> guids{};
 
     if (phyBuf)
@@ -268,10 +270,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     if (IsStatic)
     {
         pHdr->pStaticPropVtxCache = { dataseginfo.index , fileNameDataSize + mdlhdr.length };
+        pHdr->StaticCacheSize = vgFileSize;
         pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pStaticPropVtxCache));
     }
-
-    rmem dataBuf(pDataBuf);
 
     // handle material overrides register all material guids
     Log("Materials -> %d\n", mdlhdr.numtextures);
@@ -309,6 +310,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
         Log("Material Guid -> 0x%llX\n", material->guid);
     }
+
+    dataBuf.seek(0, rseekdir::beg);
 
     // write modified header
     dataBuf.write<studiohdr_t>(mdlhdr, fileNameDataSize);

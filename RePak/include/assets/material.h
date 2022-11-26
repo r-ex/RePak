@@ -324,7 +324,7 @@ struct MaterialCPUDataV15
 	float c_zUpBlendingVertexAlpha = 0.000000;
 	Vector3 c_L0_albedoTint = { 1.000000, 1.000000, 1.000000 };
 	float c_depthBlendScalar = 1.000000;
-	Vector3 c_L0_emissiveTint = { 0.000000, 0.000000, 0.000000 };
+	Vector3 c_L0_emissiveTint = { 1.000000, 1.000000, 1.000000 };
 	uint32_t c_subsurfaceMaterialID;
 	Vector3 c_L0_perfSpecColor = { 0.037972, 0.037972, 0.037972 };
 	float c_L0_perfGloss = 1.000000;
