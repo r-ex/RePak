@@ -1056,6 +1056,12 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         mtlHdr->m_UnknownSections[i].m_FaceDrawingFlags = faceFlag;
     }
 
+    if (mapEntry.HasMember("flags") && mapEntry["flags"].IsInt())
+        mtlHdr->m_ImageFlags = mapEntry["flags"].GetInt();
+
+    if (mapEntry.HasMember("flags2") && mapEntry["flags2"].IsInt())
+        mtlHdr->m_Flags2 = mapEntry["flags2"].GetInt();
+
     //////////////////////////////////////////
     /// cpu
 
