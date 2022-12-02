@@ -160,12 +160,10 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
         uint32_t pathHash = RTech::StringToUIMGHash(it["path"].GetString());
         tiBuf.write(pathHash);
 
-        // offset into the path table for this texture
-        // NOTE: this is set regardless of whether the path table exists in original rpaks
-        tiBuf.write(nextStringTableOffset);
+        // offset into the path table for this texture - not really needed since we don't write the image names
+        tiBuf.write(0i32);
 
-        // was + 1 before but that guranteed a broken third texture, if any issues like this: https://imgur.com/a/BIYMZwV occour again look into this futher.
-        nextStringTableOffset += it["path"].GetStringLength();
+        //nextStringTableOffset += it["path"].GetStringLength();
     }
 
     // add the file relation from this uimg asset to the atlas txtr
