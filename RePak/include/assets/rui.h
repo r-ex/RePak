@@ -13,8 +13,7 @@ struct UIImageHeader
 	uint16_t TextureCount = 0;
 	RPakPtr pTextureOffsets{};
 	RPakPtr pTextureDimensions{};
-	uint32_t Unk20 = 0;
-	uint32_t Unk24 = 0;
+	RPakPtr pUnk{};
 	RPakPtr pTextureHashes{};
 	RPakPtr pTextureNames{};
 	uint64_t TextureGuid = 0;
@@ -22,17 +21,14 @@ struct UIImageHeader
 
 struct UIImageUV
 {
-	void InitUIImageUV(float startX, float startY, float width, float height)
+	inline void InitUIImageUV(Vector2 start, Vector2 resolution)
 	{
-		this->uv0x = startX;
-		this->uv1x = width;
-		this->uv0y = startY;
-		this->uv1y = height;
+		this->uv0 = start;
+		this->uv1 = resolution;
 	}
 	// maybe the uv coords for top left?
 	// just leave these as 0 and it should be fine
-	float uv0x = 0;
-	float uv0y = 0;
+	Vector2 uv0 = { 0.0f , 0.0f };
 
 	// these two seem to be the uv coords for the bottom right corner
 	// examples:
@@ -40,36 +36,29 @@ struct UIImageUV
 	// | | | | | | | | | |
 	// uv1x = 5;
 	// | | | | |
-	float uv1x = 1.f;
-	float uv1y = 1.f;
+	Vector2 uv1 = { 1.0f , 1.0f };
 };
 
 // examples of changes from these values: https://imgur.com/a/l1YDXaz
 struct UIImageOffset
 {
-	void InitUIImageOffset(float startX, float startY, float endX, float endY)
+	inline void InitUIImageOffset(Vector2 start, Vector2 end)
 	{
-		this->startX = startX;
-		this->startY = startY;
-		this->endX = endX;
-		this->endY = endY;
-		//this->unkX = 1 - 2 * startX; // doesnt seem to always 100% of the time match up but its very close
-		//this->unkY = 1 - 2 * startY;
+		this->start = start;
+		this->end = end;
+		this->tile = { 1.0f - 2.0f * -start.x ,  1.0f - 2.0f * -start.y }; // doesnt seem to always 100% of the time match up but its very close
+
 	}
 	// these don't seem to matter all that much as long as they are a valid float number
-	float f0 = 0.f;
-	float f1 = 0.f;
+	Vector2 aspect_ratio = { 0.0f , 0.0f };
 
 	// endX and endY define where the edge of the image is, with 1.f being the full length of the image and 0.5f being half of the image
-	float endX = 1.f;
-	float endY = 1.f;
+	Vector2 end = { 1.0f , 1.0f };
 
 	// startX and startY define where the top left corner is in proportion to the full image dimensions
-	float startX = 0.f;
-	float startY = 0.f;
+	Vector2 start = { 0.0f , 0.0f };
 
 	// changing these 2 values causes the image to be distorted on each axis
-	float unkX = 1.f;
-	float unkY = 1.f;
+	Vector2 tile = { 1.0f , 1.0f };
 };
 #pragma pack(pop)

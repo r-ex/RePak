@@ -80,8 +80,11 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     pHdr->Width = ddsh.dwWidth;
     pHdr->Height = ddsh.dwHeight;
 
-    pHdr->WidthRatio = 1 / pHdr->Width;
-    pHdr->HeightRatio = 1 / pHdr->Height;
+    const float Widthf = static_cast<float>(pHdr->Width);
+    const float Heightf = static_cast<float>(pHdr->Height);
+
+    pHdr->WidthRatio = 1.0 / Widthf;
+    pHdr->HeightRatio = 1.0 / Heightf;
 
     // legion uses this to get the texture count, so its probably set correctly
     pHdr->TextureOffsetsCount = nTexturesCount;
@@ -112,10 +115,6 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureDimensions));
     pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureHashes));
 
-    // textureGUID descriptors
-    // moved to the end of the func
-    //pak->AddGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, atlasGUID));
-
     // buffer for texture info data
     char* pTextureInfoBuf = new char[textureInfoPageSize] {};
     rmem tiBuf(pTextureInfoBuf);
@@ -127,15 +126,23 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     // IMAGE OFFSETS
     for (auto& it : mapEntry["textures"].GetArray())
     {
+        const Vector2& pos{ it["posX"].GetFloat() , it["posY"].GetFloat() };
+        const Vector2& res{ it["width"].GetFloat() , it["height"].GetFloat() };
+
         UIImageOffset uiio{};
-        float startX = it["posX"].GetFloat() / pHdr->Width;
-        float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->Width;
 
-        float startY = it["posY"].GetFloat() / pHdr->Height;
-        float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->Height;
+        Vector2 start = { 
+            (pos.x / Widthf),
+            (pos.y / Heightf)
+        };
 
+        Vector2 end = { 
+            (pos.x + Widthf) / Widthf,
+            (pos.y + Heightf) / Heightf
+        };
+        
         // this doesnt affect legion but does affect game?
-        //uiio.InitUIImageOffset(startX, startY, endX, endY);
+        //uiio.InitUIImageOffset(start, end);
         tiBuf.write(uiio);
     }
 
@@ -167,7 +174,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
         tiBuf.write(nextStringTableOffset);
 
         // was + 1 before but that guranteed a broken third texture, if any issues like this: https://imgur.com/a/BIYMZwV occour again look into this futher.
-        nextStringTableOffset += it["path"].GetStringLength();
+        nextStringTableOffset += 0;
     }
 
     // add the file relation from this uimg asset to the atlas txtr
@@ -181,21 +188,23 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     // IMAGE UVS
     for (auto& it : mapEntry["textures"].GetArray())
     {
+        const Vector2& pos{ it["posX"].GetFloat() , it["posY"].GetFloat() };
+        const Vector2& res{ it["width"].GetFloat() , it["height"].GetFloat() };
+
         UIImageUV uiiu{};
-        float uv0x = it["posX"].GetFloat() / pHdr->Width;
-        float uv1x = it["width"].GetFloat() / pHdr->Width;
-        Log("X: %f -> %f\n", uv0x, uv0x + uv1x);
-        float uv0y = it["posY"].GetFloat() / pHdr->Height;
-        float uv1y = it["height"].GetFloat() / pHdr->Height;
-        Log("Y: %f -> %f\n", uv0y, uv0y + uv1y);
-        uiiu.InitUIImageUV(uv0x, uv0y, uv1x, uv1y);
+
+        Vector2 uv0 = { pos.x / Widthf , pos.y / Heightf };
+        Vector2 uv1 = { res.x / Widthf , res.y / Heightf };
+
+        Log("X: %f -> %f\n", uv0.x, uv0.x + uv1.x);
+        Log("Y: %f -> %f\n", uv0.y, uv0.y + uv1.y);
+
+        uiiu.InitUIImageUV( uv0, uv1);
         uvBuf.write(uiiu);
     }
 
     pak->AddRawDataBlock( { subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr } );
-
     pak->AddRawDataBlock( { tiseginfo.index, tiseginfo.size, (uint8_t*)pTextureInfoBuf } );
-
     pak->AddRawDataBlock( { dataseginfo.index, dataseginfo.size, (uint8_t*)pUVBuf } );
 
 
