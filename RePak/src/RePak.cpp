@@ -19,7 +19,7 @@ int main(int argc, char** argv)
     if (argc < 2)
         Error("invalid usage\n");
 
-    std::filesystem::path mapPath(argv[1]);
+    std::filesystem::path inputPath(argv[1]);
 
     if (!FILE_EXISTS(argv[1]))
         Error("couldn't find map file\n");
@@ -36,6 +36,7 @@ int main(int argc, char** argv)
 
     doc.ParseStream(isw);
 
+    // handle parse errors
     if (doc.HasParseError()) {
         int lineNum = 1;
         int columnNum = 0;
@@ -69,12 +70,9 @@ int main(int argc, char** argv)
 
         // this could probably be formatted nicer
         Error("Failed to parse map file: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n", 
-            lineNum, 
-            columnNum, 
+            lineNum, columnNum, 
             GetParseError_En(doc.GetParseError()), 
-            lastLine.c_str(), 
-            curLine.c_str(), 
-            (std::string(columnNum, ' ') += '^').c_str());
+            lastLine.c_str(), curLine.c_str(), (std::string(columnNum, ' ') += '^').c_str());
     }
 
     std::string sRpakName = DEFAULT_RPAK_NAME;
@@ -82,62 +80,64 @@ int main(int argc, char** argv)
     if (doc.HasMember("name") && doc["name"].IsString())
         sRpakName = doc["name"].GetStdString();
     else
-        Warning("Map file should have a 'name' field containing the string name for the new rpak, but none was provided. Defaulting to '%s.rpak' and continuing...\n", DEFAULT_RPAK_NAME);
+        Warning("Map file should have a 'name' field containing the string name for the new rpak, but none was provided. Using '%s.rpak'.\n", sRpakName.c_str());
 
-    Log("build settings:\n");
-    Log("filename: %s\n", sRpakName.c_str());
+    std::string sOutputDir = "build/";
 
     if (!doc.HasMember("assetsDir"))
     {
         Warning("No assetsDir field provided. Assuming that everything is relative to the working directory.\n");
-        if (mapPath.has_parent_path())
-            Assets::g_sAssetsDir = mapPath.parent_path().u8string();
+        if (inputPath.has_parent_path())
+            Assets::g_sAssetsDir = inputPath.parent_path().u8string();
         else
             Assets::g_sAssetsDir = ".\\";
     }
     else
     {
         std::filesystem::path assetsDirPath(doc["assetsDir"].GetStdString());
-        if (assetsDirPath.is_relative() && mapPath.has_parent_path())
-            Assets::g_sAssetsDir = std::filesystem::canonical(mapPath.parent_path() / assetsDirPath).u8string();
+        if (assetsDirPath.is_relative() && inputPath.has_parent_path())
+            Assets::g_sAssetsDir = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).u8string();
         else
             Assets::g_sAssetsDir = assetsDirPath.u8string();
 
         // ensure that the path has a slash at the end
         Utils::AppendSlash(Assets::g_sAssetsDir);
-        Log("assetsDir: %s\n", Assets::g_sAssetsDir.c_str());
     }
-
-    std::string sOutputDir = "build/";
 
     if (doc.HasMember("outputDir"))
     {
         std::filesystem::path outputDirPath(doc["outputDir"].GetStdString());
 
-        if (outputDirPath.is_relative() && mapPath.has_parent_path())
-            sOutputDir = std::filesystem::canonical(mapPath.parent_path() / outputDirPath).u8string();
+        if (outputDirPath.is_relative() && inputPath.has_parent_path())
+            sOutputDir = std::filesystem::canonical(inputPath.parent_path() / outputDirPath).u8string();
         else
             sOutputDir = outputDirPath.u8string();
 
         // ensure that the path has a slash at the end
         Utils::AppendSlash(sOutputDir);
-        Log("outputDir: %s\n", sOutputDir.c_str());
     }
 
-    if (!doc.HasMember("files"))
-        Warning("No 'files' field specified, the RPak will contain no assets...\n");
-    else if (!doc["files"].IsArray())
-        Error("'files' field is not of required type 'array'. Exiting...\n");
+    if (!doc["files"].IsArray())
+        Error("[JSON] 'files' field must be an array. Exiting...\n");
 
-
-    if (!doc.HasMember("version"))
-        Error("No RPak file version specified. Valid options:\n7 - Titanfall 2\n8 - Apex Legends\nExiting...\n");
-    else if ( !doc["version"].IsInt() )
-        Error("Invalid RPak file version specified. Valid options:\n7 - Titanfall 2\n8 - Apex Legends\nExiting...\n");
+    if (!doc.HasMember("version") || !doc["version"].IsInt())
+        Error("[JSON] Must specify an RPak file version with the \"version\" field. Valid options:\n7 - Titanfall 2\n8 - Apex Legends\nExiting...\n");
 
     int rpakVersion = doc["version"].GetInt();
 
+    // print parsed settings
+    Log("build settings:\n");
+    Log("version: %i\n", rpakVersion);
+    Log("filename: %s.rpak\n", sRpakName.c_str());
+    Log("assetsDir: %s\n", Assets::g_sAssetsDir.c_str());
+    Log("outputDir: %s\n", sOutputDir.c_str());
+
+
+    Log("\n");
     CPakFile* pak = new CPakFile(rpakVersion);
+
+    std::string outputPath = sOutputDir + sRpakName + ".rpak";
+    pak->SetPath(outputPath);
 
     // if keepDevOnly exists, is boolean, and is set to true
     if (doc.HasMember("keepDevOnly") && doc["keepDevOnly"].IsBool() && doc["keepDevOnly"].GetBool())
@@ -146,8 +146,6 @@ int main(int argc, char** argv)
     if (doc.HasMember("starpakPath") && doc["starpakPath"].IsString())
         pak->primaryStarpakPath = doc["starpakPath"].GetStdString();
 
-    Log("version: %i\n\n", rpakVersion);
-
     // build asset data
     // loop through all assets defined in the map json
     for (auto& file : doc["files"].GetArray())
@@ -155,21 +153,20 @@ int main(int argc, char** argv)
         pak->AddAsset(file);
     }
 
-    std::filesystem::create_directories(sOutputDir); // create directory if it does not exist yet.
+    std::filesystem::create_directories(sOutputDir); // create output directory if it does not exist yet.
 
-    BinaryIO out{ };
-
-    out.open(sOutputDir + sRpakName + ".rpak", BinaryIOMode::Write);
+    BinaryIO out;
+    out.open(pak->GetPath(), BinaryIOMode::Write);
 
     // write a placeholder header so we can come back and complete it
     // when we have all the info
     pak->WriteHeader(&out);
 
     // write string vectors for starpak paths and get the total length of each vector
-    size_t StarpakRefLength = Utils::WriteStringVector(out, pak->m_vStarpakPaths);
-    size_t OptStarpakRefLength = Utils::WriteStringVector(out, pak->m_vOptStarpakPaths);
+    size_t starpakPathsLength = Utils::WriteStringVector(out, pak->m_vStarpakPaths);
+    size_t optStarpakPathsLength = Utils::WriteStringVector(out, pak->m_vOptStarpakPaths);
 
-    pak->SetStarpakPathsSize(StarpakRefLength, OptStarpakRefLength);
+    pak->SetStarpakPathsSize(starpakPathsLength, optStarpakPathsLength);
 
     // generate file relation vector to be written
     pak->GenerateFileRelations();
