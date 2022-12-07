@@ -252,7 +252,7 @@ struct studiohdr_t
 
 	int unk3_v54[3];
 
-	int unkindex4; // chunk before unkindex3 sometimes
+	int bvh4index; // bvh4 tree
 
 	int unk4_v54[3]; // same as unk3_v54_v121
 

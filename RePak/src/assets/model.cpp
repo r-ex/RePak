@@ -78,11 +78,25 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
     uint64_t DataSize = fileNameDataSize + mdlhdr.length;
 
+
+    // disable bvh4 nodes until a crash fix is found
+    mdlhdr.bvh4index = 0;
+
+    if (mapEntry.HasMember("solid") && mapEntry["solid"].IsBool() && !mapEntry["solid"].GetBool())
+    {
+        mdlhdr.contents = 0; // CONTENTS_EMPTY
+        // remove static model flag
+        mdlhdr.RemoveFlag(STUDIOHDR_FLAGS_STATIC_PROP);
+    }
+
+    // check for static prop flag
+    if (mdlhdr.HasFlag(STUDIOHDR_FLAGS_STATIC_PROP))
+        IsStatic = true;
+
     if (IsStatic)
         DataSize += vgFileSize;
 
     char* pDataBuf = new char[DataSize];
-
 
     if (IsStatic)
         memcpy(pDataBuf + fileNameDataSize + mdlhdr.length, pVGBuf, vgFileSize);
@@ -96,16 +110,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     // write the skeleton data into the data buffer
     rmdlInput.getReader()->read(pDataBuf + fileNameDataSize, mdlhdr.length);
     rmdlInput.close();
-
-    
-    if (mapEntry.HasMember("solid") && mapEntry["solid"].IsBool() && !mapEntry["solid"].GetBool())
-    {
-        mdlhdr.contents = 0; // CONTENTS_EMPTY
-
-        // remove static model flag
-        mdlhdr.RemoveFlag(STUDIOHDR_FLAGS_STATIC_PROP);
-    }
-
 
     char* phyBuf = nullptr;
     size_t phyFileSize = 0;
