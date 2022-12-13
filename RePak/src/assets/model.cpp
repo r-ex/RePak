@@ -36,7 +36,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     REQUIRE_FILE(rmdlFilePath);
     REQUIRE_FILE(vgFilePath);
 
-
     ///--------------------
     // Add VG data
     BinaryIO vgInput;
@@ -55,12 +54,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     uint32_t vgFileSize = vgInput.tell();
     char* pVGBuf = new char[vgFileSize];
 
-
     vgInput.seek(0);
     vgInput.getReader()->read(pVGBuf, vgFileSize);
     vgInput.close();
-
-    bool IsStatic = mapEntry.HasMember("static") && mapEntry["static"].IsBool() && mapEntry["static"].GetBool();
 
     // begin rmdl input
     BinaryIO rmdlInput;
@@ -76,28 +72,27 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
     uint32_t fileNameDataSize = sAssetName.length() + 1;
 
-    uint64_t DataSize = fileNameDataSize + mdlhdr.length;
-
-
-    // disable bvh4 nodes until a crash fix is found
-    mdlhdr.bvh4index = 0;
-
     if (mapEntry.HasMember("solid") && mapEntry["solid"].IsBool() && !mapEntry["solid"].GetBool())
     {
         mdlhdr.contents = 0; // CONTENTS_EMPTY
+
         // remove static model flag
         mdlhdr.RemoveFlag(STUDIOHDR_FLAGS_STATIC_PROP);
     }
+
+    bool IsStatic = mapEntry.HasMember("static") && mapEntry["static"].IsBool() && mapEntry["static"].GetBool();
 
     // check for static prop flag
     if (mdlhdr.HasFlag(STUDIOHDR_FLAGS_STATIC_PROP))
         IsStatic = true;
 
-    if (IsStatic)
-        DataSize += vgFileSize;
-
+    uint64_t DataSize = IsStatic ? fileNameDataSize + mdlhdr.length + vgFileSize : fileNameDataSize + mdlhdr.length;
     char* pDataBuf = new char[DataSize];
 
+    // disable bvh4 nodes until a crash fix is found
+    mdlhdr.bvh4index = 0;
+
+    // copy static vg data
     if (IsStatic)
         memcpy(pDataBuf + fileNameDataSize + mdlhdr.length, pVGBuf, vgFileSize);
 
@@ -107,7 +102,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     // go back to the beginning of the file to read all the data
     rmdlInput.seek(0);
 
-    // write the skeleton data into the data buffer
+    // write the rmdl data into the data buffer
     rmdlInput.getReader()->read(pDataBuf + fileNameDataSize, mdlhdr.length);
     rmdlInput.close();
 
@@ -203,37 +198,35 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     if (mapEntry.HasMember("starpakPath") && mapEntry["starpakPath"].IsString())
         starpakPath = mapEntry["starpakPath"].GetStdString();
 
-    if (starpakPath.length() == 0)
-        Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\n-- to fix: add 'starpakPath' as an rpak-wide variable\n-- or: add 'starpakPath' as an asset specific variable\n", assetPath);
-    else
+    if (starpakPath.length() > 0)
         pak->AddStarpakReference(starpakPath);
+    else
+        Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\n-- to fix: add 'starpakPath' as an rpak-wide variable\n-- or: add 'starpakPath' as an asset specific variable\n", assetPath);
 
- 
-    auto de = pak->AddStarpakDataEntry({ 0, vgFileSize, (uint8_t*)pVGBuf });
+    auto de = pak->AddStarpakDataEntry( { 0, vgFileSize, (uint8_t*)pVGBuf } );
     pHdr->alignedStreamingSize = de.m_nDataSize;
     
-
     // Segments
     // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(ModelHeader), SF_HEAD, 16);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment( sizeof(ModelHeader), SF_HEAD, 16, 16 );
 
     // data segment
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(DataSize, SF_CPU, 64);
+    _vseginfo_t dataseginfo = pak->CreateNewSegment( DataSize, SF_CPU, 64, 64 );
 
     // .phy
     _vseginfo_t physeginfo;
     if (phyBuf)
-        physeginfo = pak->CreateNewSegment(phyFileSize, SF_CPU, 64);
+        physeginfo = pak->CreateNewSegment( phyFileSize, SF_CPU, 64, 64 );
 
     // animation rigs
     _vseginfo_t arigseginfo;
     if (pAnimRigBuf)
-        arigseginfo = pak->CreateNewSegment(pHdr->animRigCount * 8, SF_CPU, 64);
+        arigseginfo = pak->CreateNewSegment( pHdr->animRigCount * 8, SF_CPU, 64, 64 );
 
     // animation seqs
     _vseginfo_t aseqseginfo;
     if (pAnimSeqBuf)
-        aseqseginfo = pak->CreateNewSegment(pHdr->animSeqCount * 8, SF_CPU, 64);
+        aseqseginfo = pak->CreateNewSegment( pHdr->animSeqCount * 8, SF_CPU, 64, 64 );
 
     pHdr->pName = { dataseginfo.index, 0 };
     pHdr->pRMDL = { dataseginfo.index, fileNameDataSize };
@@ -249,7 +242,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     {
         pHdr->pPhyData = { physeginfo.index, 0 };
         pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pPhyData));
-
     }
 
     if (pAnimRigBuf)
@@ -268,7 +260,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
         for (int i = 0; i < pHdr->animSeqCount; ++i)
             pak->AddGuidDescriptor(&guids, aseqseginfo.index, sizeof(uint64_t)* i);
-            
     }
 
     if (IsStatic)
@@ -320,26 +311,26 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     // write modified header
     dataBuf.write<studiohdr_t>(mdlhdr, fileNameDataSize);
 
-	pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
-	pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf });
+	pak->AddRawDataBlock( { subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr } );
+	pak->AddRawDataBlock( { dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf } );
    
 	uint32_t lastPageIdx = dataseginfo.index;
 
 	if (phyBuf)
 	{
-		pak->AddRawDataBlock({ physeginfo.index, physeginfo.size, (uint8_t*)phyBuf });
+		pak->AddRawDataBlock( { physeginfo.index, physeginfo.size, (uint8_t*)phyBuf } );
 		lastPageIdx = physeginfo.index;
 	}
 
 	if (pAnimRigBuf)
 	{
-		pak->AddRawDataBlock({ arigseginfo.index, arigseginfo.size, (uint8_t*)pAnimRigBuf });
+		pak->AddRawDataBlock( { arigseginfo.index, arigseginfo.size, (uint8_t*)pAnimRigBuf } );
 		lastPageIdx = arigseginfo.index;
 	}
 
 	if (pAnimSeqBuf)
 	{
-		pak->AddRawDataBlock({ aseqseginfo.index, aseqseginfo.size, (uint8_t*)pAnimSeqBuf });
+		pak->AddRawDataBlock( { aseqseginfo.index, aseqseginfo.size, (uint8_t*)pAnimSeqBuf } );
 		lastPageIdx = aseqseginfo.index;
 	}
 

@@ -37,23 +37,23 @@ struct ModelHeader
 {
 	// IDST data
 	// .mdl
-	RPakPtr pRMDL;
+	RPakPtr pRMDL{};
 	uint64_t Padding = 0;
 
 	// model path
 	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
-	RPakPtr pName;
+	RPakPtr pName{};
 	uint64_t Padding2 = 0;
 
 	// .phy
-	RPakPtr pPhyData;
+	RPakPtr pPhyData{};
 	uint64_t Padding3 = 0;
 
 	// preload cache data for static props
-	RPakPtr pStaticPropVtxCache;
+	RPakPtr pStaticPropVtxCache{};
 
 	// pointer to data for the model's arig guid(s?)
-	RPakPtr pAnimRigs;
+	RPakPtr pAnimRigs{};
 
 	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
 	uint32_t animRigCount = 0;
@@ -68,7 +68,7 @@ struct ModelHeader
 
 	// number of anim sequences directly associated with this model
 	uint32_t animSeqCount = 0;
-	RPakPtr pAnimSeqs;
+	RPakPtr pAnimSeqs{};
 
 	uint64_t Padding7 = 0;
 };

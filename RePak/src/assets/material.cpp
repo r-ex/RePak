@@ -1100,9 +1100,10 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     if (mapEntry.HasMember("ilmtint"))
     {
         auto& entry = mapEntry["ilmtint"];
+        auto& value = CpuData.c_L0_emissiveTint;
 
         if (entry.IsFloat())
-            CpuData.c_L0_emissiveTint = { entry.GetFloat(), entry.GetFloat() , entry.GetFloat() };
+            value = { entry.GetFloat(), entry.GetFloat() , entry.GetFloat() };
         else if (entry.IsArray())
         {
             auto vector = entry.GetArray();
@@ -1116,7 +1117,32 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
                     Error("'%s' ilmtint Vector doesn't contain 'float'", assetPath);
             }
 
-            CpuData.c_L0_emissiveTint = { vector[0].GetFloat(), vector[1].GetFloat() ,vector[2].GetFloat() };
+            value = { vector[0].GetFloat(), vector[1].GetFloat() ,vector[2].GetFloat() };
+        }
+    }
+
+    
+    if (mapEntry.HasMember("albedotint"))
+    {
+        auto& entry = mapEntry["albedotint"];
+        auto& value = CpuData.c_L0_albedoTint;
+
+        if (entry.IsFloat())
+            value = { entry.GetFloat(), entry.GetFloat() , entry.GetFloat() };
+        else if (entry.IsArray())
+        {
+            auto vector = entry.GetArray();
+
+            if (vector.Size() < 3)
+                Error("'%s' albedotint Vector Size : '%d' expected '3' ", assetPath, vector.Size());
+
+            for (auto& rgb : vector)
+            {
+                if(!rgb.IsFloat())
+                    Error("'%s' albedotint Vector doesn't contain 'float'", assetPath);
+            }
+
+            value = { vector[0].GetFloat(), vector[1].GetFloat() ,vector[2].GetFloat() };
         }
     }
 
