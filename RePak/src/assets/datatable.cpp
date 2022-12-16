@@ -61,7 +61,7 @@ void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     std::string sAssetName = assetPath;
 
-    DataTableHeader* pHdr = new DataTableHeader();
+    DataTableHeaderV0* pHdr = new DataTableHeaderV0();
 
     const size_t columnCount = doc.GetColumnCount();
     const size_t rowCount = doc.GetRowCount();
@@ -91,7 +91,7 @@ void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* as
     // make a page for the sub header
     //
     // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(DataTableHeader), SF_HEAD, 8);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(DataTableHeaderV0), SF_HEAD, 8);
 
     // DataTableColumn entries
     _vseginfo_t colhdrinfo = pak->CreateNewSegment(sizeof(DataTableColumn) * columnCount, SF_CPU, 8, 64);
@@ -103,7 +103,7 @@ void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* as
     pHdr->RowCount = rowCount - 1;
     pHdr->ColumnHeaderPtr = { colhdrinfo.index, 0 };
 
-    pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeader, ColumnHeaderPtr));
+    pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeaderV0, ColumnHeaderPtr));
 
     // allocate buffers for the loop
     char* namebuf = new char[ColumnNameBufSize];
@@ -256,7 +256,7 @@ void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     pHdr->RowHeaderPtr = { rawdatainfo.index, 0 };
 
-    pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeader, RowHeaderPtr));
+    pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeaderV0, RowHeaderPtr));
 
     // add raw data blocks
     pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
@@ -285,7 +285,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     std::string sAssetName = assetPath;
 
-    DataTableHeader* pHdr = new DataTableHeader();
+    DataTableHeaderV1* pHdr = new DataTableHeaderV1();
 
     const size_t columnCount = doc.GetColumnCount();
     const size_t rowCount = doc.GetRowCount();
@@ -315,7 +315,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* as
     // make a page for the sub header
     //
     // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(DataTableHeader), SF_HEAD, 8);
+    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(DataTableHeaderV1), SF_HEAD, 8);
 
     // DataTableColumn entries
     _vseginfo_t colhdrinfo = pak->CreateNewSegment(sizeof(DataTableColumn) * columnCount, SF_CPU, 8, 64);
@@ -327,7 +327,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* as
     pHdr->RowCount = rowCount - 1;
     pHdr->ColumnHeaderPtr = { colhdrinfo.index, 0 };
 
-    pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeader, ColumnHeaderPtr));
+    pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeaderV1, ColumnHeaderPtr));
 
     // allocate buffers for the loop
     char* namebuf = new char[ColumnNameBufSize];
@@ -480,7 +480,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     pHdr->RowHeaderPtr = { rawdatainfo.index, 0 };
 
-    pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeader, RowHeaderPtr));
+    pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeaderV1, RowHeaderPtr));
 
     // add raw data blocks
     pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });

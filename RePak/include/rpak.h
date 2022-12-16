@@ -355,7 +355,23 @@ struct DataTableColumn
 	uint32_t RowOffset;
 };
 
-struct DataTableHeader
+struct DataTableHeaderV0
+{
+	uint32_t ColumnCount;
+	uint32_t RowCount;
+
+	RPakPtr ColumnHeaderPtr;
+	RPakPtr RowHeaderPtr;
+	uint32_t RowStride;	// Number of bytes per row
+
+	uint16_t Un1 = 0;
+	uint16_t Un2 = 0;
+
+	uint32_t Unk3; // idk 
+	uint32_t Padding;
+};
+
+struct DataTableHeaderV1
 {
 	uint32_t ColumnCount;
 	uint32_t RowCount;
