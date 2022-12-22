@@ -9,6 +9,7 @@ std::unordered_map<std::string, MaterialShaderType_t> ShaderTypeMap =
     { "rgdc",   MaterialShaderType_t::RGDC },
     { "sknu",   MaterialShaderType_t::SKNU },
     { "sknp",   MaterialShaderType_t::SKNP },
+    { "sknc",   MaterialShaderType_t::SKNC },
     { "wldu",   MaterialShaderType_t::WLDU },
     { "wldc",   MaterialShaderType_t::WLDC },
     { "ptcu",   MaterialShaderType_t::PTCU },
