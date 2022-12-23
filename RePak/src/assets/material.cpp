@@ -900,7 +900,12 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     case RGDC:
     {
-        mtlHdr->m_pShaderSet = 0xb703d7a7941109ee;
+        mtlHdr->m_GUIDRefs[0] = 0xF70473F27EA6590;
+        mtlHdr->m_GUIDRefs[1] = 0x73C19A227697E559;
+        mtlHdr->m_GUIDRefs[2] = 0x4F92D7BFA5CBE5A8;
+        mtlHdr->m_GUIDRefs[3] = 0x85605A57BFE33042;
+
+        mtlHdr->m_pShaderSet = 0xc79bdc034a6a677e;
         break;
     }
 
