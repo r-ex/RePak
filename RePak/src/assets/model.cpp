@@ -94,6 +94,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
     // write phy file size
     mdlhdr.vphysize = vgFileSize;
+    mdlhdr.vphyindex = 0x1337;
 
     // copy static vg data
     if (IsStatic)
