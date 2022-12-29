@@ -61,7 +61,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     // begin rmdl input
     BinaryIO rmdlInput;
     rmdlInput.open(rmdlFilePath, BinaryIOMode::Read);
-
     studiohdr_t mdlhdr = rmdlInput.read<studiohdr_t>();
 
     if (mdlhdr.id != 0x54534449) // "IDST"
@@ -85,6 +84,11 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     // check for static prop flag
     if (mdlhdr.HasFlag(STUDIOHDR_FLAGS_STATIC_PROP))
         IsStatic = true;
+
+    //write rmdl true size
+    rmdlInput.seek(0, std::ios::end);
+    mdlhdr.length = rmdlInput.tell();
+    rmdlInput.seek(0);
 
     uint64_t DataSize = IsStatic ? fileNameDataSize + mdlhdr.length + vgFileSize : fileNameDataSize + mdlhdr.length;
     char* pDataBuf = new char[DataSize];
