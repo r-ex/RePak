@@ -21,12 +21,21 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, std::vector<RPakAssetEntry>* a
 	NameDataSize += NameAlignment;
 	char* pDataBuf = new char[NameDataSize];
 
+	uint64_t GUID = RTech::StringToGuid(sAssetName.c_str());
+
 	ShaderSetHeader* pHdr = new ShaderSetHeader();
 
 	// Segments
 	// asset header
 	_vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(ShaderSetHeader), SF_HEAD, 16, 16);
 
+	if (mapEntry.HasMember("guid") && mapEntry["guid"].IsUint64())
+	{
+		GUID = mapEntry["guid"].GetUint64();
+
+		if (GUID == 0)
+			Error("Asset '%s' 'GUID' field cannot be 0\n", assetPath);
+	}
 
 	bool SaveName = false;
 	if (mapEntry.HasMember("savename"))
@@ -117,7 +126,7 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, std::vector<RPakAssetEntry>* a
 		lastPageIdx = dataseginfo.index;
 	}
 	
-	uint64_t GUID = RTech::StringToGuid(sAssetName.c_str());
+
 	Log("-> GUID: 0x%llX\n", GUID);
 
 	RPakAssetEntry asset;
