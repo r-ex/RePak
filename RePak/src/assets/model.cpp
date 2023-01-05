@@ -96,10 +96,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     // disable bvh4 nodes until a crash fix is found
     mdlhdr.bvh4index = 0;
 
-    // write phy file size
-    mdlhdr.vphysize = vgFileSize;
-    mdlhdr.vphyindex = 0x1337;
-
     // copy static vg data
     if (IsStatic)
         memcpy(pDataBuf + fileNameDataSize + mdlhdr.length, pVGBuf, vgFileSize);
@@ -132,6 +128,11 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         phyInput.getReader()->read(phyBuf, phyFileSize);
         phyInput.close();
     }
+
+    // write phy file size
+    mdlhdr.vphysize = phyFileSize;
+    mdlhdr.vphyindex = 0x1337;
+
 
     char* pAnimRigBuf = nullptr;
 
