@@ -34,7 +34,7 @@ int main(int argc, char** argv)
 
     Document doc{ };
 
-    doc.ParseStream(isw);
+    doc.ParseStream<rapidjson::ParseFlag::kParseCommentsFlag | rapidjson::ParseFlag::kParseTrailingCommasFlag>(isw);
 
     // handle parse errors
     if (doc.HasParseError()) {
