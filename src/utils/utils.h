@@ -2,7 +2,7 @@
 
 namespace Utils
 {
-	uintmax_t GetFileSize(std::string filename);
+	uintmax_t GetFileSize(const std::string& filename);
 	
 	size_t PadBuffer(char** buf, size_t size, size_t alignment);
 

@@ -3,7 +3,7 @@
 
 // purpose: gets size of the specified file
 // returns: file size
-uintmax_t Utils::GetFileSize(std::string filename)
+uintmax_t Utils::GetFileSize(const std::string& filename) // !TODO: change to 'fs::path' instead?
 {
 	try {
 		return std::filesystem::file_size(filename);
