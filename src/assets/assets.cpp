@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Assets.h"
+#include "assets.h"
 
 namespace Assets
 {

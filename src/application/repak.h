@@ -1,6 +1,6 @@
 #pragma once
-#include <Assets.h>
-#include <Utils.h>
+#include <assets/assets.h>
+#include <utils/utils.h>
 
 #define DEFAULT_RPAK_NAME "new"
 

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Assets.h"
+#include "assets/assets.h"
 #include "rapidjson/error/en.h"
 
 using namespace rapidjson;

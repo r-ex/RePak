@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "Assets.h"
-#include <dxutils.h>
+#include "assets.h"
+#include <utils/dxutils.h>
 
 void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {

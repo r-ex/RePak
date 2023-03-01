@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Utils.h"
+#include "utils.h"
 
 // purpose: gets size of the specified file
 // returns: file size
