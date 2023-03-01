@@ -221,5 +221,11 @@
     <ClInclude Include="pch.h">
       <Filter>core</Filter>
     </ClInclude>
+    <ClInclude Include="math\color.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="math\vector.h">
+      <Filter>math</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

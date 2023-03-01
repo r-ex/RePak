@@ -41,6 +41,8 @@
     <ClInclude Include="logic\rmem.h" />
     <ClInclude Include="logic\rpak.h" />
     <ClInclude Include="logic\rtech.h" />
+    <ClInclude Include="math\color.h" />
+    <ClInclude Include="math\vector.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="thirdparty\rapidcsv\rapidcsv.h" />
     <ClInclude Include="thirdparty\rapidjson\allocators.h" />

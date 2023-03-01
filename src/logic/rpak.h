@@ -1,35 +1,8 @@
 #pragma once
 
 #include <d3d11.h>
-
-struct Vector3
-{
-	float x, y, z;
-
-	Vector3(float x, float y, float z) {
-		this->x = x;
-		this->y = y;
-		this->z = z;
-	}
-
-	Vector3() {};
-};
-
-//I think this implementation is better than what 'TintVec4' was before..
-struct Vector4
-{
-	float r, g, b, a;
-
-	Vector4(float r, float g, float b, float a) {
-		this->r = r;
-		this->g = g;
-		this->b = b;
-		this->a = a;
-	}
-
-	Vector4() {};
-};
-
+#include "math/vector.h"
+#include "math/color.h"
 #pragma pack(push, 1)
 
 // represents a "pointer" into a mempage by page index and offset
@@ -828,7 +801,7 @@ struct MaterialCPUDataV12
 		0.0, 0.0, 0.0, 0.0, 1.0, 0.0
 	};
 
-	Vector4 MainTint[1];
+	Color MainTint[1];
 
 	// these are vector4s for rgba I would think.
 	float UnkData1[12] = {
@@ -839,7 +812,7 @@ struct MaterialCPUDataV12
 
 	};
 
-	Vector4 SelfillumTint[1];
+	Color SelfillumTint[1];
 
 	// these are (more) vector4s for rgba I would think.
 	uint8_t UnkData2[12 * 4] = {
