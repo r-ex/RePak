@@ -38,9 +38,9 @@ uint8_t DataTable_GetEntrySize(dtblcoltype_t type)
     case dtblcoltype_t::Bool:
     case dtblcoltype_t::Int:
     case dtblcoltype_t::Float:
-        return 4;
+        return sizeof(int32_t);
     case dtblcoltype_t::Vector:
-        return sizeof(float) * 3;
+        return sizeof(Vector3);
     case dtblcoltype_t::StringT:
     case dtblcoltype_t::Asset:
     case dtblcoltype_t::AssetNoPrecache:
