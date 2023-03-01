@@ -75,6 +75,9 @@
     <ClCompile Include="pch.cpp">
       <Filter>core</Filter>
     </ClCompile>
+    <ClCompile Include="utils\logger.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application\repak.h">
@@ -226,6 +229,9 @@
     </ClInclude>
     <ClInclude Include="math\vector.h">
       <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\logger.h">
+      <Filter>utils</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

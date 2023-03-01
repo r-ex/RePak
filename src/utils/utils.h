@@ -15,15 +15,6 @@ namespace Utils
 	std::string ChangeExtension(const std::string& in, const std::string& ext);
 };
 
-// non-fatal errors/issues
-void Warning(const char* fmt, ...);
-// fatal errors
-void Error(const char* fmt, ...);
-// general prints for Release
-void Log(const char* fmt, ...);
-// any prints that shouldnt be used in Release
-void Debug(const char* fmt, ...);
-
 #define WRITE_VECTOR(out, dataVector) for (auto it = dataVector.begin(); it != dataVector.end(); ++it) \
 { \
 	out.write(*it); \
