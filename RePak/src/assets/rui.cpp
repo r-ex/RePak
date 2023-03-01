@@ -160,8 +160,6 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     // set texture hashes page index and offset
     pHdr->pTextureHashes = { tiseginfo.index, textureOffsetsDataSize + textureDimensionsDataSize };
 
-    uint32_t nextStringTableOffset = 0;
-
     /////////////////////////
     // IMAGE HASHES/NAMES
     for (auto& it : mapEntry["textures"].GetArray())
@@ -171,10 +169,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
 
         // offset into the path table for this texture
         // NOTE: this is set regardless of whether the path table exists in original rpaks
-        tiBuf.write(nextStringTableOffset);
-
-        // was + 1 before but that guranteed a broken third texture, if any issues like this: https://imgur.com/a/BIYMZwV occour again look into this futher.
-        nextStringTableOffset += 0;
+        tiBuf.write(0);
     }
 
     // add the file relation from this uimg asset to the atlas txtr

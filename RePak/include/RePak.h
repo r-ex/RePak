@@ -71,6 +71,11 @@ public:
 			return ""; // if invalid starpak is requested, return empty string
 	};
 
+	inline std::string GetPath()
+	{
+		return this->m_Path;
+	}
+
 	inline void SetVersion(uint32_t version)
 	{
 		this->m_Header.fileVersion = version;
@@ -81,6 +86,11 @@ public:
 	{
 		this->m_Header.starpakPathsSize = len;
 		this->m_Header.optStarpakPathsSize = optLen;
+	}
+
+	inline void SetPath(std::string& path)
+	{
+		this->m_Path = path;
 	}
 
 	void WriteRPakRawDataBlocks(BinaryIO& out)
@@ -341,6 +351,8 @@ public:
 	std::vector<RPakRawDataBlock> m_vRawDataBlocks{};
 
 	std::vector<SRPkDataEntry> m_vStarpakDataBlocks{};
+
+	std::string m_Path;
 };
 
 #define PF_KEEP_DEV 1 << 0

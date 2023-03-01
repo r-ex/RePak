@@ -39,3 +39,10 @@ void Debug(const char* fmt, ...);
 #define REQUIRE_FILE(path) \
 	if(!FILE_EXISTS(path)) \
 		Error("Unable to find required file '%s'\n", std::string(path).c_str())
+
+#define IALIGN2( a ) ((a + 1)  & ~1)
+#define IALIGN4( a ) ((a + 3)  & ~3)
+#define IALIGN8( a ) ((a + 7)  & ~7)
+#define IALIGN16( a ) ((a + 15)  & ~15)
+#define IALIGN32( a ) ((a + 31)  & ~31)
+#define IALIGN64( a ) ((a + 63) & ~63)
