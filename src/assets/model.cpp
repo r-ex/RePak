@@ -125,7 +125,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     //
     // Starpak
     //
-    std::string starpakPath = pak->primaryStarpakPath;
+    std::string starpakPath = pak->m_PrimaryStarpakPath;
 
     if (mapEntry.HasMember("starpakPath") && mapEntry["starpakPath"].IsString())
         starpakPath = mapEntry["starpakPath"].GetStdString();

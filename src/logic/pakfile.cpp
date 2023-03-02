@@ -1,3 +1,8 @@
+//===============================================================================//
+//
+// purpose: pakfile system
+//
+//===============================================================================//
 
 #include "pch.h"
 #include "pakfile.h"
@@ -95,44 +100,9 @@ SRPkDataEntry CPakFile::AddStarpakDataEntry(SRPkDataEntry block)
 	return block;
 }
 
-void CPakFile::WriteRPakRawDataBlocks(BinaryIO& out)
-{
-	for (auto it = m_vRawDataBlocks.begin(); it != m_vRawDataBlocks.end(); ++it)
-	{
-		out.getWriter()->write((char*)it->m_nDataPtr, it->m_nDataSize);
-	}
-}
-
-void CPakFile::WriteAssets(BinaryIO* io)
-{
-	for (auto& it : m_Assets)
-	{
-		io->write(it.guid);
-		io->write(it.unk0);
-		io->write(it.headIdx);
-		io->write(it.headOffset);
-		io->write(it.cpuIdx);
-		io->write(it.cpuOffset);
-		io->write(it.starpakOffset);
-
-		if (this->m_Version == 8)
-			io->write(it.optStarpakOffset);
-
-		io->write(it.pageEnd);
-		io->write(it.unk1);
-		io->write(it.relStartIdx);
-		io->write(it.usesStartIdx);
-		io->write(it.relationCount);
-		io->write(it.usesCount);
-		io->write(it.headDataSize);
-		io->write(it.version);
-		io->write(it.id);
-	}
-
-	// update header asset count with the assets we've just written
-	this->m_Header.assetCount = m_Assets.size();
-};
-
+//-----------------------------------------------------------------------------
+// purpose: writes header to file stream
+//-----------------------------------------------------------------------------
 void CPakFile::WriteHeader(BinaryIO* io)
 {
 	m_Header.virtualSegmentCount = m_vVirtualSegments.size();
@@ -184,9 +154,55 @@ void CPakFile::WriteHeader(BinaryIO* io)
 	}
 	else if (version == 8)
 		io->write(m_Header.unk3);
-};
+}
 
-// purpose: populates m_vFileRelations vector with combined asset relation data
+//-----------------------------------------------------------------------------
+// purpose: writes assets to file stream
+//-----------------------------------------------------------------------------
+void CPakFile::WriteAssets(BinaryIO* io)
+{
+	for (auto& it : m_Assets)
+	{
+		io->write(it.guid);
+		io->write(it.unk0);
+		io->write(it.headIdx);
+		io->write(it.headOffset);
+		io->write(it.cpuIdx);
+		io->write(it.cpuOffset);
+		io->write(it.starpakOffset);
+
+		if (this->m_Version == 8)
+			io->write(it.optStarpakOffset);
+
+		io->write(it.pageEnd);
+		io->write(it.unk1);
+		io->write(it.relStartIdx);
+		io->write(it.usesStartIdx);
+		io->write(it.relationCount);
+		io->write(it.usesCount);
+		io->write(it.headDataSize);
+		io->write(it.version);
+		io->write(it.id);
+	}
+
+	// update header asset count with the assets we've just written
+	this->m_Header.assetCount = m_Assets.size();
+}
+
+//-----------------------------------------------------------------------------
+// purpose: writes raw data blocks to file stream
+//-----------------------------------------------------------------------------
+void CPakFile::WriteRPakRawDataBlocks(BinaryIO& out)
+{
+	for (auto it = m_vRawDataBlocks.begin(); it != m_vRawDataBlocks.end(); ++it)
+	{
+		out.getWriter()->write((char*)it->m_nDataPtr, it->m_nDataSize);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// purpose: populates file relations vector with combined asset relation data
+//-----------------------------------------------------------------------------
 void CPakFile::GenerateFileRelations()
 {
 	for (auto& it : m_Assets)
@@ -200,6 +216,9 @@ void CPakFile::GenerateFileRelations()
 	m_Header.relationCount = m_vFileRelations.size();
 }
 
+//-----------------------------------------------------------------------------
+// purpose: 
+//-----------------------------------------------------------------------------
 void CPakFile::GenerateGuidData()
 {
 	for (auto& it : m_Assets)
@@ -213,6 +232,10 @@ void CPakFile::GenerateGuidData()
 	m_Header.guidDescriptorCount = m_vGuidDescriptors.size();
 }
 
+//-----------------------------------------------------------------------------
+// purpose: 
+// returns: 
+//-----------------------------------------------------------------------------
 _vseginfo_t CPakFile::CreateNewSegment(uint32_t size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment /*= -1*/)
 {
 	uint32_t vsegidx = (uint32_t)m_vVirtualSegments.size();
@@ -237,6 +260,10 @@ _vseginfo_t CPakFile::CreateNewSegment(uint32_t size, uint32_t flags, uint32_t a
 	return { pageidx, size };
 }
 
+//-----------------------------------------------------------------------------
+// purpose: 
+// returns: 
+//-----------------------------------------------------------------------------
 RPakAssetEntry* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/)
 {
 	uint32_t i = 0;
@@ -254,7 +281,10 @@ RPakAssetEntry* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullpt
 	return nullptr;
 }
 
-// purpose: create page and segment with the specified parameters
+//-----------------------------------------------------------------------------
+// purpose: creates page and segment with the specified parameters
+// returns: 
+//-----------------------------------------------------------------------------
 RPakVirtualSegment CPakFile::GetMatchingSegment(uint32_t flags, uint32_t alignment, uint32_t* segidx)
 {
 	uint32_t i = 0;

@@ -251,7 +251,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 
     if (bStreamable)
     {
-        std::string starpakPath = pak->primaryStarpakPath;
+        std::string starpakPath = pak->m_PrimaryStarpakPath;
 
         // check per texture just in case for whatever reason you want stuff in different starpaks (if it ever gets fixed).
         if (mapEntry.HasMember("starpakPath"))

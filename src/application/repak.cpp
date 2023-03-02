@@ -145,7 +145,7 @@ int main(int argc, char** argv)
         pak->m_Flags |= PF_KEEP_DEV;
 
     if (doc.HasMember("starpakPath") && doc["starpakPath"].IsString())
-        pak->primaryStarpakPath = doc["starpakPath"].GetStdString();
+        pak->m_PrimaryStarpakPath = doc["starpakPath"].GetStdString();
 
     // build asset data
     // loop through all assets defined in the map json

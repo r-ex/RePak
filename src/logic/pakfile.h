@@ -22,10 +22,12 @@ public:
 	SRPkDataEntry AddStarpakDataEntry(SRPkDataEntry block);
 
 	// inlines
-	inline bool IsFlagSet(int flag) { return this->m_Flags & flag; };
-	inline size_t GetAssetCount() { return m_Assets.size(); };
+	inline bool IsFlagSet(int flag) const { return m_Flags & flag; };
 
-	std::string GetStarpakPath(int i)
+	inline std::string GetPath() const { return m_Path; }
+	inline size_t GetAssetCount() const { return m_Assets.size(); };
+
+	inline std::string GetStarpakPath(int i) const
 	{
 		if (i >= 0 && i < m_vStarpakPaths.size())
 			return m_vStarpakPaths[i];
@@ -33,31 +35,26 @@ public:
 			return ""; // if invalid starpak is requested, return empty string
 	};
 
-	inline std::string GetPath()
-	{
-		return this->m_Path;
-	}
-
 	inline void SetVersion(uint32_t version)
 	{
-		this->m_Header.fileVersion = version;
-		this->m_Version = version;
+		m_Header.fileVersion = version;
+		m_Version = version;
 	}
 
 	inline void SetStarpakPathsSize(int len, int optLen)
 	{
-		this->m_Header.starpakPathsSize = len;
-		this->m_Header.optStarpakPathsSize = optLen;
+		m_Header.starpakPathsSize = len;
+		m_Header.optStarpakPathsSize = optLen;
 	}
 
-	inline void SetPath(std::string& path)
+	inline void SetPath(const std::string& path)
 	{
-		this->m_Path = path;
+		m_Path = path;
 	}
 
-	void WriteRPakRawDataBlocks(BinaryIO& out);
-	void WriteAssets(BinaryIO* io);
 	void WriteHeader(BinaryIO* io);
+	void WriteAssets(BinaryIO* io);
+	void WriteRPakRawDataBlocks(BinaryIO& out);
 
 	// purpose: populates m_vFileRelations vector with combined asset relation data
 	void GenerateFileRelations();
@@ -70,29 +67,28 @@ private:
 	RPakVirtualSegment GetMatchingSegment(uint32_t flags, uint32_t alignment, uint32_t* segidx);
 
 	// next available starpak data offset
-	unsigned __int64 m_NextStarpakOffset = 0x1000;
+	uint64_t m_NextStarpakOffset = 0x1000;
 
-public:
+public: // !TODO: Make private
 	int m_Version = 0;
 	int m_Flags = 0;
 
-	RPakFileHeader m_Header{};
-
-	std::vector<RPakAssetEntry> m_Assets{};
-
-	std::string primaryStarpakPath;
-
-	std::vector<std::string> m_vStarpakPaths{};
-	std::vector<std::string> m_vOptStarpakPaths{};
-
-	std::vector<RPakVirtualSegment> m_vVirtualSegments{};
-	std::vector<RPakPageInfo> m_vPages{};
-	std::vector<RPakDescriptor> m_vDescriptors{};
-	std::vector<RPakGuidDescriptor> m_vGuidDescriptors{};
-	std::vector<uint32_t> m_vFileRelations{};
-
-	std::vector<RPakRawDataBlock> m_vRawDataBlocks{};
-	std::vector<SRPkDataEntry> m_vStarpakDataBlocks{};
+	RPakFileHeader m_Header;
 
 	std::string m_Path;
+	std::string m_PrimaryStarpakPath;
+
+	std::vector<RPakAssetEntry> m_Assets;
+
+	std::vector<std::string> m_vStarpakPaths;
+	std::vector<std::string> m_vOptStarpakPaths;
+
+	std::vector<RPakVirtualSegment> m_vVirtualSegments;
+	std::vector<RPakPageInfo> m_vPages;
+	std::vector<RPakDescriptor> m_vDescriptors;
+	std::vector<RPakGuidDescriptor> m_vGuidDescriptors;
+	std::vector<uint32_t> m_vFileRelations;
+
+	std::vector<RPakRawDataBlock> m_vRawDataBlocks;
+	std::vector<SRPkDataEntry> m_vStarpakDataBlocks;
 };
