@@ -73,7 +73,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     if (mdlhdr.version != 54)
         Error("invalid version for model asset '%s'. expected %i, found %i\n", sAssetName.c_str(), 54, mdlhdr.version);
 
-    uint32_t fileNameDataSize = IALIGN64(sAssetName.length() + 1);
+    uint32_t fileNameDataSize = sAssetName.length() + 1;
 
     if (mapEntry.HasMember("solid") && mapEntry["solid"].IsBool() && !mapEntry["solid"].GetBool())
     {
@@ -199,12 +199,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
     char* pDataBuf = new char[fileNameDataSize + mdlhdr.length + extraDataSize];
 
-    // initialise the file name section of the buffer
-    // alignment means that the rest of the buffer would be uninitialised if not for this
-    memset(pDataBuf, 0, fileNameDataSize);
-
     // write the model file path into the data buffer
-    snprintf(pDataBuf, fileNameDataSize, "%s", sAssetName.c_str());
+    snprintf(pDataBuf + mdlhdr.length, fileNameDataSize, "%s", sAssetName.c_str());
 
     // copy rmdl data into data buffer
     {
@@ -212,7 +208,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         rmdlInput.seek(0);
 
         // write the skeleton data into the data buffer
-        rmdlInput.getReader()->read(pDataBuf + fileNameDataSize, mdlhdr.length);
+        rmdlInput.getReader()->read(pDataBuf, mdlhdr.length);
         rmdlInput.close();
     }
 
@@ -242,8 +238,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     if (pAnimSeqBuf)
         aseqseginfo = pak->CreateNewSegment( pHdr->animSeqCount * 8, SF_CPU, 64, 64 );
 
-    pHdr->pName = { dataseginfo.index, 0 };
-    pHdr->pRMDL = { dataseginfo.index, fileNameDataSize };
+    pHdr->pName = { dataseginfo.index, (unsigned)mdlhdr.length };
+    pHdr->pRMDL = { dataseginfo.index, 0 };
 
     pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pRMDL));
     pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pName));
@@ -282,11 +278,13 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pStaticPropVtxCache));
     }
 
+    dataBuf.seek(mdlhdr.textureindex, rseekdir::beg);
+
     // handle material overrides register all material guids
     Log("Materials -> %d\n", mdlhdr.numtextures);
     for (int i = 0; i < mdlhdr.numtextures; ++i)
     {
-        dataBuf.seek(fileNameDataSize + mdlhdr.textureindex + (i * sizeof(materialref_t)), rseekdir::beg);
+        dataBuf.seek(mdlhdr.textureindex + (i * sizeof(materialref_t)), rseekdir::beg);
 
         materialref_t* material = dataBuf.get<materialref_t>();
 
