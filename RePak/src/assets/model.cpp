@@ -147,16 +147,12 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         extraDataSize = vgFileSize;
     }
 
-    uint32_t fileNameDataSize = IALIGN64(sAssetName.length() + 1);
+    uint32_t fileNameDataSize = sAssetName.length() + 1;
 
     char* pDataBuf = new char[fileNameDataSize + mdlhdr.length + extraDataSize];
 
-    // initialise the file name section of the buffer
-    // alignment means that the rest of the buffer would be uninitialised if not for this
-    memset(pDataBuf, 0, fileNameDataSize);
-
     // write the model file path into the data buffer
-    snprintf(pDataBuf, fileNameDataSize, "%s", sAssetName.c_str());
+    snprintf(pDataBuf + mdlhdr.length, fileNameDataSize, "%s", sAssetName.c_str());
 
     // copy rmdl data into data buffer
     {
@@ -164,7 +160,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         rmdlInput.seek(0);
 
         // write the skeleton data into the data buffer
-        rmdlInput.getReader()->read(pDataBuf + fileNameDataSize, mdlhdr.length);
+        rmdlInput.getReader()->read(pDataBuf, mdlhdr.length);
         rmdlInput.close();
     }
 
@@ -191,9 +187,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     if (pAnimRigBuf)
         arigseginfo = pak->CreateNewSegment(pHdr->animRigCount * 8, SF_CPU, 64);
 
-    pHdr->pName = { dataseginfo.index, 0 };
+    pHdr->pName = { dataseginfo.index, (unsigned)mdlhdr.length };
 
-    pHdr->pRMDL = { dataseginfo.index, fileNameDataSize };
+    pHdr->pRMDL = { dataseginfo.index, 0 };
 
     pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pRMDL));
     pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pName));
@@ -224,14 +220,14 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     }
 
     rmem dataBuf(pDataBuf);
-    dataBuf.seek(fileNameDataSize + mdlhdr.textureindex, rseekdir::beg);
+    dataBuf.seek(mdlhdr.textureindex, rseekdir::beg);
 
     bool hasMaterialOverrides = mapEntry.HasMember("materials");
 
     // handle material overrides register all material guids
     for (int i = 0; i < mdlhdr.numtextures; ++i)
     {
-        dataBuf.seek(fileNameDataSize + mdlhdr.textureindex + (i * sizeof(materialref_t)), rseekdir::beg);
+        dataBuf.seek(mdlhdr.textureindex + (i * sizeof(materialref_t)), rseekdir::beg);
 
         materialref_t* material = dataBuf.get<materialref_t>();
 
