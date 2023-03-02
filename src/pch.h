@@ -23,4 +23,5 @@
 #include "utils/utils.h"
 #include "utils/logger.h"
 
-#include "application/repak.h"
+#include "logic/pakfile.h"
+#include "public/const.h"

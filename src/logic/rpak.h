@@ -301,7 +301,7 @@ struct UIImageOffset
 		this->startY = startY;
 		this->endX = endX;
 		this->endY = endY;
-		//this->unkX = 1 - 2 * startX; // doesnt seem to always 100% of the time match up but its very close
+		//this->unkX = 1 - 2 * startX; // doesn't seem to always 100% of the time match up but its very close
 		//this->unkY = 1 - 2 * startY;
 	}
 	// these don't seem to matter all that much as long as they are a valid float number

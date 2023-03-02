@@ -20,6 +20,7 @@
     <ClCompile Include="assets\patch.cpp" />
     <ClCompile Include="assets\rui.cpp" />
     <ClCompile Include="assets\texture.cpp" />
+    <ClCompile Include="logic\pakfile.cpp" />
     <ClCompile Include="logic\rtech.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -31,12 +32,14 @@
   <ItemGroup>
     <ClInclude Include="application\repak.h" />
     <ClInclude Include="assets\assets.h" />
+    <ClInclude Include="logic\pakfile.h" />
     <ClInclude Include="logic\rmem.h" />
     <ClInclude Include="logic\rpak.h" />
     <ClInclude Include="logic\rtech.h" />
     <ClInclude Include="math\color.h" />
     <ClInclude Include="math\vector.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="public\const.h" />
     <ClInclude Include="thirdparty\rapidcsv\rapidcsv.h" />
     <ClInclude Include="thirdparty\rapidjson\allocators.h" />
     <ClInclude Include="thirdparty\rapidjson\cursorstreamwrapper.h" />

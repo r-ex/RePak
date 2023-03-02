@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "assets/assets.h"
 #include "rapidjson/error/en.h"
+#include "logic/pakfile.h"
 
 using namespace rapidjson;
 
@@ -141,7 +142,7 @@ int main(int argc, char** argv)
 
     // if keepDevOnly exists, is boolean, and is set to true
     if (doc.HasMember("keepDevOnly") && doc["keepDevOnly"].IsBool() && doc["keepDevOnly"].GetBool())
-        pak->flags |= PF_KEEP_DEV;
+        pak->m_Flags |= PF_KEEP_DEV;
 
     if (doc.HasMember("starpakPath") && doc["starpakPath"].IsString())
         pak->primaryStarpakPath = doc["starpakPath"].GetStdString();

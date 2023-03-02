@@ -37,6 +37,9 @@
     <Filter Include="core">
       <UniqueIdentifier>{8f79b6fd-3d82-4eb1-9719-065f9588bbe1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="public">
+      <UniqueIdentifier>{40434dab-30c7-414f-acbc-f141c6b94c75}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="application\repak.cpp">
@@ -77,6 +80,9 @@
     </ClCompile>
     <ClCompile Include="utils\logger.cpp">
       <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="logic\pakfile.cpp">
+      <Filter>logic</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -232,6 +238,12 @@
     </ClInclude>
     <ClInclude Include="utils\logger.h">
       <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="logic\pakfile.h">
+      <Filter>logic</Filter>
+    </ClInclude>
+    <ClInclude Include="public\const.h">
+      <Filter>public</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
