@@ -98,7 +98,7 @@ struct UIImageOffset
 #pragma pack(pop)
 
 // map of dxgi format to the corresponding txtr asset format value
-static std::map<DXGI_FORMAT, uint16_t> s_txtrFormatMap{
+static const std::map<DXGI_FORMAT, uint16_t> s_txtrFormatMap{
 	{ DXGI_FORMAT_BC1_UNORM, 0 },
 	{ DXGI_FORMAT_BC1_UNORM_SRGB, 1 },
 	{ DXGI_FORMAT_BC2_UNORM, 2 },

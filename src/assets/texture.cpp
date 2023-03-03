@@ -164,7 +164,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 
         Log("-> fmt: %s\n", dxutils::GetFormatAsString(dxgiFormat).c_str());
 
-        hdr->imgFormat = s_txtrFormatMap[dxgiFormat];
+        hdr->imgFormat = s_txtrFormatMap.at(dxgiFormat);
     }
 
     hdr->guid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
