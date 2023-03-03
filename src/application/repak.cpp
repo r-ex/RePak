@@ -132,9 +132,8 @@ int main(int argc, char** argv)
     Log("filename: %s.rpak\n", sRpakName.c_str());
     Log("assetsDir: %s\n", Assets::g_sAssetsDir.c_str());
     Log("outputDir: %s\n", sOutputDir.c_str());
-
-
     Log("\n");
+
     CPakFile* pak = new CPakFile(rpakVersion);
 
     std::string outputPath = sOutputDir + sRpakName + ".rpak";
@@ -142,10 +141,10 @@ int main(int argc, char** argv)
 
     // if keepDevOnly exists, is boolean, and is set to true
     if (doc.HasMember("keepDevOnly") && doc["keepDevOnly"].IsBool() && doc["keepDevOnly"].GetBool())
-        pak->m_Flags |= PF_KEEP_DEV;
+        pak->AddFlags(PF_KEEP_DEV);
 
     if (doc.HasMember("starpakPath") && doc["starpakPath"].IsString())
-        pak->m_PrimaryStarpakPath = doc["starpakPath"].GetStdString();
+        pak->SetPrimaryStarpakPath(doc["starpakPath"].GetStdString());
 
     // build asset data
     // loop through all assets defined in the map json
@@ -161,11 +160,11 @@ int main(int argc, char** argv)
 
     // write a placeholder header so we can come back and complete it
     // when we have all the info
-    pak->WriteHeader(&out);
+    pak->WriteHeader(out);
 
     // write string vectors for starpak paths and get the total length of each vector
-    size_t starpakPathsLength = Utils::WriteStringVector(out, pak->m_vStarpakPaths);
-    size_t optStarpakPathsLength = Utils::WriteStringVector(out, pak->m_vOptStarpakPaths);
+    size_t starpakPathsLength = pak->WriteStarpakPaths(out);
+    size_t optStarpakPathsLength = pak->WriteStarpakPaths(out, true);
 
     pak->SetStarpakPathsSize(starpakPathsLength, optStarpakPathsLength);
 
@@ -174,56 +173,53 @@ int main(int argc, char** argv)
     pak->GenerateGuidData();
 
     // write the non-paged data to the file first
-    WRITE_VECTOR(out, pak->m_vVirtualSegments);
-    WRITE_VECTOR(out, pak->m_vPages);
-    WRITE_VECTOR(out, pak->m_vDescriptors);
-    pak->WriteAssets(&out);
-    WRITE_VECTOR(out, pak->m_vGuidDescriptors);
-    WRITE_VECTOR(out, pak->m_vFileRelations);
+    pak->WriteVirtualSegments(out);
+    pak->WritePages(out);
+    pak->WritePakDescriptors(out);
+    pak->WriteAssets(out);
+    pak->WriteGuidDescriptors(out);
+    pak->WriteFileRelations(out);
 
     // now the actual paged data
     // this should probably be writing by page instead of just hoping that
     // the data blocks are in the right order
-    pak->WriteRPakRawDataBlocks(out);
+    pak->WriteRawDataBlocks(out);
 
     // get current time as FILETIME
-    FILETIME ft = Utils::GetFileTimeBySystem();
+    pak->SetFileTime(Utils::GetFileTimeBySystem());
 
-    pak->m_Header.fileTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
+    //pak->m_Header.fileTime = static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime; // write the current time into the file as FILETIME
 
-    pak->m_Header.compressedSize = out.tell();
-    pak->m_Header.decompressedSize = out.tell();
+    // !TODO: implement LZHAM and set these accordingly.
+    pak->SetCompressedSize(out.tell());
+    pak->SetDecompressedSize(out.tell());
 
     out.seek(0); // Go back to the beginning to finally write the rpakHeader now.
 
-    pak->WriteHeader(&out);
+    pak->WriteHeader(out);
 
     out.close();
 
-    Debug("written rpak file with size %lld\n", pak->m_Header.compressedSize);
+    Debug("written rpak file with size %lld\n", pak->GetCompressedSize());
 
     // free the memory
-    for (auto& it : pak->m_vRawDataBlocks)
-    {
-        delete it.m_nDataPtr;
-    }
+    pak->FreeRawDataBlocks();
 
     // write starpak data
-    if (pak->m_vStarpakPaths.size() == 1)
+    if (pak->GetNumStarpakPaths() == 1)
     {
-        std::string sFullPath = pak->m_vStarpakPaths[0];
-        std::filesystem::path path(sFullPath);
+        std::filesystem::path path(pak->GetStarpakPath(0));
 
         std::string filename = path.filename().u8string();
 
-        Debug("writing starpak %s with %lld data entries\n", filename.c_str(), pak->m_vStarpakDataBlocks.size());
+        Debug("writing starpak %s with %lld data entries\n", filename.c_str(), pak->GetStreamingAssetCount());
         BinaryIO srpkOut;
 
         srpkOut.open(sOutputDir + filename, BinaryIOMode::Write);
 
         int magic = 'kPRS';
         int version = 1;
-        uint64_t entryCount = pak->m_vStarpakDataBlocks.size();
+        uint64_t entryCount = pak->GetStreamingAssetCount();
 
         srpkOut.write(magic);
         srpkOut.write(version);
@@ -235,26 +231,13 @@ int main(int argc, char** argv)
 
         srpkOut.getWriter()->write(why, 4088);
 
-        for (auto& it : pak->m_vStarpakDataBlocks)
-        {
-            srpkOut.getWriter()->write((const char*)it.m_nDataPtr, it.m_nDataSize);
-        }
-
-        // starpaks have a table of sorts at the end of the file, containing the offsets and data sizes for every data block
-        // as far as i'm aware, this isn't even used by the game, so i'm not entirely sure why it exists?
-        for (auto& it : pak->m_vStarpakDataBlocks)
-        {
-            SRPkFileEntry fe{};
-            fe.m_nOffset = it.m_nOffset;
-            fe.m_nSize = it.m_nDataSize;
-
-            srpkOut.write(fe);
-        }
+        pak->WriteStarpakDataBlocks(srpkOut);
+        pak->WriteStarpakSortsTable(srpkOut);
 
         srpkOut.write(entryCount);
-
         Debug("written starpak file with size %lld\n", srpkOut.tell());
 
+        pak->FreeStarpakDataBlocks();
         srpkOut.close();
     }
 

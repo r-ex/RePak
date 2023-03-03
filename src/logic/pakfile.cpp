@@ -36,7 +36,7 @@ void CPakFile::AddAsset(rapidjson::Value& file)
 //-----------------------------------------------------------------------------
 void CPakFile::AddPointer(unsigned int pageIdx, unsigned int pageOffset)
 {
-	m_vDescriptors.push_back({ pageIdx, pageOffset });
+	m_vPakDescriptors.push_back({ pageIdx, pageOffset });
 }
 
 //-----------------------------------------------------------------------------
@@ -103,86 +103,86 @@ SRPkDataEntry CPakFile::AddStarpakDataEntry(SRPkDataEntry block)
 //-----------------------------------------------------------------------------
 // purpose: writes header to file stream
 //-----------------------------------------------------------------------------
-void CPakFile::WriteHeader(BinaryIO* io)
+void CPakFile::WriteHeader(BinaryIO& io)
 {
 	m_Header.virtualSegmentCount = m_vVirtualSegments.size();
 	m_Header.pageCount = m_vPages.size();
-	m_Header.descriptorCount = m_vDescriptors.size();
+	m_Header.descriptorCount = m_vPakDescriptors.size();
 	m_Header.guidDescriptorCount = m_vGuidDescriptors.size();
 	m_Header.relationCount = m_vFileRelations.size();
 
 	int version = m_Header.fileVersion;
 
-	io->write(m_Header.magic);
-	io->write(m_Header.fileVersion);
-	io->write(m_Header.flags);
-	io->write(m_Header.fileTime);
-	io->write(m_Header.unk0);
-	io->write(m_Header.compressedSize);
+	io.write(m_Header.magic);
+	io.write(m_Header.fileVersion);
+	io.write(m_Header.flags);
+	io.write(m_Header.fileTime);
+	io.write(m_Header.unk0);
+	io.write(m_Header.compressedSize);
 
 	if (version == 8)
-		io->write(m_Header.embeddedStarpakOffset);
+		io.write(m_Header.embeddedStarpakOffset);
 
-	io->write(m_Header.unk1);
-	io->write(m_Header.decompressedSize);
-
-	if (version == 8)
-		io->write(m_Header.embeddedStarpakSize);
-
-	io->write(m_Header.unk2);
-	io->write(m_Header.starpakPathsSize);
+	io.write(m_Header.unk1);
+	io.write(m_Header.decompressedSize);
 
 	if (version == 8)
-		io->write(m_Header.optStarpakPathsSize);
+		io.write(m_Header.embeddedStarpakSize);
 
-	io->write(m_Header.virtualSegmentCount);
-	io->write(m_Header.pageCount);
-	io->write(m_Header.patchIndex);
+	io.write(m_Header.unk2);
+	io.write(m_Header.starpakPathsSize);
 
 	if (version == 8)
-		io->write(m_Header.alignment);
+		io.write(m_Header.optStarpakPathsSize);
 
-	io->write(m_Header.descriptorCount);
-	io->write(m_Header.assetCount);
-	io->write(m_Header.guidDescriptorCount);
-	io->write(m_Header.relationCount);
+	io.write(m_Header.virtualSegmentCount);
+	io.write(m_Header.pageCount);
+	io.write(m_Header.patchIndex);
+
+	if (version == 8)
+		io.write(m_Header.alignment);
+
+	io.write(m_Header.descriptorCount);
+	io.write(m_Header.assetCount);
+	io.write(m_Header.guidDescriptorCount);
+	io.write(m_Header.relationCount);
 
 	if (version == 7)
 	{
-		io->write(m_Header.unk7count);
-		io->write(m_Header.unk8count);
+		io.write(m_Header.unk7count);
+		io.write(m_Header.unk8count);
 	}
 	else if (version == 8)
-		io->write(m_Header.unk3);
+		io.write(m_Header.unk3);
 }
 
 //-----------------------------------------------------------------------------
 // purpose: writes assets to file stream
 //-----------------------------------------------------------------------------
-void CPakFile::WriteAssets(BinaryIO* io)
+void CPakFile::WriteAssets(BinaryIO& io)
 {
 	for (auto& it : m_Assets)
 	{
-		io->write(it.guid);
-		io->write(it.unk0);
-		io->write(it.headIdx);
-		io->write(it.headOffset);
-		io->write(it.cpuIdx);
-		io->write(it.cpuOffset);
-		io->write(it.starpakOffset);
+		io.write(it.guid);
+		io.write(it.unk0);
+		io.write(it.headIdx);
+		io.write(it.headOffset);
+		io.write(it.cpuIdx);
+		io.write(it.cpuOffset);
+		io.write(it.starpakOffset);
 
 		if (this->m_Version == 8)
-			io->write(it.optStarpakOffset);
+			io.write(it.optStarpakOffset);
 
-		io->write(it.pageEnd);
-		io->write(it.unk1);
-		io->write(it.relStartIdx);
-		io->write(it.usesStartIdx);
-		io->write(it.relationCount);
-		io->write(it.usesCount);
-		io->write(it.headDataSize);
-		io->write(it.version);
-		io->write(it.id);
+		io.write(it.pageEnd);
+		io.write(it.unk1);
+		io.write(it.relStartIdx);
+		io.write(it.usesStartIdx);
+		io.write(it.relationCount);
+		io.write(it.usesCount);
+		io.write(it.headDataSize);
+		io.write(it.version);
+		io.write(it.id);
 	}
 
 	// update header asset count with the assets we've just written
@@ -192,11 +192,113 @@ void CPakFile::WriteAssets(BinaryIO* io)
 //-----------------------------------------------------------------------------
 // purpose: writes raw data blocks to file stream
 //-----------------------------------------------------------------------------
-void CPakFile::WriteRPakRawDataBlocks(BinaryIO& out)
+void CPakFile::WriteRawDataBlocks(BinaryIO& out)
 {
 	for (auto it = m_vRawDataBlocks.begin(); it != m_vRawDataBlocks.end(); ++it)
 	{
 		out.getWriter()->write((char*)it->m_nDataPtr, it->m_nDataSize);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// purpose: writes starpak paths to file stream
+// returns: total length of written path vector
+//-----------------------------------------------------------------------------
+size_t CPakFile::WriteStarpakPaths(BinaryIO& out, bool optional)
+{
+	if (optional)
+		return Utils::WriteStringVector(out, m_vOptStarpakPaths);
+	else
+		return Utils::WriteStringVector(out, m_vStarpakPaths);
+}
+
+//-----------------------------------------------------------------------------
+// purpose: writes virtual segments to file stream
+//-----------------------------------------------------------------------------
+void CPakFile::WriteVirtualSegments(BinaryIO& out)
+{
+	WRITE_VECTOR(out, m_vVirtualSegments);
+}
+
+//-----------------------------------------------------------------------------
+// purpose: writes pages to file stream
+//-----------------------------------------------------------------------------
+void CPakFile::WritePages(BinaryIO& out)
+{
+	WRITE_VECTOR(out, m_vPages);
+}
+
+//-----------------------------------------------------------------------------
+// purpose: writes pak descriptors to file stream
+//-----------------------------------------------------------------------------
+void CPakFile::WritePakDescriptors(BinaryIO& out)
+{
+	WRITE_VECTOR(out, m_vPakDescriptors);
+}
+
+//-----------------------------------------------------------------------------
+// purpose: writes guid descriptors to file stream
+//-----------------------------------------------------------------------------
+void CPakFile::WriteGuidDescriptors(BinaryIO& out)
+{
+	WRITE_VECTOR(out, m_vGuidDescriptors);
+}
+
+//-----------------------------------------------------------------------------
+// purpose: writes file relations to file stream
+//-----------------------------------------------------------------------------
+void CPakFile::WriteFileRelations(BinaryIO& out)
+{
+	WRITE_VECTOR(out, m_vFileRelations);
+}
+
+//-----------------------------------------------------------------------------
+// purpose: writes starpak data blocks to file stream
+//-----------------------------------------------------------------------------
+void CPakFile::WriteStarpakDataBlocks(BinaryIO& out)
+{
+	for (auto& it : m_vStarpakDataBlocks)
+	{
+		out.getWriter()->write((const char*)it.m_nDataPtr, it.m_nDataSize);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// purpose: writes starpak sorts table to file stream
+//-----------------------------------------------------------------------------
+void CPakFile::WriteStarpakSortsTable(BinaryIO& out)
+{
+	// starpaks have a table of sorts at the end of the file, containing the offsets and data sizes for every data block
+	// as far as i'm aware, this isn't even used by the game, so i'm not entirely sure why it exists?
+	for (auto& it : m_vStarpakDataBlocks)
+	{
+		SRPkFileEntry fe{};
+		fe.m_nOffset = it.m_nOffset;
+		fe.m_nSize = it.m_nDataSize;
+
+		out.write(fe);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// purpose: frees the raw data blocks memory
+//-----------------------------------------------------------------------------
+void CPakFile::FreeRawDataBlocks()
+{
+	for (auto& it : m_vRawDataBlocks)
+	{
+		delete it.m_nDataPtr;
+	}
+}
+
+//-----------------------------------------------------------------------------
+// purpose: frees the starpak data blocks memory
+//-----------------------------------------------------------------------------
+void CPakFile::FreeStarpakDataBlocks()
+{
+	for (auto& it : m_vStarpakDataBlocks)
+	{
+		delete it.m_nDataPtr;
 	}
 }
 
