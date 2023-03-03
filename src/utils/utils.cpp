@@ -1,8 +1,16 @@
+//=============================================================================//
+//
+// purpose: various common utilities
+//
+//=============================================================================//
 #include "pch.h"
 #include "utils.h"
+#include "rapidjson/error/en.h"
 
+//-----------------------------------------------------------------------------
 // purpose: gets size of the specified file
 // returns: file size
+//-----------------------------------------------------------------------------
 uintmax_t Utils::GetFileSize(const std::string& filename) // !TODO: change to 'fs::path' instead?
 {
 	try {
@@ -14,8 +22,10 @@ uintmax_t Utils::GetFileSize(const std::string& filename) // !TODO: change to 'f
 	}
 }
 
+//-----------------------------------------------------------------------------
 // purpose: pad buffer to the specified alignment
 // returns: new buffer size
+//-----------------------------------------------------------------------------
 size_t Utils::PadBuffer(char** buf, size_t size, size_t alignment)
 {
 	size_t extra = alignment - (size % alignment);
@@ -30,8 +40,10 @@ size_t Utils::PadBuffer(char** buf, size_t size, size_t alignment)
 	return newSize;
 }
 
+//-----------------------------------------------------------------------------
 // purpose: write vector of strings to the specified BinaryIO instance
 // returns: length of data written
+//-----------------------------------------------------------------------------
 size_t Utils::WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVector)
 {
 	size_t length = 0;
@@ -43,7 +55,9 @@ size_t Utils::WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVec
 	return length;
 }
 
+//-----------------------------------------------------------------------------
 // purpose: get current system time as FILETIME
+//-----------------------------------------------------------------------------
 FILETIME Utils::GetFileTimeBySystem()
 {
 	FILETIME ft;
@@ -51,7 +65,9 @@ FILETIME Utils::GetFileTimeBySystem()
 	return ft;
 }
 
+//-----------------------------------------------------------------------------
 // purpose: add backslash to the end of the string if not already present
+//-----------------------------------------------------------------------------
 void Utils::AppendSlash(std::string& in)
 {
 	char lchar = in[in.size() - 1];
@@ -59,7 +75,64 @@ void Utils::AppendSlash(std::string& in)
 		in.append("\\");
 }
 
+//-----------------------------------------------------------------------------
+// purpose: replace extension with that of a new one in string
+//-----------------------------------------------------------------------------
 std::string Utils::ChangeExtension(const std::string& in, const std::string& ext)
 {
 	return std::filesystem::path(in).replace_extension(ext).u8string();
+}
+
+//-----------------------------------------------------------------------------
+// purpose: parse json document and handle parsing errors
+//-----------------------------------------------------------------------------
+void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
+{
+    std::ifstream ifs(path);
+
+    if (!ifs.is_open())
+        Error("couldn't open map file.\n");
+
+    // begin json parsing
+    js::IStreamWrapper isw{ ifs };
+    doc.ParseStream<js::ParseFlag::kParseCommentsFlag | js::ParseFlag::kParseTrailingCommasFlag>(isw);
+
+    // handle parse errors
+    if (doc.HasParseError()) {
+        int lineNum = 1;
+        int columnNum = 0;
+        std::string lastLine = "";
+        std::string curLine = "";
+
+        int offset = doc.GetErrorOffset();
+        ifs.clear();
+        ifs.seekg(0, std::ios::beg);
+        js::IStreamWrapper isw{ ifs };
+
+        for (int i = 0; ; i++)
+        {
+            char c = isw.Take();
+            curLine.push_back(c);
+            if (c == '\n')
+            {
+                if (i >= offset)
+                    break;
+                lastLine = curLine;
+                curLine = "";
+                lineNum++;
+                columnNum = 0;
+            }
+            else
+            {
+                if (i < offset)
+                    columnNum++;
+            }
+        }
+
+        // this could probably be formatted nicer
+        Error("Failed to parse map file: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n",
+            lineNum, columnNum,
+            GetParseError_En(doc.GetParseError()),
+            lastLine.c_str(), curLine.c_str(), (std::string(columnNum, ' ') += '^').c_str());
+    }
 }
