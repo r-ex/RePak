@@ -40,6 +40,9 @@
     <Filter Include="public">
       <UniqueIdentifier>{40434dab-30c7-414f-acbc-f141c6b94c75}</UniqueIdentifier>
     </Filter>
+    <Filter Include="common">
+      <UniqueIdentifier>{f614dccd-d01b-46e8-ac53-969a42f24549}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="application\repak.cpp">
@@ -239,9 +242,6 @@
     <ClInclude Include="logic\pakfile.h">
       <Filter>logic</Filter>
     </ClInclude>
-    <ClInclude Include="public\const.h">
-      <Filter>public</Filter>
-    </ClInclude>
     <ClInclude Include="public\studio.h">
       <Filter>public</Filter>
     </ClInclude>
@@ -256,6 +256,12 @@
     </ClInclude>
     <ClInclude Include="public\rpak.h">
       <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="common\decls.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\const.h">
+      <Filter>common</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

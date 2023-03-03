@@ -16,6 +16,9 @@
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
 
+#include "common/decls.h"
+#include "common/const.h"
+
 #include "logic/rmem.h"
 #include "logic/rtech.h"
 
@@ -24,4 +27,3 @@
 #include "utils/logger.h"
 
 #include "logic/pakfile.h"
-#include "public/const.h"
