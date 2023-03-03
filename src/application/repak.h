@@ -1,6 +1,7 @@
 #pragma once
 #include <assets/assets.h>
 #include <utils/utils.h>
+#include "public/rpak.h"
 
 // starpak data entry vector
 inline std::vector<SRPkDataEntry> g_vSRPkDataEntries{};

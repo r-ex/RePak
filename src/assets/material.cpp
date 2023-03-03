@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "assets.h"
+#include "public/material.h"
 
 // VERSION 7
 void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)

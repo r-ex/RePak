@@ -11,12 +11,12 @@
 #include <cstdint>
 #include <string>
 #include <fstream>
+#include <regex>
 #include <rapidcsv/rapidcsv.h>
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
 
 #include "logic/rmem.h"
-#include "logic/rpak.h"
 #include "logic/rtech.h"
 
 #include "utils/binaryio.h"

@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "assets.h"
+#include "public/studio.h"
+#include "public/material.h"
 
 void Assets::AddModelAsset_stub(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
@@ -125,7 +127,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     //
     // Starpak
     //
-    std::string starpakPath = pak->m_PrimaryStarpakPath;
+    std::string starpakPath = pak->GetPrimaryStarpakPath();
 
     if (mapEntry.HasMember("starpakPath") && mapEntry["starpakPath"].IsString())
         starpakPath = mapEntry["starpakPath"].GetStdString();

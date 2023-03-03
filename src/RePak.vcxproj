@@ -34,12 +34,16 @@
     <ClInclude Include="assets\assets.h" />
     <ClInclude Include="logic\pakfile.h" />
     <ClInclude Include="logic\rmem.h" />
-    <ClInclude Include="logic\rpak.h" />
     <ClInclude Include="logic\rtech.h" />
     <ClInclude Include="math\color.h" />
     <ClInclude Include="math\vector.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="public\const.h" />
+    <ClInclude Include="public\material.h" />
+    <ClInclude Include="public\rpak.h" />
+    <ClInclude Include="public\studio.h" />
+    <ClInclude Include="public\table.h" />
+    <ClInclude Include="public\texture.h" />
     <ClInclude Include="thirdparty\rapidcsv\rapidcsv.h" />
     <ClInclude Include="thirdparty\rapidjson\allocators.h" />
     <ClInclude Include="thirdparty\rapidjson\cursorstreamwrapper.h" />

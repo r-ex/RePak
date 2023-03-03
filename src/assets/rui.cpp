@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "assets.h"
-#include <utils/dxutils.h>
+#include "utils/dxutils.h"
+#include "public/texture.h"
 
 void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
@@ -132,7 +133,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
         float startY = it["posY"].GetFloat() / pHdr->height;
         float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->height;
 
-        // this doesnt affect legion but does affect game?
+        // this doesn't affect legion but does affect game?
         //uiio.InitUIImageOffset(startX, startY, endX, endY);
         tiBuf.write(uiio);
     }

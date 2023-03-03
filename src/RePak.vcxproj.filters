@@ -92,9 +92,6 @@
     <ClInclude Include="assets\assets.h">
       <Filter>assets</Filter>
     </ClInclude>
-    <ClInclude Include="logic\rpak.h">
-      <Filter>logic</Filter>
-    </ClInclude>
     <ClInclude Include="logic\rtech.h">
       <Filter>logic</Filter>
     </ClInclude>
@@ -243,6 +240,21 @@
       <Filter>logic</Filter>
     </ClInclude>
     <ClInclude Include="public\const.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\studio.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\material.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\texture.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\table.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\rpak.h">
       <Filter>public</Filter>
     </ClInclude>
   </ItemGroup>

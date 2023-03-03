@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "assets.h"
 #include "utils/dxutils.h"
+#include "public/texture.h"
 
 void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
@@ -251,7 +252,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 
     if (bStreamable)
     {
-        std::string starpakPath = pak->m_PrimaryStarpakPath;
+        std::string starpakPath = pak->GetPrimaryStarpakPath();
 
         // check per texture just in case for whatever reason you want stuff in different starpaks (if it ever gets fixed).
         if (mapEntry.HasMember("starpakPath"))

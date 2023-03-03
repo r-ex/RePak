@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "assets.h"
+#include "public/studio.h"
 
 
 void Assets::AddAnimSeqAsset_stub(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
