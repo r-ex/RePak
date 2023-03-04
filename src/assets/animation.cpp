@@ -91,7 +91,7 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* asse
     asset.version = 7;
     // i have literally no idea what these are
     asset.pageEnd = lastPageIdx + 1;
-    asset.unk1 = 2;
+    asset.remainingDependencyCount = 2;
 
     asset.AddGuids(&guids);
 

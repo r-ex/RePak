@@ -70,7 +70,7 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntr
     asset.version = 1;
 
     asset.pageEnd = dataseginfo.index + 1;
-    asset.unk1 = 1;
+    asset.remainingDependencyCount = 1;
 
     assetEntries->push_back(asset);
 }

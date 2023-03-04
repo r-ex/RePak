@@ -631,7 +631,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
     //asset.unk1 = bColpass ? 7 : 8; // what
     // unk1 appears to be maxusecount, although seemingly nothing is affected by changing it unless you exceed 18.
     // In every TF|2 material asset entry I've looked at it's always UsesCount + 1.
-    asset.unk1 = guids.size() + 1;
+    asset.remainingDependencyCount = guids.size() + 1;
 
     asset.AddGuids(&guids);
 
@@ -931,7 +931,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     asset.version = MATL_VERSION;
 
     asset.pageEnd = cpuseginfo.index + 1;
-    asset.unk1 = bColpass ? 7 : 8; // what
+    asset.remainingDependencyCount = bColpass ? 7 : 8; // what
 
     asset.AddGuids(&guids);
 

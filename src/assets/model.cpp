@@ -286,7 +286,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     asset.version = RMDL_VERSION;
     // i have literally no idea what these are
     asset.pageEnd = lastPageIdx + 1;
-    asset.unk1 = 2;
+    asset.remainingDependencyCount = 2;
 
     asset.AddGuids(&guids);
 

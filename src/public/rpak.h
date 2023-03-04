@@ -176,16 +176,19 @@ struct RPakAssetEntry
 	__int64 optStarpakOffset = -1;
 
 	uint16_t pageEnd = 0; // highest mem page used by this asset
-	uint16_t unk1 = 0; // might be local "uses" + 1
 
-	uint32_t relStartIdx = 0;
+	// value is decremented every time a dependency finishes processing its own dependencies
+	short remainingDependencyCount = 0;
 
-	uint32_t usesStartIdx = 0;
-	uint32_t relationCount = 0;
-	uint32_t usesCount = 0; // number of other assets that this asset uses
+	// start index for this asset's dependents/dependencies in respective arrays
+	uint32_t dependentsIndex = 0;
+	uint32_t dependenciesIndex = 0;
+
+	int dependentsCount = 0; // number of local assets that use this asset
+	int dependenciesCount = 0; // number of local assets that are used by this asset
 
 	// size of the asset header
-	uint32_t headDataSize = 0;
+	int headDataSize = 0;
 
 	// this isn't always changed when the asset gets changed
 	// but respawn calls it a version so i will as well

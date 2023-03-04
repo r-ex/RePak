@@ -207,7 +207,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     asset.version = UIMG_VERSION;
 
     asset.pageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
-    asset.unk1 = 2;
+    asset.remainingDependencyCount = 2;
 
     // this asset only has one guid reference so im just gonna do it here
     asset.AddGuid({ subhdrinfo.index, offsetof(UIImageHeader, atlasGUID) });

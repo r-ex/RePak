@@ -271,7 +271,7 @@ void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* as
     asset.version = DTBL_VERSION;
 
     asset.pageEnd = stringsinfo.index + 1; // number of the highest page that the asset references pageidx + 1
-    asset.unk1 = 1;
+    asset.remainingDependencyCount = 1;
 
     assetEntries->push_back(asset);
 }
@@ -495,7 +495,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* as
     asset.version = DTBL_VERSION;
 
     asset.pageEnd = stringsinfo.index + 1; // number of the highest page that the asset references pageidx + 1
-    asset.unk1 = 1;
+    asset.remainingDependencyCount = 1;
 
     assetEntries->push_back(asset);
 }

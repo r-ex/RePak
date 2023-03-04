@@ -174,11 +174,11 @@ void CPakFile::WriteAssets(BinaryIO& io)
 			io.write(it.optStarpakOffset);
 
 		io.write(it.pageEnd);
-		io.write(it.unk1);
-		io.write(it.relStartIdx);
-		io.write(it.usesStartIdx);
-		io.write(it.relationCount);
-		io.write(it.usesCount);
+		io.write(it.remainingDependencyCount);
+		io.write(it.dependentsIndex);
+		io.write(it.dependenciesIndex);
+		io.write(it.dependentsCount);
+		io.write(it.dependenciesCount);
 		io.write(it.headDataSize);
 		io.write(it.version);
 		io.write(it.id);
@@ -308,8 +308,8 @@ void CPakFile::GenerateFileRelations()
 {
 	for (auto& it : m_Assets)
 	{
-		it.relationCount = it._relations.size();
-		it.relStartIdx = m_vFileRelations.size();
+		it.dependentsCount = it._relations.size();
+		it.dependentsIndex = m_vFileRelations.size();
 
 		for (int i = 0; i < it._relations.size(); ++i)
 			m_vFileRelations.push_back(it._relations[i]);
@@ -324,8 +324,8 @@ void CPakFile::GenerateGuidData()
 {
 	for (auto& it : m_Assets)
 	{
-		it.usesCount = it._guids.size();
-		it.usesStartIdx = it.usesCount == 0 ? 0 : m_vGuidDescriptors.size();
+		it.dependenciesCount = it._guids.size();
+		it.dependenciesIndex = it.dependenciesCount == 0 ? 0 : m_vGuidDescriptors.size();
 
 		for (int i = 0; i < it._guids.size(); ++i)
 			m_vGuidDescriptors.push_back({ it._guids[i] });
