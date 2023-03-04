@@ -771,7 +771,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     int textureIdx = 0;
     for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the first TextureGUID Map.
     {
-        if (it.GetStdString() != "")
+        if (it.IsString() && it.GetStdString() != "")
         {
             uint64_t textureGUID = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str()); // Convert texture path to guid.
             *(uint64_t*)dataBuf = textureGUID;
