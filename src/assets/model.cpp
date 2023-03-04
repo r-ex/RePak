@@ -1,5 +1,7 @@
 #include "pch.h"
-#include "Assets.h"
+#include "assets.h"
+#include "public/studio.h"
+#include "public/material.h"
 
 void Assets::AddModelAsset_stub(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
@@ -14,7 +16,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
     ModelHeader* pHdr = new ModelHeader();
 
-    std::string rmdlFilePath = g_sAssetsDir + sAssetName;
+    std::string rmdlFilePath = pak->GetAssetPath() + sAssetName;
 
     // VG is a "fake" file extension that's used to store model streaming data (name came from the magic '0tVG')
     // this data is a combined mutated version of the data from .vtx and .vvd in regular source models
@@ -125,7 +127,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
     //
     // Starpak
     //
-    std::string starpakPath = pak->primaryStarpakPath;
+    std::string starpakPath = pak->GetPrimaryStarpakPath();
 
     if (mapEntry.HasMember("starpakPath") && mapEntry["starpakPath"].IsString())
         starpakPath = mapEntry["starpakPath"].GetStdString();
@@ -135,7 +137,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
     pak->AddStarpakReference(starpakPath);
 
-    SRPkDataEntry de{ 0, vgFileSize, (uint8_t*)pVGBuf};
+    StreamableDataEntry de{ 0, vgFileSize, (uint8_t*)pVGBuf };
     de = pak->AddStarpakDataEntry(de);
 
     pHdr->alignedStreamingSize = de.m_nDataSize;
@@ -235,7 +237,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         if (hasMaterialOverrides && mapEntry["materials"].GetArray().Size() > i)
         {
             auto& matlEntry = mapEntry["materials"].GetArray()[i];
-            
+
             // if string, calculate the guid
             if (matlEntry.IsString())
             {
@@ -247,7 +249,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
                 material->guid = matlEntry.GetUint64();
         }
 
-        if(material->guid != 0)
+        if (material->guid != 0)
             pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(materialref_t, guid));
 
         RPakAssetEntry* asset = pak->GetAssetByGuid(material->guid);
