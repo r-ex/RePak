@@ -1,4 +1,5 @@
 #pragma once
+#include "logic/pakfile.h"
 
 // asset versions
 #define TXTR_VERSION 8
@@ -6,8 +7,6 @@
 #define DTBL_VERSION 1
 #define RMDL_VERSION 10
 #define MATL_VERSION 15
-
-struct CPakFile;
 
 namespace Assets
 {
