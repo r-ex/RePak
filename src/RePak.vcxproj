@@ -13,7 +13,6 @@
   <ItemGroup>
     <ClCompile Include="application\repak.cpp" />
     <ClCompile Include="assets\animation.cpp" />
-    <ClCompile Include="assets\assets.cpp" />
     <ClCompile Include="assets\datatable.cpp" />
     <ClCompile Include="assets\material.cpp" />
     <ClCompile Include="assets\model.cpp" />

@@ -7,7 +7,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 {
     Log("Adding txtr asset '%s'\n", assetPath);
 
-    std::string filePath = g_sAssetsDir + assetPath + ".dds";
+    std::string filePath = pak->GetAssetPath() + assetPath + ".dds";
 
     if (!FILE_EXISTS(filePath))
         Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());

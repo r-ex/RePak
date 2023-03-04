@@ -63,9 +63,6 @@
     <ClCompile Include="assets\animation.cpp">
       <Filter>assets</Filter>
     </ClCompile>
-    <ClCompile Include="assets\assets.cpp">
-      <Filter>assets</Filter>
-    </ClCompile>
     <ClCompile Include="assets\datatable.cpp">
       <Filter>assets</Filter>
     </ClCompile>

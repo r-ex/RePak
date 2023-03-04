@@ -930,7 +930,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     char* dxStaticBuf = nullptr;
     uint64_t dxStaticBufSize = 0;
 
-    std::string cpuPath = g_sAssetsDir + sAssetPath + "_" + type + ".cpu";
+    std::string cpuPath = pak->GetAssetPath() + sAssetPath + "_" + type + ".cpu";
     if (FILE_EXISTS(cpuPath))
     {
         dxStaticBufSize = Utils::GetFileSize(cpuPath);

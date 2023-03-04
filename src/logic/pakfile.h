@@ -42,6 +42,11 @@ public:
 	}
 
 	inline std::string GetPath() const { return m_Path; }
+	inline void SetPath(const std::string& path) { m_Path = path; }
+
+	inline std::string GetAssetPath() const { return m_AssetPath; }
+	inline void SetAssetPath(const std::string& assetPath) { m_AssetPath = assetPath; }
+
 	inline std::string GetStarpakPath(int i) const
 	{
 		if (i >= 0 && i < m_vStarpakPaths.size())
@@ -52,8 +57,6 @@ public:
 
 	inline std::string GetPrimaryStarpakPath() const { return m_PrimaryStarpakPath; };
 	inline size_t GetNumStarpakPaths() const { return m_vStarpakPaths.size(); }
-
-	inline void SetPath(const std::string& path) { m_Path = path; }
 	inline void SetPrimaryStarpakPath(const std::string& path) { m_PrimaryStarpakPath = path; }
 
 	inline size_t GetCompressedSize() const { return m_Header.compressedSize; }
@@ -112,6 +115,7 @@ private:
 	RPakFileHeader m_Header;
 
 	std::string m_Path;
+	std::string m_AssetPath;
 	std::string m_PrimaryStarpakPath;
 
 	std::vector<RPakAssetEntry> m_Assets;

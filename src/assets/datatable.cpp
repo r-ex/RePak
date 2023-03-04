@@ -57,7 +57,7 @@ void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* as
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 
-    rapidcsv::Document doc(g_sAssetsDir + assetPath + ".csv");
+    rapidcsv::Document doc(pak->GetAssetPath() + assetPath + ".csv");
 
     std::string sAssetName = assetPath;
 
@@ -281,7 +281,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* as
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 
-    rapidcsv::Document doc(g_sAssetsDir + assetPath + ".csv");
+    rapidcsv::Document doc(pak->GetAssetPath() + assetPath + ".csv");
 
     std::string sAssetName = assetPath;
 

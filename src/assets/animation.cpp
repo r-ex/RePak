@@ -16,7 +16,7 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 
     AnimSequenceHeader* pHdr = new AnimSequenceHeader();
 
-    std::string rseqFilePath = g_sAssetsDir + sAssetName;
+    std::string rseqFilePath = pak->GetAssetPath() + sAssetName;
 
     // require rseq file to exist
     REQUIRE_FILE(rseqFilePath);

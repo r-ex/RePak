@@ -427,20 +427,20 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	{
 		Warning("No assetsDir field provided. Assuming that everything is relative to the working directory.\n");
 		if (inputPath.has_parent_path())
-			Assets::g_sAssetsDir = inputPath.parent_path().u8string();
+			m_AssetPath = inputPath.parent_path().u8string();
 		else
-			Assets::g_sAssetsDir = ".\\";
+			m_AssetPath = ".\\";
 	}
 	else
 	{
 		fs::path assetsDirPath(doc["assetsDir"].GetStdString());
 		if (assetsDirPath.is_relative() && inputPath.has_parent_path())
-			Assets::g_sAssetsDir = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).u8string();
+			m_AssetPath = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).u8string();
 		else
-			Assets::g_sAssetsDir = assetsDirPath.u8string();
+			m_AssetPath = assetsDirPath.u8string();
 
 		// ensure that the path has a slash at the end
-		Utils::AppendSlash(Assets::g_sAssetsDir);
+		Utils::AppendSlash(m_AssetPath);
 	}
 
 
@@ -470,8 +470,8 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	// print parsed settings
 	Log("build settings:\n");
 	Log("version: %i\n", GetVersion());
-	Log("filename: %s.rpak\n", pakName.c_str());
-	Log("assetsDir: %s\n", Assets::g_sAssetsDir.c_str());
+	Log("fileName: %s.rpak\n", pakName.c_str());
+	Log("assetsDir: %s\n", m_AssetPath.c_str());
 	Log("outputDir: %s\n", outputPath.c_str());
 	Log("\n");
 

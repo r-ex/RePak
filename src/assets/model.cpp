@@ -16,7 +16,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
 
     ModelHeader* pHdr = new ModelHeader();
 
-    std::string rmdlFilePath = g_sAssetsDir + sAssetName;
+    std::string rmdlFilePath = pak->GetAssetPath() + sAssetName;
 
     // VG is a "fake" file extension that's used to store model streaming data (name came from the magic '0tVG')
     // this data is a combined mutated version of the data from .vtx and .vvd in regular source models
