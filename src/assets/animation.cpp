@@ -12,16 +12,14 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 {
     Debug("Adding aseq asset '%s'\n", assetPath);
 
-    std::string sAssetName = assetPath;
+    AnimSequenceHeader* aseqHeader = new AnimSequenceHeader();
 
-    AnimSequenceHeader* pHdr = new AnimSequenceHeader();
-
-    std::string rseqFilePath = pak->GetAssetPath() + sAssetName;
+    std::string rseqFilePath = pak->GetAssetPath() + assetPath;
 
     // require rseq file to exist
     REQUIRE_FILE(rseqFilePath);
 
-    uint32_t fileNameDataSize = sAssetName.length() + 1;
+    uint32_t fileNameDataSize = strlen(assetPath) + 1;
     uint32_t rseqFileSize = (uint32_t)Utils::GetFileSize(rseqFilePath);
 
     uint32_t bufAlign = 4 - (fileNameDataSize + rseqFileSize) % 4;
@@ -29,7 +27,7 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* asse
     char* pDataBuf = new char[fileNameDataSize + rseqFileSize + bufAlign]{};
 
     // write the rseq file path into the data buffer
-    snprintf(pDataBuf, fileNameDataSize, "%s", sAssetName.c_str());
+    snprintf(pDataBuf, fileNameDataSize, "%s", assetPath);
 
     // begin rseq input
     BinaryIO rseqInput;
@@ -51,9 +49,9 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* asse
     // data segment
     _vseginfo_t dataseginfo = pak->CreateNewSegment(rseqFileSize + fileNameDataSize + bufAlign, SF_CPU, 64);
 
-    pHdr->szname = { dataseginfo.index, 0 };
+    aseqHeader->szname = { dataseginfo.index, 0 };
 
-    pHdr->data = { dataseginfo.index, fileNameDataSize };
+    aseqHeader->data = { dataseginfo.index, fileNameDataSize };
 
     pak->AddPointer(subhdrinfo.index, offsetof(AnimSequenceHeader, szname));
     pak->AddPointer(subhdrinfo.index, offsetof(AnimSequenceHeader, data));
@@ -79,7 +77,7 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* asse
             asset->AddRelation(assetEntries->size());
     }
 
-    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
+    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)aseqHeader };
     pak->AddRawDataBlock(shdb);
 
     RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf };
@@ -89,7 +87,7 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 
     RPakAssetEntry asset;
 
-    asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::ASEQ);
+    asset.InitAsset(RTech::StringToGuid(assetPath), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::ASEQ);
     asset.version = 7;
     // i have literally no idea what these are
     asset.pageEnd = lastPageIdx + 1;
