@@ -84,6 +84,9 @@
     <ClCompile Include="logic\pakfile.cpp">
       <Filter>logic</Filter>
     </ClCompile>
+    <ClCompile Include="utils\dxutils.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application\repak.h">

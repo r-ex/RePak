@@ -3,6 +3,7 @@
 #include "utils/dxutils.h"
 #include "public/texture.h"
 
+
 void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
@@ -79,75 +80,19 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 
         nLargestMipSize = ddsh.dwPitchOrLinearSize;
 
-        DXGI_FORMAT dxgiFormat;
+        DXGI_FORMAT dxgiFormat = DXUtils::GetFormatFromHeader(ddsh);
 
-        switch (ddsh.ddspf.dwFourCC)
-        {
-        case '1TXD': // DXT1
-            dxgiFormat = DXGI_FORMAT_BC1_UNORM;
-            break;
-        case '3TXD': // DXT3
-            dxgiFormat = DXGI_FORMAT_BC2_UNORM;
-            break;
-        case '5TXD': // DXT5
-            dxgiFormat = DXGI_FORMAT_BC3_UNORM;
-            break;
-        case '1ITA':
-        case 'U4CB': // BC4U
-            dxgiFormat = DXGI_FORMAT_BC4_UNORM;
-            break;
-        case 'S4CB':
-            dxgiFormat = DXGI_FORMAT_BC4_SNORM;
-            break;
-        case '2ITA': // ATI2
-        case 'U5CB': // BC5U
-            dxgiFormat = DXGI_FORMAT_BC5_UNORM;
-            break;
-        case 'S5CB': // BC5S
-            dxgiFormat = DXGI_FORMAT_BC5_SNORM;
-            break;
-        case '01XD': // DX10
-            dxgiFormat = DXGI_FORMAT_UNKNOWN;
-            break;
-        // legacy format codes
-        case 36:
-            dxgiFormat = DXGI_FORMAT_R16G16B16A16_UNORM;
-            break;
-        case 110:
-            dxgiFormat = DXGI_FORMAT_R16G16B16A16_SNORM;
-            break;
-        case 111:
-            dxgiFormat = DXGI_FORMAT_R16_FLOAT;
-            break;
-        case 112:
-            dxgiFormat = DXGI_FORMAT_R16G16_FLOAT;
-            break;
-        case 113:
-            dxgiFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
-            break;
-        case 114:
-            dxgiFormat = DXGI_FORMAT_R32_FLOAT;
-            break;
-        case 115:
-            dxgiFormat = DXGI_FORMAT_R32G32_FLOAT;
-            break;
-        case 116:
-            dxgiFormat = DXGI_FORMAT_R32G32B32A32_FLOAT;
-            break;
-        default:
-            dxgiFormat = dxutils::GetFormatFromHeader(ddsh);
-            
-            if(dxgiFormat == DXGI_FORMAT_UNKNOWN)
-                Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
-            
-            return;
-        }
+        if (dxgiFormat == DXGI_FORMAT_UNKNOWN)
+            Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
 
         // Go to the end of the main header.
         input.seek(ddsh.dwSize + 4);
 
         // this is used for some math later
         nDDSHeaderSize = ddsh.dwSize + 4;
+
+
+        const char* pDxgiFormat = DXUtils::GetFormatAsString(dxgiFormat);
 
         // Go to the end of the DX10 header if it exists.
         if (ddsh.ddspf.dwFourCC == '01XD')
@@ -157,13 +102,12 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
             dxgiFormat = ddsh_dx10.dxgiFormat;
 
             if (s_txtrFormatMap.count(dxgiFormat) == 0)
-                Error("Attempted to add txtr asset '%s' using unsupported DDS type '%s'. Exiting...\n", assetPath, dxutils::GetFormatAsString(dxgiFormat).c_str());
+                Error("Attempted to add txtr asset '%s' using unsupported DDS type '%s'. Exiting...\n", assetPath, pDxgiFormat);
 
             nDDSHeaderSize += 20;
         }
 
-        Log("-> fmt: %s\n", dxutils::GetFormatAsString(dxgiFormat).c_str());
-
+        Log("-> fmt: %s\n", pDxgiFormat);
         hdr->imgFormat = s_txtrFormatMap.at(dxgiFormat);
     }
 
