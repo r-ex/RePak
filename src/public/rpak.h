@@ -16,16 +16,23 @@
 #define STARPAK_DATABLOCK_ALIGNMENT 4096
 #define STARPAK_DATABLOCK_ALIGNMENT_PADDING 0xCB
 
+#define TYPE_TXTR	(('r'<<24)+('t'<<16)+('x'<<8)+'t') // txtr
+#define TYPE_RMDL	(('_'<<24)+('l'<<16)+('d'<<8)+'m') // mdl_
+#define TYPE_UIMG	(('g'<<24)+('m'<<16)+('i'<<8)+'u') // uimg
+#define TYPE_PTCH	(('h'<<24)+('c'<<16)+('t'<<8)+'P') // Ptch
+#define TYPE_DTBL	(('l'<<24)+('b'<<16)+('t'<<8)+'d') // dtbl
+#define TYPE_MATL	(('l'<<24)+('t'<<16)+('a'<<8)+'m') // matl
+#define TYPE_ASEQ	(('q'<<24)+('e'<<16)+('s'<<8)+'a') // aseq
 
 enum class AssetType : uint32_t
 {
-	TXTR = 0x72747874, // b'txtr' - texture
-	RMDL = 0x5f6c646d, // b'mdl_' - model
-	UIMG = 0x676d6975, // b'uimg' - ui image atlas
-	PTCH = 0x68637450, // b'Ptch' - patch
-	DTBL = 0x6c627464, // b'dtbl' - datatable
-	MATL = 0x6c74616d, // b'matl' - material
-	ASEQ = 'qesa',	   // b'aseq' - animation sequence
+	TXTR = TYPE_TXTR, // texture
+	RMDL = TYPE_RMDL, // model
+	UIMG = TYPE_UIMG, // ui image atlas
+	PTCH = TYPE_PTCH, // patch
+	DTBL = TYPE_DTBL, // datatable
+	MATL = TYPE_MATL, // material
+	ASEQ = TYPE_ASEQ, // animation sequence
 };
 
 #pragma pack(push, 1)
