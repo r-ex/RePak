@@ -2,7 +2,7 @@
 #include "assets.h"
 #include "public/table.h"
 
-std::unordered_map<std::string, dtblcoltype_t> DataTableColumnMap =
+static const std::unordered_map<std::string, dtblcoltype_t> s_DataTableColumnMap =
 {
     { "bool",   dtblcoltype_t::Bool },
     { "int",    dtblcoltype_t::Int },
@@ -21,7 +21,7 @@ dtblcoltype_t GetDataTableTypeFromString(std::string sType)
 {
     std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
 
-    for (const auto& [key, value] : DataTableColumnMap) // Iterate through unordered_map.
+    for (const auto& [key, value] : s_DataTableColumnMap) // Iterate through unordered_map.
     {
         if (sType.compare(key) == 0) // Do they equal?
             return value;
