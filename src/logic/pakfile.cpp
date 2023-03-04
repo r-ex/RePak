@@ -13,8 +13,7 @@
 //-----------------------------------------------------------------------------
 CPakFile::CPakFile(int version)
 {
-	this->m_Header.fileVersion = version;
-	this->m_Version = version;
+	SetVersion(version);
 }
 
 //-----------------------------------------------------------------------------
@@ -85,7 +84,7 @@ void CPakFile::AddOptStarpakReference(const std::string& path)
 // purpose: adds new starpak data entry
 // returns: starpak data entry descriptor
 //-----------------------------------------------------------------------------
-SRPkDataEntry CPakFile::AddStarpakDataEntry(SRPkDataEntry block)
+StreamableDataEntry CPakFile::AddStarpakDataEntry(StreamableDataEntry block)
 {
 	// starpak data is aligned to 4096 bytes
 	size_t ns = Utils::PadBuffer((char**)&block.m_nDataPtr, block.m_nDataSize, 4096);
@@ -171,7 +170,7 @@ void CPakFile::WriteAssets(BinaryIO& io)
 		io.write(it.cpuOffset);
 		io.write(it.starpakOffset);
 
-		if (this->m_Version == 8)
+		if (this->m_Header.fileVersion == 8)
 			io.write(it.optStarpakOffset);
 
 		io.write(it.pageEnd);
@@ -401,4 +400,190 @@ RPakVirtualSegment CPakFile::GetMatchingSegment(uint32_t flags, uint32_t alignme
 	}
 
 	return { flags, alignment, 0 };
+}
+
+//-----------------------------------------------------------------------------
+// purpose: builds rpak and starpak from input map file
+//-----------------------------------------------------------------------------
+void CPakFile::BuildFromMap(const string& mapPath)
+{
+	// load and parse map file, this file is essentially the
+	// control file; deciding what is getting packed, etc..
+	js::Document doc{ };
+	fs::path inputPath(mapPath);
+	Utils::ParseMapDocument(doc, inputPath);
+
+
+	// determine pak name from control file
+	string pakName(DEFAULT_RPAK_NAME);
+	if (doc.HasMember("name") && doc["name"].IsString())
+		pakName = doc["name"].GetStdString();
+	else
+		Warning("Map file should have a 'name' field containing the string name for the new rpak, but none was provided. Using '%s.rpak'.\n", pakName.c_str());
+
+
+	// determine source asset directory from map file
+	if (!doc.HasMember("assetsDir"))
+	{
+		Warning("No assetsDir field provided. Assuming that everything is relative to the working directory.\n");
+		if (inputPath.has_parent_path())
+			Assets::g_sAssetsDir = inputPath.parent_path().u8string();
+		else
+			Assets::g_sAssetsDir = ".\\";
+	}
+	else
+	{
+		fs::path assetsDirPath(doc["assetsDir"].GetStdString());
+		if (assetsDirPath.is_relative() && inputPath.has_parent_path())
+			Assets::g_sAssetsDir = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).u8string();
+		else
+			Assets::g_sAssetsDir = assetsDirPath.u8string();
+
+		// ensure that the path has a slash at the end
+		Utils::AppendSlash(Assets::g_sAssetsDir);
+	}
+
+
+	// determine final build path from map file
+	std::string outputPath(DEFAULT_RPAK_PATH);
+	if (doc.HasMember("outputDir"))
+	{
+		fs::path outputDirPath(doc["outputDir"].GetStdString());
+
+		if (outputDirPath.is_relative() && inputPath.has_parent_path())
+			outputPath = fs::canonical(inputPath.parent_path() / outputDirPath).u8string();
+		else
+			outputPath = outputDirPath.u8string();
+
+		// ensure that the path has a slash at the end
+		Utils::AppendSlash(outputPath);
+	}
+
+
+	// determine pakfile version from map file
+	if (!doc.HasMember("version") || !doc["version"].IsInt())
+		Warning("[JSON] No version field provided; using '%d'.\n", GetVersion());
+	else
+		SetVersion(doc["version"].GetInt());
+
+
+	// print parsed settings
+	Log("build settings:\n");
+	Log("version: %i\n", GetVersion());
+	Log("filename: %s.rpak\n", pakName.c_str());
+	Log("assetsDir: %s\n", Assets::g_sAssetsDir.c_str());
+	Log("outputDir: %s\n", outputPath.c_str());
+	Log("\n");
+
+
+	// create output directory if it does not exist yet.
+	fs::create_directories(outputPath);
+
+	// set build path
+	SetPath(outputPath + pakName + ".rpak");
+
+
+	// if keepDevOnly exists, is boolean, and is set to true
+	if (doc.HasMember("keepDevOnly") && doc["keepDevOnly"].IsBool() && doc["keepDevOnly"].GetBool())
+		AddFlags(PF_KEEP_DEV);
+
+	if (doc.HasMember("starpakPath") && doc["starpakPath"].IsString())
+		SetPrimaryStarpakPath(doc["starpakPath"].GetStdString());
+
+
+	// build asset data;
+	// loop through all assets defined in the map file
+	for (auto& file : doc["files"].GetArray())
+	{
+		AddAsset(file);
+	}
+
+
+	// create file stream from path created above
+	BinaryIO out;
+	out.open(GetPath(), BinaryIOMode::Write);
+
+
+	// write a placeholder header so we can come back and complete it
+	// when we have all the info
+	WriteHeader(out);
+
+
+	// write string vectors for starpak paths and get the total length of each vector
+	size_t starpakPathsLength = WriteStarpakPaths(out);
+	size_t optStarpakPathsLength = WriteStarpakPaths(out, true);
+
+	SetStarpakPathsSize(starpakPathsLength, optStarpakPathsLength);
+
+
+	// generate file relation vector to be written
+	GenerateFileRelations();
+	GenerateGuidData();
+
+
+	// write the non-paged data to the file first
+	WriteVirtualSegments(out);
+	WritePages(out);
+	WritePakDescriptors(out);
+	WriteAssets(out);
+	WriteGuidDescriptors(out);
+	WriteFileRelations(out);
+
+
+	// now the actual paged data
+	// this should probably be writing by page instead of just hoping that
+	// the data blocks are in the right order
+	WriteRawDataBlocks(out);
+
+
+	// set header descriptors
+	SetFileTime(Utils::GetFileTimeBySystem());
+
+	// !TODO: implement LZHAM and set these accordingly.
+	SetCompressedSize(out.tell());
+	SetDecompressedSize(out.tell());
+
+
+	out.seek(0); // go back to the beginning to finally write the rpakHeader now
+	WriteHeader(out); out.close();
+
+	Debug("written rpak file with size %lld\n", GetCompressedSize());
+
+
+	// free the memory
+	FreeRawDataBlocks();
+
+
+	if (GetNumStarpakPaths() == 1)
+	{
+		fs::path path(GetStarpakPath(0));
+		std::string filename = path.filename().u8string();
+
+		Debug("writing starpak %s with %lld data entries\n", filename.c_str(), GetStreamingAssetCount());
+		BinaryIO srpkOut;
+
+		srpkOut.open(outputPath + filename, BinaryIOMode::Write);
+
+		StreamableSetHeader srpkHeader{ STARPAK_MAGIC , STARPAK_VERSION };
+		srpkOut.write(srpkHeader);
+
+		int padSize = (STARPAK_DATABLOCK_ALIGNMENT - sizeof(StreamableSetHeader));
+
+		char* initialPad = new char[padSize];
+		memset(initialPad, STARPAK_DATABLOCK_ALIGNMENT_PADDING, padSize);
+
+		srpkOut.getWriter()->write(initialPad, padSize);
+		delete[] initialPad;
+
+		WriteStarpakDataBlocks(srpkOut);
+		WriteStarpakSortsTable(srpkOut);
+
+		uint64_t entryCount = GetStreamingAssetCount();
+		srpkOut.write(entryCount);
+
+		Debug("written starpak file with size %lld\n", srpkOut.tell());
+
+		FreeStarpakDataBlocks();
+		srpkOut.close();
+	}
 }
