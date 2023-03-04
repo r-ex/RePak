@@ -7,7 +7,6 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
-    uint32_t assetUsesCount = 0; // track how many other assets are used by this asset
     MaterialHeaderV12* mtlHdr = new MaterialHeaderV12();
     std::string sAssetPath = std::string(assetPath);
 
@@ -186,8 +185,6 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
                 txtrAsset->AddRelation(assetEntries->size());
             else
                 Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
-
-            assetUsesCount++;
         }
         dataBuf += sizeof(uint64_t);
         textureIdx++; // Next texture index coming up.
@@ -248,7 +245,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
             {
                 mtlHdr->Flags2 = 0x10000002;
 
-                mtlHdr->ShaderSetGUID = 0xA5B8D4E9A3364655;
+                mtlHdr->shaderSet = 0xA5B8D4E9A3364655;
             }
             else
             {
@@ -256,15 +253,8 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
                 mtlHdr->Flags2 = 0x10000002;
 
-                mtlHdr->ShaderSetGUID = 0xA5B8D4E9A3364655;
+                mtlHdr->shaderSet = 0xA5B8D4E9A3364655;
             }
-
-            // These should always be constant (per each material type)
-            // GUIDRefs[3] is Colpass entry, however loadscreens do not have colpass materials.
-
-            mtlHdr->GUIDRefs[0] = 0x0000000000000000;
-            mtlHdr->GUIDRefs[1] = 0x0000000000000000;
-            mtlHdr->GUIDRefs[2] = 0x0000000000000000;
 
             mtlHdr->ImageFlags = 0x050300;
 
@@ -276,7 +266,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
             if (subtype == "test1")
             {
-                mtlHdr->ShaderSetGUID = 0x8FB5DB9ADBEB1CBC;
+                mtlHdr->shaderSet = 0x8FB5DB9ADBEB1CBC;
 
                 mtlHdr->Flags2 = 0x72000002;
             }
@@ -285,14 +275,10 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
                 Warning("Invalid type used! Defaulting to subtype 'viewmodel'... \n");
 
                 // same as 'viewmodel'.
-                mtlHdr->ShaderSetGUID = 0x8FB5DB9ADBEB1CBC;
+                mtlHdr->shaderSet = 0x8FB5DB9ADBEB1CBC;
 
                 mtlHdr->Flags2 = 0x72000002;
             }
-
-            mtlHdr->GUIDRefs[0] = 0x0000000000000000;
-            mtlHdr->GUIDRefs[1] = 0x0000000000000000;
-            mtlHdr->GUIDRefs[2] = 0x0000000000000000;
 
             mtlHdr->UnkSections[0].UnkRenderFlags = 0x00000005;
 
@@ -308,14 +294,14 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
             {
                 // supports a set of seven textures.
                 // viewmodel shadersets don't seem to allow ilm in third person, this set supports it.
-                mtlHdr->ShaderSetGUID = 0x586783F71E99553D;
+                mtlHdr->shaderSet = 0x586783F71E99553D;
 
                 mtlHdr->Flags2 = 0x56000020;
             }
             else if (subtype == "worldmodel_skn31")
             {
                 // supports a set of seven textures plus a set of two relating to detail textures (camos).
-                mtlHdr->ShaderSetGUID = 0x5F8181FEFDB0BAD8;
+                mtlHdr->shaderSet = 0x5F8181FEFDB0BAD8;
 
                 mtlHdr->Flags2 = 0x56040020;
             }
@@ -323,7 +309,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
             {
                 // supports a set of six textures, lacks ilm.
                 // there is a different one used for viewmodels, unsure what difference it makes considering the lack of ilm.
-                mtlHdr->ShaderSetGUID = 0x477A8F31B5963070;
+                mtlHdr->shaderSet = 0x477A8F31B5963070;
 
                 mtlHdr->Flags2 = 0x56000020;
             }
@@ -331,7 +317,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
             {
                 // supports a set of six textures plus a set of two relating to detail textures (camos), lacks ilm.
                 // same as above, why.
-                mtlHdr->ShaderSetGUID = 0xC9B736D2C8027726;
+                mtlHdr->shaderSet = 0xC9B736D2C8027726;
 
                 mtlHdr->Flags2 = 0x56040020;
             }
@@ -339,20 +325,20 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
             {
                 // supports a set of seven textures.
                 // worldmodel shadersets don't seem to allow ilm in first person, this set supports it.
-                mtlHdr->ShaderSetGUID = 0x5259835D8C44A14D;
+                mtlHdr->shaderSet = 0x5259835D8C44A14D;
 
                 mtlHdr->Flags2 = 0x56000020;
             }
             else if (subtype == "viewmodel_skn31")
             {
                 // supports a set of seven textures plus a set of two relating to detail textures (camos).
-                mtlHdr->ShaderSetGUID = 0x19F840A12774CA4C;
+                mtlHdr->shaderSet = 0x19F840A12774CA4C;
 
                 mtlHdr->Flags2 = 0x56040020;
             }
             else if (subtype == "nose_art")
             {
-                mtlHdr->ShaderSetGUID = 0x3DAD868FA7485BDD;
+                mtlHdr->shaderSet = 0x3DAD868FA7485BDD;
 
                 mtlHdr->Flags2 = 0x56000023;
             }
@@ -361,14 +347,13 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
                 Warning("Invalid type used! Defaulting to subtype 'viewmodel'... \n");
 
                 // same as 'viewmodel'.
-                mtlHdr->ShaderSetGUID = 0x5259835D8C44A14D;
+                mtlHdr->shaderSet = 0x5259835D8C44A14D;
 
                 mtlHdr->Flags2 = 0x56000020;
             }
 
             if (subtype == "nose_art")
             {
-
                 for (int i = 0; i < 2; ++i)
                 {
                     mtlHdr->UnkSections[i].UnkRenderLighting = 0xF0138286;
@@ -377,13 +362,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
                     mtlHdr->UnkSections[i].UnkRenderUnknown = 0x00138286;
 
                     mtlHdr->UnkSections[i].UnkRenderFlags = 0x00000005;
-
                 }
-
-                mtlHdr->GUIDRefs[0] = 0x0000000000000000;
-                mtlHdr->GUIDRefs[1] = 0x0000000000000000;
-                mtlHdr->GUIDRefs[2] = 0x0000000000000000;
-
             }
             else {
 
@@ -397,15 +376,9 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
                     mtlHdr->UnkSections[i].UnkRenderFlags = 0x00000004;
                 }
 
-                mtlHdr->GUIDRefs[0] = 0x39C739E9928E555C;
-                mtlHdr->GUIDRefs[1] = 0x67D89B36EDCDDF6E;
-                mtlHdr->GUIDRefs[2] = 0x43A9D8D429698B9F;
-
-                pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs));
-                pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 8);
-                pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 16);
-                assetUsesCount += 3;
-
+                mtlHdr->depthShadowMaterial = 0x39C739E9928E555C;
+                mtlHdr->depthPrepassMaterial = 0x67D89B36EDCDDF6E;
+                mtlHdr->depthVSMMaterial = 0x43A9D8D429698B9F;
             }
 
             mtlHdr->ImageFlags = 0x1D0300;
@@ -425,14 +398,14 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
             {
                 // supports a set of seven textures.
                 // viewmodel shadersets don't seem to allow ilm in third person, this set supports it.
-                mtlHdr->ShaderSetGUID = 0xC3ACAF7F1DC7F389;
+                mtlHdr->shaderSet = 0xC3ACAF7F1DC7F389;
 
                 mtlHdr->Flags2 = 0x56000020;
             }
             else if (subtype == "worldmodel_skn31")
             {
                 // supports a set of seven textures plus a set of two relating to detail textures (camos).
-                mtlHdr->ShaderSetGUID = 0x4CFB9F15FD2DE909;
+                mtlHdr->shaderSet = 0x4CFB9F15FD2DE909;
 
                 mtlHdr->Flags2 = 0x56040020;
             }
@@ -440,7 +413,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
             {
                 // supports a set of six textures, lacks ilm.
                 // there is a different one used for viewmodels, unsure what difference it makes considering the lack of ilm.
-                mtlHdr->ShaderSetGUID = 0x34A7BB3C163A8139;
+                mtlHdr->shaderSet = 0x34A7BB3C163A8139;
 
                 mtlHdr->Flags2 = 0x56000020;
             }
@@ -448,7 +421,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
             {
                 // supports a set of six textures plus a set of two relating to detail textures (camos), lacks ilm.
                 // same as above, why.
-                mtlHdr->ShaderSetGUID = 0x98EA4745D8801A9B;
+                mtlHdr->shaderSet = 0x98EA4745D8801A9B;
 
                 mtlHdr->Flags2 = 0x56040020;
             }
@@ -456,26 +429,26 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
             {
                 // supports a set of seven textures.
                 // worldmodel shadersets don't seem to allow ilm in first person, this set supports it.
-                mtlHdr->ShaderSetGUID = 0xBD04CCCC982F8C15;
+                mtlHdr->shaderSet = 0xBD04CCCC982F8C15;
 
                 mtlHdr->Flags2 = 0x56000020;
             }
             else if (subtype == "viewmodel_skn31")
             {
                 // supports a set of seven textures plus a set of two relating to detail textures (camos).
-                mtlHdr->ShaderSetGUID = 0x07BF4EC4B9632A03;
+                mtlHdr->shaderSet = 0x07BF4EC4B9632A03;
 
                 mtlHdr->Flags2 = 0x56040020;
             }
             else if (subtype == "nose_art")
             {
-                mtlHdr->ShaderSetGUID = 0x6CBEA6FE48218FAA;
+                mtlHdr->shaderSet = 0x6CBEA6FE48218FAA;
 
                 mtlHdr->Flags2 = 0x56000023;
             }
             else if (subtype == "test1")
             {
-                mtlHdr->ShaderSetGUID = 0x942791681799941D;
+                mtlHdr->shaderSet = 0x942791681799941D;
 
                 mtlHdr->Flags2 = 0x56040022;
             }
@@ -484,7 +457,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
                 Warning("Invalid type used! Defaulting to subtype 'viewmodel'... \n");
 
                 // same as 'viewmodel'.
-                mtlHdr->ShaderSetGUID = 0xBD04CCCC982F8C15;
+                mtlHdr->shaderSet = 0xBD04CCCC982F8C15;
 
                 mtlHdr->Flags2 = 0x56000020;
             }
@@ -500,10 +473,6 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
                     mtlHdr->UnkSections[i].UnkRenderFlags = 0x00000005;
                 }
-
-                mtlHdr->GUIDRefs[0] = 0x0000000000000000;
-                mtlHdr->GUIDRefs[1] = 0x0000000000000000;
-                mtlHdr->GUIDRefs[2] = 0x0000000000000000;
             }
             else
             {
@@ -517,14 +486,9 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
                     mtlHdr->UnkSections[i].UnkRenderFlags = 0x00000004;
                 }
 
-                mtlHdr->GUIDRefs[0] = 0xA4728358C3B043CA;
-                mtlHdr->GUIDRefs[1] = 0x370BABA9D9147F3D;
-                mtlHdr->GUIDRefs[2] = 0x12DCE94708487F8C;
-
-                pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs));
-                pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 8);
-                pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 16);
-                assetUsesCount += 3;
+                mtlHdr->depthShadowMaterial = 0xA4728358C3B043CA;
+                mtlHdr->depthPrepassMaterial = 0x370BABA9D9147F3D;
+                mtlHdr->depthVSMMaterial = 0x12DCE94708487F8C;
             }
 
             mtlHdr->ImageFlags = 0x1D0300;
@@ -532,14 +496,13 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
             mtlHdr->Unknown2 = 0x40D33E8F;
 
         }
-
     }
-    pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, ShaderSetGUID));
-    assetUsesCount++;
 
-    if (mtlHdr->ShaderSetGUID != 0)
+    pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, shaderSet));
+
+    if (mtlHdr->shaderSet != 0)
     {
-        RPakAssetEntry* asset = pak->GetAssetByGuid(mtlHdr->ShaderSetGUID);
+        RPakAssetEntry* asset = pak->GetAssetByGuid(mtlHdr->shaderSet);
 
         if (asset)
             asset->AddRelation(assetEntries->size());
@@ -550,21 +513,17 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
     if (mapEntry.HasMember("colpass"))
     {
         std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + "_" + type + ".rpak";
-        mtlHdr->GUIDRefs[3] = RTech::StringToGuid(colpassPath.c_str());
-
-        // todo, the relations count is not being set properly on the colpass for whatever reason.
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, GUIDRefs) + 24);
-        assetUsesCount++;
-
-        bColpass = false;
+        mtlHdr->colpassMaterial = RTech::StringToGuid(colpassPath.c_str());
     }
 
     for (int i = 0; i < 4; ++i)
     {
-        uint64_t guid = mtlHdr->GUIDRefs[i];
+        uint64_t guid = *((uint64_t*)&mtlHdr->depthShadowMaterial + i);
 
         if (guid != 0)
         {
+            pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, depthShadowMaterial) + (i*8));
+
             RPakAssetEntry* asset = pak->GetAssetByGuid(guid);
 
             if (asset)
@@ -670,7 +629,6 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
     pak->AddRawDataBlock({ cpuseginfo.index, cpuseginfo.size, (uint8_t*)cpuData });
 
     //////////////////////////////////////////
-    //  todo make thise swap depending on version, probably a global rpak version.
     RPakAssetEntry asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
@@ -681,7 +639,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
     //asset.unk1 = bColpass ? 7 : 8; // what
     // unk1 appears to be maxusecount, although seemingly nothing is affected by changing it unless you exceed 18.
     // In every TF|2 material asset entry I've looked at it's always UsesCount + 1.
-    asset.unk1 = assetUsesCount + 1;
+    asset.unk1 = guids.size() + 1;
 
     asset.AddGuids(&guids);
 
@@ -693,7 +651,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
-    uint32_t assetUsesCount = 0; // track how many other assets are used by this asset
     MaterialHeaderV15* mtlHdr = new MaterialHeaderV15();
     std::string sAssetPath = std::string(assetPath);
 
@@ -783,14 +740,11 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
                 txtrAsset->AddRelation(assetEntries->size());
             else
                 Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
-
-            assetUsesCount++;
         }
         dataBuf += sizeof(uint64_t);
         textureIdx++; // Next texture index coming up.
     }
     dataBuf += sizeof(uint64_t) * mapEntry["textures"].Size();
-
 
     // ===============================
     // write the surface name into the buffer
@@ -813,86 +767,53 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     // Shader Type Handling
     if (type == "sknp")
     {
-        // GUIDRefs[4] is Colpass entry.
-        mtlHdr->m_GUIDRefs[0] = 0x2B93C99C67CC8B51;
-        mtlHdr->m_GUIDRefs[1] = 0x1EBD063EA03180C7;
-        mtlHdr->m_GUIDRefs[2] = 0xF95A7FA9E8DE1A0E;
-        mtlHdr->m_GUIDRefs[3] = 0x227C27B608B3646B;
+        mtlHdr->depthShadowMaterial = 0x2B93C99C67CC8B51;
+        mtlHdr->depthPrepassMaterial = 0x1EBD063EA03180C7;
+        mtlHdr->depthVSMMaterial = 0xF95A7FA9E8DE1A0E;
+        mtlHdr->depthShadowTightMaterial = 0x227C27B608B3646B;
 
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
-        assetUsesCount += 4;
-
-        mtlHdr->m_pShaderSet = 0x1D9FFF314E152725;
-        mtlHdr->materialType = SKNP; // SKNP
+        mtlHdr->shaderSet = 0x1D9FFF314E152725;
+        mtlHdr->materialType = SKNP;
     }
     else if (type == "wldc")
     {
-        // GUIDRefs[4] is Colpass entry which is optional for wldc.
-        mtlHdr->m_GUIDRefs[0] = 0x435FA77E363BEA48; // DepthShadow
-        mtlHdr->m_GUIDRefs[1] = 0xF734F96BE92E0E71; // DepthPrepass
-        mtlHdr->m_GUIDRefs[2] = 0xD306370918620EC0; // DepthVSM
-        mtlHdr->m_GUIDRefs[3] = 0xDAB17AEAD2D3387A; // DepthShadowTight
+        mtlHdr->depthShadowMaterial = 0x435FA77E363BEA48;
+        mtlHdr->depthPrepassMaterial = 0xF734F96BE92E0E71;
+        mtlHdr->depthVSMMaterial = 0xD306370918620EC0;
+        mtlHdr->depthShadowTightMaterial = 0xDAB17AEAD2D3387A;
 
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
-        assetUsesCount += 4;
-
-        mtlHdr->m_pShaderSet = 0x4B0F3B4CBD009096;
-        mtlHdr->materialType = WLDC; // WLDC
+        mtlHdr->shaderSet = 0x4B0F3B4CBD009096;
+        mtlHdr->materialType = WLDC;
     }
     else if (type == "rgdp")
     {
-        // GUIDRefs[4] is Colpass entry which is optional for wldc.
-        mtlHdr->m_GUIDRefs[0] = 0x251FBE09EFFE8AB1; // DepthShadow
-        mtlHdr->m_GUIDRefs[1] = 0xE2D52641AFC77395; // DepthPrepass
-        mtlHdr->m_GUIDRefs[2] = 0xBDBF90B97E7D9280; // DepthVSM
-        mtlHdr->m_GUIDRefs[3] = 0x85654E05CF9B40E7; // DepthShadowTight
+        mtlHdr->depthShadowMaterial = 0x251FBE09EFFE8AB1;
+        mtlHdr->depthPrepassMaterial = 0xE2D52641AFC77395;
+        mtlHdr->depthVSMMaterial = 0xBDBF90B97E7D9280;
+        mtlHdr->depthShadowTightMaterial = 0x85654E05CF9B40E7;
 
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs));
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 8);
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 16);
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 24);
-        assetUsesCount += 4;
-
-        mtlHdr->m_pShaderSet = 0x2a2db3a47af9b3d5;
-        mtlHdr->materialType = RGDP; // RGDP
+        mtlHdr->shaderSet = 0x2a2db3a47af9b3d5;
+        mtlHdr->materialType = RGDP;
     }
 
-    pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_pShaderSet));
-    assetUsesCount++;
+    bool bColpass = false; // is this colpass material?
 
-    if (mtlHdr->m_pShaderSet != 0)
-    {
-        RPakAssetEntry* asset = pak->GetAssetByGuid(mtlHdr->m_pShaderSet);
-
-        if (asset)
-            asset->AddRelation(assetEntries->size());
-    }
-
-    // Is this a colpass asset?
-    bool bColpass = false;
-    if (mapEntry.HasMember("colpass"))
+    // get referenced colpass material if exists
+    if (mapEntry.HasMember("colpass") && mapEntry["colpass"].IsString())
     {
         std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + ".rpak";
-        mtlHdr->m_GUIDRefs[4] = RTech::StringToGuid(colpassPath.c_str());
-
-        pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, m_GUIDRefs) + 32);
-        assetUsesCount++;
-
-        bColpass = false;
+        mtlHdr->colpassMaterial = RTech::StringToGuid(colpassPath.c_str());
     }
 
-    for (int i = 0; i < 5; ++i)
+    // loop thru referenced assets (depth materials, colpass material, shaderset)
+    for (int i = 0; i < 6; ++i)
     {
-        uint64_t guid = mtlHdr->m_GUIDRefs[i];
+        uint64_t guid = *((uint64_t*)&mtlHdr->depthShadowMaterial + i);
 
         if (guid != 0)
         {
+            pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, depthShadowMaterial) + (i*8));
+
             RPakAssetEntry* asset = pak->GetAssetByGuid(guid);
 
             if (asset)

@@ -104,6 +104,7 @@ struct MaterialCPUDataV15
 // start of CMaterialGlue class
 struct MaterialHeaderV15
 {
+
 	uint64_t m_VtblReserved = 0; // Gets set to CMaterialGlue vtbl ptr
 	uint8_t m_Padding[0x8]{}; // Un-used.
 	uint64_t m_nGUID = 0; // guid of this material asset
@@ -118,8 +119,13 @@ struct MaterialHeaderV15
 	// IDX 4: DepthShadowTight
 	// IDX 5: ColPass
 	// They seem to be the exact same for all materials throughout the game.
-	uint64_t m_GUIDRefs[5]{}; // Required to have proper textures.
-	uint64_t m_pShaderSet = 0; // guid of the shaderset asset that this material uses
+	uint64_t depthShadowMaterial = 0;
+	uint64_t depthPrepassMaterial = 0;
+	uint64_t depthVSMMaterial = 0;
+	uint64_t depthShadowTightMaterial = 0;
+	uint64_t colpassMaterial = 0;
+
+	uint64_t shaderSet = 0; // guid of the shaderset asset that this material uses
 
 	/* 0x60 */ RPakPtr m_pTextureHandles{}; // TextureGUID Map
 	/* 0x68 */ RPakPtr m_pStreamingTextureHandles{}; // Streamable TextureGUID Map
@@ -239,13 +245,16 @@ struct MaterialHeaderV12
 	// IDX 4: ColPass
 	// Titanfall is does not have 'DepthShadowTight'
 
-	uint64_t GUIDRefs[4]{}; // Required to have proper textures.
+	uint64_t depthShadowMaterial = 0;
+	uint64_t depthPrepassMaterial = 0;
+	uint64_t depthVSMMaterial = 0;
+	uint64_t colpassMaterial = 0;
 
 	// these blocks dont seem to change often but are the same?
 	// these blocks relate to different render filters and flags. still not well understood.
 	UnknownMaterialSectionV12 UnkSections[2];
 
-	uint64_t ShaderSetGUID = 0; // guid of the shaderset asset that this material uses
+	uint64_t shaderSet = 0; // guid of the shaderset asset that this material uses
 
 	RPakPtr TextureGUIDs{}; // TextureGUID Map
 	RPakPtr TextureGUIDs2{}; // Streamable TextureGUID Map
