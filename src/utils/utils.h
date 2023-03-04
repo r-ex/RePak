@@ -12,6 +12,8 @@ namespace Utils
 	std::string ChangeExtension(const std::string& in, const std::string& ext);
 
 	void ParseMapDocument(js::Document& doc, const fs::path& path);
+
+	const std::string VFormat(const char* const zcFormat, ...);
 };
 
 #define WRITE_VECTOR(out, dataVector) for (auto it = dataVector.begin(); it != dataVector.end(); ++it) \
