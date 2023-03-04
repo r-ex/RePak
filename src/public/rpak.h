@@ -258,9 +258,9 @@ struct PtchHeader
 // internal data structure for storing patch_master entries before being written
 struct PtchEntry
 {
-	std::string FileName = "";
-	uint8_t PatchNum = 0;
-	uint32_t FileNamePageOffset = 0;
+	std::string pakFileName = "";
+	uint8_t highestPatchNum = 0;
+	uint32_t pakFileNameOffset = 0;
 };
 
 #define SF_HEAD   0 // :skull:
