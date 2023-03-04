@@ -286,7 +286,7 @@ void CPakFile::FreeRawDataBlocks()
 {
 	for (auto& it : m_vRawDataBlocks)
 	{
-		delete it.m_nDataPtr;
+		delete[] it.m_nDataPtr;
 	}
 }
 
@@ -297,7 +297,7 @@ void CPakFile::FreeStarpakDataBlocks()
 {
 	for (auto& it : m_vStarpakDataBlocks)
 	{
-		delete it.m_nDataPtr;
+		delete[] it.m_nDataPtr;
 	}
 }
 
