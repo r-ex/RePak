@@ -13,7 +13,7 @@ std::unordered_map<std::string, dtblcoltype_t> DataTableColumnMap =
     { "assetnoprecache", dtblcoltype_t::AssetNoPrecache }
 };
 
-static std::regex s_VectorStringRegex("<(.*),(.*),(.*)>");
+static const std::regex s_VectorStringRegex("<(.*),(.*),(.*)>");
 
 // gets enum value from type string
 // e.g. "string" to dtblcoltype::StringT
