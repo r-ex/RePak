@@ -554,6 +554,13 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	FreeRawDataBlocks();
 
 
+	// !TODO: we really should add support for multiple starpak files and share existing
+	// assets across rpaks. e.g. if the base 'pc_all.opt.starpak' already contains the
+	// highest mip level for 'ola_sewer_grate', don't copy it into 'sdk_all.opt.starpak'.
+	// the sort table at the end of the file (see WriteStarpakSortsTable) contains offsets
+	// to the asset with their respective sizes. this could be used in combination of a
+	// static database (who's name is to be selected from a hint provided by the map file)
+	// to map assets among various rpaks avoiding extraneous copies of the same streamed data.
 	if (GetNumStarpakPaths() == 1)
 	{
 		fs::path path(GetStarpakPath(0));
