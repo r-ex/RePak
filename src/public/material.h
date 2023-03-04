@@ -44,7 +44,7 @@ struct UnknownMaterialSectionV15
 
 	// required but seems to follow a pattern. maybe related to "Unknown2" above?
 	// nulling these bytes makes the material stop drawing entirely
-	uint32_t m_Unknown1[8]{};
+	uint32_t unk_0[8]{};
 
 	// for more details see the 'UnknownMaterialSectionV12' struct.
 	uint32_t m_UnkRenderFlags = 0x0;
@@ -104,21 +104,14 @@ struct MaterialCPUDataV15
 // start of CMaterialGlue class
 struct MaterialHeaderV15
 {
+	uint64_t vftableReserved = 0; // reserved for virtual function table pointer (when copied into native CMaterialGlue)
+	char gap_8[0x8]{}; // unused?
+	uint64_t guid = 0; // guid of this material asset
 
-	uint64_t m_VtblReserved = 0; // Gets set to CMaterialGlue vtbl ptr
-	uint8_t m_Padding[0x8]{}; // Un-used.
-	uint64_t m_nGUID = 0; // guid of this material asset
+	RPakPtr materialName{}; // pointer to partial asset path
+	RPakPtr surfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	RPakPtr surfaceProp2{}; // pointer to surfaceprop2 
 
-	RPakPtr m_pszName{}; // pointer to partial asset path
-	RPakPtr m_pszSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
-	RPakPtr m_pszSurfaceProp2{}; // pointer to surfaceprop2 
-
-	// IDX 1: DepthShadow
-	// IDX 2: DepthPrepass
-	// IDX 3: DepthVSM
-	// IDX 4: DepthShadowTight
-	// IDX 5: ColPass
-	// They seem to be the exact same for all materials throughout the game.
 	uint64_t depthShadowMaterial = 0;
 	uint64_t depthPrepassMaterial = 0;
 	uint64_t depthVSMMaterial = 0;
@@ -127,26 +120,26 @@ struct MaterialHeaderV15
 
 	uint64_t shaderSet = 0; // guid of the shaderset asset that this material uses
 
-	/* 0x60 */ RPakPtr m_pTextureHandles{}; // TextureGUID Map
-	/* 0x68 */ RPakPtr m_pStreamingTextureHandles{}; // Streamable TextureGUID Map
+	/* 0x60 */ RPakPtr textureHandles{}; // ptr to array of texture guids
+	/* 0x68 */ RPakPtr streamingTextureHandles{}; // ptr to array of streamable texture guids (empty at build time)
 
-	/* 0x70 */ int16_t m_nStreamingTextureHandleCount = 0x4; // Number of textures with streamed mip levels.
-	/* 0x72 */ int16_t m_nWidth = 2048;
-	/* 0x74 */ int16_t m_nHeight = 2048;
-	/* 0x76 */ int16_t m_Unknown1 = 0;
+	/* 0x70 */ short numStreamingTextureHandles = 0x4; // Number of textures with streamed mip levels.
+	/* 0x72 */ short width = 2048;
+	/* 0x74 */ short height = 2048;
+	/* 0x76 */ short unk_76 = 0;
 
-	/* 0x78 */ uint32_t m_SomeFlags = 0x1D0300;
-	/* 0x7C */ uint32_t m_Unknown2 = 0;
+	/* 0x78 */ uint32_t flags_78 = 0x1D0300;
+	/* 0x7C */ uint32_t unk_7C = 0;
 
-	/* 0x80 */ uint32_t m_Unknown3 = 0x1F5A92BD; // REQUIRED but why?
+	/* 0x80 */ uint32_t unk_80 = 0x1F5A92BD; // REQUIRED but why?
 
-	/* 0x84 */ uint32_t m_Unknown4 = 0;
+	/* 0x84 */ uint32_t unk_84 = 0;
 
 	// neither of these 2 seem to be required
-	/* 0x88 */ uint32_t something = 0;
-	/* 0x8C */ uint32_t something2 = 0;
+	/* 0x88 */ uint32_t unk_88 = 0;
+	/* 0x8C */ uint32_t unk_8C = 0;
 
-	/* 0x90 */ UnknownMaterialSectionV15 m_UnknownSections[2]{};
+	/* 0x90 */ UnknownMaterialSectionV15 unkSections[2]{}; // seems to be used for setting up some D3D states?
 	/* 0xF0 */ uint8_t bytef0;
 	/* 0xF1 */ uint8_t bytef1;
 	/* 0xF2 */ MaterialShaderType_t materialType;
@@ -231,13 +224,13 @@ struct MaterialCPUDataV12
 
 struct MaterialHeaderV12
 {
-	uint64_t VtblPtrPad = 0; // Gets set to CMaterialGlue vtbl ptr
-	uint64_t padding = 0; // Un-used.
-	uint64_t AssetGUID = 0; // guid of this material asset
+	uint64_t vftableReserved = 0; // Gets set to CMaterialGlue vtbl ptr
+	char gap_8[0x8]{}; // unused?
+	uint64_t guid = 0; // guid of this material asset
 
-	RPakPtr m_pszName{}; // pointer to partial asset path
-	RPakPtr m_pszSurfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
-	RPakPtr m_pszSurfaceProp2{}; // pointer to surfaceprop2 
+	RPakPtr materialName{}; // pointer to partial asset path
+	RPakPtr surfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	RPakPtr surfaceProp2{}; // pointer to surfaceprop2 
 
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
@@ -252,31 +245,31 @@ struct MaterialHeaderV12
 
 	// these blocks dont seem to change often but are the same?
 	// these blocks relate to different render filters and flags. still not well understood.
-	UnknownMaterialSectionV12 UnkSections[2];
+	UnknownMaterialSectionV12 unkSections[2];
 
 	uint64_t shaderSet = 0; // guid of the shaderset asset that this material uses
 
-	RPakPtr TextureGUIDs{}; // TextureGUID Map
-	RPakPtr TextureGUIDs2{}; // Streamable TextureGUID Map
+	RPakPtr textureHandles{}; // TextureGUID Map
+	RPakPtr streamingTextureHandles{}; // Streamable TextureGUID Map
 
-	int16_t StreamableTextureCount = 0; // Number of textures with streamed mip levels.
-	uint32_t ImageFlags = 0x503000; // see ImageFlags in the apex struct.
-	int16_t Unk1 = 0; // might be "Unknown"
+	short numStreamingTextureHandles = 0; // Number of textures with streamed mip levels.
+	uint32_t flags = 0x503000; // see ImageFlags in the apex struct.
+	short unk1 = 0;
 
-	uint64_t padding2 = 0; // haven't observed anything here.
+	uint64_t unk2 = 0; // haven't observed anything here.
 
 	// seems to be 0xFBA63181 for loadscreens
-	uint32_t Unknown2 = 0xFBA63181; // no clue tbh
+	uint32_t unk3 = 0xFBA63181; // no clue tbh
 
-	uint32_t Unk2 = 0; // this might actually be "Alignment"
+	uint32_t unk4 = 0; // this might actually be "Alignment"
 
-	uint32_t Flags2 = 0;
-	uint32_t something2 = 0x0; // seems mostly unchanged between all materials, including apex, however there are some edge cases where this is 0x00.
+	uint32_t flags2 = 0;
+	uint32_t unk5 = 0x0; // seems mostly unchanged between all materials, including apex, however there are some edge cases where this is 0x00.
 
-	int16_t Width = 2048;
-	int16_t Height = 2048;
+	short width = 2048;
+	short height = 2048;
 
-	uint32_t Unk3 = 0; // might be padding but could also be something else.
+	uint32_t unk6 = 0; // might be padding but could also be something else.
 
 	/* ImageFlags
 	0x050300 for loadscreens, 0x1D0300 for normal materials.
@@ -287,8 +280,8 @@ static_assert(sizeof(MaterialHeaderV12) == 208); // should be size of 208
 // header struct for the material asset cpu data
 struct MaterialCPUHeader
 {
-	RPakPtr  m_nUnknownRPtr{}; // points to the rest of the cpu data. maybe for colour?
-	uint32_t m_nDataSize = 0;
-	uint32_t m_nVersionMaybe = 3; // every unknown is now either datasize, version, or flags
+	RPakPtr  dataPtr{}; // points to the rest of the cpu data. maybe for colour?
+	uint32_t dataSize = 0;
+	uint32_t maybeVersion = 3; // every unknown is now either datasize, version, or flags
 };
 #pragma pack(pop)
