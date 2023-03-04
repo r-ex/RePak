@@ -4,6 +4,19 @@
 #include "math/vector.h"
 #include "math/color.h"
 
+#define RPAK_MAGIC		(('k'<<24)+('a'<<16)+('P'<<8)+'R')
+#define RPAK_EXTENSION ".rpak"
+
+#define STARPAK_MAGIC	(('k'<<24)+('P'<<16)+('R'<<8)+'S')
+#define STARPAK_VERSION	1
+#define STARPAK_EXTENSION ".starpak"
+
+// data blocks in starpaks are all aligned to 4096 bytes, including
+// the header which gets filled with 0xCB after the magic and version
+#define STARPAK_DATABLOCK_ALIGNMENT 4096
+#define STARPAK_DATABLOCK_ALIGNMENT_PADDING 0xCB
+
+
 enum class AssetType : uint32_t
 {
 	TXTR = 0x72747874, // b'txtr' - texture
@@ -203,8 +216,15 @@ struct RPakRawDataBlock
 	uint8_t* m_nDataPtr;
 };
 
+// starpak header
+struct StreamableSetHeader
+{
+	int magic;
+	int version;
+};
+
 // internal data structure for referencing streaming data to be written
-struct SRPkDataEntry
+struct StreamableDataEntry
 {
 	uint64_t m_nOffset = -1; // set when added
 	uint64_t m_nDataSize = 0;

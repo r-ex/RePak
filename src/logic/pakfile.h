@@ -22,7 +22,7 @@ public:
 
 	void AddStarpakReference(const std::string& path);
 	void AddOptStarpakReference(const std::string& path);
-	SRPkDataEntry AddStarpakDataEntry(SRPkDataEntry block);
+	StreamableDataEntry AddStarpakDataEntry(StreamableDataEntry block);
 
 	//----------------------------------------------------------------------------
 	// inlines
@@ -32,11 +32,8 @@ public:
 	inline size_t GetAssetCount() const { return m_Assets.size(); };
 	inline size_t GetStreamingAssetCount() const { return m_vStarpakDataBlocks.size(); }
 
-	inline void SetVersion(uint32_t version)
-	{
-		m_Header.fileVersion = version;
-		m_Version = version;
-	}
+	inline uint32_t GetVersion() const { return m_Header.fileVersion; }
+	inline void SetVersion(uint32_t version) { m_Header.fileVersion = version; }
 
 	inline void SetStarpakPathsSize(int len, int optLen)
 	{
@@ -102,14 +99,15 @@ public:
 	_vseginfo_t CreateNewSegment(uint32_t size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
 	RPakAssetEntry* GetAssetByGuid(uint64_t guid, uint32_t* idx = nullptr);
 
+
+	void BuildFromMap(const string& mapPath);
+
 private:
 	RPakVirtualSegment GetMatchingSegment(uint32_t flags, uint32_t alignment, uint32_t* segidx);
 
-	int m_Version = 0;
-	int m_Flags = 0;
-
 	// next available starpak data offset
 	uint64_t m_NextStarpakOffset = 0x1000;
+	int m_Flags = 0;
 
 	RPakFileHeader m_Header;
 
@@ -128,5 +126,5 @@ private:
 	std::vector<uint32_t> m_vFileRelations;
 
 	std::vector<RPakRawDataBlock> m_vRawDataBlocks;
-	std::vector<SRPkDataEntry> m_vStarpakDataBlocks;
+	std::vector<StreamableDataEntry> m_vStarpakDataBlocks;
 };

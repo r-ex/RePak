@@ -263,7 +263,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
        
         pak->AddStarpakReference(starpakPath);
 
-        SRPkDataEntry de{ 0, nStreamedMipSize, (uint8_t*)streamedbuf };
+        StreamableDataEntry de{ 0, nStreamedMipSize, (uint8_t*)streamedbuf };
         de = pak->AddStarpakDataEntry(de);
         starpakOffset = de.m_nOffset;
     }

@@ -4,7 +4,7 @@
 #include "public/rpak.h"
 
 // starpak data entry vector
-inline std::vector<SRPkDataEntry> g_vSRPkDataEntries{};
+inline std::vector<StreamableDataEntry> g_vSRPkDataEntries{};
 
 #define ASSET_HANDLER(ext, file, assetEntries, func_v7, func_v8) \
 	if (file["$type"].GetStdString() == ext) \
