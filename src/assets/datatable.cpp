@@ -1,8 +1,8 @@
 #include "pch.h"
-#include "Assets.h"
-#include <regex>
+#include "assets.h"
+#include "public/table.h"
 
-std::unordered_map<std::string, dtblcoltype_t> DataTableColumnMap =
+static const std::unordered_map<std::string, dtblcoltype_t> s_DataTableColumnMap =
 {
     { "bool",   dtblcoltype_t::Bool },
     { "int",    dtblcoltype_t::Int },
@@ -13,7 +13,7 @@ std::unordered_map<std::string, dtblcoltype_t> DataTableColumnMap =
     { "assetnoprecache", dtblcoltype_t::AssetNoPrecache }
 };
 
-static std::regex s_VectorStringRegex("<(.*),(.*),(.*)>");
+static const std::regex s_VectorStringRegex("<(.*),(.*),(.*)>");
 
 // gets enum value from type string
 // e.g. "string" to dtblcoltype::StringT
@@ -21,7 +21,7 @@ dtblcoltype_t GetDataTableTypeFromString(std::string sType)
 {
     std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
 
-    for (const auto& [key, value] : DataTableColumnMap) // Iterate through unordered_map.
+    for (const auto& [key, value] : s_DataTableColumnMap) // Iterate through unordered_map.
     {
         if (sType.compare(key) == 0) // Do they equal?
             return value;
@@ -38,9 +38,9 @@ uint8_t DataTable_GetEntrySize(dtblcoltype_t type)
     case dtblcoltype_t::Bool:
     case dtblcoltype_t::Int:
     case dtblcoltype_t::Float:
-        return 4;
+        return sizeof(int32_t);
     case dtblcoltype_t::Vector:
-        return sizeof(float) * 3;
+        return sizeof(Vector3);
     case dtblcoltype_t::StringT:
     case dtblcoltype_t::Asset:
     case dtblcoltype_t::AssetNoPrecache:
@@ -57,7 +57,7 @@ void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* as
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 
-    rapidcsv::Document doc(g_sAssetsDir + assetPath + ".csv");
+    rapidcsv::Document doc(pak->GetAssetPath() + assetPath + ".csv");
 
     std::string sAssetName = assetPath;
 
@@ -281,7 +281,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* as
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 
-    rapidcsv::Document doc(g_sAssetsDir + assetPath + ".csv");
+    rapidcsv::Document doc(pak->GetAssetPath() + assetPath + ".csv");
 
     std::string sAssetName = assetPath;
 

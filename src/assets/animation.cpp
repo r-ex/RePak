@@ -1,5 +1,6 @@
 #include "pch.h"
-#include "rpak.h"
+#include "assets.h"
+#include "public/studio.h"
 
 
 void Assets::AddAnimSeqAsset_stub(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
@@ -15,7 +16,7 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 
     AnimSequenceHeader* pHdr = new AnimSequenceHeader();
 
-    std::string rseqFilePath = g_sAssetsDir + sAssetName;
+    std::string rseqFilePath = pak->GetAssetPath() + sAssetName;
 
     // require rseq file to exist
     REQUIRE_FILE(rseqFilePath);

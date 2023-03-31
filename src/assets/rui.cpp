@@ -1,6 +1,7 @@
 #include "pch.h"
-#include "Assets.h"
-#include <dxutils.h>
+#include "assets.h"
+#include "utils/dxutils.h"
+#include "public/texture.h"
 
 void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
@@ -54,7 +55,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
     }
 
     // get the info for the ui atlas image
-    std::string sAtlasFilePath = g_sAssetsDir + mapEntry["atlas"].GetStdString() + ".dds";
+    std::string sAtlasFilePath = pak->GetAssetPath() + mapEntry["atlas"].GetStdString() + ".dds";
     std::string sAtlasAssetName = mapEntry["atlas"].GetStdString() + ".rpak";
     uint64_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
 
@@ -132,7 +133,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
         float startY = it["posY"].GetFloat() / pHdr->height;
         float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->height;
 
-        // this doesnt affect legion but does affect game?
+        // this doesn't affect legion but does affect game?
         //uiio.InitUIImageOffset(startX, startY, endX, endY);
         tiBuf.write(uiio);
     }
@@ -160,10 +161,10 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<RPakAssetEntry>* ass
         uint32_t pathHash = RTech::StringToUIMGHash(it["path"].GetString());
         tiBuf.write(pathHash);
 
-        // offset into the path table for this texture
-        // NOTE: this is set regardless of whether the path table exists in original rpaks
-        tiBuf.write(nextStringTableOffset);
-        nextStringTableOffset += it["path"].GetStringLength() + 1;
+        // offset into the path table for this texture - not really needed since we don't write the image names
+        tiBuf.write(0i32);
+
+        //nextStringTableOffset += it["path"].GetStringLength();
     }
 
     // add the file relation from this uimg asset to the atlas txtr
