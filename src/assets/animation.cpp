@@ -19,8 +19,8 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
     // require rseq file to exist
     REQUIRE_FILE(rseqFilePath);
 
-    uint32_t fileNameDataSize = strlen(assetPath) + 1;
-    uint32_t rseqFileSize = (uint32_t)Utils::GetFileSize(rseqFilePath);
+    int fileNameDataSize = strlen(assetPath) + 1;
+    int rseqFileSize = (int)Utils::GetFileSize(rseqFilePath);
 
     uint32_t bufAlign = 4 - (fileNameDataSize + rseqFileSize) % 4;
 

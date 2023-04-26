@@ -90,12 +90,12 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     pHdr->atlasGUID = atlasGuid;
 
     // calculate data sizes so we can allocate a page and segment
-    uint32_t textureOffsetsDataSize = sizeof(UIImageOffset) * nTexturesCount;
-    uint32_t textureDimensionsDataSize = sizeof(uint16_t) * 2 * nTexturesCount;
-    uint32_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * nTexturesCount;
+    int textureOffsetsDataSize = sizeof(UIImageOffset) * nTexturesCount;
+    int textureDimensionsDataSize = sizeof(uint16_t) * 2 * nTexturesCount;
+    int textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * nTexturesCount;
 
     // get total size
-    uint32_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
+    int textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
 
     // asset header
     _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(UIImageHeader), SF_HEAD | SF_CLIENT, 8);

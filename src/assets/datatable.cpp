@@ -113,12 +113,12 @@ void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<PakAsset_t>* assetE
     std::vector<std::string> typeRow = doc.GetRow<std::string>(rowCount - 1);
     std::vector<DataTableColumn> columns{};
 
-    uint32_t nextNameOffset = 0;
+    int nextNameOffset = 0;
     uint32_t colIdx = 0;
     // temp var used for storing the row offset for the next column in the loop below
     uint32_t tempColumnRowOffset = 0;
     uint32_t stringEntriesSize = 0;
-    size_t rowDataPageSize = 0;
+    int rowDataPageSize = 0;
 
     for (auto& it : doc.GetColumnNames())
     {
@@ -337,7 +337,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
     std::vector<std::string> typeRow = doc.GetRow<std::string>(rowCount - 1);
     std::vector<DataTableColumn> columns{};
 
-    uint32_t nextNameOffset = 0;
+    int nextNameOffset = 0;
     uint32_t colIdx = 0;
     // temp var used for storing the row offset for the next column in the loop below
     uint32_t tempColumnRowOffset = 0;

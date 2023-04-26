@@ -33,7 +33,7 @@ void CPakFile::AddAsset(rapidjson::Value& file)
 //-----------------------------------------------------------------------------
 // purpose: adds page pointer to descriptor
 //-----------------------------------------------------------------------------
-void CPakFile::AddPointer(unsigned int pageIdx, unsigned int pageOffset)
+void CPakFile::AddPointer(int pageIdx, int pageOffset)
 {
 	m_vPakDescriptors.push_back({ pageIdx, pageOffset });
 }
@@ -41,7 +41,7 @@ void CPakFile::AddPointer(unsigned int pageIdx, unsigned int pageOffset)
 //-----------------------------------------------------------------------------
 // purpose: adds guid descriptor
 //-----------------------------------------------------------------------------
-void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, unsigned int idx, unsigned int offset)
+void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, int idx, int offset)
 {
 	guids->push_back({ idx, offset });
 }
@@ -337,7 +337,7 @@ void CPakFile::GenerateGuidData()
 // purpose: 
 // returns: 
 //-----------------------------------------------------------------------------
-_vseginfo_t CPakFile::CreateNewSegment(uint32_t size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment /*= -1*/)
+_vseginfo_t CPakFile::CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment /*= -1*/)
 {
 	uint32_t vsegidx = (uint32_t)m_vVirtualSegments.size();
 
@@ -356,7 +356,7 @@ _vseginfo_t CPakFile::CreateNewSegment(uint32_t size, uint32_t flags, uint32_t a
 	PakPageHdr_t vsegblock{ vsegidx, alignment, size };
 
 	m_vPages.emplace_back(vsegblock);
-	unsigned int pageidx = m_vPages.size() - 1;
+	int pageidx = m_vPages.size() - 1;
 
 	return { pageidx, size };
 }

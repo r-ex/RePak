@@ -31,8 +31,9 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
     // data segment
     _vseginfo_t dataseginfo = pak->CreateNewSegment(dataPageSize, SF_CPU, 8);
 
+    int ofs = sizeof(PagePtr_t) * pHdr->patchedPakCount;
     pHdr->pPakNames = { dataseginfo.index, 0 };
-    pHdr->pPakPatchNums = { dataseginfo.index, (int)sizeof(PagePtr_t) * pHdr->patchedPakCount };
+    pHdr->pPakPatchNums = { dataseginfo.index, ofs };
 
     pak->AddPointer(subhdrinfo.index, offsetof(PtchHeader, pPakNames));
     pak->AddPointer(subhdrinfo.index, offsetof(PtchHeader, pPakPatchNums));
@@ -43,7 +44,7 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
     uint32_t i = 0;
     for (auto& it : patchEntries)
     {
-        uint32_t fileNameOffset = (sizeof(PagePtr_t) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + it.pakFileNameOffset;
+        int fileNameOffset = (sizeof(PagePtr_t) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + it.pakFileNameOffset;
 
         // write the ptr to the file name into the buffer
         dataBuf.write<PagePtr_t>({ dataseginfo.index, fileNameOffset }, sizeof(PagePtr_t) * i);

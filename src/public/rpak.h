@@ -41,8 +41,8 @@ enum class AssetType : uint32_t
 // when loaded, these usually get converted to a real pointer
 struct PagePtr_t
 {
-	unsigned int index = 0;
-	unsigned int offset = 0;
+	int index = 0;
+	int offset = 0;
 };
 
 // generic header struct for both apex and titanfall 2
@@ -221,8 +221,8 @@ public:
 // internal data structure for referencing file data to be written
 struct PakRawDataBlock_t
 {
-	uint32_t pageIdx;
-	uint64_t size;
+	int pageIdx;
+	__int64 size;
 	uint8_t* pData;
 };
 

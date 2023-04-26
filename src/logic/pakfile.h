@@ -3,8 +3,8 @@
 
 struct _vseginfo_t
 {
-	unsigned int index = 0xFFFFFFFF;
-	unsigned int size = 0;
+	int index = -1;
+	int size = 0;
 };
 
 class CPakFile
@@ -16,8 +16,8 @@ public:
 	// assets
 	//----------------------------------------------------------------------------
 	void AddAsset(rapidjson::Value& file);
-	void AddPointer(unsigned int pageIdx, unsigned int pageOffset);
-	void AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, unsigned int idx, unsigned int offset);
+	void AddPointer(int pageIdx, int pageOffset);
+	void AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, int idx, int offset);
 	void AddRawDataBlock(PakRawDataBlock_t block);
 
 	void AddStarpakReference(const std::string& path);
@@ -99,7 +99,7 @@ public:
 	void GenerateFileRelations();
 	void GenerateGuidData();
 
-	_vseginfo_t CreateNewSegment(uint32_t size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
+	_vseginfo_t CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
 
 	PakAsset_t* GetAssetByGuid(uint64_t guid, uint32_t* idx = nullptr);
 

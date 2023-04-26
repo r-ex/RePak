@@ -149,7 +149,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         extraDataSize = vgFileSize;
     }
 
-    uint32_t fileNameDataSize = sAssetName.length() + 1;
+    int fileNameDataSize = sAssetName.length() + 1;
 
     char* pDataBuf = new char[fileNameDataSize + mdlhdr.length + extraDataSize];
 
@@ -189,7 +189,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     if (pAnimRigBuf)
         arigseginfo = pak->CreateNewSegment(pHdr->animRigCount * 8, SF_CPU, 64);
 
-    pHdr->pName = { dataseginfo.index, (unsigned)mdlhdr.length };
+    pHdr->pName = { dataseginfo.index, mdlhdr.length };
 
     pHdr->pRMDL = { dataseginfo.index, 0 };
 
