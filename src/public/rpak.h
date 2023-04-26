@@ -39,16 +39,16 @@ enum class AssetType : uint32_t
 
 // represents a "pointer" into a mempage by page index and offset
 // when loaded, these usually get converted to a real pointer
-struct RPakPtr
+struct PagePtr_t
 {
-	uint32_t index = 0;
-	uint32_t offset = 0;
+	unsigned int index = 0;
+	unsigned int offset = 0;
 };
 
 // generic header struct for both apex and titanfall 2
 // contains all the necessary members for both, RPakFileBase::WriteHeader decides
 // which should be written depending on the version
-struct RPakFileHeader
+struct PakHdr_t
 {
 	DWORD magic = 0x6b615052;
 
@@ -80,9 +80,9 @@ struct RPakFileHeader
 	// only in apex
 	char  unk3[0x1c];
 };
-static_assert(sizeof(RPakFileHeader) == 136);
+static_assert(sizeof(PakHdr_t) == 136);
 
-struct RPakPatchCompressedHeader // follows immediately after the file header in patch rpaks
+struct PakPatchFileHdr_t // follows immediately after the file header in patch rpaks
 {
 	uint64_t compressedSize;
 	uint64_t decompressedSize;
@@ -92,9 +92,9 @@ struct RPakPatchCompressedHeader // follows immediately after the file header in
 // these probably aren't actually called virtual segments
 // this struct doesn't really describe any real data segment, but collects info
 // about the size of pages that are using specific flags/types/whatever
-struct RPakVirtualSegment
+struct PakSegmentHdr_t
 {
-	uint32_t flags = 0; // not sure what this actually is, doesn't seem to be used in that many places
+	uint32_t flags = 0;
 	uint32_t alignment = 0;
 	uint64_t dataSize = 0;
 };
@@ -104,7 +104,7 @@ struct RPakVirtualSegment
 // with page at idx 0 being just after the asset relation data
 // in patched rpaks (e.g. common(01).rpak), these sections don't fully line up with the data,
 // because of both the patch edit stream and also missing pages that are only present in the base rpak
-struct RPakPageInfo
+struct PakPageHdr_t
 {
 	uint32_t segIdx; // index into vseg array
 	uint32_t pageAlignment; // alignment size when buffer is allocated
@@ -113,16 +113,16 @@ struct RPakPageInfo
 
 // defines the location of a data "pointer" within the pak's mem pages
 // allows the engine to read the index/offset pair and replace it with an actual memory pointer at runtime
-typedef RPakPtr RPakDescriptor;
+typedef PagePtr_t PakPointerHdr_t;
 
 // same kinda thing as RPakDescriptor, but this one tells the engine where
 // guid references to other assets are within mem pages
-typedef RPakDescriptor RPakGuidDescriptor;
+typedef PakPointerHdr_t PakGuidRefHdr_t;
 
 // defines a bunch of values for registering/using an asset from the rpak
-struct RPakAssetEntry
+struct PakAsset_t
 {
-	RPakAssetEntry() = default;
+	PakAsset_t() = default;
 
 	void InitAsset(uint64_t nGUID,
 		uint32_t nSubHeaderBlockIdx,
@@ -206,11 +206,11 @@ public:
 
 	inline void AddRelation(unsigned int idx) { _relations.push_back({ idx }); };
 
-	std::vector<RPakGuidDescriptor> _guids{};
+	std::vector<PakGuidRefHdr_t> _guids{};
 
-	inline void AddGuid(RPakGuidDescriptor desc) { _guids.push_back(desc); };
+	inline void AddGuid(PakGuidRefHdr_t desc) { _guids.push_back(desc); };
 
-	inline void AddGuids(std::vector<RPakGuidDescriptor>* descs)
+	inline void AddGuids(std::vector<PakGuidRefHdr_t>* descs)
 	{
 		for (auto& it : *descs)
 			_guids.push_back(it);
@@ -251,9 +251,9 @@ struct PtchHeader
 	uint32_t unknown_1 = 255; // always FF 00 00 00?
 	uint32_t patchedPakCount = 0;
 
-	RPakPtr pPakNames;
+	PagePtr_t pPakNames;
 
-	RPakPtr pPakPatchNums;
+	PagePtr_t pPakPatchNums;
 };
 
 #pragma pack(pop)

@@ -3,12 +3,12 @@
 #include "public/studio.h"
 #include "public/material.h"
 
-void Assets::AddModelAsset_stub(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddModelAsset_stub(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Error("RPak version 7 (Titanfall 2) cannot contain models");
 }
 
-void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding mdl_ asset '%s'\n", assetPath);
 
@@ -115,7 +115,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
             arigBuf.write<uint64_t>(guid);
 
             // check if anim rig is a local asset so that the relation can be added
-            RPakAssetEntry* asset = pak->GetAssetByGuid(guid);
+            PakAsset_t* asset = pak->GetAssetByGuid(guid);
 
             if (asset)
                 asset->AddRelation(assetEntries->size());
@@ -202,7 +202,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pStaticPropVtxCache));
     }
 
-    std::vector<RPakGuidDescriptor> guids{};
+    std::vector<PakGuidRefHdr_t> guids{};
 
     if (phyBuf)
     {
@@ -252,7 +252,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         if (material->guid != 0)
             pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(materialref_t, guid));
 
-        RPakAssetEntry* asset = pak->GetAssetByGuid(material->guid);
+        PakAsset_t* asset = pak->GetAssetByGuid(material->guid);
 
         if (asset)
             asset->AddRelation(assetEntries->size());
@@ -280,7 +280,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<RPakAssetEntry>* assetE
         lastPageIdx = arigseginfo.index;
     }
 
-    RPakAssetEntry asset;
+    PakAsset_t asset;
 
     asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, de.m_nOffset, -1, (std::uint32_t)AssetType::RMDL);
     asset.version = RMDL_VERSION;

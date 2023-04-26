@@ -17,7 +17,7 @@ public:
 	//----------------------------------------------------------------------------
 	void AddAsset(rapidjson::Value& file);
 	void AddPointer(unsigned int pageIdx, unsigned int pageOffset);
-	void AddGuidDescriptor(std::vector<RPakGuidDescriptor>* guids, unsigned int idx, unsigned int offset);
+	void AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, unsigned int idx, unsigned int offset);
 	void AddRawDataBlock(RPakRawDataBlock block);
 
 	void AddStarpakReference(const std::string& path);
@@ -100,33 +100,34 @@ public:
 	void GenerateGuidData();
 
 	_vseginfo_t CreateNewSegment(uint32_t size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
-	RPakAssetEntry* GetAssetByGuid(uint64_t guid, uint32_t* idx = nullptr);
 
+	PakAsset_t* GetAssetByGuid(uint64_t guid, uint32_t* idx = nullptr);
 
 	void BuildFromMap(const string& mapPath);
 
 private:
-	RPakVirtualSegment GetMatchingSegment(uint32_t flags, uint32_t alignment, uint32_t* segidx);
+
+	PakSegmentHdr_t GetMatchingSegment(uint32_t flags, uint32_t alignment, uint32_t* segidx);
 
 	// next available starpak data offset
 	uint64_t m_NextStarpakOffset = 0x1000;
 	int m_Flags = 0;
 
-	RPakFileHeader m_Header;
+	PakHdr_t m_Header;
 
 	std::string m_Path;
 	std::string m_AssetPath;
 	std::string m_PrimaryStarpakPath;
 
-	std::vector<RPakAssetEntry> m_Assets;
+	std::vector<PakAsset_t> m_Assets;
 
 	std::vector<std::string> m_vStarpakPaths;
 	std::vector<std::string> m_vOptStarpakPaths;
 
-	std::vector<RPakVirtualSegment> m_vVirtualSegments;
-	std::vector<RPakPageInfo> m_vPages;
-	std::vector<RPakDescriptor> m_vPakDescriptors;
-	std::vector<RPakGuidDescriptor> m_vGuidDescriptors;
+	std::vector<PakSegmentHdr_t> m_vVirtualSegments;
+	std::vector<PakPageHdr_t> m_vPages;
+	std::vector<PakPointerHdr_t> m_vPakDescriptors;
+	std::vector<PakGuidRefHdr_t> m_vGuidDescriptors;
 	std::vector<uint32_t> m_vFileRelations;
 
 	std::vector<RPakRawDataBlock> m_vRawDataBlocks;

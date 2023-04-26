@@ -3,12 +3,12 @@
 #include "public/studio.h"
 
 
-void Assets::AddAnimSeqAsset_stub(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddAnimSeqAsset_stub(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
 	Error("unsupported asset type 'aseq' for version 7\n");
 }
 
-void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding aseq asset '%s'\n", assetPath);
 
@@ -56,7 +56,7 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* asse
     pak->AddPointer(subhdrinfo.index, offsetof(AnimSequenceHeader, szname));
     pak->AddPointer(subhdrinfo.index, offsetof(AnimSequenceHeader, data));
 
-    std::vector<RPakGuidDescriptor> guids{};
+    std::vector<PakGuidRefHdr_t> guids{};
 
     rmem dataBuf(pDataBuf);
     dataBuf.seek(fileNameDataSize + seqdesc.autolayerindex, rseekdir::beg);
@@ -71,7 +71,7 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* asse
         if (autolayer->guid != 0)
             pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid));
 
-        RPakAssetEntry* asset = pak->GetAssetByGuid(autolayer->guid);
+        PakAsset_t* asset = pak->GetAssetByGuid(autolayer->guid);
 
         if (asset)
             asset->AddRelation(assetEntries->size());
@@ -85,7 +85,7 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 
     uint32_t lastPageIdx = dataseginfo.index;
 
-    RPakAssetEntry asset;
+    PakAsset_t asset;
 
     asset.InitAsset(RTech::StringToGuid(assetPath), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::ASEQ);
     asset.version = 7;

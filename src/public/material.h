@@ -108,9 +108,9 @@ struct MaterialHeaderV15
 	char gap_8[0x8]{}; // unused?
 	uint64_t guid = 0; // guid of this material asset
 
-	RPakPtr materialName{}; // pointer to partial asset path
-	RPakPtr surfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
-	RPakPtr surfaceProp2{}; // pointer to surfaceprop2 
+	PagePtr_t materialName{}; // pointer to partial asset path
+	PagePtr_t surfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	PagePtr_t surfaceProp2{}; // pointer to surfaceprop2 
 
 	uint64_t depthShadowMaterial = 0;
 	uint64_t depthPrepassMaterial = 0;
@@ -120,8 +120,8 @@ struct MaterialHeaderV15
 
 	uint64_t shaderSet = 0; // guid of the shaderset asset that this material uses
 
-	/* 0x60 */ RPakPtr textureHandles{}; // ptr to array of texture guids
-	/* 0x68 */ RPakPtr streamingTextureHandles{}; // ptr to array of streamable texture guids (empty at build time)
+	/* 0x60 */ PagePtr_t textureHandles{}; // ptr to array of texture guids
+	/* 0x68 */ PagePtr_t streamingTextureHandles{}; // ptr to array of streamable texture guids (empty at build time)
 
 	/* 0x70 */ short numStreamingTextureHandles = 0x4; // Number of textures with streamed mip levels.
 	/* 0x72 */ short width = 2048;
@@ -228,9 +228,9 @@ struct MaterialHeaderV12
 	char gap_8[0x8]{}; // unused?
 	uint64_t guid = 0; // guid of this material asset
 
-	RPakPtr materialName{}; // pointer to partial asset path
-	RPakPtr surfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
-	RPakPtr surfaceProp2{}; // pointer to surfaceprop2 
+	PagePtr_t materialName{}; // pointer to partial asset path
+	PagePtr_t surfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	PagePtr_t surfaceProp2{}; // pointer to surfaceprop2 
 
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
@@ -249,8 +249,8 @@ struct MaterialHeaderV12
 
 	uint64_t shaderSet = 0; // guid of the shaderset asset that this material uses
 
-	RPakPtr textureHandles{}; // TextureGUID Map
-	RPakPtr streamingTextureHandles{}; // Streamable TextureGUID Map
+	PagePtr_t textureHandles{}; // TextureGUID Map
+	PagePtr_t streamingTextureHandles{}; // Streamable TextureGUID Map
 
 	short numStreamingTextureHandles = 0; // Number of textures with streamed mip levels.
 	uint32_t flags = 0x503000; // see ImageFlags in the apex struct.
@@ -280,7 +280,7 @@ static_assert(sizeof(MaterialHeaderV12) == 208); // should be size of 208
 // header struct for the material asset cpu data
 struct MaterialCPUHeader
 {
-	RPakPtr  dataPtr{}; // points to the rest of the cpu data. maybe for colour?
+	PagePtr_t  dataPtr{}; // points to the rest of the cpu data. maybe for colour?
 	uint32_t dataSize = 0;
 	uint32_t maybeVersion = 3; // every unknown is now either datasize, version, or flags
 };

@@ -41,7 +41,7 @@ void CPakFile::AddPointer(unsigned int pageIdx, unsigned int pageOffset)
 //-----------------------------------------------------------------------------
 // purpose: adds guid descriptor
 //-----------------------------------------------------------------------------
-void CPakFile::AddGuidDescriptor(std::vector<RPakGuidDescriptor>* guids, unsigned int idx, unsigned int offset)
+void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, unsigned int idx, unsigned int offset)
 {
 	guids->push_back({ idx, offset });
 }
@@ -343,7 +343,7 @@ _vseginfo_t CPakFile::CreateNewSegment(uint32_t size, uint32_t flags, uint32_t a
 
 	// find existing "segment" with the same values or create a new one, this is to overcome the engine's limit of having max 20 of these
 	// since otherwise we write into unintended parts of the stack, and that's bad
-	RPakVirtualSegment seg = GetMatchingSegment(flags, vsegAlignment == -1 ? alignment : vsegAlignment, &vsegidx);
+	PakSegmentHdr_t seg = GetMatchingSegment(flags, vsegAlignment == -1 ? alignment : vsegAlignment, &vsegidx);
 
 	bool bShouldAddVSeg = seg.dataSize == 0;
 	seg.dataSize += size;
@@ -353,7 +353,7 @@ _vseginfo_t CPakFile::CreateNewSegment(uint32_t size, uint32_t flags, uint32_t a
 	else
 		m_vVirtualSegments[vsegidx] = seg;
 
-	RPakPageInfo vsegblock{ vsegidx, alignment, size };
+	PakPageHdr_t vsegblock{ vsegidx, alignment, size };
 
 	m_vPages.emplace_back(vsegblock);
 	unsigned int pageidx = m_vPages.size() - 1;
@@ -365,7 +365,7 @@ _vseginfo_t CPakFile::CreateNewSegment(uint32_t size, uint32_t flags, uint32_t a
 // purpose: 
 // returns: 
 //-----------------------------------------------------------------------------
-RPakAssetEntry* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/)
+PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/)
 {
 	uint32_t i = 0;
 	for (auto& it : m_Assets)
@@ -386,7 +386,7 @@ RPakAssetEntry* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullpt
 // purpose: creates page and segment with the specified parameters
 // returns: 
 //-----------------------------------------------------------------------------
-RPakVirtualSegment CPakFile::GetMatchingSegment(uint32_t flags, uint32_t alignment, uint32_t* segidx)
+PakSegmentHdr_t CPakFile::GetMatchingSegment(uint32_t flags, uint32_t alignment, uint32_t* segidx)
 {
 	uint32_t i = 0;
 	for (auto& it : m_vVirtualSegments)

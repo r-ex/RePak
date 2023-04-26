@@ -4,7 +4,7 @@
 struct TextureHeader
 {
 	uint64_t guid = 0;
-	RPakPtr  pName;
+	PagePtr_t  pName;
 
 	uint16_t width = 0;
 	uint16_t height = 0;
@@ -34,12 +34,12 @@ struct UIImageHeader
 	uint16_t height = 1;
 	uint16_t textureCount = 0;
 	uint16_t unkCount = 0;
-	RPakPtr pTextureOffsets{};
-	RPakPtr pTextureDimensions{};
+	PagePtr_t pTextureOffsets{};
+	PagePtr_t pTextureDimensions{};
 	uint32_t unk1 = 0;
 	uint32_t unk2 = 0;
-	RPakPtr pTextureHashes{};
-	RPakPtr pTextureNames{};
+	PagePtr_t pTextureHashes{};
+	PagePtr_t pTextureNames{};
 	uint64_t atlasGUID = 0;
 };
 

@@ -45,7 +45,7 @@ uint8_t DataTable_GetEntrySize(dtblcoltype_t type)
     case dtblcoltype_t::Asset:
     case dtblcoltype_t::AssetNoPrecache:
         // string types get placed elsewhere and are referenced with a pointer
-        return sizeof(RPakPtr);
+        return sizeof(PagePtr_t);
     }
 
     Error("tried to get entry size for an unknown dtbl column type. asserting...\n");
@@ -53,7 +53,7 @@ uint8_t DataTable_GetEntrySize(dtblcoltype_t type)
     return 0; // should be unreachable
 }
 
-void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 
@@ -239,7 +239,7 @@ void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* as
             {
                 static uint32_t nextStringEntryOffset = 0;
 
-                RPakPtr stringPtr{ stringsinfo.index, nextStringEntryOffset };
+                PagePtr_t stringPtr{ stringsinfo.index, nextStringEntryOffset };
 
                 std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
                 snprintf(stringEntryBuf + nextStringEntryOffset, val.length() + 1, "%s", val.c_str());
@@ -265,7 +265,7 @@ void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* as
     pak->AddRawDataBlock({ rawdatainfo.index, rowDataPageSize, (uint8_t*)rowDataBuf });
     pak->AddRawDataBlock({ stringsinfo.index, stringEntriesSize, (uint8_t*)stringEntryBuf });
 
-    RPakAssetEntry asset;
+    PakAsset_t asset;
 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, rawdatainfo.index, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
     asset.version = DTBL_VERSION;
@@ -277,7 +277,7 @@ void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<RPakAssetEntry>* as
 }
 
 // VERSION 8
-void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 
@@ -463,7 +463,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* as
             {
                 static uint32_t nextStringEntryOffset = 0;
 
-                RPakPtr stringPtr{ stringsinfo.index, nextStringEntryOffset };
+                PagePtr_t stringPtr{ stringsinfo.index, nextStringEntryOffset };
 
                 std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
                 snprintf(stringEntryBuf + nextStringEntryOffset, val.length() + 1, "%s", val.c_str());
@@ -486,10 +486,10 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<RPakAssetEntry>* as
     pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
     pak->AddRawDataBlock({ colhdrinfo.index, colhdrinfo.size, (uint8_t*)columnHeaderBuf });
     pak->AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
-    pak->AddRawDataBlock({ rawdatainfo.index, rowDataPageSize, (uint8_t*)rowDataBuf });
-    pak->AddRawDataBlock({ stringsinfo.index, stringEntriesSize, (uint8_t*)stringEntryBuf });
+    pak->AddRawDataBlock({ rawdatainfo.index, rawdatainfo.size, (uint8_t*)rowDataBuf });
+    pak->AddRawDataBlock({ stringsinfo.index, stringsinfo.size, (uint8_t*)stringEntryBuf });
 
-    RPakAssetEntry asset;
+    PakAsset_t asset;
 
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, rawdatainfo.index, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
     asset.version = DTBL_VERSION;

@@ -278,17 +278,17 @@ struct mstudioautolayer_t
 
 struct AnimSequenceHeader
 {
-	RPakPtr data{}; // pointer to raw rseq.
-	RPakPtr szname{}; // pointer to debug name, placed before raw rseq normally.
+	PagePtr_t data{}; // pointer to raw rseq.
+	PagePtr_t szname{}; // pointer to debug name, placed before raw rseq normally.
 
 	// this can point to a group of guids and not one singular one.
-	RPakPtr modelGuid{};
+	PagePtr_t modelGuid{};
 	uint32_t modelCount = 0;
 
 	uint32_t reserved = 0;
 
 	// this can point to a group of guids and not one singular one.
-	RPakPtr settingsGuid{};
+	PagePtr_t settingsGuid{};
 	uint32_t settingsCount = 0;
 
 	uint32_t reserved1 = 0; // assumed
@@ -308,23 +308,23 @@ struct ModelHeader
 {
 	// IDST data
 	// .mdl
-	RPakPtr pRMDL;
+	PagePtr_t pRMDL;
 	uint64_t Padding = 0;
 
 	// model path
 	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
-	RPakPtr pName;
+	PagePtr_t pName;
 	uint64_t Padding2 = 0;
 
 	// .phy
-	RPakPtr pPhyData;
+	PagePtr_t pPhyData;
 	uint64_t Padding3 = 0;
 
 	// preload cache data for static props
-	RPakPtr pStaticPropVtxCache;
+	PagePtr_t pStaticPropVtxCache;
 
 	// pointer to data for the model's arig guid(s?)
-	RPakPtr pAnimRigs;
+	PagePtr_t pAnimRigs;
 
 	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
 	uint32_t animRigCount = 0;
@@ -337,7 +337,7 @@ struct ModelHeader
 
 	// number of anim sequences directly associated with this model
 	uint32_t animSeqCount = 0;
-	RPakPtr pAnimSeqs;
+	PagePtr_t pAnimSeqs;
 
 	uint64_t Padding7 = 0;
 	uint64_t Padding8 = 0;

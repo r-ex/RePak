@@ -3,7 +3,7 @@
 #include "public/material.h"
 
 // VERSION 7
-void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
@@ -167,7 +167,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
     // add the texture guids to the buffer
     size_t guidPageOffset = sAssetPath.length() + 1 + assetPathAlignment;
 
-    std::vector<RPakGuidDescriptor> guids{};
+    std::vector<PakGuidRefHdr_t> guids{};
 
     int textureIdx = 0;
     int fileRelationIdx = -1;
@@ -179,7 +179,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
             *(uint64_t*)dataBuf = textureGUID;
             pak->AddGuidDescriptor(&guids, dataseginfo.index, guidPageOffset + (textureIdx * sizeof(uint64_t))); // Register GUID descriptor for current texture index.
 
-            RPakAssetEntry* txtrAsset = pak->GetAssetByGuid(textureGUID, nullptr);
+            PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGUID, nullptr);
 
             if (txtrAsset)
                 txtrAsset->AddRelation(assetEntries->size());
@@ -494,7 +494,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     if (mtlHdr->shaderSet != 0)
     {
-        RPakAssetEntry* asset = pak->GetAssetByGuid(mtlHdr->shaderSet);
+        PakAsset_t* asset = pak->GetAssetByGuid(mtlHdr->shaderSet);
 
         if (asset)
             asset->AddRelation(assetEntries->size());
@@ -516,7 +516,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
         {
             pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, depthShadowMaterial) + (i*8));
 
-            RPakAssetEntry* asset = pak->GetAssetByGuid(guid);
+            PakAsset_t* asset = pak->GetAssetByGuid(guid);
 
             if (asset)
                 asset->AddRelation(assetEntries->size());
@@ -621,7 +621,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
     pak->AddRawDataBlock({ cpuseginfo.index, cpuseginfo.size, (uint8_t*)cpuData });
 
     //////////////////////////////////////////
-    RPakAssetEntry asset;
+    PakAsset_t asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
     asset.version = version;
@@ -639,7 +639,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<RPakAssetEntry>* as
 }
 
 // VERSION 8
-void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
@@ -715,7 +715,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
     // add the texture guids to the buffer
     size_t guidPageOffset = sAssetPath.length() + 1 + assetPathAlignment;
 
-    std::vector<RPakGuidDescriptor> guids{};
+    std::vector<PakGuidRefHdr_t> guids{};
 
     int textureIdx = 0;
     for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the first TextureGUID Map.
@@ -726,7 +726,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
             *(uint64_t*)dataBuf = textureGUID;
             pak->AddGuidDescriptor(&guids, dataseginfo.index, guidPageOffset + (textureIdx * sizeof(uint64_t))); // Register GUID descriptor for current texture index.
 
-            RPakAssetEntry* txtrAsset = pak->GetAssetByGuid(textureGUID, nullptr);
+            PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGUID, nullptr);
 
             if (txtrAsset)
                 txtrAsset->AddRelation(assetEntries->size());
@@ -806,7 +806,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
         {
             pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, depthShadowMaterial) + (i*8));
 
-            RPakAssetEntry* asset = pak->GetAssetByGuid(guid);
+            PakAsset_t* asset = pak->GetAssetByGuid(guid);
 
             if (asset)
                 asset->AddRelation(assetEntries->size());
@@ -925,7 +925,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<RPakAssetEntry>* as
 
     //////////////////////////////////////////
 
-    RPakAssetEntry asset;
+    PakAsset_t asset;
 
     asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
     asset.version = MATL_VERSION;

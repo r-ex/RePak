@@ -4,7 +4,7 @@
 #include "public/texture.h"
 
 
-void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
 
@@ -189,7 +189,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
     pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)databuf });
 
     // now time to add the higher level asset entry
-    RPakAssetEntry asset;
+    PakAsset_t asset;
 
     // this should hopefully fix some crashing
     uint64_t starpakOffset = -1;

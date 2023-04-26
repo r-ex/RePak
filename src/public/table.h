@@ -15,7 +15,7 @@ enum class dtblcoltype_t : uint32_t
 #pragma pack(push, 1)
 struct DataTableColumn
 {
-	RPakPtr NamePtr;
+	PagePtr_t NamePtr;
 	dtblcoltype_t Type;
 	uint32_t RowOffset;
 };
@@ -25,8 +25,8 @@ struct DataTableHeader
 	uint32_t ColumnCount;
 	uint32_t RowCount;
 
-	RPakPtr ColumnHeaderPtr;
-	RPakPtr RowHeaderPtr;
+	PagePtr_t ColumnHeaderPtr;
+	PagePtr_t RowHeaderPtr;
 	uint32_t UnkHash;
 
 	uint16_t Un1 = 0;
