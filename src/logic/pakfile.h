@@ -18,7 +18,7 @@ public:
 	void AddAsset(rapidjson::Value& file);
 	void AddPointer(unsigned int pageIdx, unsigned int pageOffset);
 	void AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, unsigned int idx, unsigned int offset);
-	void AddRawDataBlock(RPakRawDataBlock block);
+	void AddRawDataBlock(PakRawDataBlock_t block);
 
 	void AddStarpakReference(const std::string& path);
 	void AddOptStarpakReference(const std::string& path);
@@ -130,6 +130,6 @@ private:
 	std::vector<PakGuidRefHdr_t> m_vGuidDescriptors;
 	std::vector<uint32_t> m_vFileRelations;
 
-	std::vector<RPakRawDataBlock> m_vRawDataBlocks;
+	std::vector<PakRawDataBlock_t> m_vRawDataBlocks;
 	std::vector<StreamableDataEntry> m_vStarpakDataBlocks;
 };

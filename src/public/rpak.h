@@ -219,11 +219,11 @@ public:
 #pragma pack(pop)
 
 // internal data structure for referencing file data to be written
-struct RPakRawDataBlock
+struct PakRawDataBlock_t
 {
-	uint32_t m_nPageIdx;
-	uint64_t m_nDataSize;
-	uint8_t* m_nDataPtr;
+	uint32_t pageIdx;
+	uint64_t size;
+	uint8_t* pData;
 };
 
 // starpak header

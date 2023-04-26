@@ -56,10 +56,10 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
         i++;
     }
 
-    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
+    PakRawDataBlock_t shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
     pak->AddRawDataBlock(shdb);
 
-    RPakRawDataBlock rdb{ dataseginfo.index, dataPageSize, (uint8_t*)pDataBuf };
+    PakRawDataBlock_t rdb{ dataseginfo.index, dataPageSize, (uint8_t*)pDataBuf };
     pak->AddRawDataBlock(rdb);
 
     // create and init the asset entry

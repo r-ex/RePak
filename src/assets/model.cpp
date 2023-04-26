@@ -258,24 +258,24 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
             asset->AddRelation(assetEntries->size());
     }
 
-    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
+    PakRawDataBlock_t shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
     pak->AddRawDataBlock(shdb);
 
-    RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf };
+    PakRawDataBlock_t rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf };
     pak->AddRawDataBlock(rdb);
 
     uint32_t lastPageIdx = dataseginfo.index;
 
     if (phyBuf)
     {
-        RPakRawDataBlock phydb{ physeginfo.index, physeginfo.size, (uint8_t*)phyBuf };
+        PakRawDataBlock_t phydb{ physeginfo.index, physeginfo.size, (uint8_t*)phyBuf };
         pak->AddRawDataBlock(phydb);
         lastPageIdx = physeginfo.index;
     }
 
     if (pAnimRigBuf)
     {
-        RPakRawDataBlock arigdb{ arigseginfo.index, arigseginfo.size, (uint8_t*)pAnimRigBuf };
+        PakRawDataBlock_t arigdb{ arigseginfo.index, arigseginfo.size, (uint8_t*)pAnimRigBuf };
         pak->AddRawDataBlock(arigdb);
         lastPageIdx = arigseginfo.index;
     }

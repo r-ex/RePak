@@ -191,13 +191,13 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
         uvBuf.write(uiiu);
     }
 
-    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
+    PakRawDataBlock_t shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
     pak->AddRawDataBlock(shdb);
 
-    RPakRawDataBlock tib{ tiseginfo.index, tiseginfo.size, (uint8_t*)pTextureInfoBuf };
+    PakRawDataBlock_t tib{ tiseginfo.index, tiseginfo.size, (uint8_t*)pTextureInfoBuf };
     pak->AddRawDataBlock(tib);
 
-    RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pUVBuf };
+    PakRawDataBlock_t rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pUVBuf };
     pak->AddRawDataBlock(rdb);
 
 

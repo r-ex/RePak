@@ -49,7 +49,7 @@ void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, unsigned i
 //-----------------------------------------------------------------------------
 // purpose: adds raw data block
 //-----------------------------------------------------------------------------
-void CPakFile::AddRawDataBlock(RPakRawDataBlock block)
+void CPakFile::AddRawDataBlock(PakRawDataBlock_t block)
 {
 	m_vRawDataBlocks.push_back(block);
 };
@@ -195,7 +195,7 @@ void CPakFile::WriteRawDataBlocks(BinaryIO& out)
 {
 	for (auto it = m_vRawDataBlocks.begin(); it != m_vRawDataBlocks.end(); ++it)
 	{
-		out.getWriter()->write((char*)it->m_nDataPtr, it->m_nDataSize);
+		out.getWriter()->write((char*)it->pData, it->size);
 	}
 }
 
@@ -286,7 +286,7 @@ void CPakFile::FreeRawDataBlocks()
 {
 	for (auto& it : m_vRawDataBlocks)
 	{
-		delete[] it.m_nDataPtr;
+		delete[] it.pData;
 	}
 }
 

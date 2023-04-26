@@ -77,10 +77,10 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
             asset->AddRelation(assetEntries->size());
     }
 
-    RPakRawDataBlock shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)aseqHeader };
+    PakRawDataBlock_t shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)aseqHeader };
     pak->AddRawDataBlock(shdb);
 
-    RPakRawDataBlock rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf };
+    PakRawDataBlock_t rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf };
     pak->AddRawDataBlock(rdb);
 
     uint32_t lastPageIdx = dataseginfo.index;
