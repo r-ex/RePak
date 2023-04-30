@@ -1,5 +1,7 @@
 #pragma once
 
+#define MAX_PERM_MIP_SIZE 0x10000 // 64kb
+
 #pragma pack(push, 1)
 struct TextureHeader
 {

@@ -140,6 +140,8 @@ struct DDS_PIXELFORMAT {
 	DWORD dwABitMask;
 };
 
+#define ID_DDS	((' '<<24)+('S'<<16)+('D'<<8)+'D') // dds 'magic'
+
 typedef struct {
 	DWORD           dwSize;
 	DWORD           dwFlags;
