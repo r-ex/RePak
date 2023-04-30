@@ -42,6 +42,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
             isStreamable = true;
 
         uint32_t sizeOfAllMips = 0;
+
         for (unsigned int mipLevel = 0; mipLevel < ddsh.dwMipMapCount; mipLevel++)
         {
             uint32_t currentMipSize = (ddsh.dwPitchOrLinearSize / std::pow(4, mipLevel));
@@ -186,14 +187,13 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 
     for (int mipLevel = 0; mipLevel < (hdr->mipLevels + hdr->streamedMipLevels); mipLevel++)
     {
-        uint32_t unalignedMipSize = (unsigned int)(pitchOrLinearSize / std::pow(4, mipLevel));
+        uint32_t unalignedMipSize = static_cast<uint32_t>(pitchOrLinearSize / std::pow(4, mipLevel));
         uint32_t alignedMipSize = IALIGN16(unalignedMipSize);
-
-        remainingDataToWrite -= alignedMipSize;
 
         input.seek(ddsHeaderSize + currentDataOffset, std::ios::beg);
 
         currentDataOffset += unalignedMipSize;
+        remainingDataToWrite -= alignedMipSize;
 
         if (isStreamable && mipLevel < hdr->streamedMipLevels)
         {
