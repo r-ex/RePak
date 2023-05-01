@@ -1,6 +1,7 @@
 #pragma once
 
-#define MAX_PERM_MIP_SIZE 0x10000 // 64kb
+#define MAX_PERM_MIP_SIZE	0x10000 // "Any MIP below 64kiB is permanent."
+#define MAX_STREAM_MIP_SIZE	0x100000
 
 #pragma pack(push, 1)
 struct TextureHeader
