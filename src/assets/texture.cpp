@@ -192,7 +192,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
 
     _vseginfo_t dataseginfo = pak->CreateNewSegment(hdr->dataSize - sizeOfStreamedMips, SF_CPU | SF_TEMP, 16);
 
-    char* databuf = new char[hdr->dataSize - sizeOfStreamedMips - sizeOfOptStreamedMips](); // initialize as there may be white space if we don't
+    char* databuf = new char[hdr->dataSize - sizeOfStreamedMips - sizeOfOptStreamedMips]{}; // initialize as there may be white space if we don't
     char* streamedbuf = new char[sizeOfStreamedMips];
     char* optstreamedbuf = new char[sizeOfOptStreamedMips];
 
