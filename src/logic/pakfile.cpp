@@ -348,13 +348,12 @@ CPakPage& CPakFile::FindOrCreatePage(DWORD flags, int alignment, int newDataSize
 			if (page.GetSize() + newDataSize <= MAX_PAK_PAGE_SIZE)
 				return page;
 		}
-		else
-		{
-			// !!!TODO!!!
-			// - find a usable virtual segment and create a new page with the required settings (flags, type, alignment)
-			// - push page into the vector
-		}
 	}
+	// !!!TODO!!!
+	// - find a usable virtual segment and create a new page with the required settings (flags, type, alignment)
+	// - push page into the vector
+
+
 
 	CPakPage p; // !!!REMOVEME!!!
 
