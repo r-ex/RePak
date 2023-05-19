@@ -106,9 +106,9 @@ struct PakSegmentHdr_t
 // because of both the patch edit stream and also missing pages that are only present in the base rpak
 struct PakPageHdr_t
 {
-	uint32_t segIdx; // index into vseg array
-	uint32_t pageAlignment; // alignment size when buffer is allocated
-	uint32_t dataSize; // actual size of page in bytes
+	int segIdx; // index into vseg array
+	int pageAlignment; // alignment size when buffer is allocated
+	int dataSize; // actual size of page in bytes
 };
 
 // defines the location of a data "pointer" within the pak's mem pages

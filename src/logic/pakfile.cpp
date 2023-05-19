@@ -224,7 +224,11 @@ void CPakFile::WriteVirtualSegments(BinaryIO& out)
 //-----------------------------------------------------------------------------
 void CPakFile::WritePages(BinaryIO& out)
 {
-	WRITE_VECTOR(out, m_vPages);
+	for (auto& page : m_vPages)
+	{
+		PakPageHdr_t pageHdr = page.GetHeader();
+		out.write(pageHdr);
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -333,12 +337,54 @@ void CPakFile::GenerateGuidData()
 	m_Header.guidDescriptorCount = m_vGuidDescriptors.size();
 }
 
+// find the last page that matches the required flags and check if there is room for new data to be added
+CPakPage& CPakFile::FindOrCreatePage(DWORD flags, int alignment, int newDataSize)
+{
+	for (int i = m_vPages.size(); i > 0; --i)
+	{
+		CPakPage& page = m_vPages[i-1];
+		if (page.GetFlags() == flags)
+		{
+			if (page.GetSize() + newDataSize <= MAX_PAK_PAGE_SIZE)
+				return page;
+		}
+		else
+		{
+			// !!!TODO!!!
+			// - find a usable virtual segment and create a new page with the required settings (flags, type, alignment)
+			// - push page into the vector
+		}
+	}
+
+	CPakPage p; // !!!REMOVEME!!!
+
+	return p;
+}
+
+CPakDataChunk CPakFile::CreateDataChunk(int size, DWORD flags, int alignment)
+{
+	// !!!TODO!!!
+	// initialise instance of CPakDataChunk
+	// call FindOrCreatePage to get a page for the chunk to go in
+	// maybe add ptr to CPakDataChunk pointing to CPakPage?
+	// return chunk
+}
+
 //-----------------------------------------------------------------------------
 // purpose: 
 // returns: 
 //-----------------------------------------------------------------------------
 _vseginfo_t CPakFile::CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment /*= -1*/)
 {
+	static_assert(0 && "fixme");
+
+	// !!!TODO!!!
+	// - general code cleanup (GetMatchingSegment is probably okay to keep using)
+	// - refactor to only find/create a virtual segment, not a page 
+	//   (use CreateDataChunk to deal with pages from assets, or FindOrCreatePage for actually allocating a whole page)
+	// - might be worth bringing this in line with the new convention of "CPak" classes and creating a CPakVSegment to store the new virtual segment
+	//   instead of _vseginfo_t
+
 	uint32_t vsegidx = (uint32_t)m_vVirtualSegments.size();
 
 	// find existing "segment" with the same values or create a new one, this is to overcome the engine's limit of having max 20 of these

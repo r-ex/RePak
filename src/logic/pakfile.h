@@ -7,6 +7,46 @@ struct _vseginfo_t
 	int size = 0;
 };
 
+#define MAX_PAK_PAGE_SIZE 0xffff
+
+class CPakPage
+{
+public:
+	CPakPage() = default;
+private:
+	int segmentIndex; // index of the virtual data segment that this page is part of
+	DWORD flags;
+	int pageIndex; // index of this page in all of the pak's pages
+	int alignment; // required memory alignment for all data in this page
+
+	// [rexx]: not a fan of this anymore. might be better to have a vector of CPakDataChunk instances to avoid
+	//         duplicating data
+	//std::vector<char> data; // buffer for this page's data
+
+public:
+	PakPageHdr_t GetHeader() { return { segmentIndex, alignment, 0/*(int)data.size()*/ }; };
+	size_t GetSize() { return 0; /*data.size();*/ };
+	DWORD GetFlags() { return flags; };
+};
+
+class CPakDataChunk
+{
+public:
+	CPakDataChunk() = default;
+	CPakDataChunk(int pageIndex, int pageOffset, int size, char* data) : pageIndex(pageIndex), pageOffset(pageOffset), size(size), pData(data) {};
+
+private:
+	int pageIndex;
+	int pageOffset;
+	int size;
+
+	char* pData;
+
+public:
+
+	PagePtr_t GetPointer(int offset) { return { pageIndex, pageOffset + offset }; };
+};
+
 class CPakFile
 {
 public:
@@ -99,6 +139,9 @@ public:
 	void GenerateFileRelations();
 	void GenerateGuidData();
 
+	CPakPage& FindOrCreatePage(DWORD flags, int alignment, int newDataSize);
+
+	CPakDataChunk CreateDataChunk(int size, DWORD flags, int alignment);
 	_vseginfo_t CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
 
 	PakAsset_t* GetAssetByGuid(uint64_t guid, uint32_t* idx = nullptr);
@@ -125,7 +168,7 @@ private:
 	std::vector<std::string> m_vOptStarpakPaths;
 
 	std::vector<PakSegmentHdr_t> m_vVirtualSegments;
-	std::vector<PakPageHdr_t> m_vPages;
+	std::vector<CPakPage> m_vPages;
 	std::vector<PakPointerHdr_t> m_vPakDescriptors;
 	std::vector<PakGuidRefHdr_t> m_vGuidDescriptors;
 	std::vector<uint32_t> m_vFileRelations;
