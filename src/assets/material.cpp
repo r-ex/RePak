@@ -649,14 +649,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     mtlHdr->guid = RTech::StringToGuid(sFullAssetRpakPath.c_str()); // Convert full rpak asset path to guid and set it in the material header.
 
-    // Game ignores this field when parsing, retail rpaks also have this as 0. But In-Game its being set to either 0x4, 0x5, 0x9.
-    // Based on resolution.
-    // 512x512 = 0x5
-    // 1024x1024 = 0x4
-    // 2048x2048 = 0x9
-    //if (mapEntry.HasMember("signature"))
-    //    mtlHdr->StreamableTextureCount = mapEntry["signature"].GetInt();
-
     if (mapEntry.HasMember("width")) // Set material width.
         mtlHdr->width = mapEntry["width"].GetInt();
 
@@ -685,8 +677,8 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
         return;
     }
 
-    uint32_t assetPathSize = (sAssetPath.length() + 1);
-    uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + (surface.length() + 1);
+    size_t alignedPathSize = IALIGN4(sAssetPath.length() + 1);
+    uint32_t dataBufSize = alignedPathSize + (textureRefSize * 2) + (surface.length() + 1);
 
     // asset data
     CPakDataChunk& dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
@@ -697,37 +689,39 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     // ===============================
     // write the material path into the buffer
     snprintf(dataBuf, sAssetPath.length() + 1, "%s", assetPath);
-    uint8_t assetPathAlignment = (assetPathSize % 4);
-    dataBuf += sAssetPath.length() + 1 + assetPathAlignment;
+    dataBuf += alignedPathSize;
 
     // ===============================
     // add the texture guids to the buffer
-    size_t guidPageOffset = sAssetPath.length() + 1 + assetPathAlignment;
+    size_t guidPageOffset = alignedPathSize;
 
     std::vector<PakGuidRefHdr_t> guids{};
 
     int textureIdx = 0;
-    for (auto& it : mapEntry["textures"].GetArray()) // Now we setup the first TextureGUID Map.
+    for (auto& it : mapEntry["textures"].GetArray())
     {
-        if (it.IsString() && it.GetStdString() != "")
-        {
-            uint64_t textureGUID = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str()); // Convert texture path to guid.
-            *(uint64_t*)dataBuf = textureGUID;
-            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(guidPageOffset + (textureIdx * sizeof(uint64_t)))); // Register GUID descriptor for current texture index.
+        uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
 
-            PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGUID, nullptr);
+        *(uint64_t*)dataBuf = textureGuid;
+
+        if (textureGuid != 0) // only deal with dependencies if the guid is not 0
+        {
+            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(guidPageOffset + (textureIdx * sizeof(uint64_t)))); // register guid for this texture reference
+        
+            PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
 
             if (txtrAsset)
                 txtrAsset->AddRelation(assetEntries->size());
             else
                 Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
         }
+
         dataBuf += sizeof(uint64_t);
-        textureIdx++; // Next texture index coming up.
+        textureIdx++;
     }
+
     dataBuf += sizeof(uint64_t) * mapEntry["textures"].Size();
 
-    // ===============================
     // write the surface name into the buffer
     snprintf(dataBuf, surface.length() + 1, "%s", surface.c_str());
 
@@ -738,12 +732,12 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     // fill out the rest of the header
     mtlHdr->materialName = dataChunk.GetPointer();
 
-    mtlHdr->surfaceProp = dataChunk.GetPointer((sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2));
+    mtlHdr->surfaceProp = dataChunk.GetPointer(alignedPathSize + (textureRefSize * 2));
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV15, materialName)));
     pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV15, surfaceProp)));
 
-    // Shader Type Handling
+    // default shader type params
     if (type == "sknp")
     {
         mtlHdr->depthShadowMaterial = 0x2B93C99C67CC8B51;
@@ -773,6 +767,35 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
         mtlHdr->shaderSet = 0x2a2db3a47af9b3d5;
         mtlHdr->materialType = RGDP;
+    }
+
+    { 
+        // optional depth material overrides
+        if (mapEntry.HasMember("depthShadowMaterial") && mapEntry["depthShadowMaterial"].IsString())
+        {
+            mtlHdr->depthShadowMaterial = RTech::GetAssetGUIDFromString(mapEntry["depthShadowMaterial"].GetString());
+        }
+
+        if (mapEntry.HasMember("depthPrepassMaterial") && mapEntry["depthPrepassMaterial"].IsString())
+        {
+            mtlHdr->depthPrepassMaterial = RTech::GetAssetGUIDFromString(mapEntry["depthPrepassMaterial"].GetString());
+        }
+
+        if (mapEntry.HasMember("depthVSMMaterial") && mapEntry["depthVSMMaterial"].IsString())
+        {
+            mtlHdr->depthVSMMaterial = RTech::GetAssetGUIDFromString(mapEntry["depthVSMMaterial"].GetString());
+        }
+
+        if (mapEntry.HasMember("depthShadowTightMaterial") && mapEntry["depthShadowTightMaterial"].IsString())
+        {
+            mtlHdr->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(mapEntry["depthShadowTightMaterial"].GetString());
+        }
+
+        // optional shaderset override
+        if (mapEntry.HasMember("shaderset") && mapEntry["shaderset"].IsString())
+        {
+            mtlHdr->shaderSet = RTech::GetAssetGUIDFromString(mapEntry["shaderset"].GetString());
+        }
     }
 
     bool bColpass = false; // is this colpass material?
@@ -908,7 +931,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     PakAsset_t asset;
 
-    asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), - 1, -1, (std::uint32_t)AssetType::MATL);
+    asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), -1, -1, (std::uint32_t)AssetType::MATL);
     asset.version = MATL_VERSION;
 
     asset.pageEnd = pak->GetNumPages();
