@@ -32,7 +32,7 @@ DXGI_FORMAT DXUtils::GetFormatFromHeader(const DDS_HEADER& ddsh)
 		return DXGI_FORMAT_BC5_SNORM;
 	case '01XD': // DX10
 		return DXGI_FORMAT_UNKNOWN;
-		// legacy format codes
+	// legacy format codes
 	case 36:
 		return DXGI_FORMAT_R16G16B16A16_UNORM;
 	case 110:
