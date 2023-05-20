@@ -47,9 +47,9 @@ struct UnknownMaterialSectionV15
 	uint32_t unk_0[8]{};
 
 	// for more details see the 'UnknownMaterialSectionV12' struct.
-	uint32_t m_UnkRenderFlags = 0x0;
-	uint16_t m_VisibilityFlags = 0x0000; // different render settings, such as opacity and transparency.
-	uint16_t m_FaceDrawingFlags = 0x0006; // how the face is drawn, culling, wireframe, etc.
+	uint32_t unk = 0x0;
+	uint16_t depthStencilFlags = 0x0000; // different render settings, such as opacity and transparency.
+	uint16_t rasterizerFlags = 0x0006; // how the face is drawn, culling, wireframe, etc.
 
 	uint64_t m_Padding = 0;
 };
