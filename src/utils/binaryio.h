@@ -34,6 +34,11 @@ public:
 		currentMode = BinaryIOMode::None;
 	}
 
+	BinaryIO(const std::string& path, BinaryIOMode mode)
+	{
+		open(path, mode);
+	}
+
 	// the destructor will be responsible for checking if we forgot to close
 	// the file
 	~BinaryIO()
