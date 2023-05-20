@@ -28,12 +28,7 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
 
     size_t dataPageSize = (sizeof(PagePtr_t) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + entryNamesSectionSize;
 
-    // asset header
-    //_vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(PtchHeader), SF_HEAD, 8);
-
-    // data segment
     CPakDataChunk& dataChunk = pak->CreateDataChunk(dataPageSize, SF_CPU, 8);
-    //_vseginfo_t dataseginfo = pak->CreateNewSegment(dataPageSize, SF_CPU, 8);
 
     int patchNumbersOffset = sizeof(PagePtr_t) * pHdr->patchedPakCount;
     pHdr->pPakNames = dataChunk.GetPointer();

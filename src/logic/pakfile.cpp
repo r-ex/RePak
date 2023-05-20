@@ -30,10 +30,7 @@ void CPakFile::AddAsset(rapidjson::Value& file)
 	ASSET_HANDLER("rseq", file, m_Assets, Assets::AddAnimSeqAsset_stub, Assets::AddAnimSeqAsset_v7);
 }
 
-void CPakFile::AddPointer(PagePtr_t ptr)
-{
-	m_vPakDescriptors.push_back(ptr);
-}
+
 
 //-----------------------------------------------------------------------------
 // purpose: adds page pointer to descriptor
@@ -43,10 +40,9 @@ void CPakFile::AddPointer(int pageIdx, int pageOffset)
 	m_vPakDescriptors.push_back({ pageIdx, pageOffset });
 }
 
-
-void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, PagePtr_t ptr)
+void CPakFile::AddPointer(PagePtr_t ptr)
 {
-	guids->push_back(ptr);
+	m_vPakDescriptors.push_back(ptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -55,6 +51,11 @@ void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, PagePtr_t 
 void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, int idx, int offset)
 {
 	guids->push_back({ idx, offset });
+}
+
+void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, PagePtr_t ptr)
+{
+	guids->push_back(ptr);
 }
 
 //-----------------------------------------------------------------------------

@@ -16,4 +16,6 @@ namespace RTech
 {
 	std::uint64_t __fastcall StringToGuid(const char* pData);
 	std::uint32_t __fastcall StringToUIMGHash(const char* str);
+
+	std::uint64_t GetAssetGUIDFromString(const char* str, bool forceRpakExtension = false);
 }

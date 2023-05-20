@@ -17,8 +17,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     TextureHeader* hdr = reinterpret_cast<TextureHeader*>(hdrChunk.Data());
 
-    BinaryIO input;
-    input.open(filePath, BinaryIOMode::Read);
+    BinaryIO input(filePath, BinaryIOMode::Read);
 
     uint64_t nInputFileSize = Utils::GetFileSize(filePath);
 

@@ -20,32 +20,26 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
     // require rseq file to exist
     REQUIRE_FILE(rseqFilePath);
 
-    int fileNameDataSize = strlen(assetPath) + 1;
-    int rseqFileSize = (int)Utils::GetFileSize(rseqFilePath);
+    int fileNameLength = IALIGN4(strlen(assetPath) + 1);
+    int rseqFileSize = Utils::GetFileSize(rseqFilePath);
 
-    uint32_t bufAlign = 4 - (fileNameDataSize + rseqFileSize) % 4;
-
-    CPakDataChunk& dataChunk = pak->CreateDataChunk(fileNameDataSize + rseqFileSize + bufAlign, SF_CPU, 64);
+    CPakDataChunk& dataChunk = pak->CreateDataChunk(IALIGN4(fileNameLength + rseqFileSize), SF_CPU, 64);
 
     // write the rseq file path into the data buffer
-    snprintf(dataChunk.Data(), fileNameDataSize, "%s", assetPath);
+    snprintf(dataChunk.Data(), fileNameLength, "%s", assetPath);
 
     // begin rseq input
-    BinaryIO rseqInput;
-    rseqInput.open(rseqFilePath, BinaryIOMode::Read);
-
-    // go back to the beginning of the file to read all the data
-    rseqInput.seek(0);
+    BinaryIO rseqInput(rseqFilePath, BinaryIOMode::Read);
 
     // write the rseq data into the data buffer
-    rseqInput.getReader()->read(dataChunk.Data() + fileNameDataSize, rseqFileSize);
+    rseqInput.getReader()->read(dataChunk.Data() + fileNameLength, rseqFileSize);
     rseqInput.close();
 
-    mstudioseqdesc_t seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(dataChunk.Data() + fileNameDataSize);
+    mstudioseqdesc_t seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(dataChunk.Data() + fileNameLength);
 
     aseqHeader->szname = dataChunk.GetPointer();
 
-    aseqHeader->data = dataChunk.GetPointer(fileNameDataSize);
+    aseqHeader->data = dataChunk.GetPointer(fileNameLength);
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSequenceHeader, szname)));
     pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSequenceHeader, data)));
@@ -53,12 +47,12 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
     std::vector<PakGuidRefHdr_t> guids{};
 
     rmem dataBuf(dataChunk.Data());
-    dataBuf.seek(fileNameDataSize + seqdesc.autolayerindex, rseekdir::beg);
+    dataBuf.seek(fileNameLength + seqdesc.autolayerindex, rseekdir::beg);
 
     // register autolayer aseq guids
     for (int i = 0; i < seqdesc.numautolayers; ++i)
     {
-        dataBuf.seek(fileNameDataSize + seqdesc.autolayerindex + (i * sizeof(mstudioautolayer_t)), rseekdir::beg);
+        dataBuf.seek(fileNameLength + seqdesc.autolayerindex + (i * sizeof(mstudioautolayer_t)), rseekdir::beg);
 
         mstudioautolayer_t* autolayer = dataBuf.get<mstudioautolayer_t>();
 

@@ -93,17 +93,19 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     if (mapEntry.HasMember("animrigs"))
     {
-        if (!mapEntry["animrigs"].IsArray())
+        rapidjson::Value& animrigs = mapEntry["animrigs"];
+
+        if (!animrigs.IsArray())
             Error("found field 'animrigs' on model asset '%s' with invalid type. expected 'array'\n", assetPath);
 
-        pHdr->animRigCount = mapEntry["animrigs"].Size();
+        pHdr->animRigCount = animrigs.Size();
 
-        animRigsChunk = pak->CreateDataChunk(mapEntry["animrigs"].Size() * sizeof(uint64_t), SF_CPU, 64);
+        animRigsChunk = pak->CreateDataChunk(animrigs.Size() * sizeof(uint64_t), SF_CPU, 64);
 
         rmem arigBuf(animRigsChunk.Data());
 
         int i = 0;
-        for (auto& it : mapEntry["animrigs"].GetArray())
+        for (auto& it : animrigs.GetArray())
         {
             if (!it.IsString())
                 Error("invalid animrig entry for model '%s'\n", assetPath);
