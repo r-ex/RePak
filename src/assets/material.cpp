@@ -810,16 +810,29 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     mtlHdr->unk_88 = 0x72000000;
     mtlHdr->unk_8C = 0x100000;
 
+
+    int unkFlags = 4;
+    short depthStencilFlags = bColpass ? 0x5 : 0x17;
+    short rasterizerFlags = 6;
+
+    // !!!temp!!! - these should be replaced by proper flag string parsing when possible
+    if (mapEntry.HasMember("unkFlags") && mapEntry["unkFlags"].IsInt())
+        unkFlags = mapEntry["unkFlags"].GetInt();
+
+    if (mapEntry.HasMember("depthStencilFlags") && mapEntry["depthStencilFlags"].IsInt())
+        depthStencilFlags = mapEntry["depthStencilFlags"].GetInt();
+
+    if (mapEntry.HasMember("rasterizerFlags") && mapEntry["rasterizerFlags"].IsInt())
+        rasterizerFlags = mapEntry["rasterizerFlags"].GetInt();
+
     for (int i = 0; i < 2; ++i)
     {
         for (int j = 0; j < 8; ++j)
             mtlHdr->unkSections[i].unk_0[j] = 0xf0000000;
 
-        uint32_t f1 = bColpass ? 0x5 : 0x17;
-
-        mtlHdr->unkSections[i].m_UnkRenderFlags = 4;
-        mtlHdr->unkSections[i].m_VisibilityFlags = f1;
-        mtlHdr->unkSections[i].m_FaceDrawingFlags = 6;
+        mtlHdr->unkSections[i].unk = unkFlags;
+        mtlHdr->unkSections[i].depthStencilFlags = depthStencilFlags;
+        mtlHdr->unkSections[i].rasterizerFlags = rasterizerFlags;
     }
 
     //////////////////////////////////////////
