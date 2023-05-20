@@ -13,7 +13,9 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
     if (!FILE_EXISTS(filePath))
         Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());
 
-    TextureHeader* hdr = new TextureHeader();
+    CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(TextureHeader), SF_HEAD, 8);
+
+    TextureHeader* hdr = reinterpret_cast<TextureHeader*>(hdrChunk.Data());
 
     BinaryIO input;
     input.open(filePath, BinaryIOMode::Read);
@@ -115,26 +117,19 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     bool bSaveDebugName = pak->IsFlagSet(PF_KEEP_DEV) || (mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool());
 
-    // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(TextureHeader), SF_HEAD, 8);
 
-    _vseginfo_t nameseginfo{};
-
-    char* namebuf = new char[sAssetName.size() + 1];
-
+    CPakDataChunk nameChunk;
     if (bSaveDebugName)
     {
-        sprintf_s(namebuf, sAssetName.length() + 1, "%s", sAssetName.c_str());
-        nameseginfo = pak->CreateNewSegment(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
+        nameChunk = pak->CreateDataChunk(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
+
+        sprintf_s(nameChunk.Data(), sAssetName.length() + 1, "%s", sAssetName.c_str());
     }
-    else delete[] namebuf;
 
     // woo more segments
     // cpu data
 
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(hdr->dataSize - nStreamedMipSize, SF_CPU | SF_TEMP, 16);
-
-    char* databuf = new char[hdr->dataSize - nStreamedMipSize];
+    CPakDataChunk& dataChunk = pak->CreateDataChunk(hdr->dataSize - nStreamedMipSize, SF_CPU | SF_TEMP, 16);
 
     char* streamedbuf = new char[nStreamedMipSize];
 
@@ -172,21 +167,16 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
         }
         else
         {
-            input.getReader()->read(databuf + remainingDDSData, mipSizeDDS);
+            input.getReader()->read(dataChunk.Data() + remainingDDSData, mipSizeDDS);
         }
     }
 
-    pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)hdr });
-
     if (bSaveDebugName)
     {
-        pak->AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
-        hdr->pName = { nameseginfo.index, 0 };
+        hdr->pName = nameChunk.GetPointer();
 
-        pak->AddPointer(subhdrinfo.index, offsetof(TextureHeader, pName));
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(TextureHeader, pName)));
     }
-
-    pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)databuf });
 
     // now time to add the higher level asset entry
     PakAsset_t asset;
@@ -212,10 +202,10 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
         starpakOffset = de.m_nOffset;
     }
 
-    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TXTR);
+    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, -1, (std::uint32_t)AssetType::TXTR);
     asset.version = TXTR_VERSION;
 
-    asset.pageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
+    asset.pageEnd = pak->GetNumPages(); // dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
     asset.remainingDependencyCount = 1;
 
     assetEntries->push_back(asset);

@@ -30,12 +30,23 @@ void CPakFile::AddAsset(rapidjson::Value& file)
 	ASSET_HANDLER("rseq", file, m_Assets, Assets::AddAnimSeqAsset_stub, Assets::AddAnimSeqAsset_v7);
 }
 
+void CPakFile::AddPointer(PagePtr_t ptr)
+{
+	m_vPakDescriptors.push_back(ptr);
+}
+
 //-----------------------------------------------------------------------------
 // purpose: adds page pointer to descriptor
 //-----------------------------------------------------------------------------
 void CPakFile::AddPointer(int pageIdx, int pageOffset)
 {
 	m_vPakDescriptors.push_back({ pageIdx, pageOffset });
+}
+
+
+void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, PagePtr_t ptr)
+{
+	guids->push_back(ptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -164,10 +175,10 @@ void CPakFile::WriteAssets(BinaryIO& io)
 	{
 		io.write(it.guid);
 		io.write(it.unk0);
-		io.write(it.headIdx);
-		io.write(it.headOffset);
-		io.write(it.cpuIdx);
-		io.write(it.cpuOffset);
+		io.write(it.headPtr.index);
+		io.write(it.headPtr.offset);
+		io.write(it.cpuPtr.index);
+		io.write(it.cpuPtr.offset);
 		io.write(it.starpakOffset);
 
 		if (this->m_Header.fileVersion == 8)
@@ -191,11 +202,19 @@ void CPakFile::WriteAssets(BinaryIO& io)
 //-----------------------------------------------------------------------------
 // purpose: writes raw data blocks to file stream
 //-----------------------------------------------------------------------------
-void CPakFile::WriteRawDataBlocks(BinaryIO& out)
+void CPakFile::WritePageData(BinaryIO& out)
 {
-	for (auto it = m_vRawDataBlocks.begin(); it != m_vRawDataBlocks.end(); ++it)
+	//for (auto it = m_vRawDataBlocks.begin(); it != m_vRawDataBlocks.end(); ++it)
+	//{
+	//	out.getWriter()->write((char*)it->pData, it->size);
+	//}
+
+	for (auto& page : m_vPages)
 	{
-		out.getWriter()->write((char*)it->pData, it->size);
+		for (auto& chunk : page.chunks)
+		{
+			out.getWriter()->write(chunk.Data(), chunk.GetSize());
+		}
 	}
 }
 
@@ -214,15 +233,21 @@ size_t CPakFile::WriteStarpakPaths(BinaryIO& out, bool optional)
 //-----------------------------------------------------------------------------
 // purpose: writes virtual segments to file stream
 //-----------------------------------------------------------------------------
-void CPakFile::WriteVirtualSegments(BinaryIO& out)
+void CPakFile::WriteSegmentHeaders(BinaryIO& out)
 {
-	WRITE_VECTOR(out, m_vVirtualSegments);
+	//WRITE_VECTOR(out, m_vVirtualSegments);
+
+	for (auto& segment : m_vVirtualSegments)
+	{
+		PakSegmentHdr_t segmentHdr = segment.GetHeader();
+		out.write(segmentHdr);
+	}
 }
 
 //-----------------------------------------------------------------------------
 // purpose: writes pages to file stream
 //-----------------------------------------------------------------------------
-void CPakFile::WritePages(BinaryIO& out)
+void CPakFile::WriteMemPageHeaders(BinaryIO& out)
 {
 	for (auto& page : m_vPages)
 	{
@@ -338,73 +363,86 @@ void CPakFile::GenerateGuidData()
 }
 
 // find the last page that matches the required flags and check if there is room for new data to be added
-CPakPage& CPakFile::FindOrCreatePage(DWORD flags, int alignment, int newDataSize)
+CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, int newDataSize)
 {
 	for (int i = m_vPages.size(); i > 0; --i)
 	{
 		CPakPage& page = m_vPages[i-1];
-		if (page.GetFlags() == flags)
+		if (page.GetFlags() == flags && page.GetAlignment() == alignment)
 		{
 			if (page.GetSize() + newDataSize <= MAX_PAK_PAGE_SIZE)
 				return page;
 		}
 	}
-	// !!!TODO!!!
-	// - find a usable virtual segment and create a new page with the required settings (flags, type, alignment)
-	// - push page into the vector
 
+	CPakVSegment& segment = FindOrCreateSegment(flags, alignment);
 
+	CPakPage p{ this, segment.GetIndex(), (int)m_vPages.size(), flags, alignment };
 
-	CPakPage p; // !!!REMOVEME!!!
-
-	return p;
+	return m_vPages.emplace_back(p);
 }
 
-CPakDataChunk CPakFile::CreateDataChunk(int size, DWORD flags, int alignment)
+CPakDataChunk& CPakPage::AddDataChunk(CPakDataChunk& chunk)
 {
-	// !!!TODO!!!
-	// initialise instance of CPakDataChunk
-	// call FindOrCreatePage to get a page for the chunk to go in
-	// maybe add ptr to CPakDataChunk pointing to CPakPage?
-	// return chunk
+	chunk.pageIndex = GetIndex();
+	chunk.pageOffset = GetSize();
+
+	dataSize += chunk.size;
+
+	this->pak->m_vVirtualSegments[this->segmentIndex].AddToDataSize(chunk.size);
+
+	return this->chunks.emplace_back(chunk);
+}
+
+CPakDataChunk& CPakFile::CreateDataChunk(int size, int flags, int alignment)
+{
+	CPakPage& page = FindOrCreatePage(flags, alignment, size);
+
+	char* buf = new char[size];
+
+	memset(buf, 0, size);
+
+	CPakDataChunk chunk{ size, buf };
+
+	return page.AddDataChunk(chunk);
 }
 
 //-----------------------------------------------------------------------------
 // purpose: 
 // returns: 
 //-----------------------------------------------------------------------------
-_vseginfo_t CPakFile::CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment /*= -1*/)
-{
-	static_assert(0 && "fixme");
-
-	// !!!TODO!!!
-	// - general code cleanup (GetMatchingSegment is probably okay to keep using)
-	// - refactor to only find/create a virtual segment, not a page 
-	//   (use CreateDataChunk to deal with pages from assets, or FindOrCreatePage for actually allocating a whole page)
-	// - might be worth bringing this in line with the new convention of "CPak" classes and creating a CPakVSegment to store the new virtual segment
-	//   instead of _vseginfo_t
-
-	uint32_t vsegidx = (uint32_t)m_vVirtualSegments.size();
-
-	// find existing "segment" with the same values or create a new one, this is to overcome the engine's limit of having max 20 of these
-	// since otherwise we write into unintended parts of the stack, and that's bad
-	PakSegmentHdr_t seg = GetMatchingSegment(flags, vsegAlignment == -1 ? alignment : vsegAlignment, &vsegidx);
-
-	bool bShouldAddVSeg = seg.dataSize == 0;
-	seg.dataSize += size;
-
-	if (bShouldAddVSeg)
-		m_vVirtualSegments.emplace_back(seg);
-	else
-		m_vVirtualSegments[vsegidx] = seg;
-
-	PakPageHdr_t vsegblock{ vsegidx, alignment, size };
-
-	m_vPages.emplace_back(vsegblock);
-	int pageidx = m_vPages.size() - 1;
-
-	return { pageidx, size };
-}
+//_vseginfo_t CPakFile::CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment /*= -1*/)
+//{
+//	static_assert(0 && "fixme");
+//
+//	// !!!TODO!!!
+//	// - general code cleanup (GetMatchingSegment is probably okay to keep using)
+//	// - refactor to only find/create a virtual segment, not a page 
+//	//   (use CreateDataChunk to deal with pages from assets, or FindOrCreatePage for actually allocating a whole page)
+//	// - might be worth bringing this in line with the new convention of "CPak" classes and creating a CPakVSegment to store the new virtual segment
+//	//   instead of _vseginfo_t
+//
+//	uint32_t vsegidx = (uint32_t)m_vVirtualSegments.size();
+//
+//	// find existing "segment" with the same values or create a new one, this is to overcome the engine's limit of having max 20 of these
+//	// since otherwise we write into unintended parts of the stack, and that's bad
+//	PakSegmentHdr_t seg = GetMatchingSegment(flags, vsegAlignment == -1 ? alignment : vsegAlignment, &vsegidx);
+//
+//	bool bShouldAddVSeg = seg.dataSize == 0;
+//	seg.dataSize += size;
+//
+//	if (bShouldAddVSeg)
+//		m_vVirtualSegments.emplace_back(seg);
+//	else
+//		m_vVirtualSegments[vsegidx] = seg;
+//
+//	PakPageHdr_t vsegblock{ vsegidx, alignment, size };
+//
+//	m_vPages.emplace_back(vsegblock);
+//	int pageidx = m_vPages.size() - 1;
+//
+//	return { pageidx, size };
+//}
 
 //-----------------------------------------------------------------------------
 // purpose: 
@@ -431,20 +469,19 @@ PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/)
 // purpose: creates page and segment with the specified parameters
 // returns: 
 //-----------------------------------------------------------------------------
-PakSegmentHdr_t CPakFile::GetMatchingSegment(uint32_t flags, uint32_t alignment, uint32_t* segidx)
+CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
 {
-	uint32_t i = 0;
+	int i = 0;
 	for (auto& it : m_vVirtualSegments)
 	{
-		if (it.flags == flags && it.alignment == alignment)
-		{
-			*segidx = i;
+		if (it.GetFlags() == flags && it.GetAlignment() == alignment)
 			return it;
-		}
 		i++;
 	}
 
-	return { flags, alignment, 0 };
+	CPakVSegment newSegment{ i, flags, alignment, 0 };
+
+	return m_vVirtualSegments.emplace_back(newSegment);
 }
 
 //-----------------------------------------------------------------------------
@@ -567,19 +604,15 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 
 	// write the non-paged data to the file first
-	WriteVirtualSegments(out);
-	WritePages(out);
+	WriteSegmentHeaders(out);
+	WriteMemPageHeaders(out);
 	WritePakDescriptors(out);
 	WriteAssets(out);
 	WriteGuidDescriptors(out);
 	WriteFileRelations(out);
 
-
 	// now the actual paged data
-	// this should probably be writing by page instead of just hoping that
-	// the data blocks are in the right order
-	WriteRawDataBlocks(out);
-
+	WritePageData(out);
 
 	// set header descriptors
 	SetFileTime(Utils::GetFileTimeBySystem());

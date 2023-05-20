@@ -75,7 +75,11 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
 
     atlas.close();
 
-    UIImageHeader* pHdr = new UIImageHeader();
+
+    CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(UIImageHeader), SF_HEAD | SF_CLIENT, 8);
+
+    UIImageHeader* pHdr = reinterpret_cast<UIImageHeader*>(hdrChunk.Data());
+
     pHdr->width = ddsh.dwWidth;
     pHdr->height = ddsh.dwHeight;
 
@@ -97,30 +101,23 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     // get total size
     int textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
 
-    // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(UIImageHeader), SF_HEAD | SF_CLIENT, 8);
-
     // ui image/texture info
-    _vseginfo_t tiseginfo = pak->CreateNewSegment(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
+    CPakDataChunk& textureInfoChunk = pak->CreateDataChunk(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
+    //_vseginfo_t tiseginfo = pak->CreateNewSegment(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
 
     // cpu data
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(nTexturesCount * 0x10, SF_CPU | SF_TEMP | SF_CLIENT, 4);
+    CPakDataChunk& dataChunk = pak->CreateDataChunk(nTexturesCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
+    //_vseginfo_t dataseginfo = pak->CreateNewSegment(nTexturesCount * 0x10, SF_CPU | SF_TEMP | SF_CLIENT, 4);
     
     // register our descriptors so they get converted properly
-    pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureOffsets));
-    pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureDimensions));
-    pak->AddPointer(subhdrinfo.index, offsetof(UIImageHeader, pTextureHashes));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageHeader, pTextureOffsets)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageHeader, pTextureDimensions)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageHeader, pTextureHashes)));
 
-    // textureGUID descriptors
-    // moved to the end of the func
-    //pak->AddGuidDescriptor(subhdrinfo.index, offsetof(UIImageHeader, atlasGUID));
-
-    // buffer for texture info data
-    char* pTextureInfoBuf = new char[textureInfoPageSize] {};
-    rmem tiBuf(pTextureInfoBuf);
+    rmem tiBuf(textureInfoChunk.Data());
 
     // set texture offset page index and offset
-    pHdr->pTextureOffsets = { tiseginfo.index, 0 };
+    pHdr->pTextureOffsets = textureInfoChunk.GetPointer();
 
     ////////////////////
     // IMAGE OFFSETS
@@ -141,7 +138,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     ///////////////////////
     // IMAGE DIMENSIONS
     // set texture dimensions page index and offset
-    pHdr->pTextureDimensions = { tiseginfo.index, textureOffsetsDataSize };
+    pHdr->pTextureDimensions = textureInfoChunk.GetPointer(textureOffsetsDataSize);
 
     for (auto& it : mapEntry["textures"].GetArray())
     {
@@ -150,7 +147,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     }
 
     // set texture hashes page index and offset
-    pHdr->pTextureHashes = { tiseginfo.index, textureOffsetsDataSize + textureDimensionsDataSize };
+    pHdr->pTextureHashes = textureInfoChunk.GetPointer(textureOffsetsDataSize + textureDimensionsDataSize);
 
     uint32_t nextStringTableOffset = 0;
 
@@ -173,8 +170,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     else
         Warning("unable to find texture asset locally for uimg asset. assuming it is external...\n");
 
-    char* pUVBuf = new char[nTexturesCount * sizeof(UIImageUV)];
-    rmem uvBuf(pUVBuf);
+    rmem uvBuf(dataChunk.Data());
 
     //////////////
     // IMAGE UVS
@@ -191,26 +187,16 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
         uvBuf.write(uiiu);
     }
 
-    PakRawDataBlock_t shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
-    pak->AddRawDataBlock(shdb);
-
-    PakRawDataBlock_t tib{ tiseginfo.index, tiseginfo.size, (uint8_t*)pTextureInfoBuf };
-    pak->AddRawDataBlock(tib);
-
-    PakRawDataBlock_t rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pUVBuf };
-    pak->AddRawDataBlock(rdb);
-
-
     // create and init the asset entry
     PakAsset_t asset;
-    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::UIMG);
+    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), -1, -1, (std::uint32_t)AssetType::UIMG);
     asset.version = UIMG_VERSION;
 
-    asset.pageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
+    asset.pageEnd = pak->GetNumPages(); // number of the highest page that the asset references pageidx + 1
     asset.remainingDependencyCount = 2;
 
     // this asset only has one guid reference so im just gonna do it here
-    asset.AddGuid({ subhdrinfo.index, offsetof(UIImageHeader, atlasGUID) });
+    asset.AddGuid(hdrChunk.GetPointer(offsetof(UIImageHeader, atlasGUID)));
 
     // add the asset entry
     assetEntries->push_back(asset);

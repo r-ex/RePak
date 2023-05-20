@@ -7,7 +7,9 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
-    MaterialHeaderV12* mtlHdr = new MaterialHeaderV12();
+    CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(MaterialHeaderV12), SF_HEAD, 8);
+    MaterialHeaderV12* mtlHdr = reinterpret_cast<MaterialHeaderV12*>(hdrChunk.Data());
+
     std::string sAssetPath = std::string(assetPath);
 
     std::string type = "skn";
@@ -148,13 +150,11 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     uint32_t assetPathSize = (sAssetPath.length() + 1);
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + surfaceDataBuffLength;
 
-    // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(MaterialHeaderV12), SF_HEAD, 8);
-
     // asset data
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(dataBufSize, SF_CPU, 64);
+    CPakDataChunk& dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU, 64);
+    //_vseginfo_t dataseginfo = pak->CreateNewSegment(dataBufSize, SF_CPU, 64);
 
-    char* dataBuf = new char[dataBufSize] {};
+    char* dataBuf = dataChunk.Data();
     char* tmp = dataBuf;
 
     // ===============================
@@ -177,7 +177,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
         {
             uint64_t textureGUID = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str()); // Convert texture path to guid.
             *(uint64_t*)dataBuf = textureGUID;
-            pak->AddGuidDescriptor(&guids, dataseginfo.index, guidPageOffset + (textureIdx * sizeof(uint64_t))); // Register GUID descriptor for current texture index.
+            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(guidPageOffset + (textureIdx * sizeof(uint64_t)))); // Register GUID descriptor for current texture index.
 
             PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGUID, nullptr);
 
@@ -211,21 +211,18 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     // ===============================
     // fill out the rest of the header
-    mtlHdr->materialName.index = dataseginfo.index;
-    mtlHdr->materialName.offset = 0;
+    mtlHdr->materialName = dataChunk.GetPointer();
 
-    mtlHdr->surfaceProp.index = dataseginfo.index;
-    mtlHdr->surfaceProp.offset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
+    mtlHdr->surfaceProp = dataChunk.GetPointer((sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2));
 
-    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, materialName));
-    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, surfaceProp));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV12, materialName)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV12, surfaceProp)));
 
     if (mapEntry.HasMember("surface2")) {
 
-        mtlHdr->surfaceProp2.index = dataseginfo.index;
-        mtlHdr->surfaceProp2.offset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2) + (surface.length() + 1);
+        mtlHdr->surfaceProp2 = dataChunk.GetPointer((sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2) + (surface.length() + 1));
 
-        pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, surfaceProp2));
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV12, surfaceProp2)));
     }
 
     // V12 Type Handling
@@ -490,7 +487,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
         }
     }
 
-    pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, shaderSet));
+    pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialHeaderV12, shaderSet)));
 
     if (mtlHdr->shaderSet != 0)
     {
@@ -514,7 +511,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
         if (guid != 0)
         {
-            pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV12, depthShadowMaterial) + (i*8));
+            pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialHeaderV12, depthShadowMaterial) + (i*8)));
 
             PakAsset_t* asset = pak->GetAssetByGuid(guid);
 
@@ -523,30 +520,29 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
         }
     }
 
-    mtlHdr->textureHandles.index = dataseginfo.index;
-    mtlHdr->textureHandles.offset = guidPageOffset;
+    mtlHdr->textureHandles = dataChunk.GetPointer(guidPageOffset);
 
-    mtlHdr->streamingTextureHandles.index = dataseginfo.index;
-    mtlHdr->streamingTextureHandles.offset = guidPageOffset + textureRefSize;
+    mtlHdr->streamingTextureHandles = dataChunk.GetPointer(guidPageOffset + textureRefSize);
 
-    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, textureHandles));
-    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV12, streamingTextureHandles));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV12, textureHandles)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV12, streamingTextureHandles)));
 
     mtlHdr->unk5 = 0x100000;
 
     std::uint64_t cpuDataSize = sizeof(MaterialCPUDataV12);
 
     // cpu data
-    _vseginfo_t cpuseginfo = pak->CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16);
+    CPakDataChunk& uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16);
+    //_vseginfo_t cpuseginfo = pak->CreateNewSegment(sizeof(MaterialCPUHeader) + cpuDataSize, 3, 16);
 
     MaterialCPUHeader cpuhdr{};
-    cpuhdr.dataPtr.index = cpuseginfo.index;
-    cpuhdr.dataPtr.offset = sizeof(MaterialCPUHeader);
+    cpuhdr.dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
     cpuhdr.dataSize = cpuDataSize;
 
-    pak->AddPointer(cpuseginfo.index, 0);
+    // actually just offset of 0 from uberBufChunk but this makes it easier to see why
+    pak->AddPointer(uberBufChunk.GetPointer(offsetof(MaterialCPUHeader, dataPtr)));
 
-    char* cpuData = new char[sizeof(MaterialCPUHeader) + cpuDataSize];
+    char* cpuData = uberBufChunk.Data();
 
     // copy header into the start
     memcpy_s(cpuData, 16, &cpuhdr, 16);
@@ -614,19 +610,14 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     cpudata.DetailTransform->TextureTranslateY = DetailTransformMatrix[5];
 
     memcpy_s(cpuData + sizeof(MaterialCPUHeader), cpuDataSize, &cpudata, cpuDataSize);
-    //////////////////////////////////////////
-
-    pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)mtlHdr });
-    pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)dataBuf });
-    pak->AddRawDataBlock({ cpuseginfo.index, cpuseginfo.size, (uint8_t*)cpuData });
 
     //////////////////////////////////////////
     PakAsset_t asset;
 
-    asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
+    asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), -1, -1, (std::uint32_t)AssetType::MATL);
     asset.version = version;
 
-    asset.pageEnd = cpuseginfo.index + 1;
+    asset.pageEnd = pak->GetNumPages();
     // this isn't even fully true in some apex materials.
     //asset.unk1 = bColpass ? 7 : 8; // what
     // unk1 appears to be maxusecount, although seemingly nothing is affected by changing it unless you exceed 18.
@@ -643,7 +634,8 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
-    MaterialHeaderV15* mtlHdr = new MaterialHeaderV15();
+    CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(MaterialHeaderV15), SF_HEAD, 8);
+    MaterialHeaderV15* mtlHdr = reinterpret_cast<MaterialHeaderV15*>(hdrChunk.Data());
     std::string sAssetPath = std::string(assetPath);
 
     std::string type = "sknp";
@@ -696,13 +688,10 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     uint32_t assetPathSize = (sAssetPath.length() + 1);
     uint32_t dataBufSize = (assetPathSize + (assetPathSize % 4)) + (textureRefSize * 2) + (surface.length() + 1);
 
-    // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(MaterialHeaderV15), SF_HEAD /*| SF_CLIENT*/, 8);
-
     // asset data
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
+    CPakDataChunk& dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
 
-    char* dataBuf = new char[dataBufSize] {};
+    char* dataBuf = dataChunk.Data();
     char* tmp = dataBuf;
 
     // ===============================
@@ -724,7 +713,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
         {
             uint64_t textureGUID = RTech::StringToGuid((it.GetStdString() + ".rpak").c_str()); // Convert texture path to guid.
             *(uint64_t*)dataBuf = textureGUID;
-            pak->AddGuidDescriptor(&guids, dataseginfo.index, guidPageOffset + (textureIdx * sizeof(uint64_t))); // Register GUID descriptor for current texture index.
+            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(guidPageOffset + (textureIdx * sizeof(uint64_t)))); // Register GUID descriptor for current texture index.
 
             PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGUID, nullptr);
 
@@ -747,14 +736,12 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     // ===============================
     // fill out the rest of the header
-    mtlHdr->materialName.index = dataseginfo.index;
-    mtlHdr->materialName.offset = 0;
+    mtlHdr->materialName = dataChunk.GetPointer();
 
-    mtlHdr->surfaceProp.index = dataseginfo.index;
-    mtlHdr->surfaceProp.offset = (sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2);
+    mtlHdr->surfaceProp = dataChunk.GetPointer((sAssetPath.length() + 1) + assetPathAlignment + (textureRefSize * 2));
 
-    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, materialName));
-    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, surfaceProp));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV15, materialName)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV15, surfaceProp)));
 
     // Shader Type Handling
     if (type == "sknp")
@@ -804,7 +791,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
         if (guid != 0)
         {
-            pak->AddGuidDescriptor(&guids, subhdrinfo.index, offsetof(MaterialHeaderV15, depthShadowMaterial) + (i*8));
+            pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialHeaderV15, depthShadowMaterial) + (i*8)));
 
             PakAsset_t* asset = pak->GetAssetByGuid(guid);
 
@@ -813,14 +800,12 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
         }
     }
 
-    mtlHdr->textureHandles.index = dataseginfo.index;
-    mtlHdr->textureHandles.offset = guidPageOffset;
+    mtlHdr->textureHandles = dataChunk.GetPointer(guidPageOffset);
 
-    mtlHdr->streamingTextureHandles.index = dataseginfo.index;
-    mtlHdr->streamingTextureHandles.offset = guidPageOffset + textureRefSize;
+    mtlHdr->streamingTextureHandles = dataChunk.GetPointer(guidPageOffset + textureRefSize);
 
-    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, textureHandles));
-    pak->AddPointer(subhdrinfo.index, offsetof(MaterialHeaderV15, streamingTextureHandles));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV15, textureHandles)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV15, streamingTextureHandles)));
 
     mtlHdr->unk_88 = 0x72000000;
     mtlHdr->unk_8C = 0x100000;
@@ -839,24 +824,25 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     //////////////////////////////////////////
     /// cpu
-
-    char* dxStaticBuf = nullptr;
     uint64_t dxStaticBufSize = 0;
 
     std::string cpuPath = pak->GetAssetPath() + sAssetPath + "_" + type + ".cpu";
+
+
+    CPakDataChunk uberBufChunk;
     if (FILE_EXISTS(cpuPath))
     {
         dxStaticBufSize = Utils::GetFileSize(cpuPath);
 
-        dxStaticBuf = new char[dxStaticBufSize];
+        uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + dxStaticBufSize, SF_CPU | SF_TEMP, 16);
 
         std::ifstream cpuIn(cpuPath, std::ios::in | std::ios::binary);
-        cpuIn.read(dxStaticBuf, dxStaticBufSize);
+        cpuIn.read(uberBufChunk.Data() + sizeof(MaterialCPUHeader), dxStaticBufSize);
         cpuIn.close();
     }
     else {
         dxStaticBufSize = 544;
-        dxStaticBuf = new char[dxStaticBufSize];
+        uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + dxStaticBufSize, SF_CPU | SF_TEMP, 16);
 
         // i hate this
         unsigned char testData[544] = {
@@ -896,41 +882,23 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
             0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
         };
 
-        memcpy(dxStaticBuf, testData, dxStaticBufSize);
+        memcpy(uberBufChunk.Data() + sizeof(MaterialCPUHeader), testData, dxStaticBufSize);
     }
 
-    // cpu data
-    _vseginfo_t cpuseginfo = pak->CreateNewSegment(sizeof(MaterialCPUHeader) + dxStaticBufSize, SF_CPU | SF_TEMP, 16);
+    MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
+    cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
+    cpuhdr->dataSize = dxStaticBufSize;
 
-    MaterialCPUHeader cpuhdr{};
-    cpuhdr.dataPtr.index = cpuseginfo.index;
-    cpuhdr.dataPtr.offset = sizeof(MaterialCPUHeader);
-    cpuhdr.dataSize = dxStaticBufSize;
-
-    pak->AddPointer(cpuseginfo.index, 0);
-
-    char* cpuData = new char[sizeof(MaterialCPUHeader) + dxStaticBufSize];
-
-    // copy header into the start
-    memcpy_s(cpuData, sizeof(MaterialCPUHeader), &cpuhdr, sizeof(MaterialCPUHeader));
-
-    // copy the rest of the data after the header
-    memcpy_s(cpuData + sizeof(MaterialCPUHeader), dxStaticBufSize, dxStaticBuf, dxStaticBufSize);
-
-    //////////////////////////////////////////
-
-    pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)mtlHdr });
-    pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)dataBuf });
-    pak->AddRawDataBlock({ cpuseginfo.index, cpuseginfo.size, (uint8_t*)cpuData });
+    pak->AddPointer(uberBufChunk.GetPointer(offsetof(MaterialCPUHeader, dataPtr)));
 
     //////////////////////////////////////////
 
     PakAsset_t asset;
 
-    asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), subhdrinfo.index, 0, subhdrinfo.size, cpuseginfo.index, 0, -1, -1, (std::uint32_t)AssetType::MATL);
+    asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), - 1, -1, (std::uint32_t)AssetType::MATL);
     asset.version = MATL_VERSION;
 
-    asset.pageEnd = cpuseginfo.index + 1;
+    asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = bColpass ? 7 : 8; // what
 
     asset.AddGuids(&guids);

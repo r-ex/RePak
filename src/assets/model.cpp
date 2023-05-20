@@ -14,7 +14,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     std::string sAssetName = assetPath;
 
-    ModelHeader* pHdr = new ModelHeader();
+    CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(ModelHeader), SF_HEAD, 16);
+    ModelHeader* pHdr = reinterpret_cast<ModelHeader*>(hdrChunk.Data());
 
     std::string rmdlFilePath = pak->GetAssetPath() + sAssetName;
 
@@ -66,9 +67,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     //
     // Physics
     //
-    char* phyBuf = nullptr;
     size_t phyFileSize = 0;
 
+    CPakDataChunk phyChunk;
     if (mapEntry.HasMember("usePhysics") && mapEntry["usePhysics"].GetBool())
     {
         BinaryIO phyInput;
@@ -78,17 +79,17 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
         phyFileSize = phyInput.tell();
 
-        phyBuf = new char[phyFileSize];
+        phyChunk = pak->CreateDataChunk(phyFileSize, SF_CPU, 64);
 
         phyInput.seek(0);
-        phyInput.getReader()->read(phyBuf, phyFileSize);
+        phyInput.getReader()->read(phyChunk.Data(), phyFileSize);
         phyInput.close();
     }
 
     //
     // Anim Rigs
     //
-    char* pAnimRigBuf = nullptr;
+    CPakDataChunk animRigsChunk;
 
     if (mapEntry.HasMember("animrigs"))
     {
@@ -97,9 +98,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
         pHdr->animRigCount = mapEntry["animrigs"].Size();
 
-        pAnimRigBuf = new char[mapEntry["animrigs"].Size() * sizeof(uint64_t)];
+        animRigsChunk = pak->CreateDataChunk(mapEntry["animrigs"].Size() * sizeof(uint64_t), SF_CPU, 64);
 
-        rmem arigBuf(pAnimRigBuf);
+        rmem arigBuf(animRigsChunk.Data());
 
         int i = 0;
         for (auto& it : mapEntry["animrigs"].GetArray())
@@ -151,7 +152,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     int fileNameDataSize = sAssetName.length() + 1;
 
-    char* pDataBuf = new char[fileNameDataSize + mdlhdr.length + extraDataSize];
+    CPakDataChunk& dataChunk = pak->CreateDataChunk(mdlhdr.length + fileNameDataSize + extraDataSize, SF_CPU, 64);
+    char* pDataBuf = dataChunk.Data();
 
     // write the model file path into the data buffer
     snprintf(pDataBuf + mdlhdr.length, fileNameDataSize, "%s", sAssetName.c_str());
@@ -172,52 +174,35 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         memcpy_s(pDataBuf + fileNameDataSize + mdlhdr.length, vgFileSize, de.m_nDataPtr, vgFileSize);
     }
 
-    // Segments
-    // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(ModelHeader), SF_HEAD, 16);
+    pHdr->pName = dataChunk.GetPointer(mdlhdr.length);
 
-    // data segment
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(mdlhdr.length + fileNameDataSize + extraDataSize, SF_CPU, 64);
+    pHdr->pRMDL = dataChunk.GetPointer();
 
-    // .phy
-    _vseginfo_t physeginfo;
-    if (phyBuf)
-        physeginfo = pak->CreateNewSegment(phyFileSize, SF_CPU, 64);
-
-    // animation rigs
-    _vseginfo_t arigseginfo;
-    if (pAnimRigBuf)
-        arigseginfo = pak->CreateNewSegment(pHdr->animRigCount * 8, SF_CPU, 64);
-
-    pHdr->pName = { dataseginfo.index, mdlhdr.length };
-
-    pHdr->pRMDL = { dataseginfo.index, 0 };
-
-    pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pRMDL));
-    pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pName));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelHeader, pRMDL)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelHeader, pName)));
 
     if (mdlhdr.flags & 0x10) // STATIC_PROP
     {
-        pHdr->pStaticPropVtxCache = { dataseginfo.index, fileNameDataSize + mdlhdr.length };
-        pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pStaticPropVtxCache));
+        pHdr->pStaticPropVtxCache = dataChunk.GetPointer(fileNameDataSize + mdlhdr.length);
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelHeader, pStaticPropVtxCache)));
     }
 
     std::vector<PakGuidRefHdr_t> guids{};
 
-    if (phyBuf)
+    if (phyFileSize > 0)
     {
-        pHdr->pPhyData = { physeginfo.index, 0 };
-        pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pPhyData));
+        pHdr->pPhyData = phyChunk.GetPointer();
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelHeader, pPhyData)));
     }
 
-    if (pAnimRigBuf)
+    if (mapEntry.HasMember("animrigs"))
     {
-        pHdr->pAnimRigs = { arigseginfo.index, 0 };
-        pak->AddPointer(subhdrinfo.index, offsetof(ModelHeader, pAnimRigs));
+        pHdr->pAnimRigs = animRigsChunk.GetPointer();
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelHeader, pAnimRigs)));
 
         for (int i = 0; i < pHdr->animRigCount; ++i)
         {
-            pak->AddGuidDescriptor(&guids, arigseginfo.index, sizeof(uint64_t) * i);
+            pak->AddGuidDescriptor(&guids, animRigsChunk.GetPointer(sizeof(uint64_t) * i));
         }
     }
 
@@ -250,7 +235,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         }
 
         if (material->guid != 0)
-            pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(materialref_t, guid));
+            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(dataBuf.getPosition() + offsetof(materialref_t, guid)));
 
         PakAsset_t* asset = pak->GetAssetByGuid(material->guid);
 
@@ -258,34 +243,12 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
             asset->AddRelation(assetEntries->size());
     }
 
-    PakRawDataBlock_t shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr };
-    pak->AddRawDataBlock(shdb);
-
-    PakRawDataBlock_t rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf };
-    pak->AddRawDataBlock(rdb);
-
-    uint32_t lastPageIdx = dataseginfo.index;
-
-    if (phyBuf)
-    {
-        PakRawDataBlock_t phydb{ physeginfo.index, physeginfo.size, (uint8_t*)phyBuf };
-        pak->AddRawDataBlock(phydb);
-        lastPageIdx = physeginfo.index;
-    }
-
-    if (pAnimRigBuf)
-    {
-        PakRawDataBlock_t arigdb{ arigseginfo.index, arigseginfo.size, (uint8_t*)pAnimRigBuf };
-        pak->AddRawDataBlock(arigdb);
-        lastPageIdx = arigseginfo.index;
-    }
-
     PakAsset_t asset;
 
-    asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, de.m_nOffset, -1, (std::uint32_t)AssetType::RMDL);
+    asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.m_nOffset, -1, (std::uint32_t)AssetType::RMDL);
     asset.version = RMDL_VERSION;
     // i have literally no idea what these are
-    asset.pageEnd = lastPageIdx + 1;
+    asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = 2;
 
     asset.AddGuids(&guids);

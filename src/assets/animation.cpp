@@ -12,7 +12,8 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 {
     Debug("Adding aseq asset '%s'\n", assetPath);
 
-    AnimSequenceHeader* aseqHeader = new AnimSequenceHeader();
+    CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(AnimSequenceHeader), SF_HEAD, 16);
+    AnimSequenceHeader* aseqHeader = reinterpret_cast<AnimSequenceHeader*>(hdrChunk.Data());
 
     std::string rseqFilePath = pak->GetAssetPath() + assetPath;
 
@@ -24,10 +25,10 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     uint32_t bufAlign = 4 - (fileNameDataSize + rseqFileSize) % 4;
 
-    char* pDataBuf = new char[fileNameDataSize + rseqFileSize + bufAlign]{};
+    CPakDataChunk& dataChunk = pak->CreateDataChunk(fileNameDataSize + rseqFileSize + bufAlign, SF_CPU, 64);
 
     // write the rseq file path into the data buffer
-    snprintf(pDataBuf, fileNameDataSize, "%s", assetPath);
+    snprintf(dataChunk.Data(), fileNameDataSize, "%s", assetPath);
 
     // begin rseq input
     BinaryIO rseqInput;
@@ -37,28 +38,21 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
     rseqInput.seek(0);
 
     // write the rseq data into the data buffer
-    rseqInput.getReader()->read(pDataBuf + fileNameDataSize, rseqFileSize);
+    rseqInput.getReader()->read(dataChunk.Data() + fileNameDataSize, rseqFileSize);
     rseqInput.close();
 
-    mstudioseqdesc_t seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(pDataBuf + fileNameDataSize);
+    mstudioseqdesc_t seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(dataChunk.Data() + fileNameDataSize);
 
-    // Segments
-    // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(AnimSequenceHeader), SF_HEAD, 16);
+    aseqHeader->szname = dataChunk.GetPointer();
 
-    // data segment
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(rseqFileSize + fileNameDataSize + bufAlign, SF_CPU, 64);
+    aseqHeader->data = dataChunk.GetPointer(fileNameDataSize);
 
-    aseqHeader->szname = { dataseginfo.index, 0 };
-
-    aseqHeader->data = { dataseginfo.index, fileNameDataSize };
-
-    pak->AddPointer(subhdrinfo.index, offsetof(AnimSequenceHeader, szname));
-    pak->AddPointer(subhdrinfo.index, offsetof(AnimSequenceHeader, data));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSequenceHeader, szname)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSequenceHeader, data)));
 
     std::vector<PakGuidRefHdr_t> guids{};
 
-    rmem dataBuf(pDataBuf);
+    rmem dataBuf(dataChunk.Data());
     dataBuf.seek(fileNameDataSize + seqdesc.autolayerindex, rseekdir::beg);
 
     // register autolayer aseq guids
@@ -69,7 +63,7 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
         mstudioautolayer_t* autolayer = dataBuf.get<mstudioautolayer_t>();
 
         if (autolayer->guid != 0)
-            pak->AddGuidDescriptor(&guids, dataseginfo.index, dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid));
+            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid)));
 
         PakAsset_t* asset = pak->GetAssetByGuid(autolayer->guid);
 
@@ -77,20 +71,12 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
             asset->AddRelation(assetEntries->size());
     }
 
-    PakRawDataBlock_t shdb{ subhdrinfo.index, subhdrinfo.size, (uint8_t*)aseqHeader };
-    pak->AddRawDataBlock(shdb);
-
-    PakRawDataBlock_t rdb{ dataseginfo.index, dataseginfo.size, (uint8_t*)pDataBuf };
-    pak->AddRawDataBlock(rdb);
-
-    uint32_t lastPageIdx = dataseginfo.index;
-
     PakAsset_t asset;
 
-    asset.InitAsset(RTech::StringToGuid(assetPath), subhdrinfo.index, 0, subhdrinfo.size, -1, 0, -1, -1, (std::uint32_t)AssetType::ASEQ);
+    asset.InitAsset(RTech::StringToGuid(assetPath), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), -1, -1, (std::uint32_t)AssetType::ASEQ);
     asset.version = 7;
-    // i have literally no idea what these are
-    asset.pageEnd = lastPageIdx + 1;
+
+    asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = 2;
 
     asset.AddGuids(&guids);

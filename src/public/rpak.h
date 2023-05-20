@@ -43,6 +43,11 @@ struct PagePtr_t
 {
 	int index = 0;
 	int offset = 0;
+
+	static PagePtr_t NullPtr()
+	{
+		return { -1, 0 };
+	}
 };
 
 // generic header struct for both apex and titanfall 2
@@ -94,8 +99,8 @@ struct PakPatchFileHdr_t // follows immediately after the file header in patch r
 // about the size of pages that are using specific flags/types/whatever
 struct PakSegmentHdr_t
 {
-	uint32_t flags = 0;
-	uint32_t alignment = 0;
+	int flags = 0;
+	int alignment = 0;
 	uint64_t dataSize = 0;
 };
 
@@ -124,25 +129,21 @@ struct PakAsset_t
 {
 	PakAsset_t() = default;
 
-	void InitAsset(uint64_t nGUID,
-		uint32_t nSubHeaderBlockIdx,
-		uint32_t nSubHeaderBlockOffset,
-		uint32_t nSubHeaderSize,
-		uint32_t nRawDataBlockIdx,
-		uint32_t nRawDataBlockOffset,
-		uint64_t nStarpakOffset,
-		uint64_t nOptStarpakOffset,
-		uint32_t Type)
+	void InitAsset(uint64_t guid,
+		PagePtr_t headPtr,
+		uint32_t headerSize,
+		PagePtr_t cpuPtr,
+		uint64_t starpakOffset,
+		uint64_t optStarpakOffset,
+		uint32_t type)
 	{
-		this->guid = nGUID;
-		this->headIdx = nSubHeaderBlockIdx;
-		this->headOffset = nSubHeaderBlockOffset;
-		this->cpuIdx = nRawDataBlockIdx;
-		this->cpuOffset = nRawDataBlockOffset;
-		this->starpakOffset = nStarpakOffset;
-		this->optStarpakOffset = nOptStarpakOffset;
-		this->headDataSize = nSubHeaderSize;
-		this->id = Type;
+		this->guid = guid;
+		this->headPtr = headPtr;
+		this->cpuPtr = cpuPtr;
+		this->starpakOffset = starpakOffset;
+		this->optStarpakOffset = optStarpakOffset;
+		this->headDataSize = headerSize;
+		this->id = type;
 	}
 
 	// hashed version of the asset path
@@ -155,16 +156,14 @@ struct PakAsset_t
 	uint8_t  unk0[0x8]{};
 
 	// page index and offset for where this asset's header is located
-	int headIdx = 0;
-	int headOffset = 0;
+	PagePtr_t headPtr;
 
 	// page index and offset for where this asset's data is located
 	// note: this may not always be used for finding the data:
 	//		 some assets use their own idx/offset pair from within the subheader
 	//		 when adding pairs like this, you MUST register it as a descriptor
 	//		 otherwise the pointer won't be converted
-	int cpuIdx = 0;
-	int cpuOffset = 0;
+	PagePtr_t cpuPtr;
 
 	// offset to any available streamed data
 	// starpakOffset    = "mandatory" starpak file offset
