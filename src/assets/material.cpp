@@ -833,7 +833,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     mtlHdr->unk_88 = 0x72000000;
     mtlHdr->unk_8C = 0x100000;
 
-
     int unkFlags = 4;
     short depthStencilFlags = bColpass ? 0x5 : 0x17;
     short rasterizerFlags = 6;
