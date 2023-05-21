@@ -138,7 +138,7 @@ void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
 }
 
 //-----------------------------------------------------------------------------
-// purpose: formats a standard string with prinf like syntax (see 'https://stackoverflow.com/a/49812018')
+// purpose: formats a standard string with printf like syntax (see 'https://stackoverflow.com/a/49812018')
 //-----------------------------------------------------------------------------
 const std::string Utils::VFormat(const char* const zcFormat, ...)
 {

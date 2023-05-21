@@ -195,7 +195,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
     asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, -1, (std::uint32_t)AssetType::TXTR);
     asset.version = TXTR_VERSION;
 
-    asset.pageEnd = pak->GetNumPages(); // dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
+    asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = 1;
 
     assetEntries->push_back(asset);
