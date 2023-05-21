@@ -23,7 +23,7 @@ jobs:
         with:
           name: RePak-${{ steps.extract.outputs.commit }}
           path: |
-            bin/*.dll
-            bin/*.exe
-            bin/*.pdb
-            bin/*.txt
+            bin/${{ env.BUILD_PROFILE }}/*.dll
+            bin/${{ env.BUILD_PROFILE }}/*.exe
+            bin/${{ env.BUILD_PROFILE }}/*.pdb
+            bin/${{ env.BUILD_PROFILE }}/*.txt
