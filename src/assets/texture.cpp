@@ -81,19 +81,13 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
         nLargestMipSize = ddsh.dwPitchOrLinearSize;
 
-        DXGI_FORMAT dxgiFormat = DXUtils::GetFormatFromHeader(ddsh);
-
-        if (dxgiFormat == DXGI_FORMAT_UNKNOWN)
-            Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
-
         // Go to the end of the main header.
         input.seek(ddsh.dwSize + 4);
 
         // this is used for some math later
         nDDSHeaderSize = ddsh.dwSize + 4;
 
-
-        const char* pDxgiFormat = DXUtils::GetFormatAsString(dxgiFormat);
+        DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN;
 
         // Go to the end of the DX10 header if it exists.
         if (ddsh.ddspf.dwFourCC == '01XD')
@@ -103,10 +97,19 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
             dxgiFormat = ddsh_dx10.dxgiFormat;
 
             if (s_txtrFormatMap.count(dxgiFormat) == 0)
-                Error("Attempted to add txtr asset '%s' using unsupported DDS type '%s'. Exiting...\n", assetPath, pDxgiFormat);
+                Error("Attempted to add txtr asset '%s' using unsupported DDS type '%s'. Exiting...\n", assetPath, DXUtils::GetFormatAsString(dxgiFormat));
 
             nDDSHeaderSize += 20;
         }
+        else {
+            dxgiFormat = DXUtils::GetFormatFromHeader(ddsh);
+
+            if (dxgiFormat == DXGI_FORMAT_UNKNOWN)
+                Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
+        }
+
+        const char* pDxgiFormat = DXUtils::GetFormatAsString(dxgiFormat);
+
 
         Log("-> fmt: %s\n", pDxgiFormat);
         hdr->imgFormat = s_txtrFormatMap.at(dxgiFormat);
