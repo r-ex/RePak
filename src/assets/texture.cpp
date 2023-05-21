@@ -19,13 +19,11 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     BinaryIO input(filePath, BinaryIOMode::Read);
 
-    uint64_t nInputFileSize = Utils::GetFileSize(filePath);
-
     std::string sAssetName = assetPath;
 
-    uint32_t nLargestMipSize = 0;
-    uint32_t nStreamedMipSize = 0;
-    uint32_t nDDSHeaderSize = 0;
+    uint32_t largestMipSize = 0;
+    uint32_t streamedMipsSize = 0;
+    uint32_t ddsHeaderSize = 0;
 
     bool bStreamable = false;
 
@@ -39,53 +37,53 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
         DDS_HEADER ddsh = input.read<DDS_HEADER>();
 
-        int nStreamedMipCount = 0;
+        int streamedMipCount = 0;
 
         if (ddsh.dwMipMapCount > 9)
         {
             if (mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool())
             {
-                nStreamedMipCount = 0;
+                streamedMipCount = 0;
                 bStreamable = false;
             }
             else
             {
-                nStreamedMipCount = ddsh.dwMipMapCount - 9;
+                streamedMipCount = ddsh.dwMipMapCount - 9;
                 bStreamable = true;
             }
         }
 
-        uint32_t nTotalSize = 0;
+        uint32_t totalDataSize = 0;
         for (unsigned int ml = 0; ml < ddsh.dwMipMapCount; ml++)
         {
-            uint32_t nCurrentMipSize = (ddsh.dwPitchOrLinearSize / std::pow(4, ml));
+            uint32_t currentMipSize = (ddsh.dwPitchOrLinearSize / std::pow(4, ml));
 
             // add 16 bytes if mip data size is below 8 bytes else add calculated size
-            nTotalSize += (nCurrentMipSize <= 8 ? 16 : nCurrentMipSize);
+            totalDataSize += (currentMipSize <= 8 ? 16 : currentMipSize);
 
             // if this texture and mip are streaming
             if (bStreamable && ml < (ddsh.dwMipMapCount - 9))
-                nStreamedMipSize += nCurrentMipSize;
+                streamedMipsSize += currentMipSize;
         }
 
-        hdr->dataSize = nTotalSize;
+        hdr->dataSize = totalDataSize;
         hdr->width = (uint16_t)ddsh.dwWidth;
         hdr->height = (uint16_t)ddsh.dwHeight;
 
         Log("-> dimensions: %ix%i\n", ddsh.dwWidth, ddsh.dwHeight);
 
-        hdr->mipLevels = (uint8_t)(ddsh.dwMipMapCount - nStreamedMipCount);
-        hdr->streamedMipLevels = nStreamedMipCount;
+        hdr->mipLevels = (uint8_t)(ddsh.dwMipMapCount - streamedMipCount);
+        hdr->streamedMipLevels = streamedMipCount;
 
         Log("-> total mipmaps permanent:streamed : %i:%i\n", hdr->mipLevels, hdr->streamedMipLevels);
 
-        nLargestMipSize = ddsh.dwPitchOrLinearSize;
+        largestMipSize = ddsh.dwPitchOrLinearSize;
 
         // Go to the end of the main header.
         input.seek(ddsh.dwSize + 4);
 
         // this is used for some math later
-        nDDSHeaderSize = ddsh.dwSize + 4;
+        ddsHeaderSize = ddsh.dwSize + 4;
 
         DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN;
 
@@ -99,7 +97,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
             if (s_txtrFormatMap.count(dxgiFormat) == 0)
                 Error("Attempted to add txtr asset '%s' using unsupported DDS type '%s'. Exiting...\n", assetPath, DXUtils::GetFormatAsString(dxgiFormat));
 
-            nDDSHeaderSize += 20;
+            ddsHeaderSize += 20;
         }
         else {
             dxgiFormat = DXUtils::GetFormatFromHeader(ddsh);
@@ -117,35 +115,32 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     hdr->guid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
-    bool bSaveDebugName = pak->IsFlagSet(PF_KEEP_DEV) || (mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool());
-
-
-    CPakDataChunk nameChunk;
-    if (bSaveDebugName)
+    if (pak->IsFlagSet(PF_KEEP_DEV) || (mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool()))
     {
-        nameChunk = pak->CreateDataChunk(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
+        CPakDataChunk& nameChunk = pak->CreateDataChunk(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
 
         sprintf_s(nameChunk.Data(), sAssetName.length() + 1, "%s", sAssetName.c_str());
+
+        hdr->pName = nameChunk.GetPointer();
+
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(TextureHeader, pName)));
     }
 
-    // woo more segments
-    // cpu data
+    CPakDataChunk& dataChunk = pak->CreateDataChunk(hdr->dataSize - streamedMipsSize, SF_CPU | SF_TEMP, 16);
 
-    CPakDataChunk& dataChunk = pak->CreateDataChunk(hdr->dataSize - nStreamedMipSize, SF_CPU | SF_TEMP, 16);
-
-    char* streamedbuf = new char[nStreamedMipSize];
+    char* streamedbuf = new char[streamedMipsSize];
 
     int currentDDSOffset = 0;
     int remainingDDSData = hdr->dataSize;
-    int remainingStreamedData = nStreamedMipSize;
+    int remainingStreamedData = streamedMipsSize;
 
-    for (int ml = 0; ml < (hdr->mipLevels + hdr->streamedMipLevels); ml++)
+    for (int mip = 0; mip < (hdr->mipLevels + hdr->streamedMipLevels); mip++)
     {
-        uint32_t nCurrentMipSize = (unsigned int)(nLargestMipSize / std::pow(4, ml));
+        uint32_t currentMipSize = (unsigned int)(largestMipSize / std::pow(4, mip));
         uint32_t mipSizeDDS = 0;
         uint32_t mipSizeRpak = 0;
 
-        if (nCurrentMipSize <= 8)
+        if (currentMipSize <= 8)
         {
             currentDDSOffset += 8;
             mipSizeDDS = 8;
@@ -153,31 +148,24 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
         }
         else
         {
-            currentDDSOffset += nCurrentMipSize;
-            mipSizeDDS = nCurrentMipSize;
-            mipSizeRpak = nCurrentMipSize;
+            currentDDSOffset += currentMipSize;
+            mipSizeDDS = currentMipSize;
+            mipSizeRpak = currentMipSize;
         }
 
         remainingDDSData -= mipSizeRpak;
 
-        input.seek(nDDSHeaderSize + (currentDDSOffset - mipSizeDDS), std::ios::beg);
+        input.seek(ddsHeaderSize + (currentDDSOffset - mipSizeDDS), std::ios::beg);
 
-        if (bStreamable && ml < hdr->streamedMipLevels)
+        if (bStreamable && mip < hdr->streamedMipLevels)
         {
-            remainingStreamedData -= nCurrentMipSize;
+            remainingStreamedData -= currentMipSize;
             input.getReader()->read(streamedbuf + remainingStreamedData, mipSizeDDS);
         }
         else
         {
             input.getReader()->read(dataChunk.Data() + remainingDDSData, mipSizeDDS);
         }
-    }
-
-    if (bSaveDebugName)
-    {
-        hdr->pName = nameChunk.GetPointer();
-
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(TextureHeader, pName)));
     }
 
     // now time to add the higher level asset entry
@@ -199,7 +187,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
        
         pak->AddStarpakReference(starpakPath);
 
-        StreamableDataEntry de{ 0, nStreamedMipSize, (uint8_t*)streamedbuf };
+        StreamableDataEntry de{ 0, streamedMipsSize, (uint8_t*)streamedbuf };
         de = pak->AddStarpakDataEntry(de);
         starpakOffset = de.m_nOffset;
     }
