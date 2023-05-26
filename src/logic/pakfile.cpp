@@ -595,6 +595,18 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	// write string vectors for starpak paths and get the total length of each vector
 	size_t starpakPathsLength = WriteStarpakPaths(out);
 	size_t optStarpakPathsLength = WriteStarpakPaths(out, true);
+	size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
+
+	size_t aligned = IALIGN4(combinedPathsLength);
+	__int8 padBytes = aligned - combinedPathsLength;
+
+	// align starpak paths to 
+	if (optStarpakPathsLength != 0)
+		optStarpakPathsLength += padBytes;
+	else
+		starpakPathsLength += padBytes;
+
+	out.seek(padBytes, std::ios::cur);
 
 	SetStarpakPathsSize(starpakPathsLength, optStarpakPathsLength);
 
