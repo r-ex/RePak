@@ -262,6 +262,9 @@ void CPakFile::WriteMemPageHeaders(BinaryIO& out)
 //-----------------------------------------------------------------------------
 void CPakFile::WritePakDescriptors(BinaryIO& out)
 {
+	// pointers must be written in order otherwise resolving them causes an access violation
+	std::sort(m_vPakDescriptors.begin(), m_vPakDescriptors.end());
+
 	WRITE_VECTOR(out, m_vPakDescriptors);
 }
 

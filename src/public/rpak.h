@@ -48,6 +48,13 @@ struct PagePtr_t
 	{
 		return { -1, 0 };
 	}
+
+	size_t value() const { return (static_cast<size_t>(index) << 32) | offset; };
+
+	bool operator<(const PagePtr_t& a) const
+	{
+		return value() < a.value();
+	}
 };
 
 // generic header struct for both apex and titanfall 2
