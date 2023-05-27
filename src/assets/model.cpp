@@ -237,12 +237,15 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         }
 
         if (material->guid != 0)
+        {
             pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(dataBuf.getPosition() + offsetof(materialref_t, guid)));
 
-        PakAsset_t* asset = pak->GetAssetByGuid(material->guid);
+            PakAsset_t* asset = pak->GetAssetByGuid(material->guid);
 
-        if (asset)
-            asset->AddRelation(assetEntries->size());
+            if (asset)
+                asset->AddRelation(assetEntries->size());
+        }
+
     }
 
     PakAsset_t asset;
