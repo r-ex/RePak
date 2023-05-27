@@ -3,10 +3,16 @@
 #include "utils/dxutils.h"
 #include "public/texture.h"
 
-
-void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, bool forceDisableStreaming)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
+
+    PakAsset_t* existingAsset = pak->GetAssetByGuid(RTech::GetAssetGUIDFromString(assetPath, true), nullptr, true);
+    if (existingAsset)
+    {
+        Warning("Tried to add texture asset '%s' twice.Skipping redefinition...\n", assetPath);
+        return;
+    }
 
     std::string filePath = pak->GetAssetPath() + assetPath + ".dds";
 
@@ -42,7 +48,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
         DDS_HEADER ddsh = input.read<DDS_HEADER>();
 
         // set streamable boolean based on if we have disabled it, also don't stream if we have only one mip
-        if (!(mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool()) && ddsh.dwMipMapCount > 1)
+        if (!forceDisableStreaming && ddsh.dwMipMapCount > 1)
             isStreamable = true;
 
         if (isStreamable && pak->GetVersion() >= 8)
@@ -116,7 +122,7 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     hdr->guid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
-    if (pak->IsFlagSet(PF_KEEP_DEV) || (mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool()))
+    if (pak->IsFlagSet(PF_KEEP_DEV))
     {
         CPakDataChunk& nameChunk = pak->CreateDataChunk(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
 
@@ -178,12 +184,12 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
         std::string starpakPath = pak->GetPrimaryStarpakPath();
 
         // check per texture just in case for whatever reason you want stuff in different starpaks (if it ever gets fixed).
-        if (mapEntry.HasMember("starpakPath"))
-            starpakPath = mapEntry["starpakPath"].GetString();
+        //if (mapEntry.HasMember("starpakPath"))
+        //    starpakPath = mapEntry["starpakPath"].GetString();
 
         if (starpakPath.length() == 0)
             Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\nto fix: add 'starpakPath' as an rpak-wide variable\nor: add 'starpakPath' as an asset specific variable\n", assetPath);
-       
+
         pak->AddStarpakReference(starpakPath);
 
         StreamableDataEntry de{ 0, sizeOfStreamedMips, (uint8_t*)streamedbuf };
@@ -206,4 +212,9 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     input.close();
     printf("\n");
+}
+
+void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+{
+    AddTextureAsset(pak, assetEntries, assetPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool());
 }

@@ -69,3 +69,15 @@ std::uint64_t RTech::GetAssetGUIDFromString(const char* str, bool forceRpakExten
 
 	return guid;
 }
+
+bool RTech::ParseGUIDFromString(const char* str, uint64_t* pGuid)
+{
+	uint64_t guid = 0;
+
+	bool found = sscanf_s(str, "0x%llX", &guid) || sscanf_s(str, "0x%llx", &guid);
+
+	if (found && pGuid != nullptr)
+		*pGuid = guid;
+
+	return found;
+}

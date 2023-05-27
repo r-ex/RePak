@@ -452,7 +452,7 @@ CPakDataChunk& CPakFile::CreateDataChunk(int size, int flags, int alignment)
 // purpose: 
 // returns: 
 //-----------------------------------------------------------------------------
-PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/)
+PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/, bool silent /*= false*/)
 {
 	uint32_t i = 0;
 	for (auto& it : m_Assets)
@@ -465,7 +465,8 @@ PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/)
 		}
 		i++;
 	}
-	Debug("failed to find asset with guid %llX\n", guid);
+	if(!silent)
+		Debug("failed to find asset with guid %llX\n", guid);
 	return nullptr;
 }
 

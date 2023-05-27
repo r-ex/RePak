@@ -634,6 +634,25 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 {
     Debug("Adding matl asset '%s'\n", assetPath);
 
+    if (mapEntry.HasMember("textures") && mapEntry["textures"].IsArray())
+    {
+        for (auto& it : mapEntry["textures"].GetArray())
+        {
+            if (!it.IsString())
+                continue;
+
+            if (it.GetStringLength() == 0)
+                continue;
+
+            // check if texture string is an asset guid (e.g., "0x5DCAT")
+            if (RTech::ParseGUIDFromString(it.GetString()))
+                continue;
+
+            AddTextureAsset(pak, assetEntries, it.GetString(), mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool());
+        }
+    }
+
+
     CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(MaterialHeaderV15), SF_HEAD, 16);
     MaterialHeaderV15* mtlHdr = reinterpret_cast<MaterialHeaderV15*>(hdrChunk.Data());
     std::string sAssetPath = std::string(assetPath);
@@ -816,7 +835,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
         {
             pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialHeaderV15, depthShadowMaterial) + (i*8)));
 
-            PakAsset_t* asset = pak->GetAssetByGuid(guid);
+            PakAsset_t* asset = pak->GetAssetByGuid(guid, nullptr, true);
 
             if (asset)
                 asset->AddRelation(assetEntries->size());
@@ -939,4 +958,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     asset.AddGuids(&guids);
 
     assetEntries->push_back(asset);
+
+    Log("\n");
 }
