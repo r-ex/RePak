@@ -1,5 +1,8 @@
 #pragma once
 
+// dds id
+#define DDS_MAGIC ((' '<<24)+('S'<<16)+('D'<<8)+'D') // dds 'magic', placed before 'dwSize'
+
 // pixelformat flags
 #define DDPF_ALPHAPIXELS 0x1
 #define DDPF_ALPHA 0x2
