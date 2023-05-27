@@ -201,7 +201,7 @@ public:
 	//_vseginfo_t CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
 	CPakVSegment& FindOrCreateSegment(int flags, int alignment);
 
-	PakAsset_t* GetAssetByGuid(uint64_t guid, uint32_t* idx = nullptr);
+	PakAsset_t* GetAssetByGuid(uint64_t guid, uint32_t* idx = nullptr, bool silent = false);
 
 	void BuildFromMap(const string& mapPath);
 
