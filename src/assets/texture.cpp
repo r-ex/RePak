@@ -332,7 +332,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
         if (compressionAlignment > 0)
             unalignedMipSize = IALIGN(unalignedMipSize, compressionAlignment);
 
-        printf("mipLevel %i, unaligned mip size %x, aligned mip size %x\n", mipLevel, unalignedMipSize, alignedMipSize);
+        //printf("mipLevel %i, unaligned mip size %x, aligned mip size %x\n", mipLevel, unalignedMipSize, alignedMipSize);
 
         textureMipOffset -= unalignedMipSize; // subtract first so our position is at the mips start
         input.seek(textureMipOffset, std::ios::beg); // seek to the mips position
