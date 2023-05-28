@@ -29,12 +29,12 @@ struct materialref_t
 struct MaterialTextureTransformMatrix
 {
 	// very similar to how it's done in normal source
-	float TextureScaleX = 1.0;
-	float TextureUnk = 0.0; // unsure what this does, appears to skew/rotate and scale the texture at the same time? weird.
-	float TextureRotation = -0.0; // counter clockwise, 0-1, exceeding one causes Weird Stuff to happen.
-	float TextureScaleY = 1.0;
-	float TextureTranslateX = 0.0;
-	float TextureTranslateY = 0.0;
+	float TextureScaleX = 1.f;
+	float TextureUnk = 0.f; // unsure what this does, appears to skew/rotate and scale the texture at the same time? weird.
+	float TextureRotation = -0.f; // counter clockwise, 0-1, exceeding one causes Weird Stuff to happen.
+	float TextureScaleY = 1.f;
+	float TextureTranslateX = 0.f;
+	float TextureTranslateY = 0.f;
 };
 
 // some repeated section at the end of the material header (CMaterialGlue) struct
@@ -147,6 +147,85 @@ struct MaterialHeaderV15
 	/* 0xF4 */ char pad_00F4[12];
 };
 
+// bunch this up into a struct for ease of access and readability
+struct uvTransformMatrix
+{
+	// this section is actually broken up into three parts.
+	// c_uvRotScaleX
+	float uvScaleX = 1.f;
+	float uvRotationX = 0.f; // rotation, but w e i r d.
+	// c_uvRotScaleY
+	float uvRotationY = -0.f; //counter clockwise, 0-1, exceeding one causes Weird Stuff to happen.
+	float uvScaleY = 1.f;
+	// c_uvTranslate
+	float uvTranslateX = 0.f;
+	float uvTranslateY = 0.f;
+
+	inline float* pFloat(int i) { return reinterpret_cast<float*>((float*)this + i); } // const ptr here mayhaps
+};
+
+// Titanfall 2 uses generally the same shader buffer so we can store the full struct
+struct MaterialShaderBufferV12
+{
+	// the assignment of these depends on the shader set, they work similarly to texturetransforms in normal source.
+	uvTransformMatrix c_uv1; // this is frequently used for detail textures.
+	uvTransformMatrix c_uv2;
+	uvTransformMatrix c_uv3;
+
+	// u v
+	float c_uvDistortionIntensity[2] = {0.f, 0.f}; // distortion on the { x, y } axis.
+	float c_uvDistortion2Intensity[2] = {0.f, 0.f}; // see above, but for a second distortion texture.
+
+	float c_fogColorFactor = 1.f;
+
+	float c_layerBlendRamp = 0.f; // blend intensity (assumed), likely the hardness/softness of the two textures meshing.
+
+	// r g b
+	float c_albedoTint[3] = {1.f, 1.f, 1.f}; // color of the albedo texture.
+	float c_opacity = 1.f; // untested.
+
+	float c_useAlphaModulateSpecular = 0.f;
+	float c_alphaEdgeFadeExponent = 0.f;
+	float c_alphaEdgeFadeInner = 0.f;
+	float c_alphaEdgeFadeOuter = 0.f;
+
+	float c_useAlphaModulateEmissive = 1.f; // almost always set to 1.
+	float c_emissiveEdgeFadeExponent = 0.f;
+	float c_emissiveEdgeFadeInner = 0.f;
+	float c_emissiveEdgeFadeOuter = 0.f;
+
+	float c_alphaDistanceFadeScale = 10000.f;
+	float c_alphaDistanceFadeBias = -0.f;
+	float c_alphaTestReference = 0.f;
+
+	float c_aspectRatioMulV = 1.778f; // this is equal to width divided by height see: 16/9 = 1.778~, not clear what it actually does.
+
+	// r g b
+	float c_emissiveTint[3] = {0.f, 0.f, 0.f}; // color of the emission, this is normally set to { 0.f, 0.f, 0.f } if you don't have an emission mask.
+
+	float c_shadowBias = 0.f;
+
+	float c_tsaaDepthAlphaThreshold = 0.f;
+	float c_tsaaMotionAlphaThreshold = 0.9f;
+	float c_tsaaMotionAlphaRamp = 10.f;
+	int c_tsaaResponsiveFlag = 0x0; // this is 0 or 1 I think.
+
+	float c_dofOpacityLuminanceScale = 1.f;
+
+	union {
+		int pad_CBufUberStatic[3] = { -1, -1, -1 }; // this is reserved space for special values, three sections by default.
+		float c_glitchStrength; // only used  sometimes. on 'Glitch' shadersets, if used 'pad_CBufUberStatic' is only two sections.
+	};
+	
+
+	float c_perfGloss = 1.f;
+
+	// r g b
+	float c_perfSpecColor[3] = {0.03f, 0.03f, 0.03f}; // specular color, consistent across most materials.
+
+	inline char* AsCharPtr() { return reinterpret_cast<char*>((char*)this); }
+};
+
 struct UnknownMaterialSectionV12
 {
 	// not sure how these work but 0xF0 -> 0x00 toggles them off and vice versa.
@@ -157,69 +236,12 @@ struct UnknownMaterialSectionV12
 	uint32_t UnkRenderDoF = 0xF0008286;
 	uint32_t UnkRenderUnknown = 0x00138286;
 
-	uint32_t UnkRenderFlags = 0x00000005; // this changes sometimes.
-	uint16_t VisibilityFlags = 0x0000; // different render settings, such as opacity and transparency.
-	uint16_t FaceDrawingFlags = 0x0006; // how the face is drawn, culling, wireframe, etc.
+	// for more details see the 'UnknownMaterialSectionV12' struct.
+	uint32_t unk = 0x5;
+	uint16_t depthStencilFlags = 0x0; // different render settings, such as opacity and transparency.
+	uint16_t rasterizerFlags = 0x6; // how the face is drawn, culling, wireframe, etc.
 
-	uint64_t Padding;
-
-	/*VisibilityFlags
-	0x0000 unknown
-	0x0001 inverted ignorez
-	0x0002 required when ignorez is enabled, why?
-	0x0004 unknown but used in most opaque materials, not required.
-	0x0008
-	0x0010 seems to toggle transparency, will draw opaque if inverted ignorez is enabled
-
-	0x0017 used for most normal materials.
-	0x0007 used for glass which makes me think 0x0010 is for translucency.
-	0x0013 is valid and looks like a normal opaque material.  */
-
-	/*FlagDrawingFlags Flags
-	0x0000 culling this is the same as 0x0002??? maybe the default?
-	0x0001 wireframe
-	0x0002 normal texture drawing aka culling (front side and backside drawn).
-	0x0004 inverted faces
-	0x0008 if this exists I can't tell what it is.
-
-	to get the equivalent to 'nocull' both 'culling' and 'inverted faces' need to be enabled, see: why most matls have '0x06'.  */
-
-};
-
-struct MaterialCPUDataV12
-{
-	MaterialTextureTransformMatrix DetailTransform[1]; // detail texture transform matrix
-	MaterialTextureTransformMatrix TextureTransform[2]; // 1st is presumably texture (unconfirmed), 2nd assumed to be texture.
-
-	// this might be another texture transform matrix.
-	float UnkFloat2[6] = {
-		0.0, 0.0, 0.0, 0.0, 1.0, 0.0
-	};
-
-	Color MainTint[1];
-
-	// these are vector4s for rgba I would think.
-	float UnkData1[12] = {
-
-		0.0, 0.0, 0.0, 0.0,
-		1.0, 0.0, 0.0, 0.0,
-		10000, -0.0, 0.0, 1.778
-
-	};
-
-	Color SelfillumTint[1];
-
-	// these are (more) vector4s for rgba I would think.
-	uint8_t UnkData2[12 * 4] = {
-	0x00, 0x00, 0x00, 0x00, 0x66, 0x66, 0x66, 0x3F,
-	0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x80, 0x3F, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0x00, 0x00, 0x80, 0x3F, 0x8F, 0xC2, 0xF5, 0x3C,
-	0x8F, 0xC2, 0xF5, 0x3C, 0x8F, 0xC2, 0xF5, 0x3C
-	};
-	// this is actually floats but i cba to type all this default data in 
-	// the last few are stated as 0xFFFFFFFF which converts to NaN in float, converting NaN to float does not give the same results, why?
+	uint64_t padding; // aligment to 16 bytes (probably)
 };
 
 struct MaterialHeaderV12
@@ -263,13 +285,12 @@ struct MaterialHeaderV12
 
 	uint32_t unk4 = 0; // this might actually be "Alignment"
 
-	uint32_t flags2 = 0;
-	uint32_t unk5 = 0x0; // seems mostly unchanged between all materials, including apex, however there are some edge cases where this is 0x00.
+	uint64_t flags2;
 
-	short width = 2048;
-	short height = 2048;
+	short width;
+	short height;
 
-	uint32_t unk6 = 0; // might be padding but could also be something else.
+	uint32_t unk6 = 0; // likely alignment
 
 	/* ImageFlags
 	0x050300 for loadscreens, 0x1D0300 for normal materials.
