@@ -95,7 +95,7 @@ public:
 
 	inline PagePtr_t GetPointer(int offset=0) { return { pageIndex, pageOffset + offset }; };
 
-	int GetIndex();
+	int GetIndex() { return pageIndex; };
 	char* Data() { return pData; };
 	int GetSize() { return size; };
 };
@@ -113,7 +113,6 @@ public:
 	void AddPointer(int pageIdx, int pageOffset);
 	void AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, PagePtr_t ptr);
 	void AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, int idx, int offset);
-	void AddRawDataBlock(PakRawDataBlock_t block);
 
 	void AddStarpakReference(const std::string& path);
 	void AddOptStarpakReference(const std::string& path);
@@ -188,7 +187,6 @@ public:
 	void WriteStarpakDataBlocks(BinaryIO& io);
 	void WriteStarpakSortsTable(BinaryIO& io);
 
-	void FreeRawDataBlocks();
 	void FreeStarpakDataBlocks();
 
 	// purpose: populates m_vFileRelations vector with combined asset relation data
@@ -229,6 +227,5 @@ private:
 	std::vector<PakGuidRefHdr_t> m_vGuidDescriptors;
 	std::vector<uint32_t> m_vFileRelations;
 
-	std::vector<PakRawDataBlock_t> m_vRawDataBlocks;
 	std::vector<StreamableDataEntry> m_vStarpakDataBlocks;
 };
