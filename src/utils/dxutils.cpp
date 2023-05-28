@@ -50,7 +50,7 @@ DXGI_FORMAT DXUtils::GetFormatFromHeader(const DDS_HEADER& ddsh)
 	case 116:
 		return DXGI_FORMAT_R32G32B32A32_FLOAT;
 	default:
-		return GetFormatFromHeader(ddsh);
+		return GetFormatFromHeaderEx(ddsh);
 	}
 }
 

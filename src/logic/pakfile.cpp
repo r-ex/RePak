@@ -59,14 +59,6 @@ void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, PagePtr_t 
 }
 
 //-----------------------------------------------------------------------------
-// purpose: adds raw data block
-//-----------------------------------------------------------------------------
-void CPakFile::AddRawDataBlock(PakRawDataBlock_t block)
-{
-	m_vRawDataBlocks.push_back(block);
-};
-
-//-----------------------------------------------------------------------------
 // purpose: adds new starpak file path to be used by the rpak
 //-----------------------------------------------------------------------------
 void CPakFile::AddStarpakReference(const std::string& path)
@@ -309,17 +301,6 @@ void CPakFile::WriteStarpakSortsTable(BinaryIO& out)
 		fe.m_nSize = it.m_nDataSize;
 
 		out.write(fe);
-	}
-}
-
-//-----------------------------------------------------------------------------
-// purpose: frees the raw data blocks memory
-//-----------------------------------------------------------------------------
-void CPakFile::FreeRawDataBlocks()
-{
-	for (auto& it : m_vRawDataBlocks)
-	{
-		delete[] it.pData;
 	}
 }
 
@@ -643,11 +624,6 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	WriteHeader(out); out.close();
 
 	Debug("written rpak file with size %lld\n", GetCompressedSize());
-
-
-	// free the memory
-	FreeRawDataBlocks();
-
 
 	// !TODO: we really should add support for multiple starpak files and share existing
 	// assets across rpaks. e.g. if the base 'pc_all.opt.starpak' already contains the
