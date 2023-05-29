@@ -27,6 +27,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
     std::string sAssetName = assetPath;
 
+    // used for creating data buffers
     struct {
         size_t staticSize;
         size_t streamedSize;
@@ -89,11 +90,11 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
         isStreamableOpt = false; // force false until we have proper optional starpaks
 
-        size_t mipOffset = isDX10 ? 0x94 : 0x80; // add heeder length
+        size_t mipOffset = isDX10 ? 0x94 : 0x80; // add header length
 
         for (unsigned int mipLevel = 0; mipLevel < ddsh.dwMipMapCount; mipLevel++)
         {
-
+            // subtracts 1 so skip mips w/h at 1, gets added back when setting in mipLevel_t
             int mipWidth = 0;
             if (hdr->width >> mipLevel > 1)
                 mipWidth = (hdr->width >> mipLevel) - 1;
@@ -112,11 +113,10 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
             mipLevel_t mipMap{ mipOffset, slicePitch, IALIGN16(slicePitch), mipWidth + 1, mipHeight + 1, mipLevel + 1 };
 
-            // respawn aligns all mips to 16 bytes
-            hdr->dataSize += IALIGN16(slicePitch);
-            mipOffset += slicePitch;
+            hdr->dataSize += IALIGN16(slicePitch); // all mips are aligned to 16 bytes within rpak/starpak
+            mipOffset += slicePitch; // add size for the next mip's offset
 
-            // check if we has streamble set to true, and if this mip should be streamed
+            // if opt streamable textures are enabled, check if this mip is supposed to be opt streamed
             if (isStreamableOpt && mipMap.mipSizeAligned >= MAX_STREAM_MIP_SIZE)
             {
                 mipSizes.streamedOptSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
@@ -128,7 +128,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
                 continue;
             }
 
-            // check if we has streamble set to true, and if this mip should be streamed
+            // if streamable textures are enabled, check if this mip is supposed to be streamed
             if (isStreamable && mipMap.mipSizeAligned >= MAX_PERM_MIP_SIZE)
             {
                 mipSizes.streamedSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
@@ -171,9 +171,11 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
     char* pCurrentPosStreamed = streamedbuf;
     char* pCurrentPosStreamedOpt = optstreamedbuf;
 
-    for (uint8_t mipLevel = 0; mipLevel < mips.size(); mipLevel++)
+    uint8_t mipLevel = mips.size();
+
+    while (mipLevel > 0)
     {
-        mipLevel_t& mipMap = mips.at((mips.size() - 1) - mipLevel);
+        mipLevel_t& mipMap = mips.at(mipLevel - 1);
 
         input.seek(mipMap.mipOffset, std::ios::beg);
 
@@ -197,6 +199,8 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
         default:
             break;
         }
+
+        mipLevel--;
     }
 
     // now time to add the higher level asset entry
