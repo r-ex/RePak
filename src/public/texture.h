@@ -3,6 +3,105 @@
 #define MAX_PERM_MIP_SIZE	0x10000 // "Any MIP below 64kiB is permanent."
 #define MAX_STREAM_MIP_SIZE	0x100000
 
+static const pair<uint8_t, uint8_t> s_pBytesPerPixel[] =
+{
+  { uint8_t(8u),  uint8_t(4u) },
+  { uint8_t(8u),  uint8_t(4u) },
+  { uint8_t(16u), uint8_t(4u) },
+  { uint8_t(16u), uint8_t(4u) },
+  { uint8_t(16u), uint8_t(4u) },
+  { uint8_t(16u), uint8_t(4u) },
+  { uint8_t(8u),  uint8_t(4u) },
+  { uint8_t(8u),  uint8_t(4u) },
+  { uint8_t(16u), uint8_t(4u) },
+  { uint8_t(16u), uint8_t(4u) },
+  { uint8_t(16u), uint8_t(4u) },
+  { uint8_t(16u), uint8_t(4u) },
+  { uint8_t(16u), uint8_t(4u) },
+  { uint8_t(16u), uint8_t(4u) },
+  { uint8_t(16u), uint8_t(1u) },
+  { uint8_t(16u), uint8_t(1u) },
+  { uint8_t(16u), uint8_t(1u) },
+  { uint8_t(12u), uint8_t(1u) },
+  { uint8_t(12u), uint8_t(1u) },
+  { uint8_t(12u), uint8_t(1u) },
+  { uint8_t(8u),  uint8_t(1u) },
+  { uint8_t(8u),  uint8_t(1u) },
+  { uint8_t(8u),  uint8_t(1u) },
+  { uint8_t(8u),  uint8_t(1u) },
+  { uint8_t(8u),  uint8_t(1u) },
+  { uint8_t(8u),  uint8_t(1u) },
+  { uint8_t(8u),  uint8_t(1u) },
+  { uint8_t(8u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(2u),  uint8_t(1u) },
+  { uint8_t(2u),  uint8_t(1u) },
+  { uint8_t(2u),  uint8_t(1u) },
+  { uint8_t(2u),  uint8_t(1u) },
+  { uint8_t(2u),  uint8_t(1u) },
+  { uint8_t(2u),  uint8_t(1u) },
+  { uint8_t(2u),  uint8_t(1u) },
+  { uint8_t(2u),  uint8_t(1u) },
+  { uint8_t(2u),  uint8_t(1u) },
+  { uint8_t(1u),  uint8_t(1u) },
+  { uint8_t(1u),  uint8_t(1u) },
+  { uint8_t(1u),  uint8_t(1u) },
+  { uint8_t(1u),  uint8_t(1u) },
+  { uint8_t(1u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(4u),  uint8_t(1u) },
+  { uint8_t(2u),  uint8_t(1u) },
+  { uint8_t(0u),  uint8_t(0u) },
+  { uint8_t(0u),  uint8_t(0u) },
+  { uint8_t(5u),  uint8_t(0u) },
+  { uint8_t(0u),  uint8_t(0u) },
+  { uint8_t(5u),  uint8_t(0u) },
+  { uint8_t(0u),  uint8_t(0u) },
+  { uint8_t(1u),  uint8_t(0u) },
+  { uint8_t(0u),  uint8_t(0u) },
+  { uint8_t(2u),  uint8_t(0u) },
+  { uint8_t(0u),  uint8_t(0u) },
+  { uint8_t(0u),  uint8_t(0u) },
+  { uint8_t(0u),  uint8_t(0u) },
+  { uint8_t(1u),  uint8_t(0u) },
+  { uint8_t(0u),  uint8_t(0u) }
+};
+
+enum mipType_t : unsigned char
+{
+	STATIC = 0,
+	STREAMED,
+	STREAMED_OPT,
+	_COUNT
+};
+
+struct mipLevel_t
+{
+	size_t mipOffset; // offset into dds
+	size_t mipSize;
+	size_t mipSizeAligned; // aligned for rpak
+	unsigned short mipWidth;
+	unsigned short mipHeight;
+	unsigned char mipLevel;
+	mipType_t mipType;
+};
+
 #pragma pack(push, 1)
 struct TextureHeader
 {
