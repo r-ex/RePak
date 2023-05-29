@@ -176,7 +176,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
     PakAsset_t* existingAsset = pak->GetAssetByGuid(RTech::GetAssetGUIDFromString(assetPath, true), nullptr, true);
     if (existingAsset)
     {
-        Warning("Tried to add texture asset '%s' twice.Skipping redefinition...\n", assetPath);
+        Warning("Tried to add texture asset '%s' twice. Skipping redefinition...\n", assetPath);
         return;
     }
 
