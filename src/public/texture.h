@@ -3,6 +3,105 @@
 #define MAX_PERM_MIP_SIZE	0x10000 // "Any MIP below 64kiB is permanent."
 #define MAX_STREAM_MIP_SIZE	0x100000
 
+static const std::pair<uint8_t, uint8_t> s_pBytesPerPixel[] =
+{
+  { 8u, 4u },
+  { 8u, 4u },
+  { 16u, 4u },
+  { 16u, 4u },
+  { 16u, 4u },
+  { 16u, 4u },
+  { 8u, 4u },
+  { 8u, 4u },
+  { 16u, 4u },
+  { 16u, 4u },
+  { 16u, 4u },
+  { 16u, 4u },
+  { 16u, 4u },
+  { 16u, 4u },
+  { 16u, 1u },
+  { 16u, 1u },
+  { 16u, 1u },
+  { 12u, 1u },
+  { 12u, 1u },
+  { 12u, 1u },
+  { 8u, 1u },
+  { 8u, 1u },
+  { 8u, 1u },
+  { 8u, 1u },
+  { 8u, 1u },
+  { 8u, 1u },
+  { 8u, 1u },
+  { 8u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 2u, 1u },
+  { 2u, 1u },
+  { 2u, 1u },
+  { 2u, 1u },
+  { 2u, 1u },
+  { 2u, 1u },
+  { 2u, 1u },
+  { 2u, 1u },
+  { 2u, 1u },
+  { 1u, 1u },
+  { 1u, 1u },
+  { 1u, 1u },
+  { 1u, 1u },
+  { 1u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 4u, 1u },
+  { 2u, 1u },
+  { 0u, 0u },
+  { 0u, 0u },
+  { 5u, 0u },
+  { 0u, 0u },
+  { 5u, 0u },
+  { 0u, 0u },
+  { 1u, 0u },
+  { 0u, 0u },
+  { 2u, 0u },
+  { 0u, 0u },
+  { 0u, 0u },
+  { 0u, 0u },
+  { 1u, 0u },
+  { 0u, 0u }
+};
+
+enum mipType_t : unsigned char
+{
+	STATIC = 0,
+	STREAMED,
+	STREAMED_OPT,
+	_COUNT
+};
+
+struct mipLevel_t
+{
+	size_t mipOffset; // offset into dds
+	size_t mipSize;
+	size_t mipSizeAligned; // aligned for rpak
+	unsigned short mipWidth;
+	unsigned short mipHeight;
+	unsigned char mipLevel;
+	mipType_t mipType;
+};
+
 #pragma pack(push, 1)
 struct TextureHeader
 {
