@@ -28,8 +28,7 @@ uintmax_t Utils::GetFileSize(const std::string& filename) // !TODO: change to 'f
 //-----------------------------------------------------------------------------
 size_t Utils::PadBuffer(char** buf, size_t size, size_t alignment)
 {
-	size_t extra = alignment - (size % alignment);
-	size_t newSize = size + extra;
+	size_t newSize = IALIGN(size, alignment);
 
 	char* newbuf = new char[newSize]{};
 	memcpy_s(newbuf, size, *buf, size);
