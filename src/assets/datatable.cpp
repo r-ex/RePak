@@ -121,50 +121,45 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
     // vectors
     std::vector<std::string> typeRow = doc.GetRow<std::string>(pHdr->numRows);
 
-    uint32_t colIdx = 0;
     // temp var used for storing the row offset for the next column in the loop below
     uint32_t tempColumnRowOffset = 0;
     uint32_t stringEntriesSize = 0;
     size_t rowDataPageSize = 0;
 
-    for (auto& it : doc.GetColumnNames())
+    for (uint32_t i = 0; i < pHdr->numColumns; ++i)
     {
+        std::string name = doc.GetColumnName(i);
+
         // copy the column name into the namebuf
-        snprintf(colNameBuf, it.length() + 1, "%s", it.c_str());
+        snprintf(colNameBuf, name.length() + 1, "%s", name.c_str());
 
-        dtblcoltype_t type = DataTable_GetTypeFromString(typeRow[colIdx]);
+        dtblcoltype_t type = DataTable_GetTypeFromString(typeRow[i]);
 
-        datacolumn_t& col = columns[colIdx];
+        datacolumn_t& col = columns[i];
 
         // get number of bytes that we've added in the name buf so far
         col.pName = colNameChunk.GetPointer(colNameBuf - colNameChunk.Data());
-        col.rowOffset = tempColumnRowOffset;
+        col.rowOffset = pHdr->rowStride;
         col.type = type;
 
         // register name pointer
-        pak->AddPointer(colChunk.GetPointer((sizeof(datacolumn_t) * colIdx) + offsetof(datacolumn_t, pName)));
+        pak->AddPointer(colChunk.GetPointer((sizeof(datacolumn_t) * i) + offsetof(datacolumn_t, pName)));
 
         if (DataTable_IsStringType(type))
         {
-            for (size_t i = 0; i < pHdr->numRows; ++i)
+            for (uint32_t j = 0; j < pHdr->numRows; ++j)
             {
-                // this can be std::string since we only really need to deal with the string types here
-                std::vector<std::string> row = doc.GetRow<std::string>(i);
+                // this can be std::string since we only deal with the string types here
+                std::vector<std::string> row = doc.GetRow<std::string>(j);
 
-                stringEntriesSize += row[colIdx].length() + 1;
+                stringEntriesSize += row[i].length() + 1;
             }
         }
 
-        tempColumnRowOffset += DataTable_GetEntrySize(type);
+        pHdr->rowStride += DataTable_GetEntrySize(type);
         rowDataPageSize += DataTable_GetEntrySize(type) * pHdr->numRows; // size of type * row count (excluding the type row)
         
-        colNameBuf += it.length() + 1;
-        colIdx++;
-
-        // if this is the final column, tempColumnRowOffset will now be equal to
-        // the full size of the row data
-        if (colIdx == pHdr->numColumns)
-            pHdr->rowStride = tempColumnRowOffset;
+        colNameBuf += name.length() + 1;
     }
 
     // page for Row Data
@@ -190,12 +185,11 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
             {
                 std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
 
-                std::transform(val.begin(), val.end(), val.begin(), ::tolower);
-
-                if (val == "true")
+                if (!_stricmp(val.c_str(), "true"))
                     valbuf.write<uint32_t>(true);
                 else
                     valbuf.write<uint32_t>(false);
+
                 break;
             }
             case dtblcoltype_t::Int:
