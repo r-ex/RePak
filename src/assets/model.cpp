@@ -14,7 +14,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     std::string sAssetName = assetPath;
 
-    CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(ModelHeader), SF_HEAD, 16);
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ModelHeader), SF_HEAD, 16);
     ModelHeader* pHdr = reinterpret_cast<ModelHeader*>(hdrChunk.Data());
 
     std::string rmdlFilePath = pak->GetAssetPath() + sAssetName;
@@ -22,9 +22,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     // VG is a "fake" file extension that's used to store model streaming data (name came from the magic '0tVG')
     // this data is a combined mutated version of the data from .vtx and .vvd in regular source models
     std::string vgFilePath = Utils::ChangeExtension(rmdlFilePath, "vg");
-
-    // fairly modified version of source .phy file data
-    std::string phyFilePath = Utils::ChangeExtension(rmdlFilePath, "phy"); // optional (not used by all models)
 
     // add required files
     REQUIRE_FILE(rmdlFilePath);
@@ -73,7 +70,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     if (mapEntry.HasMember("usePhysics") && mapEntry["usePhysics"].GetBool())
     {
         BinaryIO phyInput;
-        phyInput.open(phyFilePath, BinaryIOMode::Read);
+        phyInput.open(Utils::ChangeExtension(rmdlFilePath, "phy"), BinaryIOMode::Read);
 
         phyInput.seek(0, std::ios::end);
 
@@ -132,11 +129,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     //
     std::string starpakPath = pak->GetPrimaryStarpakPath();
 
-    if (mapEntry.HasMember("starpakPath") && mapEntry["starpakPath"].IsString())
-        starpakPath = mapEntry["starpakPath"].GetStdString();
-
     if (starpakPath.length() == 0)
-        Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\n-- to fix: add 'starpakPath' as an rpak-wide variable\n-- or: add 'starpakPath' as an asset specific variable\n", assetPath);
+        Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\n-- to fix: add 'starpakPath' as an rpak-wide variable\n", assetPath);
 
     pak->AddStarpakReference(starpakPath);
 
@@ -154,7 +148,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     int fileNameDataSize = sAssetName.length() + 1;
 
-    CPakDataChunk& dataChunk = pak->CreateDataChunk(mdlhdr.length + fileNameDataSize + extraDataSize, SF_CPU, 64);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(mdlhdr.length + fileNameDataSize + extraDataSize, SF_CPU, 64);
     char* pDataBuf = dataChunk.Data();
 
     // write the model file path into the data buffer
@@ -202,7 +196,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         pHdr->pAnimRigs = animRigsChunk.GetPointer();
         pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelHeader, pAnimRigs)));
 
-        for (int i = 0; i < pHdr->animRigCount; ++i)
+        for (uint32_t i = 0; i < pHdr->animRigCount; ++i)
         {
             pak->AddGuidDescriptor(&guids, animRigsChunk.GetPointer(sizeof(uint64_t) * i));
         }
@@ -245,7 +239,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
             if (asset)
                 asset->AddRelation(assetEntries->size());
         }
-
     }
 
     PakAsset_t asset;

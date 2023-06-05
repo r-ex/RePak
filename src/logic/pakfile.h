@@ -72,7 +72,7 @@ public:
 	PakPageHdr_t GetHeader() { return { segmentIndex, alignment, dataSize }; };
 	int GetSize() { return dataSize; };
 
-	CPakDataChunk& AddDataChunk(CPakDataChunk& chunk);
+	void AddDataChunk(CPakDataChunk& chunk);
 };
 
 class CPakDataChunk
@@ -195,7 +195,7 @@ public:
 
 	CPakPage& FindOrCreatePage(int flags, int alignment, int newDataSize);
 
-	CPakDataChunk& CreateDataChunk(int size, int flags, int alignment);
+	CPakDataChunk CreateDataChunk(int size, int flags, int alignment);
 	//_vseginfo_t CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
 	CPakVSegment& FindOrCreateSegment(int flags, int alignment);
 
@@ -204,7 +204,7 @@ public:
 	void BuildFromMap(const string& mapPath);
 
 private:
-	friend CPakDataChunk& CPakPage::AddDataChunk(CPakDataChunk& chunk);
+	friend void CPakPage::AddDataChunk(CPakDataChunk& chunk);
 
 	// next available starpak data offset
 	uint64_t m_NextStarpakOffset = 0x1000;

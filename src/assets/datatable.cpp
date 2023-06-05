@@ -8,7 +8,7 @@ static const std::unordered_map<std::string, dtblcoltype_t> s_DataTableColumnMap
     { "int",    dtblcoltype_t::Int },
     { "float",  dtblcoltype_t::Float },
     { "vector", dtblcoltype_t::Vector },
-    { "string", dtblcoltype_t::StringT },
+    { "string", dtblcoltype_t::String },
     { "asset",  dtblcoltype_t::Asset },
     { "assetnoprecache", dtblcoltype_t::AssetNoPrecache }
 };
@@ -27,7 +27,7 @@ dtblcoltype_t GetDataTableTypeFromString(std::string sType)
             return value;
     }
 
-    return dtblcoltype_t::StringT;
+    return dtblcoltype_t::String;
 }
 
 // get required data size to store the specified data type
@@ -41,7 +41,7 @@ uint8_t DataTable_GetEntrySize(dtblcoltype_t type)
         return sizeof(int32_t);
     case dtblcoltype_t::Vector:
         return sizeof(Vector3);
-    case dtblcoltype_t::StringT:
+    case dtblcoltype_t::String:
     case dtblcoltype_t::Asset:
     case dtblcoltype_t::AssetNoPrecache:
         // string types get placed elsewhere and are referenced with a pointer
@@ -53,451 +53,223 @@ uint8_t DataTable_GetEntrySize(dtblcoltype_t type)
     return 0; // should be unreachable
 }
 
+bool DataTable_IsStringType(dtblcoltype_t type)
+{
+    switch (type)
+    {
+    case dtblcoltype_t::String:
+    case dtblcoltype_t::Asset:
+    case dtblcoltype_t::AssetNoPrecache:
+        return true;
+    default:
+        return false;
+    }
+}
+
 void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
-    Warning("!!!! DTBL ASSET STUBBED !!!!\n");
-
-    //rapidcsv::Document doc(pak->GetAssetPath() + assetPath + ".csv");
-
-    //std::string sAssetName = assetPath;
-
-    //DataTableHeader* pHdr = new DataTableHeader();
-
-    //const size_t columnCount = doc.GetColumnCount();
-    //const size_t rowCount = doc.GetRowCount();
-
-    //if (columnCount < 0)
-    //{
-    //    Warning("Attempted to add dtbl asset with no columns. Skipping asset...\n");
-    //    return;
-    //}
-
-    //if (rowCount < 2)
-    //{
-    //    Warning("Attempted to add dtbl asset with invalid row count. Skipping asset...\nDTBL    - CSV must have a row of column types at the end of the table\n");
-    //    return;
-    //}
-
-    //size_t ColumnNameBufSize = 0;
-
-    /////-------------------------------------
-    //// figure out the required name buf size
-    //for (auto& it : doc.GetColumnNames())
-    //{
-    //    ColumnNameBufSize += it.length() + 1;
-    //}
-
-    /////-----------------------------------------
-    //// make a page for the sub header
-    ////
-    //// asset header
-    //_vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(DataTableHeader), SF_HEAD, 8);
-
-    //// DataTableColumn entries
-    //_vseginfo_t colhdrinfo = pak->CreateNewSegment(sizeof(DataTableColumn) * columnCount, SF_CPU, 8, 64);
-
-    //// column names
-    //_vseginfo_t nameseginfo = pak->CreateNewSegment(ColumnNameBufSize, SF_CPU, 8, 64);
-
-    //pHdr->ColumnCount = columnCount;
-    //pHdr->RowCount = rowCount - 1;
-    //pHdr->ColumnHeaderPtr = { colhdrinfo.index, 0 };
-
-    //pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeader, ColumnHeaderPtr));
-
-    //// allocate buffers for the loop
-    //char* namebuf = new char[ColumnNameBufSize];
-    //char* columnHeaderBuf = new char[sizeof(DataTableColumn) * columnCount];
-
-    //// vectors
-    //std::vector<std::string> typeRow = doc.GetRow<std::string>(rowCount - 1);
-    //std::vector<DataTableColumn> columns{};
-
-    //int nextNameOffset = 0;
-    //uint32_t colIdx = 0;
-    //// temp var used for storing the row offset for the next column in the loop below
-    //uint32_t tempColumnRowOffset = 0;
-    //uint32_t stringEntriesSize = 0;
-    //int rowDataPageSize = 0;
-
-    //for (auto& it : doc.GetColumnNames())
-    //{
-    //    // copy the column name into the namebuf
-    //    snprintf(namebuf + nextNameOffset, it.length() + 1, "%s", it.c_str());
-
-    //    dtblcoltype_t type = GetDataTableTypeFromString(typeRow[colIdx]);
-
-    //    DataTableColumn col{};
-
-    //    // set the page index and offset
-    //    col.NamePtr = { nameseginfo.index, nextNameOffset };
-    //    col.RowOffset = tempColumnRowOffset;
-    //    col.Type = type;
-
-    //    columns.emplace_back(col);
-
-    //    // register name pointer
-    //    pak->AddPointer(colhdrinfo.index, (sizeof(DataTableColumn) * colIdx) + offsetof(DataTableColumn, NamePtr));
-
-    //    if (type == dtblcoltype_t::StringT || type == dtblcoltype_t::Asset || type == dtblcoltype_t::AssetNoPrecache)
-    //    {
-    //        for (size_t i = 0; i < rowCount - 1; ++i)
-    //        {
-    //            // this can be std::string since we only really need to deal with the string types here
-    //            std::vector<std::string> row = doc.GetRow<std::string>(i);
-
-    //            stringEntriesSize += row[colIdx].length() + 1;
-    //        }
-    //    }
-
-    //    *(DataTableColumn*)(columnHeaderBuf + (sizeof(DataTableColumn) * colIdx)) = col;
-
-    //    tempColumnRowOffset += DataTable_GetEntrySize(type);
-    //    rowDataPageSize += DataTable_GetEntrySize(type) * (rowCount - 1); // size of type * row count (excluding the type row)
-    //    nextNameOffset += it.length() + 1;
-    //    colIdx++;
-
-    //    // if this is the final column, set the total row bytes to the column's row offset + the column's row size
-    //    // (effectively the full length of the row)
-    //    if (colIdx == columnCount)
-    //        pHdr->RowStride = tempColumnRowOffset;
-    //}
-
-    //// page for Row Data
-    //_vseginfo_t rawdatainfo = pak->CreateNewSegment(rowDataPageSize, SF_CPU, 8, 64);
-
-    //// page for string entries
-    //_vseginfo_t stringsinfo = pak->CreateNewSegment(stringEntriesSize, SF_CPU, 8, 64);
-
-    //char* rowDataBuf = new char[rowDataPageSize];
-
-    //char* stringEntryBuf = new char[stringEntriesSize];
-
-    //for (size_t rowIdx = 0; rowIdx < rowCount - 1; ++rowIdx)
-    //{
-    //    for (size_t colIdx = 0; colIdx < columnCount; ++colIdx)
-    //    {
-    //        DataTableColumn col = columns[colIdx];
-
-    //        char* EntryPtr = (rowDataBuf + (pHdr->RowStride * rowIdx) + col.RowOffset);
-
-    //        rmem valbuf(EntryPtr);
-
-    //        switch (col.Type)
-    //        {
-    //        case dtblcoltype_t::Bool:
-    //        {
-    //            std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
-
-    //            transform(val.begin(), val.end(), val.begin(), ::tolower);
-
-    //            if (val == "true")
-    //                valbuf.write<uint32_t>(true);
-    //            else
-    //                valbuf.write<uint32_t>(false);
-    //            break;
-    //        }
-    //        case dtblcoltype_t::Int:
-    //        {
-    //            uint32_t val = doc.GetCell<uint32_t>(colIdx, rowIdx);
-    //            valbuf.write(val);
-    //            break;
-    //        }
-    //        case dtblcoltype_t::Float:
-    //        {
-    //            float val = doc.GetCell<float>(colIdx, rowIdx);
-    //            valbuf.write(val);
-    //            break;
-    //        }
-    //        case dtblcoltype_t::Vector:
-    //        {
-    //            std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
-
-    //            std::smatch sm;
-
-    //            // get values from format "<x,y,z>"
-    //            std::regex_search(val, sm, s_VectorStringRegex);
-
-    //            // 0 - all
-    //            // 1 - x
-    //            // 2 - y
-    //            // 3 - z
-    //            if (sm.size() == 4)
-    //            {
-    //                float x = atof(sm[1].str().c_str());
-    //                float y = atof(sm[2].str().c_str());
-    //                float z = atof(sm[3].str().c_str());
-    //                Vector3 vec(x, y, z);
-
-    //                valbuf.write(vec);
-    //            }
-    //            break;
-    //        }
-    //        case dtblcoltype_t::StringT:
-    //        case dtblcoltype_t::Asset:
-    //        case dtblcoltype_t::AssetNoPrecache:
-    //        {
-    //            static uint32_t nextStringEntryOffset = 0;
-
-    //            PagePtr_t stringPtr{ stringsinfo.index, nextStringEntryOffset };
-
-    //            std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
-    //            snprintf(stringEntryBuf + nextStringEntryOffset, val.length() + 1, "%s", val.c_str());
-
-    //            valbuf.write(stringPtr);
-    //            pak->AddPointer(rawdatainfo.index, (pHdr->RowStride * rowIdx) + col.RowOffset);
-
-    //            nextStringEntryOffset += val.length() + 1;
-    //            break;
-    //        }
-    //        }
-    //    }
-    //}
-
-    //pHdr->RowHeaderPtr = { rawdatainfo.index, 0 };
-
-    //pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeader, RowHeaderPtr));
-
-    //// add raw data blocks
-    //pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
-    //pak->AddRawDataBlock({ colhdrinfo.index, colhdrinfo.size, (uint8_t*)columnHeaderBuf });
-    //pak->AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
-    //pak->AddRawDataBlock({ rawdatainfo.index, rowDataPageSize, (uint8_t*)rowDataBuf });
-    //pak->AddRawDataBlock({ stringsinfo.index, stringEntriesSize, (uint8_t*)stringEntryBuf });
-
-    //PakAsset_t asset;
-
-    //asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, rawdatainfo.index, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
-    //asset.version = DTBL_VERSION;
-
-    //asset.pageEnd = stringsinfo.index + 1; // number of the highest page that the asset references pageidx + 1
-    //asset.remainingDependencyCount = 1;
-
-    //assetEntries->push_back(asset);
+    Warning("!!!!! dtbl v0 is not implemented !!!!!\n");
 }
 
 // VERSION 8
 void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
-    Warning("!!!! DTBL ASSET STUBBED !!!!\n");
 
-    //rapidcsv::Document doc(pak->GetAssetPath() + assetPath + ".csv");
+    rapidcsv::Document doc(pak->GetAssetPath() + assetPath + ".csv");
 
-    //std::string sAssetName = assetPath;
+    std::string sAssetName = assetPath;
 
-    //DataTableHeader* pHdr = new DataTableHeader();
+    if (doc.GetColumnCount() < 0)
+    {
+        Warning("Attempted to add dtbl asset '%s' with no columns. Skipping asset...\n", assetPath);
+        return;
+    }
 
-    //const size_t columnCount = doc.GetColumnCount();
-    //const size_t rowCount = doc.GetRowCount();
+    if (doc.GetRowCount() < 2)
+    {
+        Warning("Attempted to add dtbl asset '%s' with invalid row count. Skipping asset...\nDTBL    - CSV must have a row of column types at the end of the table\n", assetPath);
+        return;
+    }
 
-    //if (columnCount < 0)
-    //{
-    //    Warning("Attempted to add dtbl asset with no columns. Skipping asset...\n");
-    //    return;
-    //}
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(datatable_t), SF_HEAD, 16);
+    datatable_t* pHdr = reinterpret_cast<datatable_t*>(hdrChunk.Data());
 
-    //if (rowCount < 2)
-    //{
-    //    Warning("Attempted to add dtbl asset with invalid row count. Skipping asset...\nDTBL    - CSV must have a row of column types at the end of the table\n");
-    //    return;
-    //}
+    pHdr->numColumns = doc.GetColumnCount();
+    pHdr->numRows = doc.GetRowCount()-1; // -1 because last row isnt added (used for type info)
 
-    //size_t ColumnNameBufSize = 0;
+    size_t colNameBufSize = 0;
+    // get required size to store all of the column names in a single buffer
+    for (auto& it : doc.GetColumnNames())
+    {
+        colNameBufSize += it.length() + 1;
+    }
 
-    /////-------------------------------------
-    //// figure out the required name buf size
-    //for (auto& it : doc.GetColumnNames())
-    //{
-    //    ColumnNameBufSize += it.length() + 1;
-    //}
+    CPakDataChunk colChunk = pak->CreateDataChunk(sizeof(datacolumn_t) * pHdr->numColumns, SF_CPU, 8);
 
-    /////-----------------------------------------
-    //// make a page for the sub header
-    ////
-    //// asset header
-    //_vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(DataTableHeader), SF_HEAD, 8);
+    // column names
+    CPakDataChunk colNameChunk = pak->CreateDataChunk(colNameBufSize, SF_CPU, 8);
 
-    //// DataTableColumn entries
-    //_vseginfo_t colhdrinfo = pak->CreateNewSegment(sizeof(DataTableColumn) * columnCount, SF_CPU, 8, 64);
+    pHdr->pColumns = colChunk.GetPointer(); // { colhdrinfo.index, 0 };
 
-    //// column names
-    //_vseginfo_t nameseginfo = pak->CreateNewSegment(ColumnNameBufSize, SF_CPU, 8, 64);
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_t, pColumns)));
 
-    //pHdr->ColumnCount = columnCount;
-    //pHdr->RowCount = rowCount - 1;
-    //pHdr->ColumnHeaderPtr = { colhdrinfo.index, 0 };
+    // get a copy of the pointer because then we can shift it for each name
+    char* colNameBuf = colNameChunk.Data();
 
-    //pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeader, ColumnHeaderPtr));
+    datacolumn_t* columns = reinterpret_cast<datacolumn_t*>(colChunk.Data());
 
-    //// allocate buffers for the loop
-    //char* namebuf = new char[ColumnNameBufSize];
-    //char* columnHeaderBuf = new char[sizeof(DataTableColumn) * columnCount];
+    // vectors
+    std::vector<std::string> typeRow = doc.GetRow<std::string>(pHdr->numRows);
 
-    //// vectors
-    //std::vector<std::string> typeRow = doc.GetRow<std::string>(rowCount - 1);
-    //std::vector<DataTableColumn> columns{};
+    uint32_t colIdx = 0;
+    // temp var used for storing the row offset for the next column in the loop below
+    uint32_t tempColumnRowOffset = 0;
+    uint32_t stringEntriesSize = 0;
+    size_t rowDataPageSize = 0;
 
-    //int nextNameOffset = 0;
-    //uint32_t colIdx = 0;
-    //// temp var used for storing the row offset for the next column in the loop below
-    //uint32_t tempColumnRowOffset = 0;
-    //uint32_t stringEntriesSize = 0;
-    //size_t rowDataPageSize = 0;
+    for (auto& it : doc.GetColumnNames())
+    {
+        // copy the column name into the namebuf
+        snprintf(colNameBuf, it.length() + 1, "%s", it.c_str());
 
-    //for (auto& it : doc.GetColumnNames())
-    //{
-    //    // copy the column name into the namebuf
-    //    snprintf(namebuf + nextNameOffset, it.length() + 1, "%s", it.c_str());
+        dtblcoltype_t type = GetDataTableTypeFromString(typeRow[colIdx]);
 
-    //    dtblcoltype_t type = GetDataTableTypeFromString(typeRow[colIdx]);
+        datacolumn_t& col = columns[colIdx];
 
-    //    DataTableColumn col{};
+        // get number of bytes that we've added in the name buf so far
+        col.pName = colNameChunk.GetPointer(colNameBuf - colNameChunk.Data());
+        col.rowOffset = tempColumnRowOffset;
+        col.type = type;
 
-    //    // set the page index and offset
-    //    col.NamePtr = { nameseginfo.index, nextNameOffset };
-    //    col.RowOffset = tempColumnRowOffset;
-    //    col.Type = type;
+        // register name pointer
+        pak->AddPointer(colChunk.GetPointer((sizeof(datacolumn_t) * colIdx) + offsetof(datacolumn_t, pName)));
 
-    //    columns.emplace_back(col);
+        if (DataTable_IsStringType(type))
+        {
+            for (size_t i = 0; i < pHdr->numRows; ++i)
+            {
+                // this can be std::string since we only really need to deal with the string types here
+                std::vector<std::string> row = doc.GetRow<std::string>(i);
 
-    //    // register name pointer
-    //    pak->AddPointer(colhdrinfo.index, (sizeof(DataTableColumn) * colIdx) + offsetof(DataTableColumn, NamePtr));
+                stringEntriesSize += row[colIdx].length() + 1;
+            }
+        }
 
-    //    if (type == dtblcoltype_t::StringT || type == dtblcoltype_t::Asset || type == dtblcoltype_t::AssetNoPrecache)
-    //    {
-    //        for (size_t i = 0; i < rowCount - 1; ++i)
-    //        {
-    //            // this can be std::string since we only really need to deal with the string types here
-    //            std::vector<std::string> row = doc.GetRow<std::string>(i);
+        tempColumnRowOffset += DataTable_GetEntrySize(type);
+        rowDataPageSize += DataTable_GetEntrySize(type) * pHdr->numRows; // size of type * row count (excluding the type row)
+        
+        colNameBuf += it.length() + 1;
+        colIdx++;
 
-    //            stringEntriesSize += row[colIdx].length() + 1;
-    //        }
-    //    }
+        // if this is the final column, tempColumnRowOffset will now be equal to
+        // the full size of the row data
+        if (colIdx == pHdr->numColumns)
+            pHdr->rowStride = tempColumnRowOffset;
+    }
 
-    //    *(DataTableColumn*)(columnHeaderBuf + (sizeof(DataTableColumn) * colIdx)) = col;
+    // page for Row Data
+    CPakDataChunk rowDataChunk = pak->CreateDataChunk(rowDataPageSize, SF_CPU, 8);
 
-    //    tempColumnRowOffset += DataTable_GetEntrySize(type);
-    //    rowDataPageSize += DataTable_GetEntrySize(type) * (rowCount - 1); // size of type * row count (excluding the type row)
-    //    nextNameOffset += it.length() + 1;
-    //    colIdx++;
+    // page for string entries
+    CPakDataChunk stringChunk = pak->CreateDataChunk(stringEntriesSize, SF_CPU, 8);
 
-    //    // if this is the final column, set the total row bytes to the column's row offset + the column's row size
-    //    // (effectively the full length of the row)
-    //    if (colIdx == columnCount)
-    //        pHdr->RowStride = tempColumnRowOffset;
-    //}
+    char* pStringBuf = stringChunk.Data();
 
-    //// page for Row Data
-    //_vseginfo_t rawdatainfo = pak->CreateNewSegment(rowDataPageSize, SF_CPU, 8, 64);
+    for (size_t rowIdx = 0; rowIdx < pHdr->numRows; ++rowIdx)
+    {
+        for (size_t colIdx = 0; colIdx < pHdr->numColumns; ++colIdx)
+        {
+            datacolumn_t& col = columns[colIdx];
 
-    //// page for string entries
-    //_vseginfo_t stringsinfo = pak->CreateNewSegment(stringEntriesSize, SF_CPU, 8, 64);
+            // get rmem instance for this cell's value buffer
+            rmem valbuf(rowDataChunk.Data() + (pHdr->rowStride * rowIdx) + col.rowOffset);
 
-    //char* rowDataBuf = new char[rowDataPageSize];
+            switch (col.type)
+            {
+            case dtblcoltype_t::Bool:
+            {
+                std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
 
-    //char* stringEntryBuf = new char[stringEntriesSize];
+                std::transform(val.begin(), val.end(), val.begin(), ::tolower);
 
-    //for (size_t rowIdx = 0; rowIdx < rowCount - 1; ++rowIdx)
-    //{
-    //    for (size_t colIdx = 0; colIdx < columnCount; ++colIdx)
-    //    {
-    //        DataTableColumn col = columns[colIdx];
+                if (val == "true")
+                    valbuf.write<uint32_t>(true);
+                else
+                    valbuf.write<uint32_t>(false);
+                break;
+            }
+            case dtblcoltype_t::Int:
+            {
+                uint32_t val = doc.GetCell<uint32_t>(colIdx, rowIdx);
+                valbuf.write(val);
+                break;
+            }
+            case dtblcoltype_t::Float:
+            {
+                float val = doc.GetCell<float>(colIdx, rowIdx);
+                valbuf.write(val);
+                break;
+            }
+            case dtblcoltype_t::Vector:
+            {
+                std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
 
-    //        char* EntryPtr = (rowDataBuf + (pHdr->RowStride * rowIdx) + col.RowOffset);
+                std::smatch sm;
 
-    //        rmem valbuf(EntryPtr);
+                // get values from format "<x,y,z>"
+                std::regex_search(val, sm, s_VectorStringRegex);
 
-    //        switch (col.Type)
-    //        {
-    //        case dtblcoltype_t::Bool:
-    //        {
-    //            std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
+                // 0 - all
+                // 1 - x
+                // 2 - y
+                // 3 - z
+                if (sm.size() == 4)
+                {
+                    float x = atof(sm[1].str().c_str());
+                    float y = atof(sm[2].str().c_str());
+                    float z = atof(sm[3].str().c_str());
+                    Vector3 vec(x, y, z);
 
-    //            transform(val.begin(), val.end(), val.begin(), ::tolower);
+                    valbuf.write(vec);
+                }
+                break;
+            }
+            case dtblcoltype_t::String:
+            case dtblcoltype_t::Asset:
+            case dtblcoltype_t::AssetNoPrecache:
+            {
+                static uint32_t nextStringEntryOffset = 0;
 
-    //            if (val == "true")
-    //                valbuf.write<uint32_t>(true);
-    //            else
-    //                valbuf.write<uint32_t>(false);
-    //            break;
-    //        }
-    //        case dtblcoltype_t::Int:
-    //        {
-    //            uint32_t val = doc.GetCell<uint32_t>(colIdx, rowIdx);
-    //            valbuf.write(val);
-    //            break;
-    //        }
-    //        case dtblcoltype_t::Float:
-    //        {
-    //            float val = doc.GetCell<float>(colIdx, rowIdx);
-    //            valbuf.write(val);
-    //            break;
-    //        }
-    //        case dtblcoltype_t::Vector:
-    //        {
-    //            std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
+                std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
+                snprintf(pStringBuf, val.length() + 1, "%s", val.c_str());
 
-    //            std::smatch sm;
+                valbuf.write(stringChunk.GetPointer(pStringBuf - stringChunk.Data()));
+                pak->AddPointer(rowDataChunk.GetPointer((pHdr->rowStride * rowIdx) + col.rowOffset));
 
-    //            // get values from format "<x,y,z>"
-    //            std::regex_search(val, sm, s_VectorStringRegex);
+                pStringBuf += val.length() + 1;
+                break;
+            }
+            }
+        }
+    }
 
-    //            // 0 - all
-    //            // 1 - x
-    //            // 2 - y
-    //            // 3 - z
-    //            if (sm.size() == 4)
-    //            {
-    //                float x = atof(sm[1].str().c_str());
-    //                float y = atof(sm[2].str().c_str());
-    //                float z = atof(sm[3].str().c_str());
-    //                Vector3 vec(x, y, z);
+    pHdr->pRows = rowDataChunk.GetPointer();
 
-    //                valbuf.write(vec);
-    //            }
-    //            break;
-    //        }
-    //        case dtblcoltype_t::StringT:
-    //        case dtblcoltype_t::Asset:
-    //        case dtblcoltype_t::AssetNoPrecache:
-    //        {
-    //            static uint32_t nextStringEntryOffset = 0;
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_t, pRows)));
 
-    //            PagePtr_t stringPtr{ stringsinfo.index, nextStringEntryOffset };
+    PakAsset_t asset;
 
-    //            std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
-    //            snprintf(stringEntryBuf + nextStringEntryOffset, val.length() + 1, "%s", val.c_str());
+    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), 
+        hdrChunk.GetPointer(), hdrChunk.GetSize(),
+        rowDataChunk.GetPointer(),
+        -1, -1, (std::uint32_t)AssetType::DTBL);
 
-    //            valbuf.write(stringPtr);
-    //            pak->AddPointer(rawdatainfo.index, (pHdr->RowStride * rowIdx) + col.RowOffset);
+    asset.version = DTBL_VERSION;
 
-    //            nextStringEntryOffset += val.length() + 1;
-    //            break;
-    //        }
-    //        }
-    //    }
-    //}
+    asset.pageEnd = pak->GetNumPages();
+    asset.remainingDependencyCount = 1; // asset only depends on itself
 
-    //pHdr->RowHeaderPtr = { rawdatainfo.index, 0 };
-
-    //pak->AddPointer(subhdrinfo.index, offsetof(DataTableHeader, RowHeaderPtr));
-
-    //// add raw data blocks
-    //pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)pHdr });
-    //pak->AddRawDataBlock({ colhdrinfo.index, colhdrinfo.size, (uint8_t*)columnHeaderBuf });
-    //pak->AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
-    //pak->AddRawDataBlock({ rawdatainfo.index, rawdatainfo.size, (uint8_t*)rowDataBuf });
-    //pak->AddRawDataBlock({ stringsinfo.index, stringsinfo.size, (uint8_t*)stringEntryBuf });
-
-    //PakAsset_t asset;
-
-    //asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, rawdatainfo.index, 0, -1, -1, (std::uint32_t)AssetType::DTBL);
-    //asset.version = DTBL_VERSION;
-
-    //asset.pageEnd = stringsinfo.index + 1; // number of the highest page that the asset references pageidx + 1
-    //asset.remainingDependencyCount = 1;
-
-    //assetEntries->push_back(asset);
+    assetEntries->push_back(asset);
 }

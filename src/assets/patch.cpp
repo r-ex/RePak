@@ -6,7 +6,7 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
 {
     Debug("Adding Ptch asset '%s'\n", assetPath);
 
-    CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(PtchHeader), SF_HEAD, 8);
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(PtchHeader), SF_HEAD, 8);
 
     PtchHeader* pHdr = reinterpret_cast<PtchHeader*>(hdrChunk.Data());
 
@@ -28,7 +28,7 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
 
     size_t dataPageSize = (sizeof(PagePtr_t) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + entryNamesSectionSize;
 
-    CPakDataChunk& dataChunk = pak->CreateDataChunk(dataPageSize, SF_CPU, 8);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(dataPageSize, SF_CPU, 8);
 
     int patchNumbersOffset = sizeof(PagePtr_t) * pHdr->patchedPakCount;
     pHdr->pPakNames = dataChunk.GetPointer();

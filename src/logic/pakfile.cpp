@@ -367,7 +367,7 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, int newDataSize)
 	return m_vPages.emplace_back(p);
 }
 
-CPakDataChunk& CPakPage::AddDataChunk(CPakDataChunk& chunk)
+void CPakPage::AddDataChunk(CPakDataChunk& chunk)
 {
 	chunk.pageIndex = GetIndex();
 	chunk.pageOffset = GetSize();
@@ -376,10 +376,10 @@ CPakDataChunk& CPakPage::AddDataChunk(CPakDataChunk& chunk)
 
 	this->pak->m_vVirtualSegments[this->segmentIndex].AddToDataSize(chunk.size);
 
-	return this->chunks.emplace_back(chunk);
+	this->chunks.emplace_back(chunk);
 }
 
-CPakDataChunk& CPakFile::CreateDataChunk(int size, int flags, int alignment)
+CPakDataChunk CPakFile::CreateDataChunk(int size, int flags, int alignment)
 {
 	CPakPage& page = FindOrCreatePage(flags, alignment, size);
 
@@ -388,8 +388,9 @@ CPakDataChunk& CPakFile::CreateDataChunk(int size, int flags, int alignment)
 	memset(buf, 0, size);
 
 	CPakDataChunk chunk{ size, buf };
+	page.AddDataChunk(chunk);
 
-	return page.AddDataChunk(chunk);
+	return chunk;
 }
 
 //-----------------------------------------------------------------------------

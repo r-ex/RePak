@@ -12,7 +12,7 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 {
     Debug("Adding aseq asset '%s'\n", assetPath);
 
-    CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(AnimSequenceHeader), SF_HEAD, 16);
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimSequenceHeader), SF_HEAD, 16);
     AnimSequenceHeader* aseqHeader = reinterpret_cast<AnimSequenceHeader*>(hdrChunk.Data());
 
     std::string rseqFilePath = pak->GetAssetPath() + assetPath;
@@ -23,7 +23,7 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
     int fileNameLength = IALIGN4(strlen(assetPath) + 1);
     int rseqFileSize = Utils::GetFileSize(rseqFilePath);
 
-    CPakDataChunk& dataChunk = pak->CreateDataChunk(IALIGN4(fileNameLength + rseqFileSize), SF_CPU, 64);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(IALIGN4(fileNameLength + rseqFileSize), SF_CPU, 64);
 
     // write the rseq file path into the data buffer
     snprintf(dataChunk.Data(), fileNameLength, "%s", assetPath);

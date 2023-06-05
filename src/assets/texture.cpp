@@ -19,7 +19,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
     if (!FILE_EXISTS(filePath))
         Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());
 
-    CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(TextureHeader), SF_HEAD, 16);
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(TextureHeader), SF_HEAD, 16);
 
     TextureHeader* hdr = reinterpret_cast<TextureHeader*>(hdrChunk.Data());
 
@@ -154,7 +154,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
     if (pak->IsFlagSet(PF_KEEP_DEV))
     {
-        CPakDataChunk& nameChunk = pak->CreateDataChunk(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
+        CPakDataChunk nameChunk = pak->CreateDataChunk(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
 
         sprintf_s(nameChunk.Data(), sAssetName.length() + 1, "%s", sAssetName.c_str());
 
@@ -163,7 +163,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
         pak->AddPointer(hdrChunk.GetPointer(offsetof(TextureHeader, pName)));
     }
 
-    CPakDataChunk& dataChunk = pak->CreateDataChunk(mipSizes.staticSize, SF_CPU | SF_TEMP, 16);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(mipSizes.staticSize, SF_CPU | SF_TEMP, 16);
     char* streamedbuf = new char[mipSizes.streamedSize];
     char* optstreamedbuf = new char[mipSizes.streamedOptSize];
 

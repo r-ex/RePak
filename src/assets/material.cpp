@@ -32,7 +32,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     }
 
 
-    CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(MaterialHeaderV12), SF_HEAD, 16);
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialHeaderV12), SF_HEAD, 16);
     MaterialHeaderV12* mtlHdr = reinterpret_cast<MaterialHeaderV12*>(hdrChunk.Data());
     std::string sAssetPath = std::string(assetPath);
 
@@ -119,7 +119,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     uint32_t dataBufSize = alignedPathSize + (textureRefSize * 2) + (surface.length() + 1);
 
     // asset data
-    CPakDataChunk& dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
 
     char* dataBuf = dataChunk.Data();
     char* tmp = dataBuf;
@@ -413,7 +413,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     }
 
 
-    CPakDataChunk& hdrChunk = pak->CreateDataChunk(sizeof(MaterialHeaderV15), SF_HEAD, 16);
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialHeaderV15), SF_HEAD, 16);
     MaterialHeaderV15* mtlHdr = reinterpret_cast<MaterialHeaderV15*>(hdrChunk.Data());
     std::string sAssetPath = std::string(assetPath);
 
@@ -460,7 +460,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     uint32_t dataBufSize = alignedPathSize + (textureRefSize * 2) + (surface.length() + 1);
 
     // asset data
-    CPakDataChunk& dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
 
     char* dataBuf = dataChunk.Data();
     char* tmp = dataBuf;
