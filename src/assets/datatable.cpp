@@ -2,7 +2,7 @@
 #include "assets.h"
 #include "public/table.h"
 
-static const std::unordered_map<std::string, dtblcoltype_t> s_DataTableColumnMap =
+static const std::unordered_map<std::string, dtblcoltype_t> s_dataTableColumnTypeMap =
 {
     { "bool",   dtblcoltype_t::Bool },
     { "int",    dtblcoltype_t::Int },
@@ -13,17 +13,15 @@ static const std::unordered_map<std::string, dtblcoltype_t> s_DataTableColumnMap
     { "assetnoprecache", dtblcoltype_t::AssetNoPrecache }
 };
 
-static const std::regex s_VectorStringRegex("<(.*),(.*),(.*)>");
-
 // gets enum value from type string
 // e.g. "string" to dtblcoltype::StringT
-dtblcoltype_t GetDataTableTypeFromString(std::string sType)
+dtblcoltype_t DataTable_GetTypeFromString(std::string sType)
 {
     std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
 
-    for (const auto& [key, value] : s_DataTableColumnMap) // Iterate through unordered_map.
+    for (const auto& [key, value] : s_dataTableColumnTypeMap) // get each element in the type map
     {
-        if (sType.compare(key) == 0) // Do they equal?
+        if (sType.compare(key) == 0) // are they equal?
             return value;
     }
 
@@ -134,7 +132,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
         // copy the column name into the namebuf
         snprintf(colNameBuf, it.length() + 1, "%s", it.c_str());
 
-        dtblcoltype_t type = GetDataTableTypeFromString(typeRow[colIdx]);
+        dtblcoltype_t type = DataTable_GetTypeFromString(typeRow[colIdx]);
 
         datacolumn_t& col = columns[colIdx];
 
@@ -219,7 +217,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
                 std::smatch sm;
 
                 // get values from format "<x,y,z>"
-                std::regex_search(val, sm, s_VectorStringRegex);
+                std::regex_search(val, sm, std::regex("<(.*),(.*),(.*)>"));
 
                 // 0 - all
                 // 1 - x
@@ -240,8 +238,6 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
             case dtblcoltype_t::Asset:
             case dtblcoltype_t::AssetNoPrecache:
             {
-                static uint32_t nextStringEntryOffset = 0;
-
                 std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
                 snprintf(pStringBuf, val.length() + 1, "%s", val.c_str());
 
