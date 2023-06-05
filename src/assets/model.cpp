@@ -10,7 +10,7 @@ void Assets::AddModelAsset_stub(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
 void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding mdl_ asset '%s'\n", assetPath);
+    Log("Adding mdl_ asset '%s'\n", assetPath);
 
     std::string sAssetName = assetPath;
 

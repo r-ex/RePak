@@ -4,7 +4,7 @@
 // only tested for apex, should be identical on tf2
 void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding Ptch asset '%s'\n", assetPath);
+    Log("Adding Ptch asset '%s'\n", assetPath);
 
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(PtchHeader), SF_HEAD, 8);
 

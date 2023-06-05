@@ -5,7 +5,7 @@
 // VERSION 7
 void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding matl asset '%s'\n", assetPath);
+    Log("Adding matl asset '%s'\n", assetPath);
 
     // we need to take better account of textures once asset caching becomes a thing
     short externalDependencyCount = 0;
@@ -392,7 +392,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 // VERSION 8
 void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding matl asset '%s'\n", assetPath);
+    Log("Adding matl asset '%s'\n", assetPath);
 
     if (mapEntry.HasMember("textures") && mapEntry["textures"].IsArray())
     {

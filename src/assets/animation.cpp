@@ -10,7 +10,7 @@ void Assets::AddAnimSeqAsset_stub(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
 void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding aseq asset '%s'\n", assetPath);
+    Log("Adding aseq asset '%s'\n", assetPath);
 
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimSequenceHeader), SF_HEAD, 16);
     AnimSequenceHeader* aseqHeader = reinterpret_cast<AnimSequenceHeader*>(hdrChunk.Data());
