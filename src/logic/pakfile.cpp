@@ -482,14 +482,12 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	fs::path inputPath(mapPath);
 	Utils::ParseMapDocument(doc, inputPath);
 
-
 	// determine pak name from control file
 	string pakName(DEFAULT_RPAK_NAME);
 	if (doc.HasMember("name") && doc["name"].IsString())
 		pakName = doc["name"].GetStdString();
 	else
 		Warning("Map file should have a 'name' field containing the string name for the new rpak, but none was provided. Using '%s.rpak'.\n", pakName.c_str());
-
 
 	// determine source asset directory from map file
 	if (!doc.HasMember("assetsDir"))
@@ -528,13 +526,11 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		Utils::AppendSlash(outputPath);
 	}
 
-
 	// determine pakfile version from map file
 	if (!doc.HasMember("version") || !doc["version"].IsInt())
 		Warning("[JSON] No version field provided; using '%d'.\n", GetVersion());
 	else
 		SetVersion(doc["version"].GetInt());
-
 
 	// print parsed settings
 	Log("build settings:\n");
@@ -544,21 +540,18 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	Log("outputDir: %s\n", outputPath.c_str());
 	Log("\n");
 
-
 	// create output directory if it does not exist yet.
 	fs::create_directories(outputPath);
 
 	// set build path
 	SetPath(outputPath + pakName + ".rpak");
 
-
-	// if keepDevOnly exists, is boolean, and is set to true
+	// should dev-only data be kept - e.g. texture asset names, uimg texture names
 	if (doc.HasMember("keepDevOnly") && doc["keepDevOnly"].IsBool() && doc["keepDevOnly"].GetBool())
 		AddFlags(PF_KEEP_DEV);
 
 	if (doc.HasMember("starpakPath") && doc["starpakPath"].IsString())
 		SetPrimaryStarpakPath(doc["starpakPath"].GetStdString());
-
 
 	// build asset data;
 	// loop through all assets defined in the map file
@@ -567,16 +560,13 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		AddAsset(file);
 	}
 
-
 	// create file stream from path created above
 	BinaryIO out;
 	out.open(GetPath(), BinaryIOMode::Write);
 
-
 	// write a placeholder header so we can come back and complete it
 	// when we have all the info
 	WriteHeader(out);
-
 
 	// write string vectors for starpak paths and get the total length of each vector
 	size_t starpakPathsLength = WriteStarpakPaths(out);
@@ -596,11 +586,9 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 	SetStarpakPathsSize(starpakPathsLength, optStarpakPathsLength);
 
-
 	// generate file relation vector to be written
 	GenerateFileRelations();
 	GenerateGuidData();
-
 
 	// write the non-paged data to the file first
 	WriteSegmentHeaders(out);
