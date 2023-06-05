@@ -12,7 +12,6 @@ enum class dtblcoltype_t : uint32_t
 	AssetNoPrecache
 };
 
-#pragma pack(push, 1)
 struct datacolumn_t
 {
 	PagePtr_t pName; // column name/heading
@@ -37,16 +36,5 @@ struct datatable_t
 	uint32_t pad;
 };
 
-#pragma pack(pop)
-
-struct DataTableColumnData
-{
-	dtblcoltype_t Type;
-	bool bValue = 0;
-	int iValue = -1;
-	float fValue = -1;
-	Vector3 vValue;
-	std::string stringValue;
-	std::string assetValue;
-	std::string assetNPValue;
-};
+static_assert(sizeof(datacolumn_t) == 16);
+static_assert(sizeof(datatable_t) == 40);
