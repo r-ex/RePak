@@ -111,7 +111,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
     // column names
     CPakDataChunk colNameChunk = pak->CreateDataChunk(colNameBufSize, SF_CPU, 8);
 
-    pHdr->pColumns = colChunk.GetPointer(); // { colhdrinfo.index, 0 };
+    pHdr->pColumns = colChunk.GetPointer();
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_t, pColumns)));
 
