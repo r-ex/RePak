@@ -66,14 +66,14 @@ bool DataTable_IsStringType(dtblcoltype_t type)
 
 void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding dtbl asset '%s'\n", assetPath);
+    Log("Adding dtbl asset '%s'\n", assetPath);
     Warning("!!!!! dtbl v0 is not implemented !!!!!\n");
 }
 
 // VERSION 8
 void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    Debug("Adding dtbl asset '%s'\n", assetPath);
+    Log("Adding dtbl asset '%s'\n", assetPath);
 
     REQUIRE_FILE(pak->GetAssetPath() + assetPath + ".csv");
 
