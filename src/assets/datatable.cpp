@@ -185,10 +185,12 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
             {
                 std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
 
-                if (!_stricmp(val.c_str(), "true"))
+                if (!_stricmp(val.c_str(), "true") || val == "1")
                     valbuf.write<uint32_t>(true);
-                else
+                else if (!_stricmp(val.c_str(), "false") || val == "0")
                     valbuf.write<uint32_t>(false);
+                else
+                    Error("Invalid bool value at cell (%i, %i) in datatable %s\n", colIdx, rowIdx, assetPath);
 
                 break;
             }
