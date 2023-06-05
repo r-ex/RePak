@@ -75,6 +75,8 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
 {
     Debug("Adding dtbl asset '%s'\n", assetPath);
 
+    REQUIRE_FILE(pak->GetAssetPath() + assetPath + ".csv");
+
     rapidcsv::Document doc(pak->GetAssetPath() + assetPath + ".csv");
 
     std::string sAssetName = assetPath;
