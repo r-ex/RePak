@@ -69,15 +69,6 @@ struct datatable_asset_t
 
 	datacolumn_t* pDataColums; // pointer to column data from data chunk
 
-	void SetDTBL_V0(datatable_v0_t* pDTBL)
-	{
-		pDTBL->numColumns = numColumns;
-		pDTBL->numRows = numRows;
-		pDTBL->pColumns = pColumns;
-		pDTBL->pRows = pRows;
-		pDTBL->rowStride = rowStride;
-	}
-
 	void WriteToBuffer(char* buf, int pakVersion)
 	{
 		if (pakVersion <= 7)
@@ -98,15 +89,6 @@ struct datatable_asset_t
 			dtbl->pRows = pRows;
 			dtbl->rowStride = rowStride;
 		}
-	}
-
-	void SetDTBL_V1(datatable_v1_t* pDTBL)
-	{
-		pDTBL->numColumns = numColumns;
-		pDTBL->numRows = numRows;
-		pDTBL->pColumns = pColumns;
-		pDTBL->pRows = pRows;
-		pDTBL->rowStride = rowStride;
 	}
 };
 
