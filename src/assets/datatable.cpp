@@ -120,6 +120,7 @@ void DataTable_SetupColumns(CPakFile* pak, CPakDataChunk& colChunk, datatable_as
     }
 }
 
+// fills a CPakDataChunk with row data from a provided csv
 void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChunk& stringChunk, datatable_asset_t* pHdrTemp, rapidcsv::Document& doc)
 {
     char* pStringBuf = stringChunk.Data();
@@ -202,6 +203,7 @@ void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChu
     }
 }
 
+// VERSION 7
 void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding dtbl asset '%s'\n", assetPath);
@@ -347,7 +349,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
         rowDataChunk.GetPointer(),
         -1, -1, (std::uint32_t)AssetType::DTBL);
 
-    asset.version = DTBL_VERSION;
+    asset.version = 1;
 
     asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = 1; // asset only depends on itself
