@@ -203,86 +203,8 @@ void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChu
     }
 }
 
-// VERSION 7
-void Assets::AddDataTableAsset_v0(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
-{
-    Log("Adding dtbl asset '%s'\n", assetPath);
-
-    REQUIRE_FILE(pak->GetAssetPath() + assetPath + ".csv");
-
-    rapidcsv::Document doc(pak->GetAssetPath() + assetPath + ".csv");
-
-    std::string sAssetName = assetPath;
-
-    if (doc.GetColumnCount() < 0)
-    {
-        Warning("Attempted to add dtbl asset '%s' with no columns. Skipping asset...\n", assetPath);
-        return;
-    }
-
-    if (doc.GetRowCount() < 2)
-    {
-        Warning("Attempted to add dtbl asset '%s' with invalid row count. Skipping asset...\nDTBL    - CSV must have a row of column types at the end of the table\n", assetPath);
-        return;
-    }
-
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(datatable_v0_t), SF_HEAD, 16);
-    datatable_v0_t* pHdr = reinterpret_cast<datatable_v0_t*>(hdrChunk.Data());
-    datatable_asset_t* pHdrTemp = new datatable_asset_t{}; // temp header that we store values in, this is for sharing funcs across versions
-
-    pHdrTemp->numColumns = doc.GetColumnCount();
-    pHdrTemp->numRows = doc.GetRowCount() - 1; // -1 because last row isnt added (used for type info)
-    pHdrTemp->assetPath = assetPath;
-
-    // create column chunk
-    CPakDataChunk colChunk = pak->CreateDataChunk(sizeof(datacolumn_t) * pHdrTemp->numColumns, SF_CPU, 8);
-
-    // colums from data chunk
-    pHdrTemp->pDataColums = reinterpret_cast<datacolumn_t*>(colChunk.Data());
-
-    // setup data in column data chunk
-    DataTable_SetupColumns(pak, colChunk, pHdrTemp, doc);
-
-    // setup column page ptr
-    pHdrTemp->pColumns = colChunk.GetPointer();
-
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_asset_t, pColumns)));
-
-    // page for Row Data
-    CPakDataChunk rowDataChunk = pak->CreateDataChunk(pHdrTemp->rowDataPageSize, SF_CPU, 8);
-
-    // page for string entries
-    CPakDataChunk stringChunk = pak->CreateDataChunk(pHdrTemp->stringEntriesSize, SF_CPU, 8);
-
-    // setup row data chunks
-    DataTable_SetupRows(pak, rowDataChunk, stringChunk, pHdrTemp, doc);
-
-    // setup row page ptr
-    pHdrTemp->pRows = rowDataChunk.GetPointer();
-
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_asset_t, pRows)));
-
-    pHdrTemp->SetDTBL_V0(pHdr);
-
-    PakAsset_t asset;
-
-    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()),
-        hdrChunk.GetPointer(), hdrChunk.GetSize(),
-        rowDataChunk.GetPointer(),
-        -1, -1, (std::uint32_t)AssetType::DTBL);
-
-    asset.version = 0; // really need defines for R2 assets
-
-    asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = 1; // asset only depends on itself
-
-    assetEntries->push_back(asset);
-
-    delete pHdrTemp;
-}
-
 // VERSION 8
-void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding dtbl asset '%s'\n", assetPath);
 
@@ -304,8 +226,12 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
         return;
     }
 
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(datatable_v1_t), SF_HEAD, 16);
-    datatable_v1_t* pHdr = reinterpret_cast<datatable_v1_t*>(hdrChunk.Data());
+    CPakDataChunk hdrChunk;
+    if (pak->GetVersion() <= 7)
+        hdrChunk = pak->CreateDataChunk(sizeof(datatable_v0_t), SF_HEAD, 16);
+    else
+        hdrChunk = pak->CreateDataChunk(sizeof(datatable_v1_t), SF_HEAD, 16);
+
     datatable_asset_t* pHdrTemp = new datatable_asset_t{}; // temp header that we store values in, this is for sharing funcs across versions
 
     pHdrTemp->numColumns = doc.GetColumnCount();
@@ -340,7 +266,7 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_asset_t, pRows)));
 
-    pHdrTemp->SetDTBL_V1(pHdr);
+    pHdrTemp->WriteToBuffer(hdrChunk.Data(), pak->GetVersion());
 
     PakAsset_t asset;
 
@@ -349,7 +275,9 @@ void Assets::AddDataTableAsset_v1(CPakFile* pak, std::vector<PakAsset_t>* assetE
         rowDataChunk.GetPointer(),
         -1, -1, (std::uint32_t)AssetType::DTBL);
 
-    asset.version = 1;
+    // rpak v7: v0
+    // rpak v8: v1
+    asset.version = pak->GetVersion() <= 7 ? 0 : 1;
 
     asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = 1; // asset only depends on itself

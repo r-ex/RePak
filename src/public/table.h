@@ -78,6 +78,28 @@ struct datatable_asset_t
 		pDTBL->rowStride = rowStride;
 	}
 
+	void WriteToBuffer(char* buf, int pakVersion)
+	{
+		if (pakVersion <= 7)
+		{
+			datatable_v0_t* dtbl = reinterpret_cast<datatable_v0_t*>(buf);
+			dtbl->numColumns = numColumns;
+			dtbl->numRows = numRows;
+			dtbl->pColumns = pColumns;
+			dtbl->pRows = pRows;
+			dtbl->rowStride = rowStride;
+		}
+		else
+		{
+			datatable_v1_t* dtbl = reinterpret_cast<datatable_v1_t*>(buf);
+			dtbl->numColumns = numColumns;
+			dtbl->numRows = numRows;
+			dtbl->pColumns = pColumns;
+			dtbl->pRows = pRows;
+			dtbl->rowStride = rowStride;
+		}
+	}
+
 	void SetDTBL_V1(datatable_v1_t* pDTBL)
 	{
 		pDTBL->numColumns = numColumns;
