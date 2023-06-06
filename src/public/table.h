@@ -19,7 +19,19 @@ struct datacolumn_t
 	uint32_t rowOffset; // offset in row data to this column's value
 };
 
-struct datatable_t
+struct datatable_v0_t
+{
+	uint32_t numColumns;
+	uint32_t numRows;
+
+	PagePtr_t pColumns;
+	PagePtr_t pRows;
+
+	uint32_t rowStride;	// Number of bytes per row
+	uint32_t pad; // alignment
+};
+
+struct datatable_v1_t
 {
 	uint32_t numColumns;
 	uint32_t numRows;
@@ -36,5 +48,46 @@ struct datatable_t
 	uint32_t pad;
 };
 
+struct datatable_asset_t
+{
+	uint32_t numColumns;
+	uint32_t numRows;
+
+	// !!!! DO NOT CHANGE THE POSITION OF THESE !!!!
+	// !!!!			IT WILL CAUSE ISSSUES		!!!!
+	// we are lucky and can cheat!!
+	PagePtr_t pColumns;
+	PagePtr_t pRows;
+
+	uint32_t rowStride;	// Number of bytes per row
+
+	const char* assetPath; // assets path on disk
+
+	// previously func vars
+	size_t stringEntriesSize;
+	size_t rowDataPageSize;
+
+	datacolumn_t* pDataColums; // pointer to column data from data chunk
+
+	void SetDTBL_V0(datatable_v0_t* pDTBL)
+	{
+		pDTBL->numColumns = numColumns;
+		pDTBL->numRows = numRows;
+		pDTBL->pColumns = pColumns;
+		pDTBL->pRows = pRows;
+		pDTBL->rowStride = rowStride;
+	}
+
+	void SetDTBL_V1(datatable_v1_t* pDTBL)
+	{
+		pDTBL->numColumns = numColumns;
+		pDTBL->numRows = numRows;
+		pDTBL->pColumns = pColumns;
+		pDTBL->pRows = pRows;
+		pDTBL->rowStride = rowStride;
+	}
+};
+
 static_assert(sizeof(datacolumn_t) == 16);
-static_assert(sizeof(datatable_t) == 40);
+static_assert(sizeof(datatable_v0_t) == 32);
+static_assert(sizeof(datatable_v1_t) == 40);
