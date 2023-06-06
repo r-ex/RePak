@@ -103,11 +103,9 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
 
     // ui image/texture info
     CPakDataChunk textureInfoChunk = pak->CreateDataChunk(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
-    //_vseginfo_t tiseginfo = pak->CreateNewSegment(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
 
     // cpu data
     CPakDataChunk dataChunk = pak->CreateDataChunk(nTexturesCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
-    //_vseginfo_t dataseginfo = pak->CreateNewSegment(nTexturesCount * 0x10, SF_CPU | SF_TEMP | SF_CLIENT, 4);
     
     // register our descriptors so they get converted properly
     pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageHeader, pTextureOffsets)));
