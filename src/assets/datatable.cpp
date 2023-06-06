@@ -232,41 +232,41 @@ void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntr
     else
         hdrChunk = pak->CreateDataChunk(sizeof(datatable_v1_t), SF_HEAD, 16);
 
-    datatable_asset_t* pHdrTemp = new datatable_asset_t{}; // temp header that we store values in, this is for sharing funcs across versions
+    datatable_asset_t* pHdr = new datatable_asset_t{}; // temp header that we store values in, this is for sharing funcs across versions
 
-    pHdrTemp->numColumns = doc.GetColumnCount();
-    pHdrTemp->numRows = doc.GetRowCount()-1; // -1 because last row isnt added (used for type info)
-    pHdrTemp->assetPath = assetPath;
+    pHdr->numColumns = doc.GetColumnCount();
+    pHdr->numRows = doc.GetRowCount()-1; // -1 because last row isnt added (used for type info)
+    pHdr->assetPath = assetPath;
 
     // create column chunk
-    CPakDataChunk colChunk = pak->CreateDataChunk(sizeof(datacolumn_t) * pHdrTemp->numColumns, SF_CPU, 8);
+    CPakDataChunk colChunk = pak->CreateDataChunk(sizeof(datacolumn_t) * pHdr->numColumns, SF_CPU, 8);
     
     // colums from data chunk
-    pHdrTemp->pDataColums = reinterpret_cast<datacolumn_t*>(colChunk.Data());
+    pHdr->pDataColums = reinterpret_cast<datacolumn_t*>(colChunk.Data());
 
     // setup data in column data chunk
-    DataTable_SetupColumns(pak, colChunk, pHdrTemp, doc);
+    DataTable_SetupColumns(pak, colChunk, pHdr, doc);
 
     // setup column page ptr
-    pHdrTemp->pColumns = colChunk.GetPointer();
+    pHdr->pColumns = colChunk.GetPointer();
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_asset_t, pColumns)));
 
     // page for Row Data
-    CPakDataChunk rowDataChunk = pak->CreateDataChunk(pHdrTemp->rowDataPageSize, SF_CPU, 8);
+    CPakDataChunk rowDataChunk = pak->CreateDataChunk(pHdr->rowDataPageSize, SF_CPU, 8);
 
     // page for string entries
-    CPakDataChunk stringChunk = pak->CreateDataChunk(pHdrTemp->stringEntriesSize, SF_CPU, 8);
+    CPakDataChunk stringChunk = pak->CreateDataChunk(pHdr->stringEntriesSize, SF_CPU, 8);
 
     // setup row data chunks
-    DataTable_SetupRows(pak, rowDataChunk, stringChunk, pHdrTemp, doc);
+    DataTable_SetupRows(pak, rowDataChunk, stringChunk, pHdr, doc);
 
     // setup row page ptr
-    pHdrTemp->pRows = rowDataChunk.GetPointer();
+    pHdr->pRows = rowDataChunk.GetPointer();
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_asset_t, pRows)));
 
-    pHdrTemp->WriteToBuffer(hdrChunk.Data(), pak->GetVersion());
+    pHdr->WriteToBuffer(hdrChunk.Data(), pak->GetVersion());
 
     PakAsset_t asset;
 
@@ -284,5 +284,5 @@ void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntr
 
     assetEntries->push_back(asset);
 
-    delete pHdrTemp;
+    delete pHdr;
 }
