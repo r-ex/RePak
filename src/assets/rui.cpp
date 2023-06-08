@@ -76,9 +76,9 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     atlas.close();
 
 
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(UIImageHeader), SF_HEAD | SF_CLIENT, 8);
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(UIImageAtlasHeader_t), SF_HEAD | SF_CLIENT, 8);
 
-    UIImageHeader* pHdr = reinterpret_cast<UIImageHeader*>(hdrChunk.Data());
+    UIImageAtlasHeader_t* pHdr = reinterpret_cast<UIImageAtlasHeader_t*>(hdrChunk.Data());
 
     pHdr->width = ddsh.dwWidth;
     pHdr->height = ddsh.dwHeight;
@@ -108,9 +108,9 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     CPakDataChunk dataChunk = pak->CreateDataChunk(nTexturesCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
     
     // register our descriptors so they get converted properly
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageHeader, pTextureOffsets)));
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageHeader, pTextureDimensions)));
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageHeader, pTextureHashes)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureOffsets)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureDimensions)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureHashes)));
 
     rmem tiBuf(textureInfoChunk.Data());
 
@@ -194,7 +194,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     asset.remainingDependencyCount = 2;
 
     // this asset only has one guid reference so im just gonna do it here
-    asset.AddGuid(hdrChunk.GetPointer(offsetof(UIImageHeader, atlasGUID)));
+    asset.AddGuid(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, atlasGUID)));
 
     // add the asset entry
     assetEntries->push_back(asset);

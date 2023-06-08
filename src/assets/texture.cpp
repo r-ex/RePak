@@ -19,9 +19,9 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
     if (!FILE_EXISTS(filePath))
         Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());
 
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(TextureHeader), SF_HEAD, 16);
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(TextureAssetHeader_t), SF_HEAD, 16);
 
-    TextureHeader* hdr = reinterpret_cast<TextureHeader*>(hdrChunk.Data());
+    TextureAssetHeader_t* hdr = reinterpret_cast<TextureAssetHeader_t*>(hdrChunk.Data());
 
     BinaryIO input(filePath, BinaryIOMode::Read);
 
@@ -160,7 +160,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
         hdr->pName = nameChunk.GetPointer();
 
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(TextureHeader, pName)));
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(TextureAssetHeader_t, pName)));
     }
 
     CPakDataChunk dataChunk = pak->CreateDataChunk(mipSizes.staticSize, SF_CPU | SF_TEMP, 16);

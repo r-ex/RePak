@@ -6,9 +6,9 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
 {
     Log("Adding Ptch asset '%s'\n", assetPath);
 
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(PtchHeader), SF_HEAD, 8);
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(PatchAssetHeader_t), SF_HEAD, 8);
 
-    PtchHeader* pHdr = reinterpret_cast<PtchHeader*>(hdrChunk.Data());
+    PatchAssetHeader_t* pHdr = reinterpret_cast<PatchAssetHeader_t*>(hdrChunk.Data());
 
     pHdr->unknown_1 = 0xFF;
     pHdr->patchedPakCount = mapEntry["entries"].GetArray().Size();
@@ -34,8 +34,8 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
     pHdr->pPakNames = dataChunk.GetPointer();
     pHdr->pPakPatchNums = dataChunk.GetPointer(patchNumbersOffset);
 
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(PtchHeader, pPakNames)));
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(PtchHeader, pPakPatchNums)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(PatchAssetHeader_t, pPakNames)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(PatchAssetHeader_t, pPakPatchNums)));
 
     rmem dataBuf(dataChunk.Data());
 

@@ -14,8 +14,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     std::string sAssetName = assetPath;
 
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ModelHeader), SF_HEAD, 16);
-    ModelHeader* pHdr = reinterpret_cast<ModelHeader*>(hdrChunk.Data());
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ModelAssetHeader_t), SF_HEAD, 16);
+    ModelAssetHeader_t* pHdr = reinterpret_cast<ModelAssetHeader_t*>(hdrChunk.Data());
 
     std::string rmdlFilePath = pak->GetAssetPath() + sAssetName;
 
@@ -44,17 +44,15 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     BinaryIO vgInput;
     vgInput.open(vgFilePath, BinaryIOMode::Read);
 
-    BasicRMDLVGHeader bvgh = vgInput.read<BasicRMDLVGHeader>();
+    int magic = vgInput.read<int>();
+    if (magic != 0x47567430)
+        Error("invalid vg file magic for model asset '%s'. expected %x, found %x\n", sAssetName.c_str(), 0x47567430,magic);
 
-    if (bvgh.magic != 0x47567430)
-        Error("invalid vg file magic for model asset '%s'. expected %x, found %x\n", sAssetName.c_str(), 0x47567430, bvgh.magic);
+    int version = vgInput.read<int>();
+    if (version != 1)
+        Error("invalid vg version for model asset '%s'. expected %i, found %i\n", sAssetName.c_str(), 1, version);
 
-    if (bvgh.version != 1)
-        Error("invalid vg version for model asset '%s'. expected %i, found %i\n", sAssetName.c_str(), 1, bvgh.version);
-
-    vgInput.seek(0, std::ios::end);
-
-    uint32_t vgFileSize = vgInput.tell();
+    size_t vgFileSize = Utils::GetFileSize(vgFilePath);
     char* pVGBuf = new char[vgFileSize];
 
     vgInput.seek(0);
@@ -174,13 +172,13 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     pHdr->pRMDL = dataChunk.GetPointer();
 
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelHeader, pRMDL)));
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelHeader, pName)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pRMDL)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pName)));
 
     if (mdlhdr.flags & 0x10) // STATIC_PROP
     {
         pHdr->pStaticPropVtxCache = dataChunk.GetPointer(fileNameDataSize + mdlhdr.length);
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelHeader, pStaticPropVtxCache)));
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pStaticPropVtxCache)));
     }
 
     std::vector<PakGuidRefHdr_t> guids{};
@@ -188,13 +186,13 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     if (phyFileSize > 0)
     {
         pHdr->pPhyData = phyChunk.GetPointer();
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelHeader, pPhyData)));
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pPhyData)));
     }
 
     if (mapEntry.HasMember("animrigs"))
     {
         pHdr->pAnimRigs = animRigsChunk.GetPointer();
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelHeader, pAnimRigs)));
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pAnimRigs)));
 
         for (uint32_t i = 0; i < pHdr->animRigCount; ++i)
         {

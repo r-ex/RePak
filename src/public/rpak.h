@@ -252,7 +252,7 @@ struct StreamableDataEntry
 //
 #pragma pack(push, 1)
 
-struct PtchHeader
+struct PatchAssetHeader_t
 {
 	uint32_t unknown_1 = 255; // always FF 00 00 00?
 	uint32_t patchedPakCount = 0;

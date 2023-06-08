@@ -1,68 +1,6 @@
 #include "pch.h"
 #include "assets.h"
-#include "public/table.h"
-
-static const std::unordered_map<std::string, dtblcoltype_t> s_dataTableColumnTypeMap =
-{
-    { "bool",   dtblcoltype_t::Bool },
-    { "int",    dtblcoltype_t::Int },
-    { "float",  dtblcoltype_t::Float },
-    { "vector", dtblcoltype_t::Vector },
-    { "string", dtblcoltype_t::String },
-    { "asset",  dtblcoltype_t::Asset },
-    { "assetnoprecache", dtblcoltype_t::AssetNoPrecache }
-};
-
-// gets enum value from type string
-// e.g. "string" to dtblcoltype::StringT
-dtblcoltype_t DataTable_GetTypeFromString(std::string sType)
-{
-    std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
-
-    for (const auto& [key, value] : s_dataTableColumnTypeMap) // get each element in the type map
-    {
-        if (sType.compare(key) == 0) // are they equal?
-            return value;
-    }
-
-    return dtblcoltype_t::String;
-}
-
-// get required data size to store the specified data type
-uint8_t DataTable_GetEntrySize(dtblcoltype_t type)
-{
-    switch (type)
-    {
-    case dtblcoltype_t::Bool:
-    case dtblcoltype_t::Int:
-    case dtblcoltype_t::Float:
-        return sizeof(int32_t);
-    case dtblcoltype_t::Vector:
-        return sizeof(Vector3);
-    case dtblcoltype_t::String:
-    case dtblcoltype_t::Asset:
-    case dtblcoltype_t::AssetNoPrecache:
-        // string types get placed elsewhere and are referenced with a pointer
-        return sizeof(PagePtr_t);
-    }
-
-    Error("tried to get entry size for an unknown dtbl column type. asserting...\n");
-    assert(0);
-    return 0; // should be unreachable
-}
-
-bool DataTable_IsStringType(dtblcoltype_t type)
-{
-    switch (type)
-    {
-    case dtblcoltype_t::String:
-    case dtblcoltype_t::Asset:
-    case dtblcoltype_t::AssetNoPrecache:
-        return true;
-    default:
-        return false;
-    }
-}
+#include "public/datatable.h"
 
 // fills a CPakDataChunk with column data from a provided csv
 void DataTable_SetupColumns(CPakFile* pak, CPakDataChunk& colChunk, datatable_asset_t* pHdrTemp, rapidcsv::Document& doc)
@@ -113,8 +51,8 @@ void DataTable_SetupColumns(CPakFile* pak, CPakDataChunk& colChunk, datatable_as
             }
         }
 
-        pHdrTemp->rowStride += DataTable_GetEntrySize(type);
-        pHdrTemp->rowDataPageSize += DataTable_GetEntrySize(type) * pHdrTemp->numRows; // size of type * row count (excluding the type row)
+        pHdrTemp->rowStride += DataTable_GetValueSize(type);
+        pHdrTemp->rowDataPageSize += DataTable_GetValueSize(type) * pHdrTemp->numRows; // size of type * row count (excluding the type row)
 
         colNameBuf += name.length() + 1;
     }

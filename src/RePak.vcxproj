@@ -43,7 +43,7 @@
     <ClInclude Include="public\material.h" />
     <ClInclude Include="public\rpak.h" />
     <ClInclude Include="public\studio.h" />
-    <ClInclude Include="public\table.h" />
+    <ClInclude Include="public\datatable.h" />
     <ClInclude Include="public\texture.h" />
     <ClInclude Include="thirdparty\rapidcsv\rapidcsv.h" />
     <ClInclude Include="thirdparty\rapidjson\allocators.h" />

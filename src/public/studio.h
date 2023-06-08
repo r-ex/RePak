@@ -294,17 +294,8 @@ struct AnimSequenceHeader
 	uint32_t reserved1 = 0; // assumed
 };
 
-// small struct to allow verification of the 0tVG section of starpak
-// model data without needing to load the entire thing into memory for a simple
-// validation check
-struct BasicRMDLVGHeader
-{
-	uint32_t magic;
-	uint32_t version;
-};
-
 // size: 0x78 (120 bytes)
-struct ModelHeader
+struct ModelAssetHeader_t
 {
 	// IDST data
 	// .mdl
@@ -343,5 +334,5 @@ struct ModelHeader
 	uint64_t Padding8 = 0;
 	uint64_t Padding9 = 0;
 };
-static_assert(sizeof(ModelHeader) == 120);
+static_assert(sizeof(ModelAssetHeader_t) == 120);
 #pragma pack(pop)

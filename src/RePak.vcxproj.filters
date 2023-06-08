@@ -251,7 +251,7 @@
     <ClInclude Include="public\texture.h">
       <Filter>public</Filter>
     </ClInclude>
-    <ClInclude Include="public\table.h">
+    <ClInclude Include="public\datatable.h">
       <Filter>public</Filter>
     </ClInclude>
     <ClInclude Include="public\rpak.h">

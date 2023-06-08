@@ -12,6 +12,64 @@ enum class dtblcoltype_t : uint32_t
 	AssetNoPrecache
 };
 
+static const std::unordered_map<std::string, dtblcoltype_t> s_dataTableColumnTypeMap =
+{
+	{ "bool",   dtblcoltype_t::Bool },
+	{ "int",    dtblcoltype_t::Int },
+	{ "float",  dtblcoltype_t::Float },
+	{ "vector", dtblcoltype_t::Vector },
+	{ "string", dtblcoltype_t::String },
+	{ "asset",  dtblcoltype_t::Asset },
+	{ "assetnoprecache", dtblcoltype_t::AssetNoPrecache }
+};
+
+// gets enum value from type string
+// e.g. "string" to dtblcoltype::StringT
+dtblcoltype_t DataTable_GetTypeFromString(std::string& sType)
+{
+	std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
+
+	for (const auto& [key, value] : s_dataTableColumnTypeMap) // get each element in the type map
+	{
+		if (sType.compare(key) == 0) // are they equal?
+			return value;
+	}
+
+	return dtblcoltype_t::String;
+}
+
+inline bool DataTable_IsStringType(dtblcoltype_t type)
+{
+	switch (type)
+	{
+	case dtblcoltype_t::String:
+	case dtblcoltype_t::Asset:
+	case dtblcoltype_t::AssetNoPrecache:
+		return true;
+	default:
+		return false;
+	}
+}
+
+inline uint8_t DataTable_GetValueSize(dtblcoltype_t type)
+{
+	switch (type)
+	{
+	case dtblcoltype_t::Bool:
+	case dtblcoltype_t::Int:
+	case dtblcoltype_t::Float:
+		return sizeof(int32_t);
+	case dtblcoltype_t::Vector:
+		return 3 * sizeof(float); // sizeof(Vector3)
+	case dtblcoltype_t::String:
+	case dtblcoltype_t::Asset:
+	case dtblcoltype_t::AssetNoPrecache:
+		return 8; // sizeof(PagePtr_t)
+	default:
+		return 0;
+	}
+}
+
 struct datacolumn_t
 {
 	PagePtr_t pName; // column name/heading
