@@ -15,14 +15,6 @@ enum MaterialShaderType_t : uint8_t
 };
 
 #pragma pack(push, 1)
-// used for referencing a material from within a model
-// pathoffset is the offset to the material's path (duh)
-// guid is the material's asset guid (or 0 if it's a vmt, i think)
-struct materialref_t
-{
-	uint32_t pathoffset;
-	uint64_t guid;
-};
 
 // the following two structs are found in the ""cpu data"", they are very much alike to what you would use in normal source materials.
 // apex probably has these and more stuff.

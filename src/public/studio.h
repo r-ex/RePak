@@ -2,6 +2,15 @@
 #include "math/vector.h"
 
 #pragma pack(push, 1)
+// used for referencing a material from within a model
+// pathoffset is the offset to the material's path (duh)
+// guid is the material's asset guid (or 0 if it's a vmt, i think)
+struct mstudiotexture_t
+{
+	uint32_t pathoffset;
+	uint64_t guid;
+};
+
 // modified source engine studio mdl header struct
 struct studiohdr_t
 {
@@ -48,6 +57,11 @@ struct studiohdr_t
 	int materialtypesindex;
 	int numtextures; // the material limit exceeds 128, probably 256.
 	int textureindex;
+
+	inline mstudiotexture_t* pTexture(int i)
+	{
+		return reinterpret_cast<mstudiotexture_t*>((char*)this + textureindex) + i;
+	}
 
 	// this should always only be one, unless using vmts.
 	// raw textures search paths

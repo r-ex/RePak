@@ -27,17 +27,26 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     REQUIRE_FILE(rmdlFilePath);
     REQUIRE_FILE(vgFilePath);
 
-    // begin rmdl input
-    BinaryIO rmdlInput;
-    rmdlInput.open(rmdlFilePath, BinaryIOMode::Read);
+    size_t rmdlFileSize = Utils::GetFileSize(rmdlFilePath);
 
-    studiohdr_t mdlhdr = rmdlInput.read<studiohdr_t>();
+    if (rmdlFileSize < sizeof(studiohdr_t))
+        Error("invalid file size for model asset '%s'. must be at least %i bytes, found %lld bytes\n", sizeof(studiohdr_t), rmdlFileSize);
 
-    if (mdlhdr.id != 0x54534449) // "IDST"
-        Error("invalid file magic for model asset '%s'. expected %x, found %x\n", sAssetName.c_str(), 0x54534449, mdlhdr.id);
+    char* rmdlBuf = new char[rmdlFileSize];
+    std::ifstream rmdlIn(rmdlFilePath, std::ios::in | std::ios::binary);
+    rmdlIn.read(rmdlBuf, rmdlFileSize);
+    rmdlIn.close();
 
-    if (mdlhdr.version != 54)
-        Error("invalid version for model asset '%s'. expected %i, found %i\n", sAssetName.c_str(), 54, mdlhdr.version);
+    studiohdr_t* studiohdr = reinterpret_cast<studiohdr_t*>(rmdlBuf);
+
+    if (studiohdr->id != 0x54534449) // "IDST"
+        Error("invalid file magic for model asset '%s'. expected %x, found %x\n", sAssetName.c_str(), 0x54534449, studiohdr->id);
+
+    if (studiohdr->version != 54)
+        Error("invalid version for model asset '%s'. expected %i, found %i\n", sAssetName.c_str(), 54, studiohdr->version);
+    
+    if (studiohdr->length > rmdlFileSize)
+        Error("invalid file size. studiohdr->length > rmdlFileSize\n");
 
     ///--------------------
     // Add VG data
@@ -139,45 +148,41 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     size_t extraDataSize = 0;
 
-    if (mdlhdr.flags & 0x10) // STATIC_PROP
+    if (studiohdr->flags & 0x10) // STATIC_PROP
     {
         extraDataSize = vgFileSize;
     }
 
     int fileNameDataSize = sAssetName.length() + 1;
 
-    CPakDataChunk dataChunk = pak->CreateDataChunk(mdlhdr.length + fileNameDataSize + extraDataSize, SF_CPU, 64);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(studiohdr->length + fileNameDataSize + extraDataSize, SF_CPU, 64);
     char* pDataBuf = dataChunk.Data();
 
     // write the model file path into the data buffer
-    snprintf(pDataBuf + mdlhdr.length, fileNameDataSize, "%s", sAssetName.c_str());
+    snprintf(pDataBuf + studiohdr->length, fileNameDataSize, "%s", sAssetName.c_str());
 
-    // copy rmdl data into data buffer
-    {
-        // go back to the beginning of the file to read all the data
-        rmdlInput.seek(0);
+    // copy rmdl into rpak buffer and move studiohdr ptr
+    memcpy_s(pDataBuf, studiohdr->length, rmdlBuf, studiohdr->length);
+    studiohdr = reinterpret_cast<studiohdr_t*>(pDataBuf);
 
-        // write the skeleton data into the data buffer
-        rmdlInput.getReader()->read(pDataBuf, mdlhdr.length);
-        rmdlInput.close();
-    }
+    delete[] rmdlBuf;
 
     // copy static prop data into data buffer (if needed)
-    if (mdlhdr.flags & 0x10) // STATIC_PROP
+    if (studiohdr->flags & 0x10) // STATIC_PROP
     {
-        memcpy_s(pDataBuf + fileNameDataSize + mdlhdr.length, vgFileSize, de.m_nDataPtr, vgFileSize);
+        memcpy_s(pDataBuf + fileNameDataSize + studiohdr->length, vgFileSize, de.m_nDataPtr, vgFileSize);
     }
 
-    pHdr->pName = dataChunk.GetPointer(mdlhdr.length);
+    pHdr->pName = dataChunk.GetPointer(studiohdr->length);
 
     pHdr->pRMDL = dataChunk.GetPointer();
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pRMDL)));
     pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pName)));
 
-    if (mdlhdr.flags & 0x10) // STATIC_PROP
+    if (studiohdr->flags & 0x10) // STATIC_PROP
     {
-        pHdr->pStaticPropVtxCache = dataChunk.GetPointer(fileNameDataSize + mdlhdr.length);
+        pHdr->pStaticPropVtxCache = dataChunk.GetPointer(fileNameDataSize + studiohdr->length);
         pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pStaticPropVtxCache)));
     }
 
@@ -200,17 +205,12 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         }
     }
 
-    rmem dataBuf(pDataBuf);
-    dataBuf.seek(mdlhdr.textureindex, rseekdir::beg);
-
     bool hasMaterialOverrides = mapEntry.HasMember("materials");
 
     // handle material overrides register all material guids
-    for (int i = 0; i < mdlhdr.numtextures; ++i)
+    for (int i = 0; i < studiohdr->numtextures; ++i)
     {
-        dataBuf.seek(mdlhdr.textureindex + (i * sizeof(materialref_t)), rseekdir::beg);
-
-        materialref_t* material = dataBuf.get<materialref_t>();
+        mstudiotexture_t* tex = studiohdr->pTexture(i);
 
         // if material overrides are possible and this material has an entry in the array
         if (hasMaterialOverrides && mapEntry["materials"].GetArray().Size() > i)
@@ -221,18 +221,19 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
             if (matlEntry.IsString())
             {
                 if (matlEntry.GetStringLength() != 0) // if no material path, use the original model material
-                    material->guid = RTech::StringToGuid(std::string("material/" + matlEntry.GetStdString() + ".rpak").c_str()); // use user provided path
+                    tex->guid = RTech::StringToGuid(std::string("material/" + matlEntry.GetStdString() + ".rpak").c_str()); // use user provided path
             }
             // if uint64, treat the value as the guid
             else if (matlEntry.IsUint64())
-                material->guid = matlEntry.GetUint64();
+                tex->guid = matlEntry.GetUint64();
         }
 
-        if (material->guid != 0)
+        if (tex->guid != 0)
         {
-            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(dataBuf.getPosition() + offsetof(materialref_t, guid)));
+            size_t pos = (char*)tex - pDataBuf;
+            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(pos + offsetof(mstudiotexture_t, guid)));
 
-            PakAsset_t* asset = pak->GetAssetByGuid(material->guid);
+            PakAsset_t* asset = pak->GetAssetByGuid(tex->guid);
 
             if (asset)
                 asset->AddRelation(assetEntries->size());

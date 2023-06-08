@@ -103,7 +103,7 @@ struct mipLevel_t
 };
 
 #pragma pack(push, 1)
-struct TextureHeader
+struct TextureAssetHeader_t
 {
 	uint64_t guid = 0;
 	PagePtr_t  pName;
@@ -128,7 +128,7 @@ struct TextureHeader
 	uint8_t  unk3[0x15];
 };
 
-struct UIImageHeader
+struct UIImageAtlasHeader_t
 {
 	float widthRatio; // 1 / m_nWidth
 	float heightRatio; // 1 / m_nHeight
