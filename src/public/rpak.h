@@ -242,9 +242,9 @@ struct StreamableSetHeader
 // internal data structure for referencing streaming data to be written
 struct StreamableDataEntry
 {
-	uint64_t m_nOffset = -1; // set when added
-	uint64_t m_nDataSize = 0;
-	uint8_t* m_nDataPtr = nullptr;
+	uint64_t offset = -1; // set when added
+	uint64_t dataSize = 0;
+	uint8_t* pData = nullptr;
 };
 
 //

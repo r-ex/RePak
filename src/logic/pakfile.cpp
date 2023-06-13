@@ -90,15 +90,23 @@ void CPakFile::AddOptStarpakReference(const std::string& path)
 //-----------------------------------------------------------------------------
 StreamableDataEntry CPakFile::AddStarpakDataEntry(StreamableDataEntry block)
 {
-	// starpak data is aligned to 4096 bytes
-	size_t ns = Utils::PadBuffer((char**)&block.m_nDataPtr, block.m_nDataSize, 4096);
+	std::string starpakPath = this->GetPrimaryStarpakPath();
 
-	block.m_nDataSize = ns;
-	block.m_nOffset = m_NextStarpakOffset;
+	if (starpakPath.length() == 0)
+		Error("attempted to create a streaming asset without a starpak assigned. add 'starpakPath' as a global rpak variable to fix\n");
+
+	// try to add starpak path. AddStarpakReference will handle duplicates so no need to do it here
+	this->AddStarpakReference(starpakPath);
+
+	// starpak data is aligned to 4096 bytes
+	size_t ns = Utils::PadBuffer((char**)&block.pData, block.dataSize, 4096);
+
+	block.dataSize = ns;
+	block.offset = m_NextStarpakOffset;
 
 	m_vStarpakDataBlocks.push_back(block);
 
-	m_NextStarpakOffset += block.m_nDataSize;
+	m_NextStarpakOffset += block.dataSize;
 
 	return block;
 }
@@ -283,7 +291,7 @@ void CPakFile::WriteStarpakDataBlocks(BinaryIO& out)
 {
 	for (auto& it : m_vStarpakDataBlocks)
 	{
-		out.getWriter()->write((const char*)it.m_nDataPtr, it.m_nDataSize);
+		out.getWriter()->write((const char*)it.pData, it.dataSize);
 	}
 }
 
@@ -297,8 +305,8 @@ void CPakFile::WriteStarpakSortsTable(BinaryIO& out)
 	for (auto& it : m_vStarpakDataBlocks)
 	{
 		SRPkFileEntry fe{};
-		fe.m_nOffset = it.m_nOffset;
-		fe.m_nSize = it.m_nDataSize;
+		fe.m_nOffset = it.offset;
+		fe.m_nSize = it.dataSize;
 
 		out.write(fe);
 	}
@@ -311,7 +319,7 @@ void CPakFile::FreeStarpakDataBlocks()
 {
 	for (auto& it : m_vStarpakDataBlocks)
 	{
-		delete[] it.m_nDataPtr;
+		delete[] it.pData;
 	}
 }
 

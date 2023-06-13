@@ -8,6 +8,63 @@ void Assets::AddModelAsset_stub(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
     Error("RPak version 7 (Titanfall 2) cannot contain models");
 }
 
+char* Model_ReadRMDLFile(const std::string& path)
+{
+    REQUIRE_FILE(path);
+
+    size_t fileSize = Utils::GetFileSize(path);
+
+    if (fileSize < sizeof(studiohdr_t))
+        Error("invalid model file '%s'. must be at least %i bytes, found %lld\n", path.c_str(), sizeof(studiohdr_t), fileSize);
+
+    char* buf = new char[fileSize];
+
+    std::ifstream ifs(path, std::ios::in | std::ios::binary);
+    ifs.read(buf, fileSize);
+    ifs.close();
+
+    studiohdr_t* pHdr = reinterpret_cast<studiohdr_t*>(buf);
+
+    if (pHdr->id != 'TSDI') // "IDST"
+        Error("invalid model file '%s'. expected magic %x, found %x\n", path.c_str(), 'TSDI', pHdr->id);
+
+    if (pHdr->id != 54)
+        Error("invalid model file '%s'. expected version %i, found %i\n", path.c_str(), 54, pHdr->version);
+
+    if (pHdr->length > fileSize)
+        Error("invalid model file '%s'. studiohdr->length > fileSize (%i > %i)\n", path.c_str(), pHdr->length, fileSize);
+
+    return buf;
+}
+
+char* Model_ReadVGFile(const std::string& path, size_t* pFileSize)
+{
+    REQUIRE_FILE(path);
+
+    size_t fileSize = Utils::GetFileSize(path);
+
+    if (fileSize < sizeof(VertexGroupHeader_t))
+        Error("invalid model file '%s'. must be at least %i bytes, found %lld\n", path.c_str(), sizeof(VertexGroupHeader_t), fileSize);
+
+    char* buf = new char[fileSize];
+
+    std::ifstream ifs(path, std::ios::in | std::ios::binary);
+    ifs.read(buf, fileSize);
+    ifs.close();
+
+    VertexGroupHeader_t* pHdr = reinterpret_cast<VertexGroupHeader_t*>(buf);
+
+    if (pHdr->id != 'GVt0') // "0tVG"
+        Error("invalid model file '%s'. expected magic %x, found %x\n", path.c_str(), 'GVt0', pHdr->id);
+
+    // not sure if this is actually version but i've also never seen it != 1
+    if (pHdr->version != 1)
+        Error("invalid model file '%s'. expected version %i, found %i\n", path.c_str(), 1, pHdr->version);
+
+    *pFileSize = fileSize;
+    return buf;
+}
+
 void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding mdl_ asset '%s'\n", assetPath);
@@ -23,50 +80,15 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     // this data is a combined mutated version of the data from .vtx and .vvd in regular source models
     std::string vgFilePath = Utils::ChangeExtension(rmdlFilePath, "vg");
 
-    // add required files
-    REQUIRE_FILE(rmdlFilePath);
     REQUIRE_FILE(vgFilePath);
 
-    size_t rmdlFileSize = Utils::GetFileSize(rmdlFilePath);
-
-    if (rmdlFileSize < sizeof(studiohdr_t))
-        Error("invalid file size for model asset '%s'. must be at least %i bytes, found %lld bytes\n", sizeof(studiohdr_t), rmdlFileSize);
-
-    char* rmdlBuf = new char[rmdlFileSize];
-    std::ifstream rmdlIn(rmdlFilePath, std::ios::in | std::ios::binary);
-    rmdlIn.read(rmdlBuf, rmdlFileSize);
-    rmdlIn.close();
-
+    char* rmdlBuf = Model_ReadRMDLFile(rmdlFilePath);
     studiohdr_t* studiohdr = reinterpret_cast<studiohdr_t*>(rmdlBuf);
-
-    if (studiohdr->id != 0x54534449) // "IDST"
-        Error("invalid file magic for model asset '%s'. expected %x, found %x\n", sAssetName.c_str(), 0x54534449, studiohdr->id);
-
-    if (studiohdr->version != 54)
-        Error("invalid version for model asset '%s'. expected %i, found %i\n", sAssetName.c_str(), 54, studiohdr->version);
-    
-    if (studiohdr->length > rmdlFileSize)
-        Error("invalid file size. studiohdr->length > rmdlFileSize\n");
 
     ///--------------------
     // Add VG data
-    BinaryIO vgInput;
-    vgInput.open(vgFilePath, BinaryIOMode::Read);
-
-    int magic = vgInput.read<int>();
-    if (magic != 0x47567430)
-        Error("invalid vg file magic for model asset '%s'. expected %x, found %x\n", sAssetName.c_str(), 0x47567430,magic);
-
-    int version = vgInput.read<int>();
-    if (version != 1)
-        Error("invalid vg version for model asset '%s'. expected %i, found %i\n", sAssetName.c_str(), 1, version);
-
-    size_t vgFileSize = Utils::GetFileSize(vgFilePath);
-    char* pVGBuf = new char[vgFileSize];
-
-    vgInput.seek(0);
-    vgInput.getReader()->read(pVGBuf, vgFileSize);
-    vgInput.close();
+    size_t vgFileSize = 0;
+    char* vgBuf = Model_ReadVGFile(vgFilePath, &vgFileSize);
 
     //
     // Physics
@@ -134,21 +156,14 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     //
     // Starpak
     //
-    std::string starpakPath = pak->GetPrimaryStarpakPath();
-
-    if (starpakPath.length() == 0)
-        Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\n-- to fix: add 'starpakPath' as an rpak-wide variable\n", assetPath);
-
-    pak->AddStarpakReference(starpakPath);
-
-    StreamableDataEntry de{ 0, vgFileSize, (uint8_t*)pVGBuf };
+    StreamableDataEntry de{ 0, vgFileSize, (uint8_t*)vgBuf };
     de = pak->AddStarpakDataEntry(de);
 
-    pHdr->alignedStreamingSize = de.m_nDataSize;
+    pHdr->alignedStreamingSize = de.dataSize;
 
     size_t extraDataSize = 0;
 
-    if (studiohdr->flags & 0x10) // STATIC_PROP
+    if (studiohdr->IsStaticProp())
     {
         extraDataSize = vgFileSize;
     }
@@ -168,9 +183,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     delete[] rmdlBuf;
 
     // copy static prop data into data buffer (if needed)
-    if (studiohdr->flags & 0x10) // STATIC_PROP
+    if (studiohdr->IsStaticProp()) // STATIC_PROP
     {
-        memcpy_s(pDataBuf + fileNameDataSize + studiohdr->length, vgFileSize, de.m_nDataPtr, vgFileSize);
+        memcpy_s(pDataBuf + fileNameDataSize + studiohdr->length, vgFileSize, de.pData, vgFileSize);
     }
 
     pHdr->pName = dataChunk.GetPointer(studiohdr->length);
@@ -180,7 +195,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pRMDL)));
     pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pName)));
 
-    if (studiohdr->flags & 0x10) // STATIC_PROP
+    if (studiohdr->IsStaticProp()) // STATIC_PROP
     {
         pHdr->pStaticPropVtxCache = dataChunk.GetPointer(fileNameDataSize + studiohdr->length);
         pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pStaticPropVtxCache)));
@@ -242,7 +257,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     PakAsset_t asset;
 
-    asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.m_nOffset, -1, (std::uint32_t)AssetType::RMDL);
+    asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.offset, -1, (std::uint32_t)AssetType::RMDL);
     asset.version = RMDL_VERSION;
     // i have literally no idea what these are
     asset.pageEnd = pak->GetNumPages();
