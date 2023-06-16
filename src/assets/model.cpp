@@ -28,7 +28,7 @@ char* Model_ReadRMDLFile(const std::string& path)
     if (pHdr->id != 'TSDI') // "IDST"
         Error("invalid model file '%s'. expected magic %x, found %x\n", path.c_str(), 'TSDI', pHdr->id);
 
-    if (pHdr->id != 54)
+    if (pHdr->version != 54)
         Error("invalid model file '%s'. expected version %i, found %i\n", path.c_str(), 54, pHdr->version);
 
     if (pHdr->length > fileSize)
