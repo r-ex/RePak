@@ -54,13 +54,13 @@
     <ClCompile Include="assets\patch.cpp">
       <Filter>assets</Filter>
     </ClCompile>
-    <ClCompile Include="assets\rui.cpp">
+    <ClCompile Include="assets\uiatlas.cpp">
       <Filter>assets</Filter>
     </ClCompile>
     <ClCompile Include="assets\texture.cpp">
       <Filter>assets</Filter>
     </ClCompile>
-    <ClCompile Include="assets\animation.cpp">
+    <ClCompile Include="assets\animseq.cpp">
       <Filter>assets</Filter>
     </ClCompile>
     <ClCompile Include="assets\datatable.cpp">

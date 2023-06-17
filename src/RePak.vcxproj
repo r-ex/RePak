@@ -12,12 +12,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="application\repak.cpp" />
-    <ClCompile Include="assets\animation.cpp" />
+    <ClCompile Include="assets\animseq.cpp" />
     <ClCompile Include="assets\datatable.cpp" />
     <ClCompile Include="assets\material.cpp" />
     <ClCompile Include="assets\model.cpp" />
     <ClCompile Include="assets\patch.cpp" />
-    <ClCompile Include="assets\rui.cpp" />
+    <ClCompile Include="assets\uiatlas.cpp" />
     <ClCompile Include="assets\texture.cpp" />
     <ClCompile Include="logic\pakfile.cpp" />
     <ClCompile Include="logic\rtech.cpp" />
