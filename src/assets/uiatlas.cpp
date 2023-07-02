@@ -57,13 +57,16 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     // get the info for the ui atlas image
     std::string sAtlasFilePath = pak->GetAssetPath() + mapEntry["atlas"].GetStdString() + ".dds";
     std::string sAtlasAssetName = mapEntry["atlas"].GetStdString() + ".rpak";
+
+    AddTextureAsset(pak, assetEntries, mapEntry["atlas"].GetString(), mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool());
+
     uint64_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
 
-    // get the txtr asset that this asset is using
     PakAsset_t* atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 
     if (!atlasAsset)
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
+
 
     uint32_t nTexturesCount = mapEntry["textures"].GetArray().Size();
 
