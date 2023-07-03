@@ -8,7 +8,7 @@ void Assets::AddAnimSeqAsset_stub(CPakFile* pak, std::vector<PakAsset_t>* assetE
 	Error("unsupported asset type 'aseq' for version 7\n");
 }
 
-void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath)
 {
     Log("Adding aseq asset '%s'\n", assetPath);
 
@@ -76,4 +76,9 @@ void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
     asset.AddGuids(&guids);
 
     assetEntries->push_back(asset);
+}
+
+void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+{
+    AddAnimSeqAsset(pak, assetEntries, assetPath);
 }

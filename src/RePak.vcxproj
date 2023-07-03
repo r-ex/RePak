@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="application\repak.cpp" />
+    <ClCompile Include="assets\animrig.cpp" />
     <ClCompile Include="assets\animseq.cpp" />
     <ClCompile Include="assets\datatable.cpp" />
     <ClCompile Include="assets\material.cpp" />
@@ -40,6 +41,7 @@
     <ClInclude Include="math\color.h" />
     <ClInclude Include="math\vector.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="public\animrig.h" />
     <ClInclude Include="public\material.h" />
     <ClInclude Include="public\rpak.h" />
     <ClInclude Include="public\studio.h" />

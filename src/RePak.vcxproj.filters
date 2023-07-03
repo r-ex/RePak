@@ -87,6 +87,9 @@
     <ClCompile Include="utils\dxutils.cpp">
       <Filter>utils</Filter>
     </ClCompile>
+    <ClCompile Include="assets\animrig.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application\repak.h">
@@ -262,6 +265,9 @@
     </ClInclude>
     <ClInclude Include="common\const.h">
       <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="public\animrig.h">
+      <Filter>public</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

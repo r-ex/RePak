@@ -23,6 +23,7 @@
 #define TYPE_DTBL	(('l'<<24)+('b'<<16)+('t'<<8)+'d') // dtbl
 #define TYPE_MATL	(('l'<<24)+('t'<<16)+('a'<<8)+'m') // matl
 #define TYPE_ASEQ	(('q'<<24)+('e'<<16)+('s'<<8)+'a') // aseq
+#define TYPE_ARIG	(('g'<<24)+('i'<<16)+('r'<<8)+'a') // aseq
 
 enum class AssetType : uint32_t
 {
@@ -33,6 +34,7 @@ enum class AssetType : uint32_t
 	DTBL = TYPE_DTBL, // datatable
 	MATL = TYPE_MATL, // material
 	ASEQ = TYPE_ASEQ, // animation sequence
+	ARIG = TYPE_ARIG, // animation rig
 };
 
 #pragma pack(push, 1)
