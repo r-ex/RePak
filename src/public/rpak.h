@@ -202,7 +202,7 @@ struct PakAsset_t
 	// but respawn calls it a version so i will as well
 	int version = 0;
 
-	// see AssetType enum below
+	// see AssetType enum
 	uint32_t id = 0;
 
 	// internal

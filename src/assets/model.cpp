@@ -65,6 +65,45 @@ char* Model_ReadVGFile(const std::string& path, size_t* pFileSize)
     return buf;
 }
 
+CPakDataChunk Model_AddSequenceRefs(CPakFile* pak, ModelAssetHeader_t* hdr, rapidjson::Value& mapEntry, std::vector<PakAsset_t>* assetEntries)
+{
+    if (!mapEntry.HasMember("sequences") || !mapEntry["sequences"].IsArray())
+        return;
+
+    std::vector<uint64_t> sequenceGuids;
+
+    for (auto& it : mapEntry["sequences"].GetArray())
+    {
+        if (!it.IsString())
+            continue;
+
+        if (it.GetStringLength() == 0)
+            continue;
+
+        uint64_t guid = 0;
+
+        if (!RTech::ParseGUIDFromString(it.GetString(), &guid))
+        {
+            Assets::AddAnimSeqAsset(pak, assetEntries, it.GetString());
+
+            guid = RTech::StringToGuid(it.GetString());
+        }
+
+        sequenceGuids.emplace_back(guid);
+        hdr->sequenceCount++;
+    }
+
+    CPakDataChunk guidsChunk = pak->CreateDataChunk(sizeof(uint64_t) * sequenceGuids.size(), SF_CPU, 64);
+
+    uint64_t* pGuids = reinterpret_cast<uint64_t*>(guidsChunk.Data());
+    for (int i = 0; i < sequenceGuids.size(); ++i)
+    {
+        pGuids[i] = sequenceGuids[i];
+    }
+
+    return guidsChunk;
+}
+
 void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding mdl_ asset '%s'\n", assetPath);
@@ -81,6 +120,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     std::string vgFilePath = Utils::ChangeExtension(rmdlFilePath, "vg");
 
     REQUIRE_FILE(vgFilePath);
+
+    std::vector<PakGuidRefHdr_t> guids{};
 
     char* rmdlBuf = Model_ReadRMDLFile(rmdlFilePath);
     studiohdr_t* studiohdr = reinterpret_cast<studiohdr_t*>(rmdlBuf);
@@ -153,6 +194,13 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         }
     }
 
+    CPakDataChunk sequencesChunk = Model_AddSequenceRefs(pak, pHdr, mapEntry, assetEntries);
+
+    for (int i = 0; i < pHdr->sequenceCount; ++i)
+    {
+        guids.emplace_back(sequencesChunk.GetPointer(8 * i));
+    }
+
     //
     // Starpak
     //
@@ -200,8 +248,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         pHdr->pStaticPropVtxCache = dataChunk.GetPointer(fileNameDataSize + studiohdr->length);
         pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pStaticPropVtxCache)));
     }
-
-    std::vector<PakGuidRefHdr_t> guids{};
 
     if (phyFileSize > 0)
     {

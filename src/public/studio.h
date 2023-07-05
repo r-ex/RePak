@@ -343,8 +343,8 @@ struct ModelAssetHeader_t
 	uint64_t Padding6 = 0;
 
 	// number of anim sequences directly associated with this model
-	uint32_t animSeqCount = 0;
-	PagePtr_t pAnimSeqs;
+	uint32_t sequenceCount = 0;
+	PagePtr_t pSequences;
 
 	uint64_t Padding7 = 0;
 	uint64_t Padding8 = 0;

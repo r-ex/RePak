@@ -72,7 +72,6 @@ CPakDataChunk AnimRig_AddSequenceRefs(CPakFile* pak, AnimRigAssetHeader_t* hdr, 
     for (int i = 0; i < sequenceGuids.size(); ++i)
     {
         pGuids[i] = sequenceGuids[i];
-
     }
 
     return guidsChunk;
