@@ -65,10 +65,10 @@ char* Model_ReadVGFile(const std::string& path, size_t* pFileSize)
     return buf;
 }
 
-CPakDataChunk Model_AddSequenceRefs(CPakFile* pak, ModelAssetHeader_t* hdr, rapidjson::Value& mapEntry, std::vector<PakAsset_t>* assetEntries)
+bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader_t* hdr, rapidjson::Value& mapEntry, std::vector<PakAsset_t>* assetEntries)
 {
     if (!mapEntry.HasMember("sequences") || !mapEntry["sequences"].IsArray())
-        return;
+        return false;
 
     std::vector<uint64_t> sequenceGuids;
 
@@ -101,7 +101,8 @@ CPakDataChunk Model_AddSequenceRefs(CPakFile* pak, ModelAssetHeader_t* hdr, rapi
         pGuids[i] = sequenceGuids[i];
     }
 
-    return guidsChunk;
+    *chunk = guidsChunk;
+    return true;
 }
 
 void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
@@ -194,11 +195,13 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         }
     }
 
-    CPakDataChunk sequencesChunk = Model_AddSequenceRefs(pak, pHdr, mapEntry, assetEntries);
-
-    for (int i = 0; i < pHdr->sequenceCount; ++i)
+    CPakDataChunk sequencesChunk;
+    if (Model_AddSequenceRefs(&sequencesChunk, pak, pHdr, mapEntry, assetEntries))
     {
-        guids.emplace_back(sequencesChunk.GetPointer(8 * i));
+        for (int i = 0; i < pHdr->sequenceCount; ++i)
+        {
+            guids.emplace_back(sequencesChunk.GetPointer(8 * i));
+        }
     }
 
     //

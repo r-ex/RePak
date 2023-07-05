@@ -38,10 +38,10 @@ char* AnimRig_ReadRigFile(const std::string& path)
     return buf;
 }
 
-CPakDataChunk AnimRig_AddSequenceRefs(CPakFile* pak, AnimRigAssetHeader_t* hdr, rapidjson::Value& mapEntry, std::vector<PakAsset_t>* assetEntries)
+bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHeader_t* hdr, rapidjson::Value& mapEntry, std::vector<PakAsset_t>* assetEntries)
 {
     if (!mapEntry.HasMember("sequences") || !mapEntry["sequences"].IsArray())
-        return;
+        return false;
 
     std::vector<uint64_t> sequenceGuids;
 
@@ -74,7 +74,8 @@ CPakDataChunk AnimRig_AddSequenceRefs(CPakFile* pak, AnimRigAssetHeader_t* hdr, 
         pGuids[i] = sequenceGuids[i];
     }
 
-    return guidsChunk;
+    *chunk = guidsChunk;
+    return true;
 }
 
 void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
@@ -103,11 +104,13 @@ void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
     pHdr->data = rigChunk.GetPointer();
     pHdr->name = nameChunk.GetPointer();
 
-    CPakDataChunk guidsChunk = AnimRig_AddSequenceRefs(pak, pHdr, mapEntry, assetEntries);
-
-    for (int i = 0; i < pHdr->sequenceCount; ++i)
+    CPakDataChunk guidsChunk;
+    if (AnimRig_AddSequenceRefs(&guidsChunk, pak, pHdr, mapEntry, assetEntries))
     {
-        guids.emplace_back(guidsChunk.GetPointer(8 * i));
+        for (int i = 0; i < pHdr->sequenceCount; ++i)
+        {
+            guids.emplace_back(guidsChunk.GetPointer(8 * i));
+        }
     }
 
     delete[] buf;
