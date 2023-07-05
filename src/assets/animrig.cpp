@@ -107,6 +107,10 @@ void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
     CPakDataChunk guidsChunk;
     if (AnimRig_AddSequenceRefs(&guidsChunk, pak, pHdr, mapEntry, assetEntries))
     {
+        pHdr->pSequences = guidsChunk.GetPointer();
+
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, pSequences)));
+
         for (int i = 0; i < pHdr->sequenceCount; ++i)
         {
             guids.emplace_back(guidsChunk.GetPointer(8 * i));

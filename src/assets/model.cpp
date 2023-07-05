@@ -198,6 +198,10 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     CPakDataChunk sequencesChunk;
     if (Model_AddSequenceRefs(&sequencesChunk, pak, pHdr, mapEntry, assetEntries))
     {
+        pHdr->pSequences = sequencesChunk.GetPointer();
+
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pSequences)));
+
         for (int i = 0; i < pHdr->sequenceCount; ++i)
         {
             guids.emplace_back(sequencesChunk.GetPointer(8 * i));
