@@ -292,30 +292,29 @@ struct mstudioautolayer_t
 	float end;	 // end of all influence
 };
 
-struct AnimSequenceHeader
+struct AnimSeqAssetHeader_t
 {
-	PagePtr_t data{}; // pointer to raw rseq.
-	PagePtr_t szname{}; // pointer to debug name, placed before raw rseq normally.
+	PagePtr_t data; // pointer to raw rseq.
+	PagePtr_t szname; // pointer to debug name, placed before raw rseq normally.
 
 	// this can point to a group of guids and not one singular one.
-	PagePtr_t modelGuid{};
-	uint32_t modelCount = 0;
+	PagePtr_t pModels;
+	uint32_t modelCount;
 
-	uint32_t reserved = 0;
+	uint32_t padding_0; // aligns next member to 8 bytes
 
-	// this can point to a group of guids and not one singular one.
-	PagePtr_t settingsGuid{};
-	uint32_t settingsCount = 0;
+	PagePtr_t pSettings; // points to an array of settings asset guids
+	uint32_t settingsCount;
 
-	uint32_t reserved1 = 0; // assumed
+	uint32_t padding_1; // aligns full struct to 8 bytes
 };
 
 // size: 0x78 (120 bytes)
 struct ModelAssetHeader_t
 {
 	// IDST data
-	// .mdl
-	PagePtr_t pRMDL;
+	// .rmdl
+	PagePtr_t pData;
 	uint64_t Padding = 0;
 
 	// model path
