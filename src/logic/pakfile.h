@@ -182,8 +182,6 @@ public:
 	void WriteSegmentHeaders(BinaryIO& out);
 	void WriteMemPageHeaders(BinaryIO& out);
 	void WritePakDescriptors(BinaryIO& out);
-	void WriteGuidDescriptors(BinaryIO& out);
-	void WriteFileRelations(BinaryIO& out);
 
 	//----------------------------------------------------------------------------
 	// starpak

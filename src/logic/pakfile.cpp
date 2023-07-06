@@ -258,8 +258,6 @@ size_t CPakFile::WriteStarpakPaths(BinaryIO& out, bool optional)
 //-----------------------------------------------------------------------------
 void CPakFile::WriteSegmentHeaders(BinaryIO& out)
 {
-	//WRITE_VECTOR(out, m_vVirtualSegments);
-
 	for (auto& segment : m_vVirtualSegments)
 	{
 		PakSegmentHdr_t segmentHdr = segment.GetHeader();
@@ -288,22 +286,6 @@ void CPakFile::WritePakDescriptors(BinaryIO& out)
 	std::sort(m_vPakDescriptors.begin(), m_vPakDescriptors.end());
 
 	WRITE_VECTOR(out, m_vPakDescriptors);
-}
-
-//-----------------------------------------------------------------------------
-// purpose: writes guid descriptors to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WriteGuidDescriptors(BinaryIO& out)
-{
-	WRITE_VECTOR(out, m_vGuidDescriptors);
-}
-
-//-----------------------------------------------------------------------------
-// purpose: writes file relations to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WriteFileRelations(BinaryIO& out)
-{
-	WRITE_VECTOR(out, m_vFileRelations);
 }
 
 //-----------------------------------------------------------------------------
@@ -561,23 +543,25 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	// when we have all the info
 	WriteHeader(out);
 
-	// write string vectors for starpak paths and get the total length of each vector
-	size_t starpakPathsLength = WriteStarpakPaths(out);
-	size_t optStarpakPathsLength = WriteStarpakPaths(out, true);
-	size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
+	{
+		// write string vectors for starpak paths and get the total length of each vector
+		size_t starpakPathsLength = WriteStarpakPaths(out);
+		size_t optStarpakPathsLength = WriteStarpakPaths(out, true);
+		size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
 
-	size_t aligned = IALIGN4(combinedPathsLength);
-	__int8 padBytes = aligned - combinedPathsLength;
+		size_t aligned = IALIGN4(combinedPathsLength);
+		__int8 padBytes = aligned - combinedPathsLength;
 
-	// align starpak paths to 
-	if (optStarpakPathsLength != 0)
-		optStarpakPathsLength += padBytes;
-	else
-		starpakPathsLength += padBytes;
+		// align starpak paths to 
+		if (optStarpakPathsLength != 0)
+			optStarpakPathsLength += padBytes;
+		else
+			starpakPathsLength += padBytes;
 
-	out.seek(padBytes, std::ios::cur);
+		out.seek(padBytes, std::ios::cur);
 
-	SetStarpakPathsSize(starpakPathsLength, optStarpakPathsLength);
+		SetStarpakPathsSize(starpakPathsLength, optStarpakPathsLength);
+	}
 
 	// generate file relation vector to be written
 	GenerateFileRelations();
@@ -588,8 +572,9 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	WriteMemPageHeaders(out);
 	WritePakDescriptors(out);
 	WriteAssets(out);
-	WriteGuidDescriptors(out);
-	WriteFileRelations(out);
+
+	WRITE_VECTOR(out, m_vGuidDescriptors);
+	WRITE_VECTOR(out, m_vFileRelations);
 
 	// now the actual paged data
 	WritePageData(out);
