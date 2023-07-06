@@ -2,12 +2,6 @@
 #include "assets.h"
 #include "public/studio.h"
 
-
-void Assets::AddAnimSeqAsset_stub(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
-{
-	Error("unsupported asset type 'aseq' for version 7\n");
-}
-
 void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath)
 {
     Log("Adding aseq asset '%s'\n", assetPath);

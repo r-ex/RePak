@@ -4,11 +4,6 @@
 #include "public/material.h"
 #include <public/animrig.h>
 
-void Assets::AddAnimRigAsset_stub(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
-{
-    Error("RPak version 7 (Titanfall 2) cannot contain anim rigs\n");
-}
-
 char* AnimRig_ReadRigFile(const std::string& path)
 {
     REQUIRE_FILE(path);

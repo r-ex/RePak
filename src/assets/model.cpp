@@ -3,11 +3,6 @@
 #include "public/studio.h"
 #include "public/material.h"
 
-void Assets::AddModelAsset_stub(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
-{
-    Error("RPak version 7 (Titanfall 2) cannot contain models");
-}
-
 char* Model_ReadRMDLFile(const std::string& path)
 {
     REQUIRE_FILE(path);
