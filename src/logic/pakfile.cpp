@@ -6,7 +6,7 @@
 
 #include "pch.h"
 #include "pakfile.h"
-#include "application/repak.h"
+#include "assets/assets.h"
 
 //-----------------------------------------------------------------------------
 // purpose: constructor
@@ -58,8 +58,6 @@ void CPakFile::AddAsset(rapidjson::Value& file)
 	AddJSONAsset("aseq", file, nullptr, Assets::AddAnimSeqAsset_v7);
 	AddJSONAsset("arig", file, nullptr, Assets::AddAnimRigAsset_v4);
 }
-
-
 
 //-----------------------------------------------------------------------------
 // purpose: adds page pointer to descriptor
@@ -234,11 +232,6 @@ void CPakFile::WriteAssets(BinaryIO& io)
 //-----------------------------------------------------------------------------
 void CPakFile::WritePageData(BinaryIO& out)
 {
-	//for (auto it = m_vRawDataBlocks.begin(); it != m_vRawDataBlocks.end(); ++it)
-	//{
-	//	out.getWriter()->write((char*)it->pData, it->size);
-	//}
-
 	for (auto& page : m_vPages)
 	{
 		for (auto& chunk : page.chunks)
@@ -429,43 +422,6 @@ CPakDataChunk CPakFile::CreateDataChunk(int size, int flags, int alignment)
 
 	return chunk;
 }
-
-//-----------------------------------------------------------------------------
-// purpose: 
-// returns: 
-//-----------------------------------------------------------------------------
-//_vseginfo_t CPakFile::CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment /*= -1*/)
-//{
-//	static_assert(0 && "fixme");
-//
-//	// !!!TODO!!!
-//	// - general code cleanup (GetMatchingSegment is probably okay to keep using)
-//	// - refactor to only find/create a virtual segment, not a page 
-//	//   (use CreateDataChunk to deal with pages from assets, or FindOrCreatePage for actually allocating a whole page)
-//	// - might be worth bringing this in line with the new convention of "CPak" classes and creating a CPakVSegment to store the new virtual segment
-//	//   instead of _vseginfo_t
-//
-//	uint32_t vsegidx = (uint32_t)m_vVirtualSegments.size();
-//
-//	// find existing "segment" with the same values or create a new one, this is to overcome the engine's limit of having max 20 of these
-//	// since otherwise we write into unintended parts of the stack, and that's bad
-//	PakSegmentHdr_t seg = GetMatchingSegment(flags, vsegAlignment == -1 ? alignment : vsegAlignment, &vsegidx);
-//
-//	bool bShouldAddVSeg = seg.dataSize == 0;
-//	seg.dataSize += size;
-//
-//	if (bShouldAddVSeg)
-//		m_vVirtualSegments.emplace_back(seg);
-//	else
-//		m_vVirtualSegments[vsegidx] = seg;
-//
-//	PakPageHdr_t vsegblock{ vsegidx, alignment, size };
-//
-//	m_vPages.emplace_back(vsegblock);
-//	int pageidx = m_vPages.size() - 1;
-//
-//	return { pageidx, size };
-//}
 
 //-----------------------------------------------------------------------------
 // purpose: 

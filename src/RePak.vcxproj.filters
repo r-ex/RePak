@@ -92,9 +92,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="application\repak.h">
-      <Filter>application</Filter>
-    </ClInclude>
     <ClInclude Include="assets\assets.h">
       <Filter>assets</Filter>
     </ClInclude>
