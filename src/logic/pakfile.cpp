@@ -16,18 +16,47 @@ CPakFile::CPakFile(int version)
 	SetVersion(version);
 }
 
+void CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
+{
+	if (file["$type"].GetStdString() == type)
+	{
+		switch (this->m_Header.fileVersion)
+		{
+		case 7:
+		{
+			if (func_r2)
+				func_r2(this, &m_Assets, file["path"].GetString(), file);
+			else
+				Warning("Asset type '%s' is not supported on RPak version %i\n", type, 7);
+
+			break;
+		}
+		case 8:
+		{
+			if (func_r5)
+				func_r5(this, &m_Assets, file["path"].GetString(), file);
+			else
+				Warning("Asset type '%s' is not supported on RPak version %i\n", type, 8);
+
+			break;
+		}
+		}
+	}
+}
+
 //-----------------------------------------------------------------------------
 // purpose: installs asset types and their callbacks
 //-----------------------------------------------------------------------------
 void CPakFile::AddAsset(rapidjson::Value& file)
 {
-	ASSET_HANDLER("txtr", file, m_Assets, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
-	ASSET_HANDLER("uimg", file, m_Assets, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
-	ASSET_HANDLER("Ptch", file, m_Assets, Assets::AddPatchAsset, Assets::AddPatchAsset);
-	ASSET_HANDLER("dtbl", file, m_Assets, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
-	ASSET_HANDLER("rmdl", file, m_Assets, Assets::AddModelAsset_stub, Assets::AddModelAsset_v9);
-	ASSET_HANDLER("matl", file, m_Assets, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
-	ASSET_HANDLER("rseq", file, m_Assets, Assets::AddAnimSeqAsset_stub, Assets::AddAnimSeqAsset_v7);
+	AddJSONAsset("txtr", file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
+	AddJSONAsset("uimg", file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
+	AddJSONAsset("Ptch", file, Assets::AddPatchAsset, Assets::AddPatchAsset);
+	AddJSONAsset("dtbl", file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
+	AddJSONAsset("matl", file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
+	AddJSONAsset("rmdl", file, nullptr, Assets::AddModelAsset_v9);
+	AddJSONAsset("aseq", file, nullptr, Assets::AddAnimSeqAsset_v7);
+	AddJSONAsset("arig", file, nullptr, Assets::AddAnimRigAsset_v4);
 }
 
 
