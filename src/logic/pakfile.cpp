@@ -6,7 +6,7 @@
 
 #include "pch.h"
 #include "pakfile.h"
-#include "application/repak.h"
+#include "assets/assets.h"
 
 //-----------------------------------------------------------------------------
 // purpose: constructor
@@ -16,21 +16,48 @@ CPakFile::CPakFile(int version)
 	SetVersion(version);
 }
 
+void CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
+{
+	if (file["$type"].GetStdString() == type)
+	{
+		switch (this->m_Header.fileVersion)
+		{
+		case 7:
+		{
+			if (func_r2)
+				func_r2(this, &m_Assets, file["path"].GetString(), file);
+			else
+				Warning("Asset type '%s' is not supported on RPak version %i\n", type, 7);
+
+			break;
+		}
+		case 8:
+		{
+			if (func_r5)
+				func_r5(this, &m_Assets, file["path"].GetString(), file);
+			else
+				Warning("Asset type '%s' is not supported on RPak version %i\n", type, 8);
+
+			break;
+		}
+		}
+	}
+}
+
 //-----------------------------------------------------------------------------
 // purpose: installs asset types and their callbacks
 //-----------------------------------------------------------------------------
 void CPakFile::AddAsset(rapidjson::Value& file)
 {
-	ASSET_HANDLER("txtr", file, m_Assets, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
-	ASSET_HANDLER("uimg", file, m_Assets, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
-	ASSET_HANDLER("Ptch", file, m_Assets, Assets::AddPatchAsset, Assets::AddPatchAsset);
-	ASSET_HANDLER("dtbl", file, m_Assets, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
-	ASSET_HANDLER("rmdl", file, m_Assets, Assets::AddModelAsset_stub, Assets::AddModelAsset_v9);
-	ASSET_HANDLER("matl", file, m_Assets, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
-	ASSET_HANDLER("rseq", file, m_Assets, Assets::AddAnimSeqAsset_stub, Assets::AddAnimSeqAsset_v7);
+	AddJSONAsset("txtr", file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
+	AddJSONAsset("uimg", file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
+	AddJSONAsset("Ptch", file, Assets::AddPatchAsset, Assets::AddPatchAsset);
+	AddJSONAsset("dtbl", file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
+	AddJSONAsset("matl", file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
+	AddJSONAsset("rmdl", file, nullptr, Assets::AddModelAsset_v9);
+	AddJSONAsset("aseq", file, nullptr, Assets::AddAnimSeqAsset_v7);
+	AddJSONAsset("arig", file, nullptr, Assets::AddAnimRigAsset_v4);
 }
-
-
 
 //-----------------------------------------------------------------------------
 // purpose: adds page pointer to descriptor
@@ -205,11 +232,6 @@ void CPakFile::WriteAssets(BinaryIO& io)
 //-----------------------------------------------------------------------------
 void CPakFile::WritePageData(BinaryIO& out)
 {
-	//for (auto it = m_vRawDataBlocks.begin(); it != m_vRawDataBlocks.end(); ++it)
-	//{
-	//	out.getWriter()->write((char*)it->pData, it->size);
-	//}
-
 	for (auto& page : m_vPages)
 	{
 		for (auto& chunk : page.chunks)
@@ -236,8 +258,6 @@ size_t CPakFile::WriteStarpakPaths(BinaryIO& out, bool optional)
 //-----------------------------------------------------------------------------
 void CPakFile::WriteSegmentHeaders(BinaryIO& out)
 {
-	//WRITE_VECTOR(out, m_vVirtualSegments);
-
 	for (auto& segment : m_vVirtualSegments)
 	{
 		PakSegmentHdr_t segmentHdr = segment.GetHeader();
@@ -266,22 +286,6 @@ void CPakFile::WritePakDescriptors(BinaryIO& out)
 	std::sort(m_vPakDescriptors.begin(), m_vPakDescriptors.end());
 
 	WRITE_VECTOR(out, m_vPakDescriptors);
-}
-
-//-----------------------------------------------------------------------------
-// purpose: writes guid descriptors to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WriteGuidDescriptors(BinaryIO& out)
-{
-	WRITE_VECTOR(out, m_vGuidDescriptors);
-}
-
-//-----------------------------------------------------------------------------
-// purpose: writes file relations to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WriteFileRelations(BinaryIO& out)
-{
-	WRITE_VECTOR(out, m_vFileRelations);
 }
 
 //-----------------------------------------------------------------------------
@@ -400,43 +404,6 @@ CPakDataChunk CPakFile::CreateDataChunk(int size, int flags, int alignment)
 
 	return chunk;
 }
-
-//-----------------------------------------------------------------------------
-// purpose: 
-// returns: 
-//-----------------------------------------------------------------------------
-//_vseginfo_t CPakFile::CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment /*= -1*/)
-//{
-//	static_assert(0 && "fixme");
-//
-//	// !!!TODO!!!
-//	// - general code cleanup (GetMatchingSegment is probably okay to keep using)
-//	// - refactor to only find/create a virtual segment, not a page 
-//	//   (use CreateDataChunk to deal with pages from assets, or FindOrCreatePage for actually allocating a whole page)
-//	// - might be worth bringing this in line with the new convention of "CPak" classes and creating a CPakVSegment to store the new virtual segment
-//	//   instead of _vseginfo_t
-//
-//	uint32_t vsegidx = (uint32_t)m_vVirtualSegments.size();
-//
-//	// find existing "segment" with the same values or create a new one, this is to overcome the engine's limit of having max 20 of these
-//	// since otherwise we write into unintended parts of the stack, and that's bad
-//	PakSegmentHdr_t seg = GetMatchingSegment(flags, vsegAlignment == -1 ? alignment : vsegAlignment, &vsegidx);
-//
-//	bool bShouldAddVSeg = seg.dataSize == 0;
-//	seg.dataSize += size;
-//
-//	if (bShouldAddVSeg)
-//		m_vVirtualSegments.emplace_back(seg);
-//	else
-//		m_vVirtualSegments[vsegidx] = seg;
-//
-//	PakPageHdr_t vsegblock{ vsegidx, alignment, size };
-//
-//	m_vPages.emplace_back(vsegblock);
-//	int pageidx = m_vPages.size() - 1;
-//
-//	return { pageidx, size };
-//}
 
 //-----------------------------------------------------------------------------
 // purpose: 
@@ -576,23 +543,25 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	// when we have all the info
 	WriteHeader(out);
 
-	// write string vectors for starpak paths and get the total length of each vector
-	size_t starpakPathsLength = WriteStarpakPaths(out);
-	size_t optStarpakPathsLength = WriteStarpakPaths(out, true);
-	size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
+	{
+		// write string vectors for starpak paths and get the total length of each vector
+		size_t starpakPathsLength = WriteStarpakPaths(out);
+		size_t optStarpakPathsLength = WriteStarpakPaths(out, true);
+		size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
 
-	size_t aligned = IALIGN4(combinedPathsLength);
-	__int8 padBytes = aligned - combinedPathsLength;
+		size_t aligned = IALIGN4(combinedPathsLength);
+		__int8 padBytes = aligned - combinedPathsLength;
 
-	// align starpak paths to 
-	if (optStarpakPathsLength != 0)
-		optStarpakPathsLength += padBytes;
-	else
-		starpakPathsLength += padBytes;
+		// align starpak paths to 
+		if (optStarpakPathsLength != 0)
+			optStarpakPathsLength += padBytes;
+		else
+			starpakPathsLength += padBytes;
 
-	out.seek(padBytes, std::ios::cur);
+		out.seek(padBytes, std::ios::cur);
 
-	SetStarpakPathsSize(starpakPathsLength, optStarpakPathsLength);
+		SetStarpakPathsSize(starpakPathsLength, optStarpakPathsLength);
+	}
 
 	// generate file relation vector to be written
 	GenerateFileRelations();
@@ -603,8 +572,9 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	WriteMemPageHeaders(out);
 	WritePakDescriptors(out);
 	WriteAssets(out);
-	WriteGuidDescriptors(out);
-	WriteFileRelations(out);
+
+	WRITE_VECTOR(out, m_vGuidDescriptors);
+	WRITE_VECTOR(out, m_vFileRelations);
 
 	// now the actual paged data
 	WritePageData(out);

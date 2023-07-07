@@ -4,11 +4,6 @@
 #include "public/material.h"
 #include <public/animrig.h>
 
-void Assets::AddAnimRigAsset_stub(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
-{
-    Error("RPak version 7 (Titanfall 2) cannot contain anim rigs\n");
-}
-
 char* AnimRig_ReadRigFile(const std::string& path)
 {
     REQUIRE_FILE(path);
@@ -123,7 +118,7 @@ void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), -1, -1, (std::uint32_t)AssetType::ARIG);
     asset.version = 4;
-    // i have literally no idea what these are
+
     asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = 2;
 

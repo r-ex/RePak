@@ -31,7 +31,6 @@
     <ClCompile Include="utils\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="application\repak.h" />
     <ClInclude Include="assets\assets.h" />
     <ClInclude Include="common\const.h" />
     <ClInclude Include="common\decls.h" />

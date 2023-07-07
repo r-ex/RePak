@@ -108,6 +108,10 @@ public:
 	//----------------------------------------------------------------------------
 	// assets
 	//----------------------------------------------------------------------------
+
+	typedef void(*AssetTypeFunc_t)(CPakFile*, std::vector<PakAsset_t>*, const char*, rapidjson::Value&);
+
+	void AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
 	void AddAsset(rapidjson::Value& file);
 	void AddPointer(PagePtr_t ptr);
 	void AddPointer(int pageIdx, int pageOffset);
@@ -178,8 +182,6 @@ public:
 	void WriteSegmentHeaders(BinaryIO& out);
 	void WriteMemPageHeaders(BinaryIO& out);
 	void WritePakDescriptors(BinaryIO& out);
-	void WriteGuidDescriptors(BinaryIO& out);
-	void WriteFileRelations(BinaryIO& out);
 
 	//----------------------------------------------------------------------------
 	// starpak

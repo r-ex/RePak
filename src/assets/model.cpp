@@ -3,11 +3,6 @@
 #include "public/studio.h"
 #include "public/material.h"
 
-void Assets::AddModelAsset_stub(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
-{
-    Error("RPak version 7 (Titanfall 2) cannot contain models");
-}
-
 char* Model_ReadRMDLFile(const std::string& path)
 {
     REQUIRE_FILE(path);
@@ -193,6 +188,14 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
             i++;
         }
+
+        pHdr->pAnimRigs = animRigsChunk.GetPointer();
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pAnimRigs)));
+
+        for (uint32_t i = 0; i < pHdr->animRigCount; ++i)
+        {
+            guids.emplace_back(animRigsChunk.GetPointer(sizeof(uint64_t) * i));
+        }
     }
 
     CPakDataChunk sequencesChunk;
@@ -245,9 +248,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     pHdr->pName = dataChunk.GetPointer(studiohdr->length);
 
-    pHdr->pRMDL = dataChunk.GetPointer();
+    pHdr->pData = dataChunk.GetPointer();
 
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pRMDL)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pData)));
     pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pName)));
 
     if (studiohdr->IsStaticProp()) // STATIC_PROP
@@ -260,17 +263,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     {
         pHdr->pPhyData = phyChunk.GetPointer();
         pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pPhyData)));
-    }
-
-    if (mapEntry.HasMember("animrigs"))
-    {
-        pHdr->pAnimRigs = animRigsChunk.GetPointer();
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pAnimRigs)));
-
-        for (uint32_t i = 0; i < pHdr->animRigCount; ++i)
-        {
-            pak->AddGuidDescriptor(&guids, animRigsChunk.GetPointer(sizeof(uint64_t) * i));
-        }
     }
 
     bool hasMaterialOverrides = mapEntry.HasMember("materials");
@@ -312,7 +304,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.offset, -1, (std::uint32_t)AssetType::RMDL);
     asset.version = RMDL_VERSION;
-    // i have literally no idea what these are
+
     asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = 2;
 

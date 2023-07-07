@@ -2,18 +2,12 @@
 #include "assets.h"
 #include "public/studio.h"
 
-
-void Assets::AddAnimSeqAsset_stub(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
-{
-	Error("unsupported asset type 'aseq' for version 7\n");
-}
-
 void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath)
 {
     Log("Adding aseq asset '%s'\n", assetPath);
 
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimSequenceHeader), SF_HEAD, 16);
-    AnimSequenceHeader* aseqHeader = reinterpret_cast<AnimSequenceHeader*>(hdrChunk.Data());
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimSeqAssetHeader_t), SF_HEAD, 16);
+    AnimSeqAssetHeader_t* aseqHeader = reinterpret_cast<AnimSeqAssetHeader_t*>(hdrChunk.Data());
 
     std::string rseqFilePath = pak->GetAssetPath() + assetPath;
 
@@ -41,8 +35,8 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
     aseqHeader->data = dataChunk.GetPointer(fileNameLength);
 
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSequenceHeader, szname)));
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSequenceHeader, data)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSeqAssetHeader_t, szname)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSeqAssetHeader_t, data)));
 
     std::vector<PakGuidRefHdr_t> guids{};
 
