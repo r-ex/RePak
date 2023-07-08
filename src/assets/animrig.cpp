@@ -35,7 +35,7 @@ char* AnimRig_ReadRigFile(const std::string& path)
 
 bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHeader_t* hdr, rapidjson::Value& mapEntry, std::vector<PakAsset_t>* assetEntries)
 {
-    if (!mapEntry.HasMember("sequences") || !mapEntry["sequences"].IsArray())
+    if (!JSON_IS_ARRAY(mapEntry, "sequences")) //mapEntry.HasMember("sequences") || !mapEntry["sequences"].IsArray())
         return false;
 
     std::vector<uint64_t> sequenceGuids;

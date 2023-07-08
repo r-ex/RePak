@@ -305,7 +305,6 @@ void CPakFile::WriteStarpakDataBlocks(BinaryIO& out)
 void CPakFile::WriteStarpakSortsTable(BinaryIO& out)
 {
 	// starpaks have a table of sorts at the end of the file, containing the offsets and data sizes for every data block
-	// as far as i'm aware, this isn't even used by the game, so i'm not entirely sure why it exists?
 	for (auto& it : m_vStarpakDataBlocks)
 	{
 		SRPkFileEntry fe{};
@@ -357,6 +356,25 @@ void CPakFile::GenerateGuidData()
 			m_vGuidDescriptors.push_back({ it._guids[i] });
 	}
 	m_Header.guidDescriptorCount = m_vGuidDescriptors.size();
+}
+
+//-----------------------------------------------------------------------------
+// purpose: creates page and segment with the specified parameters
+// returns: 
+//-----------------------------------------------------------------------------
+CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
+{
+	int i = 0;
+	for (auto& it : m_vVirtualSegments)
+	{
+		if (it.GetFlags() == flags && it.GetAlignment() == alignment)
+			return it;
+		i++;
+	}
+
+	CPakVSegment newSegment{ i, flags, alignment, 0 };
+
+	return m_vVirtualSegments.emplace_back(newSegment);
 }
 
 // find the last page that matches the required flags and check if there is room for new data to be added
@@ -428,25 +446,6 @@ PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/,
 }
 
 //-----------------------------------------------------------------------------
-// purpose: creates page and segment with the specified parameters
-// returns: 
-//-----------------------------------------------------------------------------
-CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
-{
-	int i = 0;
-	for (auto& it : m_vVirtualSegments)
-	{
-		if (it.GetFlags() == flags && it.GetAlignment() == alignment)
-			return it;
-		i++;
-	}
-
-	CPakVSegment newSegment{ i, flags, alignment, 0 };
-
-	return m_vVirtualSegments.emplace_back(newSegment);
-}
-
-//-----------------------------------------------------------------------------
 // purpose: builds rpak and starpak from input map file
 //-----------------------------------------------------------------------------
 void CPakFile::BuildFromMap(const string& mapPath)
@@ -457,15 +456,10 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	fs::path inputPath(mapPath);
 	Utils::ParseMapDocument(doc, inputPath);
 
-	// determine pak name from control file
-	string pakName(DEFAULT_RPAK_NAME);
-	if (doc.HasMember("name") && doc["name"].IsString())
-		pakName = doc["name"].GetStdString();
-	else
-		Warning("Map file should have a 'name' field containing the string name for the new rpak, but none was provided. Using '%s.rpak'.\n", pakName.c_str());
+	string pakName = JSON_GET_STR(doc, "name", DEFAULT_RPAK_NAME);
 
 	// determine source asset directory from map file
-	if (!doc.HasMember("assetsDir"))
+	if (!JSON_IS_STR(doc, "assetsDir"))
 	{
 		Warning("No assetsDir field provided. Assuming that everything is relative to the working directory.\n");
 		if (inputPath.has_parent_path())
@@ -488,9 +482,9 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 	// determine final build path from map file
 	std::string outputPath(DEFAULT_RPAK_PATH);
-	if (doc.HasMember("outputDir"))
+	if (JSON_IS_STR(doc, "outputDir"))
 	{
-		fs::path outputDirPath(doc["outputDir"].GetStdString());
+		fs::path outputDirPath(doc["outputDir"].GetString());
 
 		if (outputDirPath.is_relative() && inputPath.has_parent_path())
 			outputPath = fs::canonical(inputPath.parent_path() / outputDirPath).u8string();
@@ -501,19 +495,17 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		Utils::AppendSlash(outputPath);
 	}
 
-	// determine pakfile version from map file
-	if (!doc.HasMember("version") || !doc["version"].IsInt())
-		Warning("[JSON] No version field provided; using '%d'.\n", GetVersion());
-	else
-		SetVersion(doc["version"].GetInt());
+	if (!JSON_IS_INT(doc, "version"))
+		Warning("No version field provided; assuming version 8 (r5)\n");
+
+	this->SetVersion(JSON_GET_INT(doc, "version", 8));
 
 	// print parsed settings
 	Log("build settings:\n");
 	Log("version: %i\n", GetVersion());
 	Log("fileName: %s.rpak\n", pakName.c_str());
 	Log("assetsDir: %s\n", m_AssetPath.c_str());
-	Log("outputDir: %s\n", outputPath.c_str());
-	Log("\n");
+	Log("outputDir: %s\n\n", outputPath.c_str());
 
 	// create output directory if it does not exist yet.
 	fs::create_directories(outputPath);
@@ -522,10 +514,10 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	SetPath(outputPath + pakName + ".rpak");
 
 	// should dev-only data be kept - e.g. texture asset names, uimg texture names
-	if (doc.HasMember("keepDevOnly") && doc["keepDevOnly"].IsBool() && doc["keepDevOnly"].GetBool())
+	if (JSON_GET_BOOL(doc, "keepDevOnly"))
 		AddFlags(PF_KEEP_DEV);
 
-	if (doc.HasMember("starpakPath") && doc["starpakPath"].IsString())
+	if (JSON_IS_STR(doc, "starpakPath"))
 		SetPrimaryStarpakPath(doc["starpakPath"].GetStdString());
 
 	// build asset data;

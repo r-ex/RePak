@@ -428,20 +428,12 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     mtlHdr->guid = RTech::StringToGuid(sFullAssetRpakPath.c_str()); // Convert full rpak asset path to guid and set it in the material header.
 
-    if (mapEntry.HasMember("width")) // Set material width.
-        mtlHdr->width = mapEntry["width"].GetInt();
-
-    if (mapEntry.HasMember("height")) // Set material width.
-        mtlHdr->height = mapEntry["height"].GetInt();
-
-    if (mapEntry.HasMember("flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
-        mtlHdr->flags_78 = mapEntry["flags"].GetUint();
-
-    std::string surface = "default";
+    mtlHdr->width = JSON_GET_INT(mapEntry, "width", 0);
+    mtlHdr->height = JSON_GET_INT(mapEntry, "height", 0);
+    mtlHdr->flags_78 = JSON_GET_UINT(mapEntry, "flags", 0);
 
     // surfaces are defined in scripts/surfaceproperties.rson
-    if (mapEntry.HasMember("surface"))
-        surface = mapEntry["surface"].GetStdString();
+    std::string surface = JSON_GET_STR(mapEntry, "surface", "default");
 
     // Get the size of the texture guid section.
     size_t textureRefSize = 0;
@@ -548,30 +540,30 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
         mtlHdr->materialType = RGDP;
     }
 
-    { 
+    {
         // optional depth material overrides
-        if (mapEntry.HasMember("depthShadowMaterial") && mapEntry["depthShadowMaterial"].IsString())
+        if (JSON_IS_STR(mapEntry, "depthShadowMaterial"))
         {
             mtlHdr->depthShadowMaterial = RTech::GetAssetGUIDFromString(mapEntry["depthShadowMaterial"].GetString());
         }
 
-        if (mapEntry.HasMember("depthPrepassMaterial") && mapEntry["depthPrepassMaterial"].IsString())
+        if (JSON_IS_STR(mapEntry, "depthPrepassMaterial"))
         {
             mtlHdr->depthPrepassMaterial = RTech::GetAssetGUIDFromString(mapEntry["depthPrepassMaterial"].GetString());
         }
 
-        if (mapEntry.HasMember("depthVSMMaterial") && mapEntry["depthVSMMaterial"].IsString())
+        if (JSON_IS_STR(mapEntry, "depthVSMMaterial"))
         {
             mtlHdr->depthVSMMaterial = RTech::GetAssetGUIDFromString(mapEntry["depthVSMMaterial"].GetString());
         }
 
-        if (mapEntry.HasMember("depthShadowTightMaterial") && mapEntry["depthShadowTightMaterial"].IsString())
+        if (JSON_IS_STR(mapEntry, "depthShadowTightMaterial"))
         {
             mtlHdr->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(mapEntry["depthShadowTightMaterial"].GetString());
         }
 
         // optional shaderset override
-        if (mapEntry.HasMember("shaderset") && mapEntry["shaderset"].IsString())
+        if (JSON_IS_STR(mapEntry, "shaderset"))
         {
             mtlHdr->shaderSet = RTech::GetAssetGUIDFromString(mapEntry["shaderset"].GetString());
         }
@@ -580,7 +572,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     bool bColpass = false; // is this colpass material?
 
     // get referenced colpass material if exists
-    if (mapEntry.HasMember("colpass") && mapEntry["colpass"].IsString())
+    if (JSON_IS_STR(mapEntry, "colpass"))
     {
         std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString() + ".rpak";
         mtlHdr->colpassMaterial = RTech::StringToGuid(colpassPath.c_str());

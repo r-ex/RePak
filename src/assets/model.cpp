@@ -133,7 +133,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     size_t phyFileSize = 0;
 
     CPakDataChunk phyChunk;
-    if (mapEntry.HasMember("usePhysics") && mapEntry["usePhysics"].GetBool())
+    
+    if (JSON_GET_BOOL(mapEntry, "usePhysics"))
     {
         BinaryIO phyInput;
         phyInput.open(Utils::ChangeExtension(rmdlFilePath, "phy"), BinaryIOMode::Read);

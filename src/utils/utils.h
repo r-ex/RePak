@@ -67,10 +67,16 @@ private:
 #define IALIGN32(a)  IALIGN(a,32)
 #define IALIGN64(a)  IALIGN(a,64)
 
-// #define IALIGN2( a ) ((a + 1)  & ~1)
-// #define IALIGN4( a ) ((a + 3)  & ~3)
-// #define IALIGN8( a ) ((a + 7)  & ~7)
-// #define IALIGN16( a ) ((a + 15)  & ~15)
-// #define IALIGN32( a ) ((a + 31)  & ~31)
-// #define IALIGN64( a ) ((a + 63) & ~63)
+// json helper macros
+#define JSON_IS_BOOL(doc, name) (doc.HasMember(name) && doc[name].IsBool())
+#define JSON_IS_INT(doc, name) (doc.HasMember(name) && doc[name].IsInt())
+#define JSON_IS_UINT(doc, name) (doc.HasMember(name) && doc[name].IsUint())
+#define JSON_IS_STR(doc, name) (doc.HasMember(name) && doc[name].IsString())
+#define JSON_IS_ARRAY(doc, name) (doc.HasMember(name) && doc[name].IsArray())
+
+#define JSON_GET_BOOL(doc, name) (doc.HasMember(name) && doc[name].IsBool() && doc[name].GetBool())
+#define JSON_GET_INT(doc, name, defaultValue) ((doc.HasMember(name) && doc[name].IsInt()) ? doc[name].GetInt() : defaultValue)
+#define JSON_GET_UINT(doc, name, defaultValue) ((doc.HasMember(name) && doc[name].IsUint()) ? doc[name].GetUint() : defaultValue)
+#define JSON_GET_STR(doc, name, defaultValue) ((doc.HasMember(name) && doc[name].IsString()) ? doc[name].GetString() : defaultValue)
+
 
