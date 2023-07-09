@@ -155,12 +155,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     //
     CPakDataChunk animRigsChunk;
 
-    if (mapEntry.HasMember("animrigs"))
+    if (JSON_IS_ARRAY(mapEntry, "animrigs"))
     {
         rapidjson::Value& animrigs = mapEntry["animrigs"];
-
-        if (!animrigs.IsArray())
-            Error("found field 'animrigs' on model asset '%s' with invalid type. expected 'array'\n", assetPath);
 
         pHdr->animRigCount = animrigs.Size();
 
