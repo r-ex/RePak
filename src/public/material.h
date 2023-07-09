@@ -215,7 +215,7 @@ struct MaterialShaderBufferV12
 	// r g b
 	float c_perfSpecColor[3] = {0.03f, 0.03f, 0.03f}; // specular color, consistent across most materials.
 
-	inline char* AsCharPtr() { return reinterpret_cast<char*>((char*)this); }
+	inline char* AsCharPtr() { return reinterpret_cast<char*>(this); }
 };
 
 struct UnknownMaterialSectionV12
@@ -293,7 +293,7 @@ static_assert(sizeof(MaterialHeaderV12) == 208); // should be size of 208
 // header struct for the material asset cpu data
 struct MaterialCPUHeader
 {
-	PagePtr_t  dataPtr{}; // points to the rest of the cpu data. maybe for colour?
+	PagePtr_t dataPtr{}; // points to the rest of the cpu data
 	uint32_t dataSize = 0;
 	uint32_t maybeVersion = 3; // every unknown is now either datasize, version, or flags
 };
