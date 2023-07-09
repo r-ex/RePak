@@ -419,7 +419,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     std::string type = "sknp";
 
-    if (mapEntry.HasMember("type"))
+    if (JSON_IS_STR(mapEntry, "type"))
         type = mapEntry["type"].GetStdString();
     else
         Warning("Adding material without an explicitly defined type. Assuming 'sknp'...\n");
