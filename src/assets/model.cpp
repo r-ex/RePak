@@ -300,7 +300,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     PakAsset_t asset;
 
-    asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.offset, -1, (std::uint32_t)AssetType::RMDL);
+    asset.InitAsset(sAssetName, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.offset, -1, (std::uint32_t)AssetType::RMDL);
     asset.version = RMDL_VERSION;
 
     asset.pageEnd = pak->GetNumPages();
@@ -308,5 +308,6 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     asset.AddGuids(&guids);
 
+    asset.EnsureUnique(assetEntries);
     assetEntries->push_back(asset);
 }

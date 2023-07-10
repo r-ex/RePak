@@ -65,5 +65,6 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
     asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = 1;
 
+    asset.EnsureUnique(assetEntries);
     assetEntries->push_back(asset);
 }

@@ -208,7 +208,8 @@ void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntr
 
     PakAsset_t asset;
 
-    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), 
+    asset.InitAsset(
+        sAssetName + ".rpak", 
         hdrChunk.GetPointer(), hdrChunk.GetSize(),
         rowDataChunk.GetPointer(),
         -1, -1, (std::uint32_t)AssetType::DTBL);
@@ -220,6 +221,7 @@ void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntr
     asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = 1; // asset only depends on itself
 
+    asset.EnsureUnique(assetEntries);
     assetEntries->push_back(asset);
 
     delete pHdr;

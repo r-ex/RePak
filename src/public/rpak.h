@@ -138,6 +138,24 @@ struct PakAsset_t
 {
 	PakAsset_t() = default;
 
+	void InitAsset(const std::string& name,
+		PagePtr_t headPtr,
+		uint32_t headerSize,
+		PagePtr_t cpuPtr,
+		uint64_t starpakOffset,
+		uint64_t optStarpakOffset,
+		uint32_t type)
+	{
+		this->name = name;
+		this->guid = RTech::StringToGuid(name.c_str());
+		this->headPtr = headPtr;
+		this->cpuPtr = cpuPtr;
+		this->starpakOffset = starpakOffset;
+		this->optStarpakOffset = optStarpakOffset;
+		this->headDataSize = headerSize;
+		this->id = type;
+	}
+
 	void InitAsset(uint64_t guid,
 		PagePtr_t headPtr,
 		uint32_t headerSize,
@@ -146,6 +164,7 @@ struct PakAsset_t
 		uint64_t optStarpakOffset,
 		uint32_t type)
 	{
+		this->name = "(null)";
 		this->guid = guid;
 		this->headPtr = headPtr;
 		this->cpuPtr = cpuPtr;
@@ -208,6 +227,7 @@ struct PakAsset_t
 	// internal
 public:
 	int _assetidx;
+	std::string name;
 
 	// vector of indexes for local assets that use this asset
 	std::vector<unsigned int> _relations{};
@@ -223,8 +243,31 @@ public:
 		for (auto& it : *descs)
 			_guids.push_back(it);
 	};
+
+	// ensures that this asset's guid does not already exist within a given vector of assets
+	inline void EnsureUnique(std::vector<PakAsset_t>* assets)
+	{
+		size_t i = 0;
+		for (PakAsset_t& asset : *assets)
+		{
+			// this check requires a fatal error as by the time this is checked (just before being added to the vector)
+			// all of this asset's pages have already been created and dependencies have been processed
+			// if we simply skip the asset this late, it will cause problems with unused pages and invalid dependencies
+			// 
+			// additionally, a duplicate asset will usually be a mistake that the user wishes to deal with by themselves, and a non-fatal error
+			// may cause them to overlook the problem.
+			// assets in which duplicate additions are expected (e.g. textures being auto-added from materials) already handle non-fatal duplications separately
+			// from an earlier point at which asset skips are acceptable
+			if (asset.guid == this->guid)
+				Error("Found duplicate asset '%s'. Assets at index %lld and %lld have the same GUID (%llX). Exiting...\n", this->name.c_str(), i, assets->size(), this->guid);
+
+			i++;
+		}
+	}
 };
 #pragma pack(pop)
+
+
 
 // internal data structure for referencing file data to be written
 struct PakRawDataBlock_t
@@ -252,8 +295,6 @@ struct StreamableDataEntry
 //
 //	Assets
 //
-#pragma pack(push, 1)
-
 struct PatchAssetHeader_t
 {
 	uint32_t unknown_1 = 255; // always FF 00 00 00?
@@ -263,8 +304,7 @@ struct PatchAssetHeader_t
 
 	PagePtr_t pPakPatchNums;
 };
-
-#pragma pack(pop)
+static_assert(sizeof(PatchAssetHeader_t) == 24);
 
 // internal data structure for storing patch_master entries before being written
 struct PtchEntry

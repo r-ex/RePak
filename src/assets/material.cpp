@@ -376,7 +376,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     PakAsset_t asset;
 
-    asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), -1, -1, (std::uint32_t)AssetType::MATL);
+    asset.InitAsset(sFullAssetRpakPath, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), -1, -1, (std::uint32_t)AssetType::MATL);
     asset.version = 12; // might be good to define this somewhere
 
     asset.pageEnd = pak->GetNumPages();
@@ -384,6 +384,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     asset.AddGuids(&guids);
 
+    asset.EnsureUnique(assetEntries);
     assetEntries->push_back(asset);
 
     Log("\n");   
@@ -701,7 +702,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     PakAsset_t asset;
 
-    asset.InitAsset(RTech::StringToGuid(sFullAssetRpakPath.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), -1, -1, (std::uint32_t)AssetType::MATL);
+    asset.InitAsset(sFullAssetRpakPath, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), -1, -1, (std::uint32_t)AssetType::MATL);
     asset.version = MATL_VERSION;
 
     asset.pageEnd = pak->GetNumPages();
@@ -709,6 +710,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     asset.AddGuids(&guids);
 
+    asset.EnsureUnique(assetEntries);
     assetEntries->push_back(asset);
 
     Log("\n");

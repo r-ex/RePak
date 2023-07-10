@@ -61,7 +61,7 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
     PakAsset_t asset;
 
-    asset.InitAsset(RTech::StringToGuid(assetPath), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), -1, -1, (std::uint32_t)AssetType::ASEQ);
+    asset.InitAsset(assetPath, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), -1, -1, (std::uint32_t)AssetType::ASEQ);
     asset.version = 7;
 
     asset.pageEnd = pak->GetNumPages();
@@ -69,6 +69,7 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
     asset.AddGuids(&guids);
 
+    asset.EnsureUnique(assetEntries);
     assetEntries->push_back(asset);
 }
 

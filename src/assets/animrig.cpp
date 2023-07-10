@@ -116,7 +116,7 @@ void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     PakAsset_t asset;
 
-    asset.InitAsset(RTech::StringToGuid(sAssetName.c_str()), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), -1, -1, (std::uint32_t)AssetType::ARIG);
+    asset.InitAsset(sAssetName, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), -1, -1, (std::uint32_t)AssetType::ARIG);
     asset.version = 4;
 
     asset.pageEnd = pak->GetNumPages();
@@ -124,5 +124,6 @@ void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     asset.AddGuids(&guids);
 
+    asset.EnsureUnique(assetEntries);
     assetEntries->push_back(asset);
 }
