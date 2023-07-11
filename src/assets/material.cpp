@@ -119,7 +119,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     uint32_t dataBufSize = alignedPathSize + (textureRefSize * 2) + (surface.length() + 1);
 
     // asset data
-    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 64);
 
     char* dataBuf = dataChunk.Data();
     char* tmp = dataBuf;
@@ -453,7 +453,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     uint32_t dataBufSize = alignedPathSize + (textureRefSize * 2) + (surface.length() + 1);
 
     // asset data
-    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 64);
 
     char* dataBuf = dataChunk.Data();
     char* tmp = dataBuf;
@@ -602,6 +602,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV15, textureHandles)));
     pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialHeaderV15, streamingTextureHandles)));
 
+    mtlHdr->unk_80 = 0x1F5A92BD;
     mtlHdr->unk_88 = 0x72000000;
     mtlHdr->unk_8C = 0x100000;
 
