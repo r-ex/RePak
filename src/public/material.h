@@ -90,54 +90,56 @@ struct MaterialCPUDataV15
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 	};
-
 };
 
 // start of CMaterialGlue class
 struct MaterialHeaderV15
 {
-	uint64_t vftableReserved = 0; // reserved for virtual function table pointer (when copied into native CMaterialGlue)
-	char gap_8[0x8]{}; // unused?
-	uint64_t guid = 0; // guid of this material asset
+	uint64_t vftableReserved; // reserved for virtual function table pointer (when copied into native CMaterialGlue)
 
-	PagePtr_t materialName{}; // pointer to partial asset path
-	PagePtr_t surfaceProp{}; // pointer to surfaceprop (as defined in surfaceproperties.rson)
-	PagePtr_t surfaceProp2{}; // pointer to surfaceprop2 
+	char gap_8[0x8]; // unused?
+	uint64_t guid; // guid of this material asset
 
-	uint64_t depthShadowMaterial = 0;
-	uint64_t depthPrepassMaterial = 0;
-	uint64_t depthVSMMaterial = 0;
-	uint64_t depthShadowTightMaterial = 0;
-	uint64_t colpassMaterial = 0;
+	PagePtr_t materialName; // pointer to partial asset path
+	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
 
-	uint64_t shaderSet = 0; // guid of the shaderset asset that this material uses
+	uint64_t depthShadowMaterial;
+	uint64_t depthPrepassMaterial;
+	uint64_t depthVSMMaterial;
+	uint64_t depthShadowTightMaterial;
+	uint64_t colpassMaterial;
 
-	/* 0x60 */ PagePtr_t textureHandles{}; // ptr to array of texture guids
-	/* 0x68 */ PagePtr_t streamingTextureHandles{}; // ptr to array of streamable texture guids (empty at build time)
+	uint64_t shaderSet; // guid of the shaderset asset that this material uses
 
-	/* 0x70 */ short numStreamingTextureHandles = 0x4; // Number of textures with streamed mip levels.
-	/* 0x72 */ short width = 2048;
-	/* 0x74 */ short height = 2048;
-	/* 0x76 */ short unk_76 = 0;
+	PagePtr_t textureHandles{}; // ptr to array of texture guids
+	PagePtr_t streamingTextureHandles{}; // ptr to array of streamable texture guids (empty at build time)
 
-	/* 0x78 */ uint32_t flags_78 = 0x1D0300;
-	/* 0x7C */ uint32_t unk_7C = 0;
+	short numStreamingTextureHandles;// = 0x4; // Number of textures with streamed mip levels.
+	short width;
+	short height;
+	short unk_76;
 
-	/* 0x80 */ uint32_t unk_80 = 0x1F5A92BD; // REQUIRED but why?
+	uint32_t flags_78;// = 0x1D0300;
+	uint32_t unk_7C;
 
-	/* 0x84 */ uint32_t unk_84 = 0;
+	uint32_t unk_80;// = 0x1F5A92BD; // REQUIRED but why?
+
+	uint32_t unk_84;
 
 	// neither of these 2 seem to be required
-	/* 0x88 */ uint32_t unk_88 = 0;
-	/* 0x8C */ uint32_t unk_8C = 0;
+	uint32_t unk_88;
+	uint32_t unk_8C;
 
-	/* 0x90 */ UnknownMaterialSectionV15 unkSections[2]{}; // seems to be used for setting up some D3D states?
-	/* 0xF0 */ uint8_t bytef0;
-	/* 0xF1 */ uint8_t bytef1;
-	/* 0xF2 */ MaterialShaderType_t materialType;
-	/* 0xF3 */ uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
-	/* 0xF4 */ char pad_00F4[12];
-};
+	UnknownMaterialSectionV15 unkSections[2]; // seems to be used for setting up some D3D states?
+	uint8_t bytef0;
+	uint8_t bytef1;
+	MaterialShaderType_t materialType;
+	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
+	char pad_00F4[0xC];
+}; // 256 bytes
+
+static_assert(sizeof(MaterialHeaderV15) == 256);
 
 // bunch this up into a struct for ease of access and readability
 struct uvTransformMatrix
