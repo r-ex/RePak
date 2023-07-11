@@ -6,6 +6,13 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 {
     Log("Adding aseq asset '%s'\n", assetPath);
 
+    PakAsset_t* existingAsset = pak->GetAssetByGuid(RTech::GetAssetGUIDFromString(assetPath, true), nullptr, true);
+    if (existingAsset)
+    {
+        Warning("Tried to add animseq asset '%s' twice. Skipping redefinition...\n", assetPath);
+        return;
+    }
+
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimSeqAssetHeader_t), SF_HEAD, 16);
     AnimSeqAssetHeader_t* aseqHeader = reinterpret_cast<AnimSeqAssetHeader_t*>(hdrChunk.Data());
 
