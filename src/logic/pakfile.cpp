@@ -352,6 +352,8 @@ void CPakFile::GenerateGuidData()
 		it.dependenciesCount = it._guids.size();
 		it.dependenciesIndex = it.dependenciesCount == 0 ? 0 : m_vGuidDescriptors.size();
 
+		std::sort(it._guids.begin(), it._guids.end());
+
 		for (int i = 0; i < it._guids.size(); ++i)
 			m_vGuidDescriptors.push_back({ it._guids[i] });
 	}
@@ -541,7 +543,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		size_t optStarpakPathsLength = WriteStarpakPaths(out, true);
 		size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
 
-		size_t aligned = IALIGN4(combinedPathsLength);
+		size_t aligned = IALIGN8(combinedPathsLength);
 		__int8 padBytes = aligned - combinedPathsLength;
 
 		// align starpak paths to 
