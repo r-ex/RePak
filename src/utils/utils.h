@@ -3,7 +3,7 @@
 namespace Utils
 {
 	uintmax_t GetFileSize(const std::string& filename);
-	FILETIME GetFileTimeBySystem();
+	FILETIME GetSystemFileTime();
 	
 	size_t PadBuffer(char** buf, size_t size, size_t alignment);
 	size_t WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVector);

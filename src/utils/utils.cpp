@@ -57,7 +57,7 @@ size_t Utils::WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVec
 //-----------------------------------------------------------------------------
 // purpose: get current system time as FILETIME
 //-----------------------------------------------------------------------------
-FILETIME Utils::GetFileTimeBySystem()
+FILETIME Utils::GetSystemFileTime()
 {
 	FILETIME ft;
 	GetSystemTimeAsFileTime(&ft);

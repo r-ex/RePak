@@ -574,7 +574,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	WritePageData(out);
 
 	// set header descriptors
-	SetFileTime(Utils::GetFileTimeBySystem());
+	SetFileTime(Utils::GetSystemFileTime());
 
 	// !TODO: implement LZHAM and set these accordingly.
 	SetCompressedSize(out.tell());
