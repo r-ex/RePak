@@ -129,7 +129,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
             }
 
             // if streamable textures are enabled, check if this mip is supposed to be streamed
-            if (isStreamable && mipMap.mipSizeAligned >= MAX_PERM_MIP_SIZE)
+            if (isStreamable && mipMap.mipSizeAligned > MAX_PERM_MIP_SIZE)
             {
                 mipSizes.streamedSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
                 hdr->streamedMipLevels++; // add a streamed mip level
