@@ -679,6 +679,8 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
             externalDependencyCount++;
     }
 
+    matlAsset->unk = 0x1F5A92BD; // set a quirky little guy
+
     // write header now that we are done setting it up
     matlAsset->WriteToBuffer(hdrChunk.Data(), pak->GetVersion());
 
