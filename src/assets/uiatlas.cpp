@@ -68,7 +68,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
 
 
-    uint32_t nTexturesCount = mapEntry["textures"].GetArray().Size();
+    uint16_t textureCount = mapEntry["textures"].GetArray().Size();
 
     // grab the dimensions of the atlas
     BinaryIO atlas;
@@ -83,23 +83,25 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
 
     UIImageAtlasHeader_t* pHdr = reinterpret_cast<UIImageAtlasHeader_t*>(hdrChunk.Data());
 
-    pHdr->width = ddsh.dwWidth;
-    pHdr->height = ddsh.dwHeight;
+    assert(ddsh.dwWidth <= UINT16_MAX);
+    assert(ddsh.dwHeight <= UINT16_MAX);
+    pHdr->width = static_cast<uint16_t>(ddsh.dwWidth);
+    pHdr->height = static_cast<uint16_t>(ddsh.dwHeight);
 
-    pHdr->widthRatio = 1 / pHdr->width;
-    pHdr->heightRatio = 1 / pHdr->height;
+    pHdr->widthRatio = 1.f / pHdr->width;
+    pHdr->heightRatio = 1.f / pHdr->height;
 
     // legion uses this to get the texture count, so its probably set correctly
-    pHdr->textureCount = nTexturesCount;
+    pHdr->textureCount = textureCount;
     // unused by legion? - might not be correct
     //pHdr->textureCount = nTexturesCount <= 1 ? 0 : nTexturesCount - 1; // don't even ask
     pHdr->unkCount = 0;
     pHdr->atlasGUID = atlasGuid;
 
     // calculate data sizes so we can allocate a page and segment
-    int textureOffsetsDataSize = sizeof(UIImageOffset) * nTexturesCount;
-    int textureDimensionsDataSize = sizeof(uint16_t) * 2 * nTexturesCount;
-    int textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * nTexturesCount;
+    int textureOffsetsDataSize = sizeof(UIImageOffset) * textureCount;
+    int textureDimensionsDataSize = sizeof(uint16_t) * 2 * textureCount;
+    int textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * textureCount;
 
     // get total size
     int textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
@@ -108,7 +110,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     CPakDataChunk textureInfoChunk = pak->CreateDataChunk(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
 
     // cpu data
-    CPakDataChunk dataChunk = pak->CreateDataChunk(nTexturesCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(textureCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
     
     // register our descriptors so they get converted properly
     pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureOffsets)));

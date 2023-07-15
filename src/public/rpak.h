@@ -124,6 +124,7 @@ struct PakPageHdr_t
 	int pageAlignment; // alignment size when buffer is allocated
 	int dataSize; // actual size of page in bytes
 };
+#pragma pack(pop)
 
 // defines the location of a data "pointer" within the pak's mem pages
 // allows the engine to read the index/offset pair and replace it with an actual memory pointer at runtime
@@ -202,7 +203,8 @@ struct PakAsset_t
 	__int64 starpakOffset = -1;
 	__int64 optStarpakOffset = -1;
 
-	uint16_t pageEnd = 0; // highest mem page used by this asset
+	// this is actually uint16 in file. we store it as size_t here to avoid casts in every asset function
+	size_t pageEnd = 0; // highest mem page used by this asset
 
 	// value is decremented every time a dependency finishes processing its own dependencies
 	short remainingDependencyCount = 0;
@@ -211,8 +213,8 @@ struct PakAsset_t
 	uint32_t dependentsIndex = 0;
 	uint32_t dependenciesIndex = 0;
 
-	int dependentsCount = 0; // number of local assets that use this asset
-	int dependenciesCount = 0; // number of local assets that are used by this asset
+	uint32_t dependentsCount = 0; // number of local assets that use this asset
+	uint32_t dependenciesCount = 0; // number of local assets that are used by this asset
 
 	// size of the asset header
 	int headDataSize = 0;
@@ -233,6 +235,7 @@ public:
 	std::vector<unsigned int> _relations{};
 
 	inline void AddRelation(unsigned int idx) { _relations.push_back({ idx }); };
+	inline void AddRelation(size_t idx) { _relations.push_back({ static_cast<unsigned int>(idx) }); };
 
 	std::vector<PakGuidRefHdr_t> _guids{};
 
@@ -265,7 +268,6 @@ public:
 		}
 	}
 };
-#pragma pack(pop)
 
 
 

@@ -103,7 +103,7 @@ void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
         std::string lastLine = "";
         std::string curLine = "";
 
-        int offset = doc.GetErrorOffset();
+        size_t offset = doc.GetErrorOffset();
         ifs.clear();
         ifs.seekg(0, std::ios::beg);
         js::IStreamWrapper isw{ ifs };

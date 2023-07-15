@@ -215,7 +215,8 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     StreamableDataEntry de{ 0, vgFileSize, (uint8_t*)vgBuf };
     de = pak->AddStarpakDataEntry(de);
 
-    pHdr->alignedStreamingSize = de.dataSize;
+    assert(de.dataSize <= UINT32_MAX);
+    pHdr->alignedStreamingSize = static_cast<uint32_t>(de.dataSize);
 
     size_t extraDataSize = 0;
 
@@ -224,7 +225,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         extraDataSize = vgFileSize;
     }
 
-    int fileNameDataSize = sAssetName.length() + 1;
+    size_t fileNameDataSize = sAssetName.length() + 1;
 
     CPakDataChunk dataChunk = pak->CreateDataChunk(studiohdr->length + fileNameDataSize + extraDataSize, SF_CPU, 64);
     char* pDataBuf = dataChunk.Data();
@@ -289,7 +290,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         if (tex->guid != 0)
         {
             size_t pos = (char*)tex - pDataBuf;
-            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(pos + offsetof(mstudiotexture_t, guid)));
+            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(static_cast<int>(pos) + offsetof(mstudiotexture_t, guid)));
 
             PakAsset_t* asset = pak->GetAssetByGuid(tex->guid);
 

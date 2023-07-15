@@ -43,6 +43,7 @@
     <ClInclude Include="public\animrig.h" />
     <ClInclude Include="public\material.h" />
     <ClInclude Include="public\rpak.h" />
+    <ClInclude Include="public\starpak.h" />
     <ClInclude Include="public\studio.h" />
     <ClInclude Include="public\datatable.h" />
     <ClInclude Include="public\texture.h" />

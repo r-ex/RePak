@@ -143,13 +143,22 @@ StreamableDataEntry CPakFile::AddStarpakDataEntry(StreamableDataEntry block)
 //-----------------------------------------------------------------------------
 void CPakFile::WriteHeader(BinaryIO& io)
 {
-	m_Header.virtualSegmentCount = m_vVirtualSegments.size();
-	m_Header.pageCount = m_vPages.size();
-	m_Header.descriptorCount = m_vPakDescriptors.size();
-	m_Header.guidDescriptorCount = m_vGuidDescriptors.size();
-	m_Header.relationCount = m_vFileRelations.size();
+	assert(m_vVirtualSegments.size() <= UINT16_MAX);
+	m_Header.virtualSegmentCount = static_cast<uint16_t>(m_vVirtualSegments.size());
 
-	int version = m_Header.fileVersion;
+	assert(m_vPages.size() <= UINT16_MAX);
+	m_Header.pageCount = static_cast<uint16_t>(m_vPages.size());
+
+	assert(m_vPakDescriptors.size() <= UINT32_MAX);
+	m_Header.descriptorCount = static_cast<uint32_t>(m_vPakDescriptors.size());
+
+	assert(m_vGuidDescriptors.size() <= UINT32_MAX);
+	m_Header.guidDescriptorCount = static_cast<uint32_t>(m_vGuidDescriptors.size());
+
+	assert(m_vFileRelations.size() <= UINT32_MAX);
+	m_Header.relationCount = static_cast<uint32_t>(m_vFileRelations.size());
+
+	short version = m_Header.fileVersion;
 
 	io.write(m_Header.magic);
 	io.write(m_Header.fileVersion);
@@ -212,7 +221,10 @@ void CPakFile::WriteAssets(BinaryIO& io)
 		if (this->m_Header.fileVersion == 8)
 			io.write(it.optStarpakOffset);
 
-		io.write(it.pageEnd);
+		assert(it.pageEnd <= UINT16_MAX);
+		uint16_t pageEnd = static_cast<uint16_t>(it.pageEnd);
+		io.write(pageEnd);
+
 		io.write(it.remainingDependencyCount);
 		io.write(it.dependentsIndex);
 		io.write(it.dependenciesIndex);
@@ -223,8 +235,9 @@ void CPakFile::WriteAssets(BinaryIO& io)
 		io.write(it.id);
 	}
 
+	assert(m_Assets.size() <= UINT32_MAX);
 	// update header asset count with the assets we've just written
-	this->m_Header.assetCount = m_Assets.size();
+	this->m_Header.assetCount = static_cast<uint32_t>(m_Assets.size());
 }
 
 //-----------------------------------------------------------------------------
@@ -333,13 +346,19 @@ void CPakFile::GenerateFileRelations()
 {
 	for (auto& it : m_Assets)
 	{
-		it.dependentsCount = it._relations.size();
-		it.dependentsIndex = m_vFileRelations.size();
+		assert(it._relations.size() <= UINT32_MAX);
+		it.dependentsCount = static_cast<uint32_t>(it._relations.size());
+
+		// todo: check why this is different to dependencies index
+		it.dependentsIndex = static_cast<uint32_t>(m_vFileRelations.size());
 
 		for (int i = 0; i < it._relations.size(); ++i)
 			m_vFileRelations.push_back(it._relations[i]);
 	}
-	m_Header.relationCount = m_vFileRelations.size();
+
+	assert(m_vFileRelations.size() <= UINT32_MAX);
+
+	m_Header.relationCount = static_cast<uint32_t>(m_vFileRelations.size());
 }
 
 //-----------------------------------------------------------------------------
@@ -349,15 +368,20 @@ void CPakFile::GenerateGuidData()
 {
 	for (auto& it : m_Assets)
 	{
-		it.dependenciesCount = it._guids.size();
-		it.dependenciesIndex = it.dependenciesCount == 0 ? 0 : m_vGuidDescriptors.size();
+		assert(it._guids.size() <= UINT32_MAX);
+		it.dependenciesCount = static_cast<uint32_t>(it._guids.size());
+
+		it.dependenciesIndex = it.dependenciesCount == 0 ? 0 : static_cast<uint32_t>(m_vGuidDescriptors.size());
 
 		std::sort(it._guids.begin(), it._guids.end());
 
 		for (int i = 0; i < it._guids.size(); ++i)
 			m_vGuidDescriptors.push_back({ it._guids[i] });
 	}
-	m_Header.guidDescriptorCount = m_vGuidDescriptors.size();
+
+	assert(m_vGuidDescriptors.size() <= UINT32_MAX);
+
+	m_Header.guidDescriptorCount = static_cast<uint32_t>(m_vGuidDescriptors.size());
 }
 
 //-----------------------------------------------------------------------------
@@ -382,7 +406,7 @@ CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
 // find the last page that matches the required flags and check if there is room for new data to be added
 CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, int newDataSize)
 {
-	for (int i = m_vPages.size(); i > 0; --i)
+	for (size_t i = m_vPages.size(); i > 0; --i)
 	{
 		CPakPage& page = m_vPages[i-1];
 		if (page.GetFlags() == flags && page.GetAlignment() == alignment)
@@ -394,15 +418,15 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, int newDataSize)
 
 	CPakVSegment& segment = FindOrCreateSegment(flags, alignment);
 
-	CPakPage p{ this, segment.GetIndex(), (int)m_vPages.size(), flags, alignment };
+	CPakPage p{ this, segment.GetIndex(), static_cast<int>(m_vPages.size()), flags, alignment };
 
 	return m_vPages.emplace_back(p);
 }
 
 void CPakPage::AddDataChunk(CPakDataChunk& chunk)
 {
-	chunk.pageIndex = GetIndex();
-	chunk.pageOffset = GetSize();
+	chunk.pageIndex = this->GetIndex();
+	chunk.pageOffset = this->GetSize();
 
 	dataSize += chunk.size;
 
@@ -438,6 +462,7 @@ PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/,
 		{
 			if (idx)
 				*idx = i;
+
 			return &it;
 		}
 		i++;
@@ -544,7 +569,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
 
 		size_t aligned = IALIGN8(combinedPathsLength);
-		__int8 padBytes = aligned - combinedPathsLength;
+		__int8 padBytes = static_cast<__int8>(aligned - combinedPathsLength);
 
 		// align starpak paths to 
 		if (optStarpakPathsLength != 0)
@@ -554,7 +579,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 		out.seek(padBytes, std::ios::cur);
 
-		SetStarpakPathsSize(starpakPathsLength, optStarpakPathsLength);
+		SetStarpakPathsSize(static_cast<uint16_t>(starpakPathsLength), static_cast<uint16_t>(optStarpakPathsLength));
 	}
 
 	// generate file relation vector to be written

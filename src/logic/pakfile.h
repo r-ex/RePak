@@ -134,7 +134,7 @@ public:
 	inline uint32_t GetVersion() const { return m_Header.fileVersion; }
 	inline void SetVersion(uint32_t version) { m_Header.fileVersion = version; }
 
-	inline void SetStarpakPathsSize(int len, int optLen)
+	inline void SetStarpakPathsSize(uint16_t len, uint16_t optLen)
 	{
 		m_Header.starpakPathsSize = len;
 		m_Header.optStarpakPathsSize = optLen;

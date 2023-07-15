@@ -266,5 +266,8 @@
     <ClInclude Include="thirdparty\rapidjson\msinttypes\stdint.h">
       <Filter>thirdparty\rapidjson\msinttypes</Filter>
     </ClInclude>
+    <ClInclude Include="public\starpak.h">
+      <Filter>public</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
