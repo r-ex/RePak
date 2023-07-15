@@ -6,7 +6,7 @@
 void AutoAddMaterialAssetTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, rapidjson::Value& mapEntry)
 {
     // cut if statement?
-    if (JSON_IS_STR(mapEntry, "textures"))
+    if (JSON_IS_ARRAY(mapEntry, "textures"))
     {
         for (auto& it : mapEntry["textures"].GetArray())
         {
@@ -183,12 +183,16 @@ void SetUpMaterialAssetFromJson(MaterialAsset_t* matl, rapidjson::Value& mapEntr
 
     // optional shaderset override
     if (JSON_IS_STR(mapEntry, "shaderset"))
+        matl->shaderSet = RTech::GetAssetGUIDFromString(mapEntry["shaderset"].GetString());
+
+    // this is more desirable but would break guid input
+    /*if (JSON_IS_STR(mapEntry, "shaderset"))
     {
         std::string shadersetPath = "shaderset/" + mapEntry["shaderset"].GetStdString() + ".rpak";
         matl->shaderSet = RTech::GetAssetGUIDFromString(shadersetPath.c_str());
-    }
-
+    }*/
     
+
     // texan
     if (JSON_IS_STR(mapEntry, "textureAnimation"))
         matl->textureAnimation = RTech::GetAssetGUIDFromString(mapEntry["textureAnimation"].GetString());
