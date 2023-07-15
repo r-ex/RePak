@@ -163,16 +163,28 @@ void SetUpMaterialAssetFromJson(MaterialAsset_t* matl, rapidjson::Value& mapEntr
 
     // check for overrides
     if (mapEntry.HasMember("depthShadowMaterial") && mapEntry["depthShadowMaterial"].IsString())
-        matl->depthShadowMaterial = RTech::GetAssetGUIDFromString(mapEntry["depthShadowMaterial"].GetString());
+    {
+        depthPath = "material/" + mapEntry["depthShadowMaterial"].GetStdString() + "_" + matl->materialTypeStr + ".rpak";
+        matl->depthShadowMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+    }
 
     if (mapEntry.HasMember("depthPrepassMaterial") && mapEntry["depthPrepassMaterial"].IsString())
-        matl->depthPrepassMaterial = RTech::GetAssetGUIDFromString(mapEntry["depthPrepassMaterial"].GetString());
+    {
+        depthPath = "material/" + mapEntry["depthPrepassMaterial"].GetStdString() + "_" + matl->materialTypeStr + ".rpak";
+        matl->depthPrepassMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+    }
 
     if (mapEntry.HasMember("depthVSMMaterial") && mapEntry["depthVSMMaterial"].IsString())
-        matl->depthVSMMaterial = RTech::GetAssetGUIDFromString(mapEntry["depthVSMMaterial"].GetString());
+    {
+        depthPath = "material/" + mapEntry["depthVSMMaterial"].GetStdString() + "_" + matl->materialTypeStr + ".rpak";
+        matl->depthVSMMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+    }
 
     if (mapEntry.HasMember("depthShadowTightMaterial") && mapEntry["depthShadowTightMaterial"].IsString())
-        matl->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(mapEntry["depthShadowTightMaterial"].GetString());
+    {
+        depthPath = "material/" + mapEntry["depthShadowTightMaterial"].GetStdString() + "_" + matl->materialTypeStr + ".rpak";
+        matl->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+    }
 
 
     // get referenced colpass material if exists
