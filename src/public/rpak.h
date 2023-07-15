@@ -5,10 +5,12 @@
 #include "math/color.h"
 #include "public/starpak.h"
 
-#define RPAK_MAGIC		(('k'<<24)+('a'<<16)+('P'<<8)+'R')
+#define MAKE_FOURCC(a,b,c,d) ((d<<24)+(c<<16)+(b<<8)+a)
+
+#define RPAK_MAGIC	MAKE_FOURCC('R', 'P', 'a', 'k')
 #define RPAK_EXTENSION ".rpak"
 
-#define STARPAK_MAGIC	(('k'<<24)+('P'<<16)+('R'<<8)+'S')
+#define STARPAK_MAGIC	MAKE_FOURCC('S', 'R', 'P', 'k')
 #define STARPAK_VERSION	1
 #define STARPAK_EXTENSION ".starpak"
 
@@ -17,14 +19,14 @@
 #define STARPAK_DATABLOCK_ALIGNMENT 4096
 #define STARPAK_DATABLOCK_ALIGNMENT_PADDING 0xCB
 
-#define TYPE_TXTR	(('r'<<24)+('t'<<16)+('x'<<8)+'t') // txtr
-#define TYPE_RMDL	(('_'<<24)+('l'<<16)+('d'<<8)+'m') // mdl_
-#define TYPE_UIMG	(('g'<<24)+('m'<<16)+('i'<<8)+'u') // uimg
-#define TYPE_PTCH	(('h'<<24)+('c'<<16)+('t'<<8)+'P') // Ptch
-#define TYPE_DTBL	(('l'<<24)+('b'<<16)+('t'<<8)+'d') // dtbl
-#define TYPE_MATL	(('l'<<24)+('t'<<16)+('a'<<8)+'m') // matl
-#define TYPE_ASEQ	(('q'<<24)+('e'<<16)+('s'<<8)+'a') // aseq
-#define TYPE_ARIG	(('g'<<24)+('i'<<16)+('r'<<8)+'a') // aseq
+#define TYPE_TXTR	MAKE_FOURCC('t', 'x', 't', 'r') // txtr
+#define TYPE_RMDL	MAKE_FOURCC('m', 'd', 'l', '_') // mdl_
+#define TYPE_UIMG	MAKE_FOURCC('u', 'i', 'm', 'g') // uimg
+#define TYPE_PTCH	MAKE_FOURCC('P', 't', 'c', 'h') // Ptch
+#define TYPE_DTBL	MAKE_FOURCC('d', 't', 'b', 'l') // dtbl
+#define TYPE_MATL	MAKE_FOURCC('m', 'a', 't', 'l') // matl
+#define TYPE_ASEQ	MAKE_FOURCC('a', 's', 'e', 'q') // aseq
+#define TYPE_ARIG	MAKE_FOURCC('a', 'r', 'i', 'g') // arig
 
 enum class AssetType : uint32_t
 {
