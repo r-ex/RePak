@@ -35,7 +35,7 @@ struct uvTransform_t
 	float uvTranslateX = 0.f;
 	float uvTranslateY = 0.f;
 
-	inline float* pFloat(int i) { return reinterpret_cast<float*>(this + i); } // const ptr here mayhaps
+	inline float* pFloat(int i) { return reinterpret_cast<float*>(this) + i; } // const ptr here mayhaps
 };
 
 // Titanfall 2 uses generally the same shader buffer so we can store the full struct (for now)
