@@ -3,6 +3,7 @@
 #include <d3d11.h>
 #include "math/vector.h"
 #include "math/color.h"
+#include "public/starpak.h"
 
 #define RPAK_MAGIC		(('k'<<24)+('a'<<16)+('P'<<8)+'R')
 #define RPAK_EXTENSION ".rpak"
@@ -267,31 +268,6 @@ public:
 			i++;
 		}
 	}
-};
-
-
-
-// internal data structure for referencing file data to be written
-struct PakRawDataBlock_t
-{
-	int pageIdx;
-	__int64 size;
-	uint8_t* pData;
-};
-
-// starpak header
-struct StreamableSetHeader
-{
-	int magic;
-	int version;
-};
-
-// internal data structure for referencing streaming data to be written
-struct StreamableDataEntry
-{
-	uint64_t offset = -1; // set when added
-	uint64_t dataSize = 0;
-	uint8_t* pData = nullptr;
 };
 
 //
