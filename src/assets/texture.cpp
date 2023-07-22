@@ -44,12 +44,11 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
     if (arraySize > 0)
     {
-        const char* fmt = "%s%s_%03d%s\0";
         char path[MAX_PATH]{};
 
         for (int i = 0; i < arraySize; i++)
         {
-            snprintf(path, MAX_PATH, fmt, pak->GetAssetPath().c_str(), assetPath, i, ".dds");
+            snprintf(path, MAX_PATH, "%s%s_%03d%s\0", pak->GetAssetPath().c_str(), assetPath, i, ".dds");
 
             if (!FILE_EXISTS(std::filesystem::path(path)))
                 Error("Texture %s did not exist, exiting...\n", path);
