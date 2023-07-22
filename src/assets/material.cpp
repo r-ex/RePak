@@ -20,7 +20,7 @@ void AutoAddMaterialAssetTextures(CPakFile* pak, std::vector<PakAsset_t>* assetE
             if (RTech::ParseGUIDFromString(it.GetString()))
                 continue;
 
-            Assets::AddTextureAsset(pak, assetEntries, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming", false));
+            Assets::AddTextureAsset(pak, assetEntries, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming", false), 0);
         }
     }
 }
