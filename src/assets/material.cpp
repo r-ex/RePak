@@ -126,7 +126,7 @@ void SetUpMaterialAssetFromJson(MaterialAsset_t* matl, rapidjson::Value& mapEntr
     matl->surface = JSON_GET_STR(mapEntry, "surface", "default");
 
     // used for blend materials and the like
-    matl->surface = JSON_GET_STR(mapEntry, "surface2", "");
+    matl->surface2 = JSON_GET_STR(mapEntry, "surface2", "");
 
     // optional depth material overrides
     // probably should add types and prefixes
