@@ -479,7 +479,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     /// cpu
     uint64_t dxStaticBufSize = 0;
 
-    std::string cpuPath = pak->GetAssetPath() + sAssetPath + "_" + matlAsset->materialTypeStr + ".cpu";
+    std::string cpuPath = pak->GetAssetPath() + JSON_GET_STR(mapEntry, "cpuPath", sAssetPath + "_" + matlAsset->materialTypeStr + ".cpu");
 
     /* SETUP DX SHADER BUF */
     GenericShaderBuffer genericShaderBuf{};
@@ -688,7 +688,8 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     /// cpu
     uint64_t dxStaticBufSize = 0;
 
-    std::string cpuPath = pak->GetAssetPath() + sAssetPath + "_" + matlAsset->materialTypeStr + ".cpu";
+    // temp, should be moved to setting things in material files when those exist
+    std::string cpuPath = pak->GetAssetPath() + JSON_GET_STR(mapEntry, "cpuPath", sAssetPath + "_" + matlAsset->materialTypeStr + ".cpu");
 
     /* SETUP DX SHADER BUF */
     GenericShaderBuffer genericShaderBuf{};
