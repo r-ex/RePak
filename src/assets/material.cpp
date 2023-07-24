@@ -576,6 +576,9 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     char* dataBuf = dataChunk.Data();
 
+    snprintf(dataBuf, sAssetPath.length() + 1, "%s", assetPath);
+    dataBuf += alignedPathSize;
+
     std::vector<PakGuidRefHdr_t> guids{};
 
     int textureIdx = 0;
@@ -587,7 +590,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
         if (textureGuid != 0) // only deal with dependencies if the guid is not 0
         {
-            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer((textureIdx * sizeof(uint64_t)))); // register guid for this texture reference
+            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (textureIdx * sizeof(uint64_t)))); // register guid for this texture reference
 
             PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
 
