@@ -242,7 +242,7 @@ void SetUpStaticDxBufferFromJson(GenericShaderBuffer* shaderBuf, rapidjson::Valu
         {
             auto& UVFloat = mapEntry["uv2"].GetArray()[i];
 
-            *shaderBuf->c_uv1.pFloat(i) = UVFloat.GetFloat();
+            *shaderBuf->c_uv2.pFloat(i) = UVFloat.GetFloat();
         }
     }
 
@@ -252,7 +252,7 @@ void SetUpStaticDxBufferFromJson(GenericShaderBuffer* shaderBuf, rapidjson::Valu
         {
             auto& UVFloat = mapEntry["uv3"].GetArray()[i];
 
-            *shaderBuf->c_uv1.pFloat(i) = UVFloat.GetFloat();
+            *shaderBuf->c_uv3.pFloat(i) = UVFloat.GetFloat();
         }
     }
 
@@ -262,7 +262,7 @@ void SetUpStaticDxBufferFromJson(GenericShaderBuffer* shaderBuf, rapidjson::Valu
         {
             auto& UVFloat = mapEntry["uv4"].GetArray()[i];
 
-            *shaderBuf->c_uv1.pFloat(i) = UVFloat.GetFloat();
+            *shaderBuf->c_uv4.pFloat(i) = UVFloat.GetFloat();
         }
     }
 
@@ -272,7 +272,7 @@ void SetUpStaticDxBufferFromJson(GenericShaderBuffer* shaderBuf, rapidjson::Valu
         {
             auto& UVFloat = mapEntry["uv5"].GetArray()[i];
 
-            *shaderBuf->c_uv1.pFloat(i) = UVFloat.GetFloat();
+            *shaderBuf->c_uv5.pFloat(i) = UVFloat.GetFloat();
         }
     }
 }
