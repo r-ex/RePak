@@ -279,7 +279,7 @@ void CPakFile::WriteSegmentHeaders(BinaryIO& out)
 }
 
 //-----------------------------------------------------------------------------
-// purpose: writes pages to file stream
+// purpose: writes page headers to file stream
 //-----------------------------------------------------------------------------
 void CPakFile::WriteMemPageHeaders(BinaryIO& out)
 {
@@ -393,8 +393,16 @@ CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
 	int i = 0;
 	for (auto& it : m_vVirtualSegments)
 	{
-		if (it.GetFlags() == flags && it.GetAlignment() == alignment)
+		if (it.GetFlags() == flags)
+		{
+			// if the segment's alignment is less than our requested alignment, we can increase it
+			// as increasing the alignment will still allow the previous data to be aligned to the same boundary
+			// (all alignments are powers of two)
+			if (it.GetAlignment() < alignment)
+				it.alignment = alignment;
+
 			return it;
+		}
 		i++;
 	}
 
@@ -409,10 +417,61 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, int newDataSize)
 	for (size_t i = m_vPages.size(); i > 0; --i)
 	{
 		CPakPage& page = m_vPages[i-1];
-		if (page.GetFlags() == flags && page.GetAlignment() == alignment)
+		if (page.GetFlags() == flags)
 		{
 			if (page.GetSize() + newDataSize <= MAX_PAK_PAGE_SIZE)
+			{
+				if (page.GetAlignment() < alignment)
+				{
+					page.alignment = alignment;
+					
+					// we have to check this because otherwise we can end up with vsegs with lower alignment than their pages
+					// and that's probably not supposed to happen
+					CPakVSegment& seg = m_vVirtualSegments[page.segmentIndex];
+					if (seg.alignment < alignment)
+					{
+						size_t j = 0;
+						bool updated = false;
+						for (auto& it : m_vVirtualSegments)
+						{
+							if (it.GetFlags() == seg.flags && it.GetAlignment() == alignment)
+							{
+								//it.dataSize += seg.dataSize;
+
+								//int oldSegIdx = page.segmentIndex;
+
+								//for (auto& pg : m_vPages)
+								//{
+								//	if (pg.segmentIndex == oldSegIdx)
+								//		pg.segmentIndex = j;
+
+								//	// we are about to remove the old segment so anything referencing a higher segment
+								//	// needs to be adjusted
+								//	if (pg.segmentIndex > oldSegIdx)
+								//		pg.segmentIndex--;
+								//}
+
+								//m_vVirtualSegments.erase(m_vVirtualSegments.begin() + oldSegIdx);
+
+								seg.dataSize -= page.dataSize;
+								it.dataSize += page.dataSize;
+
+								page.segmentIndex = j;
+
+								updated = true;
+								break;
+							}
+
+							j++;
+						}
+
+						if (!updated)
+							seg.alignment = alignment;
+					}
+				}
+
 				return page;
+			}
 		}
 	}
 
