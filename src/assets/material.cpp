@@ -3,7 +3,7 @@
 #include "public/material.h"
 
 // we need to take better account of textures once asset caching becomes a thing
-void AutoAddMaterialAssetTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, rapidjson::Value& mapEntry)
+void Material_CreateTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, rapidjson::Value& mapEntry)
 {
     // cut if statement?
     if (JSON_IS_ARRAY(mapEntry, "textures"))
@@ -25,73 +25,18 @@ void AutoAddMaterialAssetTextures(CPakFile* pak, std::vector<PakAsset_t>* assetE
     }
 }
 
-MaterialShaderType_t MaterialShaderTypeFromString(std::string& str)
-{
-    int type = *reinterpret_cast<const int*>(str.c_str());
-    MaterialShaderType_t out = _TYPEINVAILD;
-
-    switch (type)
-    {
-    case 'udgr':
-        out = RGDU;
-        break;
-    case 'pdgr':
-        out = RGDP;
-        break;
-    case 'cdgr':
-        out = RGDC;
-        break;
-    case 'unks':
-        out = SKNU;
-        break;
-    case 'pnks':
-        out = SKNP;
-        break;
-    case 'cnks':
-        out = SKNC;
-        break;
-    case 'udlw':
-        out = WLDU;
-        break;
-    case 'cdlw':
-        out = WLDC;
-        break;
-    case 'uctp':
-        out = PTCU;
-        break;
-    case 'sctp':
-        out = PTCS;
-        break;
-    case '\0neg':
-    case '\0dlw':
-    case '\0xif':
-    case '\0nks':
-        out = _TYPELEGACY;
-        break;
-    case '\0dgr': // in r2 but not used/able to be used
-    default:
-        out = _TYPEINVAILD;
-        break;
-    }
-
-    return out;
-}
-
 // ideally replace these with material file funcs
-void SetUpMaterialAssetFromJson(MaterialAsset_t* matl, rapidjson::Value& mapEntry)
+void Material_SetupHeaderFromJSON(MaterialAsset_t* matl, rapidjson::Value& mapEntry)
 {
-    // what shader type his this
+    // what shader type is this
     if (JSON_IS_STR(mapEntry, "type"))
         matl->materialTypeStr = mapEntry["type"].GetStdString();
     
-    matl->materialType = MaterialShaderTypeFromString(matl->materialTypeStr);
-
+    matl->materialType = Material_ShaderTypeFromString(matl->materialTypeStr);
 
     // material max dimensions
     matl->width = JSON_GET_INT(mapEntry, "width", 0); // Set material width.
     matl->height = JSON_GET_INT(mapEntry, "height", 0); // Set material height.
-       
-
 
     // weird flags
     if (JSON_IS_STR(mapEntry, "flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
@@ -115,7 +60,7 @@ void SetUpMaterialAssetFromJson(MaterialAsset_t* matl, rapidjson::Value& mapEntr
     {
         // set default as apex values, set r2 later if needed
         for (int j = 0; j < 8; ++j)
-            matl->unkSections[i].unk_0[j] = 0xf0000000;
+            matl->unkSections[i].blendStates[j] = MaterialBlendState_t(false, 0xf);
 
         matl->unkSections[i].unk = unkFlags;
         matl->unkSections[i].depthStencilFlags = depthStencilFlags;
@@ -284,7 +229,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     if (JSON_IS_ARRAY(mapEntry, "textures"))
     {
-        AutoAddMaterialAssetTextures(pak, assetEntries, mapEntry);
+        Material_CreateTextures(pak, assetEntries, mapEntry);
     }
     else
     {
@@ -305,14 +250,13 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     matlAsset->materialTypeStr = "skn";
 
     // parse json inputs for matl header
-    SetUpMaterialAssetFromJson(matlAsset, mapEntry);
+    Material_SetupHeaderFromJSON(matlAsset, mapEntry);
 
     // used only for string to guid
     std::string fullAssetPath = "material/" + sAssetPath + "_" + matlAsset->materialTypeStr + ".rpak"; // Make full rpak asset path.
     matlAsset->guid = RTech::StringToGuid(fullAssetPath.c_str()); // Convert full rpak asset path to guid and set it in the material header.
     
     // !!!R2 SPECIFIC!!!
-    // always retained, not in other data chunk. not the same as apex so I will make it Quirky because I am a nerd
     {
         CPakDataChunk nameChunk = pak->CreateDataChunk(sAssetPath.size() + 1, SF_DEV | SF_CPU, 1);
 
@@ -324,7 +268,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     }
 
     // some janky setup you love to see
-    if (matlAsset->materialType != _TYPELEGACY)
+    if (matlAsset->materialType != _TYPE_LEGACY)
         Error("Type '%s' is not supported in Titanfall 2!!!", matlAsset->materialTypeStr.c_str());
 
     matlAsset->unk = matlAsset->materialTypeStr == "gen" ? 0xFBA63181 : 0x40D33E8F;
@@ -333,10 +277,12 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     {
         for (int i = 0; i < 2; ++i)
         {
-            matlAsset->unkSections[i].unk_0[0] = 0xF0138004;
-            matlAsset->unkSections[i].unk_0[1] = 0xF0138004;
-            matlAsset->unkSections[i].unk_0[2] = 0xF0138004;
-            matlAsset->unkSections[i].unk_0[3] = 0x00138004;
+            MaterialDXState_t& unk = matlAsset->unkSections[i];
+
+            unk.blendStates[0] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+            unk.blendStates[1] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+            unk.blendStates[2] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+            unk.blendStates[3] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
 
             matlAsset->unkSections[i].unk = 0x4;
         }
@@ -345,10 +291,12 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     {
         for (int i = 0; i < 2; ++i)
         {
-            matlAsset->unkSections[i].unk_0[0] = 0xF0138286;
-            matlAsset->unkSections[i].unk_0[1] = 0xF0138286;
-            matlAsset->unkSections[i].unk_0[2] = 0xF0008286;
-            matlAsset->unkSections[i].unk_0[3] = 0x00138286;
+            MaterialDXState_t& unk = matlAsset->unkSections[i];
+
+            unk.blendStates[0] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+            unk.blendStates[1] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+            unk.blendStates[2] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, 0xF);
+            unk.blendStates[3] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
 
             matlAsset->unkSections[i].unk = 0x5;
         }
@@ -541,7 +489,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     if (JSON_IS_ARRAY(mapEntry, "textures"))
     {
-        AutoAddMaterialAssetTextures(pak, assetEntries, mapEntry);
+        Material_CreateTextures(pak, assetEntries, mapEntry);
     }
     else
     {
@@ -562,7 +510,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     matlAsset->materialTypeStr = "sknp";
 
     // parse json inputs for matl header
-    SetUpMaterialAssetFromJson(matlAsset, mapEntry);
+    Material_SetupHeaderFromJSON(matlAsset, mapEntry);
 
     // used only for string to guid
     std::string fullAssetPath = "material/" + sAssetPath + "_" + matlAsset->materialTypeStr + ".rpak"; // Make full rpak asset path.
@@ -576,6 +524,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     char* dataBuf = dataChunk.Data();
 
+    // write asset name into the start of the buffer
     snprintf(dataBuf, sAssetPath.length() + 1, "%s", assetPath);
     dataBuf += alignedPathSize;
 

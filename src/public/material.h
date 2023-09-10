@@ -14,10 +14,103 @@ enum MaterialShaderType_t : uint8_t
 	PTCS = 0x9,
 
 	// not real types
-	_TYPECOUNT = 0xA,
-	_TYPELEGACY = 0xFE, // r2 types
-	_TYPEINVAILD = 0xFF,
+	_TYPE_COUNT = 0xA,
+	_TYPE_LEGACY = 0xFE, // r2 types
+	_TYPE_INVALID = 0xFF,
 };
+
+static const std::map<int, MaterialShaderType_t> s_materialShaderTypeMap
+{
+	// static props
+	{'udgr', RGDU}, // rgdu
+	{'pdgr', RGDP}, // rgdp
+	{'cdgr', RGDC}, // rgdc
+
+	// non-static models
+	{'unks', SKNU}, // sknu
+	{'pnks', SKNP}, // sknp
+	{'cnks', SKNC}, // sknc
+
+	// world/geo models
+	{'udlw', WLDU}, // wldu
+	{'cdlw', WLDC}, // wldc
+
+	// particles
+	{'uctp', PTCU}, // ptcu
+	{'sctp', PTCS}, // ptcs
+
+	// r2 materials
+	{'neg', _TYPE_LEGACY}, // gen
+	{'dlw', _TYPE_LEGACY}, // wld
+	{'xif', _TYPE_LEGACY}, // fix
+	{'nks', _TYPE_LEGACY}, // skn
+};
+
+
+inline MaterialShaderType_t Material_ShaderTypeFromString(std::string& str)
+{
+	int type = *reinterpret_cast<const int*>(str.c_str());
+
+	if (s_materialShaderTypeMap.count(type) != 0)
+		return s_materialShaderTypeMap.at(type);
+
+	return _TYPE_INVALID;
+}
+
+struct MaterialBlendState_t
+{
+	__int32 unk : 1;
+	__int32 blendEnable : 1;
+	__int32 srcBlend : 5;
+	__int32 destBlend : 5;
+	__int32 blendOp : 3;
+	__int32 srcBlendAlpha : 5;
+	__int32 destBlendAlpha : 5;
+	__int32 blendOpAlpha : 3;
+	__int32 renderTargetWriteMask : 4;
+
+	MaterialBlendState_t() = default;
+
+	MaterialBlendState_t(bool blendEnable, __int8 renderTargetWriteMask)
+	{
+		this->renderTargetWriteMask = renderTargetWriteMask & 0xF;
+	}
+
+	MaterialBlendState_t(bool blendEnable,
+		D3D11_BLEND srcBlend, D3D11_BLEND destBlend,
+		D3D11_BLEND_OP blendOp, D3D11_BLEND srcBlendAlpha,
+		D3D11_BLEND destBlendAlpha, D3D11_BLEND_OP blendOpAlpha,
+		__int8 renderTargetWriteMask)
+	{
+		this->blendEnable = blendEnable ? 1 : 0;
+		this->srcBlend = srcBlend - 1;
+		this->destBlend = destBlend - 1;
+		this->blendOp = blendOp - 1;
+		this->srcBlendAlpha = srcBlendAlpha - 1;
+		this->destBlendAlpha = destBlendAlpha - 1;
+		this->blendOpAlpha = blendOpAlpha - 1;
+
+		this->renderTargetWriteMask = renderTargetWriteMask & 0xF;
+	}
+};
+
+// aligned to 16 bytes so it can be loaded as 3 m128i structs in engine
+struct __declspec(align(16)) MaterialDXState_t
+{
+	// bitfield defining a D3D11_RENDER_TARGET_BLEND_DESC for each of the 8 possible DX render targets
+	MaterialBlendState_t blendStates[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+
+	uint32_t unk;
+
+	// flags to determine how the D3D11_DEPTH_STENCIL_DESC is defined for this material
+	uint16_t depthStencilFlags;
+
+	// flags to determine how the D3D11_RASTERIZER_DESC is defined
+	uint16_t rasterizerFlags;
+};
+
+static_assert(sizeof(MaterialDXState_t) == 0x30);
+
 
 #pragma pack(push, 1)
 
@@ -302,25 +395,15 @@ struct MaterialAssetHeader_v12_t
 	// these blocks relate to different render filters and flags. still not well understood.
 	struct
 	{
-		// not sure how these work but 0xF0 -> 0x00 toggles them off and vice versa.
-		// they seem to affect various rendering filters, said filters might actually be the used shaders.
-		// the duplicate one is likely for the second set of textures which (probably) never gets used.
-		uint32_t unkLighting;	// 0xF0138286
-		uint32_t unkAliasing;	// 0xF0138286
-		uint32_t unkDof;		// 0xF0008286
-		uint32_t unkUnknown;	// 0x00138286
-
-		//uint32_t unkShadow;
-		//uint32_t unkPrepass;
-		//uint32_t unkVSM;
-		//uint32_t unkColpass;
+		// r2 only supports 4 render targets?
+		MaterialBlendState_t blendStates[4];
 
 		uint32_t unk; // 0x5
 		uint16_t depthStencilFlags; // different render settings, such as opacity and transparency.
 		uint16_t rasterizerFlags; // how the face is drawn, culling, wireframe, etc.
 
-		uint64_t padding; // aligment to 16 bytes (probably)
-	} unkSection[2];
+		uint64_t padding; // alignment to 16 bytes (probably)
+	} unkSections[2];
 
 	uint64_t shaderSet; // guid of the shaderset asset that this material uses
 
@@ -351,26 +434,6 @@ struct MaterialAssetHeader_v12_t
 };
 static_assert(sizeof(MaterialAssetHeader_v12_t) == 208);
 
-// some repeated section at the end of the material header (CMaterialGlue) struct
-struct UnknownMaterialSectionV15
-{
-	// required but seems to follow a pattern. maybe related to "Unknown2" above?
-	// nulling these bytes makes the material stop drawing entirely
-	uint32_t unk_0[8];
-
-	// last three are different I think, first few are related to depth materials
-	// unk_0[5];
-	// unk_14
-	// unk_18
-	// unk_1C
-
-	uint32_t unk;
-	uint16_t depthStencilFlags; // different render settings, such as opacity and transparency.
-	uint16_t rasterizerFlags; // how the face is drawn, culling, wireframe, etc.
-
-	uint64_t padding;
-};
-
 // start of CMaterialGlue class
 struct MaterialAssetHeader_v15_t
 {
@@ -397,9 +460,9 @@ struct MaterialAssetHeader_v15_t
 	short numStreamingTextureHandles;// = 0x4; // Number of textures with streamed mip levels.
 	short width;
 	short height;
-	short unk_76;
+	short depth;
 
-	uint32_t flags_78;// = 0x1D0300;
+	uint32_t flags_78;// = 0x1D0300; // array of indices into sampler states array
 	uint32_t unk_7C;
 
 	uint32_t unk_80;// = 0x1F5A92BD; // REQUIRED but why?
@@ -408,7 +471,7 @@ struct MaterialAssetHeader_v15_t
 
 	uint64_t flags2;
 
-	UnknownMaterialSectionV15 unkSections[2]; // seems to be used for setting up some D3D states?
+	MaterialDXState_t unkSections[2]; // seems to be used for setting up some D3D states?
 
 	uint8_t bytef0;
 	uint8_t bytef1;
@@ -444,13 +507,14 @@ struct MaterialAsset_t
 
 	short width;
 	short height;
+	short depth;
 
 	uint32_t unk; // 0x1F5A92BD, REQUIRED but why?
 
 	uint32_t flags;
 	uint64_t flags2;
 
-	UnknownMaterialSectionV15 unkSections[2]; // seems to be used for setting up some D3D states?
+	MaterialDXState_t unkSections[2]; // seems to be used for setting up some D3D states?
 
 	std::string materialTypeStr;
 	MaterialShaderType_t materialType;
@@ -482,6 +546,7 @@ struct MaterialAsset_t
 
 			matl->width = this->width;
 			matl->height = this->height;
+			// matl->depth = this->depth;
 
 			matl->unk_B8 = this->unk;
 
@@ -490,14 +555,14 @@ struct MaterialAsset_t
 
 			for (int i = 0; i < 2; i++)
 			{
-				matl->unkSection[i].unkLighting = this->unkSections[i].unk_0[0];
-				matl->unkSection[i].unkAliasing = this->unkSections[i].unk_0[1];
-				matl->unkSection[i].unkDof = this->unkSections[i].unk_0[2];
-				matl->unkSection[i].unkUnknown = this->unkSections[i].unk_0[3];
+				matl->unkSections[i].blendStates[0] = this->unkSections[i].blendStates[0];
+				matl->unkSections[i].blendStates[1] = this->unkSections[i].blendStates[1];
+				matl->unkSections[i].blendStates[2] = this->unkSections[i].blendStates[2];
+				matl->unkSections[i].blendStates[3] = this->unkSections[i].blendStates[3];
 
-				matl->unkSection[i].unk = this->unkSections[i].unk;
-				matl->unkSection[i].depthStencilFlags = this->unkSections[i].depthStencilFlags;
-				matl->unkSection[i].rasterizerFlags = this->unkSections[i].rasterizerFlags;
+				matl->unkSections[i].unk = this->unkSections[i].unk;
+				matl->unkSections[i].depthStencilFlags = this->unkSections[i].depthStencilFlags;
+				matl->unkSections[i].rasterizerFlags = this->unkSections[i].rasterizerFlags;
 			}
 		}
 		else
@@ -522,6 +587,7 @@ struct MaterialAsset_t
 
 			matl->width = this->width;
 			matl->height = this->height;
+			// matl->depth = this->depth;
 
 			matl->unk_80 = this->unk;
 
@@ -534,7 +600,7 @@ struct MaterialAsset_t
 			{
 				for (int varIdx = 0; varIdx < 8; varIdx++)
 				{
-					matl->unkSections[i].unk_0[varIdx] = this->unkSections[i].unk_0[varIdx];
+					matl->unkSections[i].blendStates[varIdx] = this->unkSections[i].blendStates[varIdx];
 				}
 
 				matl->unkSections[i].unk = this->unkSections[i].unk;
