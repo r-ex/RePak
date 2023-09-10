@@ -111,6 +111,19 @@ struct __declspec(align(16)) MaterialDXState_t
 
 static_assert(sizeof(MaterialDXState_t) == 0x30);
 
+struct __declspec(align(16)) MaterialDXState_v12_t
+{
+	// r2 only supports 4 render targets?
+	MaterialBlendState_t blendStates[4];
+
+	uint32_t unk; // 0x5
+	uint16_t depthStencilFlags; // different render settings, such as opacity and transparency.
+	uint16_t rasterizerFlags; // how the face is drawn, culling, wireframe, etc.
+
+	uint64_t padding; // alignment to 16 bytes (probably)
+};
+static_assert(sizeof(MaterialDXState_v12_t) == 0x20);
+
 
 #pragma pack(push, 1)
 
@@ -393,17 +406,7 @@ struct MaterialAssetHeader_v12_t
 
 	// these blocks dont seem to change often but are the same?
 	// these blocks relate to different render filters and flags. still not well understood.
-	struct
-	{
-		// r2 only supports 4 render targets?
-		MaterialBlendState_t blendStates[4];
-
-		uint32_t unk; // 0x5
-		uint16_t depthStencilFlags; // different render settings, such as opacity and transparency.
-		uint16_t rasterizerFlags; // how the face is drawn, culling, wireframe, etc.
-
-		uint64_t padding; // alignment to 16 bytes (probably)
-	} unkSections[2];
+	MaterialDXState_v12_t unkSections[2];
 
 	uint64_t shaderSet; // guid of the shaderset asset that this material uses
 
