@@ -465,7 +465,7 @@ struct MaterialAssetHeader_v15_t
 	short height;
 	short depth;
 
-	uint32_t flags_78;// = 0x1D0300; // array of indices into sampler states array
+	uint32_t flags_78;// = 0x1D0300; // array of indices into sampler states array. must be set properly to have accurate texture tiling
 	uint32_t unk_7C;
 
 	uint32_t unk_80;// = 0x1F5A92BD; // REQUIRED but why?
@@ -476,8 +476,7 @@ struct MaterialAssetHeader_v15_t
 
 	MaterialDXState_t unkSections[2]; // seems to be used for setting up some D3D states?
 
-	uint8_t bytef0;
-	uint8_t bytef1;
+	uint16_t numAnimationFrames; // used in CMaterialGlue::GetNumAnimationFrames (0x1403B4250), which is called from GetSpriteInfo @ 0x1402561FC
 	MaterialShaderType_t materialType;
 	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
 
