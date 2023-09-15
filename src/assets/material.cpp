@@ -38,11 +38,15 @@ void Material_SetupHeaderFromJSON(MaterialAsset_t* matl, rapidjson::Value& mapEn
     matl->width = JSON_GET_INT(mapEntry, "width", 0); // Set material width.
     matl->height = JSON_GET_INT(mapEntry, "height", 0); // Set material height.
 
-    // weird flags
-    if (JSON_IS_STR(mapEntry, "flags")) // Set flags properly. Responsible for texture stretching, tiling etc.
-        matl->flags = strtoul(("0x" + mapEntry["flags"].GetStdString()).c_str(), NULL, 0);
-    else
-        matl->flags = 0x1D0300;
+    // temp samplers !!!
+    // this will be done a bit better when material files become real
+    // for now this is the only real way of doing it so meh
+    uint32_t samplers = 0x1D0300;
+
+    if (JSON_IS_STR(mapEntry, "samplers")) // Set samplers properly. Responsible for texture stretching, tiling etc.
+        samplers = strtoul(("0x" + mapEntry["samplers"].GetStdString()).c_str(), NULL, 0);
+
+    memcpy(matl->samplers, &samplers, sizeof(samplers));
 
     // more tradition vmt like flags
     if (JSON_IS_STR(mapEntry, "flags2")) // This does a lot of very important stuff.
@@ -60,11 +64,11 @@ void Material_SetupHeaderFromJSON(MaterialAsset_t* matl, rapidjson::Value& mapEn
     {
         // set default as apex values, set r2 later if needed
         for (int j = 0; j < 8; ++j)
-            matl->unkSections[i].blendStates[j] = MaterialBlendState_t(false, 0xf);
+            matl->dxStates[i].blendStates[j] = MaterialBlendState_t(false, 0xf);
 
-        matl->unkSections[i].unk = unkFlags;
-        matl->unkSections[i].depthStencilFlags = depthStencilFlags;
-        matl->unkSections[i].rasterizerFlags = rasterizerFlags;
+        matl->dxStates[i].unk = unkFlags;
+        matl->dxStates[i].depthStencilFlags = depthStencilFlags;
+        matl->dxStates[i].rasterizerFlags = rasterizerFlags;
     }
 
     // surfaces are defined in scripts/surfaceproperties.txt or scripts/surfaceproperties.rson
@@ -277,28 +281,28 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     {
         for (int i = 0; i < 2; ++i)
         {
-            MaterialDXState_t& unk = matlAsset->unkSections[i];
+            MaterialDXState_t& unk = matlAsset->dxStates[i];
 
             unk.blendStates[0] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
             unk.blendStates[1] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
             unk.blendStates[2] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
             unk.blendStates[3] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
 
-            matlAsset->unkSections[i].unk = 0x4;
+            matlAsset->dxStates[i].unk = 0x4;
         }
     }
     else
     {
         for (int i = 0; i < 2; ++i)
         {
-            MaterialDXState_t& unk = matlAsset->unkSections[i];
+            MaterialDXState_t& unk = matlAsset->dxStates[i];
 
             unk.blendStates[0] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
             unk.blendStates[1] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
             unk.blendStates[2] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, 0xF);
             unk.blendStates[3] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
 
-            matlAsset->unkSections[i].unk = 0x5;
+            matlAsset->dxStates[i].unk = 0x5;
         }
     }
 

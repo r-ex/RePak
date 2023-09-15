@@ -73,6 +73,7 @@ struct MaterialBlendState_t
 
 	MaterialBlendState_t(bool blendEnable, __int8 renderTargetWriteMask)
 	{
+		memset(this, 0, sizeof(MaterialBlendState_t));
 		this->renderTargetWriteMask = renderTargetWriteMask & 0xF;
 	}
 
@@ -393,12 +394,6 @@ struct MaterialAssetHeader_v12_t
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
 
-	// IDX 1: DepthShadow
-	// IDX 2: DepthPrepass
-	// IDX 3: DepthVSM
-	// IDX 4: ColPass
-	// Titanfall is does not have 'DepthShadowTight'
-
 	uint64_t depthShadowMaterial;
 	uint64_t depthPrepassMaterial;
 	uint64_t depthVSMMaterial;
@@ -406,7 +401,7 @@ struct MaterialAssetHeader_v12_t
 
 	// these blocks dont seem to change often but are the same?
 	// these blocks relate to different render filters and flags. still not well understood.
-	MaterialDXState_v12_t unkSections[2];
+	MaterialDXState_v12_t dxStates[2];
 
 	uint64_t shaderSet; // guid of the shaderset asset that this material uses
 
@@ -414,7 +409,7 @@ struct MaterialAssetHeader_v12_t
 	PagePtr_t streamingTextureHandles; // Streamable TextureGUID Map
 	short numStreamingTextureHandles; // Number of textures with streamed mip levels.
 
-	uint32_t flags; // 0x503000
+	char samplers[4]; // 0x503000
 
 	short unk_AE;
 	uint64_t unk_B0; // haven't observed anything here.
@@ -438,7 +433,7 @@ struct MaterialAssetHeader_v12_t
 static_assert(sizeof(MaterialAssetHeader_v12_t) == 208);
 
 // start of CMaterialGlue class
-struct MaterialAssetHeader_v15_t
+struct __declspec(align(16)) MaterialAssetHeader_v15_t
 {
 	uint64_t vftableReserved; // reserved for virtual function table pointer (when copied into native CMaterialGlue)
 
@@ -460,12 +455,15 @@ struct MaterialAssetHeader_v15_t
 	PagePtr_t textureHandles; // ptr to array of texture guids
 	PagePtr_t streamingTextureHandles; // ptr to array of streamable texture guids (empty at build time)
 
-	short numStreamingTextureHandles;// = 0x4; // Number of textures with streamed mip levels.
+	short numStreamingTextureHandles; // number of textures with streamed mip levels.
 	short width;
 	short height;
 	short depth;
 
-	uint32_t flags_78;// = 0x1D0300; // array of indices into sampler states array. must be set properly to have accurate texture tiling
+	// array of indices into sampler states array. must be set properly to have accurate texture tiling
+	// used in CShaderGlue::SetupShader (1403B3C60)
+	char samplers[4];// = 0x1D0300;
+
 	uint32_t unk_7C;
 
 	uint32_t unk_80;// = 0x1F5A92BD; // REQUIRED but why?
@@ -474,13 +472,13 @@ struct MaterialAssetHeader_v15_t
 
 	uint64_t flags2;
 
-	MaterialDXState_t unkSections[2]; // seems to be used for setting up some D3D states?
+	MaterialDXState_t dxStates[2]; // seems to be used for setting up some D3D states?
 
 	uint16_t numAnimationFrames; // used in CMaterialGlue::GetNumAnimationFrames (0x1403B4250), which is called from GetSpriteInfo @ 0x1402561FC
 	MaterialShaderType_t materialType;
 	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
 
-	char pad_00F4[0x4];
+	//char pad_00F4[0x4];
 
 	uint64_t textureAnimation;
 };
@@ -513,10 +511,10 @@ struct MaterialAsset_t
 
 	uint32_t unk; // 0x1F5A92BD, REQUIRED but why?
 
-	uint32_t flags;
+	char samplers[4];
 	uint64_t flags2;
 
-	MaterialDXState_t unkSections[2]; // seems to be used for setting up some D3D states?
+	MaterialDXState_t dxStates[2]; // seems to be used for setting up some D3D states?
 
 	std::string materialTypeStr;
 	MaterialShaderType_t materialType;
@@ -552,19 +550,20 @@ struct MaterialAsset_t
 
 			matl->unk_B8 = this->unk;
 
-			matl->flags = this->flags;
+			memcpy(matl->samplers, this->samplers, sizeof(matl->samplers));
+			//matl->samplers = this->samplers;
 			matl->flags2 = this->flags2;
 
 			for (int i = 0; i < 2; i++)
 			{
-				matl->unkSections[i].blendStates[0] = this->unkSections[i].blendStates[0];
-				matl->unkSections[i].blendStates[1] = this->unkSections[i].blendStates[1];
-				matl->unkSections[i].blendStates[2] = this->unkSections[i].blendStates[2];
-				matl->unkSections[i].blendStates[3] = this->unkSections[i].blendStates[3];
+				matl->dxStates[i].blendStates[0] = this->dxStates[i].blendStates[0];
+				matl->dxStates[i].blendStates[1] = this->dxStates[i].blendStates[1];
+				matl->dxStates[i].blendStates[2] = this->dxStates[i].blendStates[2];
+				matl->dxStates[i].blendStates[3] = this->dxStates[i].blendStates[3];
 
-				matl->unkSections[i].unk = this->unkSections[i].unk;
-				matl->unkSections[i].depthStencilFlags = this->unkSections[i].depthStencilFlags;
-				matl->unkSections[i].rasterizerFlags = this->unkSections[i].rasterizerFlags;
+				matl->dxStates[i].unk = this->dxStates[i].unk;
+				matl->dxStates[i].depthStencilFlags = this->dxStates[i].depthStencilFlags;
+				matl->dxStates[i].rasterizerFlags = this->dxStates[i].rasterizerFlags;
 			}
 		}
 		else
@@ -593,21 +592,21 @@ struct MaterialAsset_t
 
 			matl->unk_80 = this->unk;
 
-			matl->flags_78 = this->flags;
+			memcpy(matl->samplers, this->samplers, sizeof(matl->samplers));
 			matl->flags2 = this->flags2;
 
 			matl->materialType = this->materialType;
 
 			for (int i = 0; i < 2; i++)
 			{
-				for (int varIdx = 0; varIdx < 8; varIdx++)
+				for (int targetIdx = 0; targetIdx < 8; targetIdx++)
 				{
-					matl->unkSections[i].blendStates[varIdx] = this->unkSections[i].blendStates[varIdx];
+					matl->dxStates[i].blendStates[targetIdx] = this->dxStates[i].blendStates[targetIdx];
 				}
 
-				matl->unkSections[i].unk = this->unkSections[i].unk;
-				matl->unkSections[i].depthStencilFlags = this->unkSections[i].depthStencilFlags;
-				matl->unkSections[i].rasterizerFlags = this->unkSections[i].rasterizerFlags;
+				matl->dxStates[i].unk = this->dxStates[i].unk;
+				matl->dxStates[i].depthStencilFlags = this->dxStates[i].depthStencilFlags;
+				matl->dxStates[i].rasterizerFlags = this->dxStates[i].rasterizerFlags;
 			}
 		}
 	}
