@@ -140,7 +140,6 @@ void Material_SetupHeaderFromJSON(MaterialAsset_t* matl, rapidjson::Value& mapEn
         std::string shadersetPath = "shaderset/" + mapEntry["shaderset"].GetStdString() + ".rpak";
         matl->shaderSet = RTech::GetAssetGUIDFromString(shadersetPath.c_str());
     }*/
-    
 
     // texan
     if (JSON_IS_STR(mapEntry, "textureAnimation"))
@@ -243,7 +242,10 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
+
     MaterialAsset_t* matlAsset = new MaterialAsset_t{};
+    matlAsset->assetVersion = 12; // set asset as a titanfall 2 material
+
     std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
 
     // some var declaration
@@ -271,9 +273,8 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
         pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, materialName)));
     }
 
-    // some janky setup you love to see
     if (matlAsset->materialType != _TYPE_LEGACY)
-        Error("Type '%s' is not supported in Titanfall 2!!!", matlAsset->materialTypeStr.c_str());
+        Error("Material type '%s' is not supported on version 12 (Titanfall 2) assets\n", matlAsset->materialTypeStr.c_str());
 
     matlAsset->unk = matlAsset->materialTypeStr == "gen" ? 0xFBA63181 : 0x40D33E8F;
 
@@ -425,12 +426,10 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     }
 
     // write header now that we are done setting it up
-    matlAsset->WriteToBuffer(hdrChunk.Data(), pak->GetVersion());
+    matlAsset->WriteToBuffer(hdrChunk.Data());
 
     //////////////////////////////////////////
     /// cpu
-    uint64_t dxStaticBufSize = 0;
-
     std::string cpuPath = pak->GetAssetPath() + JSON_GET_STR(mapEntry, "cpuPath", sAssetPath + "_" + matlAsset->materialTypeStr + ".cpu");
 
     /* SETUP DX SHADER BUF */
@@ -441,6 +440,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     MaterialShaderBufferV12 shaderBuf = genericShaderBuf.GenericV12();
     /* SETUP DX SHADER BUF */
 
+    uint64_t dxStaticBufSize = 0;
     CPakDataChunk uberBufChunk;
     if (FILE_EXISTS(cpuPath))
     {
@@ -452,7 +452,8 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
         cpuIn.read(uberBufChunk.Data() + sizeof(MaterialCPUHeader), dxStaticBufSize);
         cpuIn.close();
     }
-    else {
+    else
+    {
         dxStaticBufSize = sizeof(MaterialShaderBufferV12);
         uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + dxStaticBufSize, SF_CPU | SF_TEMP, 8);
 
@@ -504,6 +505,9 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
     MaterialAsset_t* matlAsset = new MaterialAsset_t{};
+    matlAsset->assetVersion = 15;
+
+
     std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
 
     // some var declaration
@@ -539,6 +543,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     {
         uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
 
+        // write texture guid into the texture handles array
         *(uint64_t*)dataBuf = textureGuid;
 
         if (textureGuid != 0) // only deal with dependencies if the guid is not 0
@@ -622,7 +627,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
         }
     }
 
-    // do colpass here because of how MaterialAsset_t is setup
+    // texan
     if (matlAsset->textureAnimation != 0)
     {
         pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, textureAnimation)));
@@ -638,7 +643,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     matlAsset->unk = 0x1F5A92BD; // set a quirky little guy
 
     // write header now that we are done setting it up
-    matlAsset->WriteToBuffer(hdrChunk.Data(), pak->GetVersion());
+    matlAsset->WriteToBuffer(hdrChunk.Data());
 
     //////////////////////////////////////////
     /// cpu

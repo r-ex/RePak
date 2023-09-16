@@ -486,6 +486,8 @@ static_assert(sizeof(MaterialAssetHeader_v15_t) == 256);
 
 struct MaterialAsset_t
 {
+	int assetVersion;
+
 	uint64_t guid; // guid of this material asset
 
 	PagePtr_t materialName; // pointer to partial asset path
@@ -500,6 +502,7 @@ struct MaterialAsset_t
 
 	uint64_t shaderSet = 0; // guid of the shaderset asset that this material uses
 
+	uint16_t numAnimationFrames;
 	uint64_t textureAnimation;
 
 	PagePtr_t textureHandles; // ptr to array of texture guids
@@ -523,9 +526,9 @@ struct MaterialAsset_t
 	std::string surface;
 	std::string surface2;
 
-	void WriteToBuffer(char* buf, int pakVersion)
+	void WriteToBuffer(char* buf)
 	{
-		if (pakVersion <= 7)
+		if (assetVersion <= 12) // r2 and older
 		{
 			MaterialAssetHeader_v12_t* matl = reinterpret_cast<MaterialAssetHeader_v12_t*>(buf);
 
@@ -566,7 +569,7 @@ struct MaterialAsset_t
 				matl->dxStates[i].rasterizerFlags = this->dxStates[i].rasterizerFlags;
 			}
 		}
-		else
+		else if (assetVersion == 15) // version 15 - season 3 apex
 		{
 			MaterialAssetHeader_v15_t* matl = reinterpret_cast<MaterialAssetHeader_v15_t*>(buf);
 
@@ -596,6 +599,9 @@ struct MaterialAsset_t
 			matl->flags2 = this->flags2;
 
 			matl->materialType = this->materialType;
+
+			matl->textureAnimation = this->textureAnimation;
+			matl->numAnimationFrames = this->numAnimationFrames;
 
 			for (int i = 0; i < 2; i++)
 			{
