@@ -1,4 +1,5 @@
 #pragma once
+#include "materialflags.h"
 
 enum MaterialShaderType_t : uint8_t
 {
