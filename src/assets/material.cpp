@@ -28,9 +28,10 @@ void Material_CreateTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 // ideally replace these with material file funcs
 void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
 {
-    // what shader type is this
-    if (JSON_IS_STR(mapEntry, "type"))
-        this->materialTypeStr = mapEntry["type"].GetStdString();
+    // default type on v12 assets is "skn"
+    // default type on v15 assets is "sknp"
+    std::string defaultMaterialType = this->assetVersion <= 12 ? "skn" : "sknp";
+    this->materialTypeStr = JSON_GET_STR(mapEntry, "type", defaultMaterialType);
     
     this->materialType = Material_ShaderTypeFromString(this->materialTypeStr);
 
@@ -251,9 +252,6 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     // some var declaration
     short externalDependencyCount = 0; // number of dependencies ouside this pak
     size_t textureRefSize = mapEntry["textures"].GetArray().Size() * 8; // size of the texture guid section.
-
-    // default strings
-    matlAsset->materialTypeStr = "skn";
 
     // parse json inputs for matl header
     matlAsset->FromJSON(mapEntry);
@@ -513,9 +511,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     // some var declaration
     short externalDependencyCount = 0; // number of dependencies ouside this pak
     size_t textureRefSize = mapEntry["textures"].GetArray().Size() * 8; // size of the texture guid section.
-
-    // default strings
-    matlAsset->materialTypeStr = "sknp";
 
     // parse json inputs for matl header
     matlAsset->FromJSON(mapEntry);
