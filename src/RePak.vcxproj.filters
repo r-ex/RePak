@@ -269,5 +269,8 @@
     <ClInclude Include="public\starpak.h">
       <Filter>public</Filter>
     </ClInclude>
+    <ClInclude Include="public\materialflags.h">
+      <Filter>public</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
