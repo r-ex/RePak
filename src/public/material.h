@@ -526,6 +526,8 @@ struct MaterialAsset_t
 	std::string surface;
 	std::string surface2;
 
+	void FromJSON(rapidjson::Value& mapEntry);
+
 	void WriteToBuffer(char* buf)
 	{
 		if (assetVersion <= 12) // r2 and older

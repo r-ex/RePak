@@ -26,17 +26,17 @@ void Material_CreateTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 }
 
 // ideally replace these with material file funcs
-void Material_SetupHeaderFromJSON(MaterialAsset_t* matl, rapidjson::Value& mapEntry)
+void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
 {
     // what shader type is this
     if (JSON_IS_STR(mapEntry, "type"))
-        matl->materialTypeStr = mapEntry["type"].GetStdString();
+        this->materialTypeStr = mapEntry["type"].GetStdString();
     
-    matl->materialType = Material_ShaderTypeFromString(matl->materialTypeStr);
+    this->materialType = Material_ShaderTypeFromString(this->materialTypeStr);
 
     // material max dimensions
-    matl->width = JSON_GET_INT(mapEntry, "width", 0); // Set material width.
-    matl->height = JSON_GET_INT(mapEntry, "height", 0); // Set material height.
+    this->width = JSON_GET_INT(mapEntry, "width", 0); // Set material width.
+    this->height = JSON_GET_INT(mapEntry, "height", 0); // Set material height.
 
     // temp samplers !!!
     // this will be done a bit better when material files become real
@@ -46,13 +46,13 @@ void Material_SetupHeaderFromJSON(MaterialAsset_t* matl, rapidjson::Value& mapEn
     if (JSON_IS_STR(mapEntry, "samplers")) // Set samplers properly. Responsible for texture stretching, tiling etc.
         samplers = strtoul(("0x" + mapEntry["samplers"].GetStdString()).c_str(), NULL, 0);
 
-    memcpy(matl->samplers, &samplers, sizeof(samplers));
+    memcpy(this->samplers, &samplers, sizeof(samplers));
 
     // more tradition vmt like flags
     if (JSON_IS_STR(mapEntry, "flags2")) // This does a lot of very important stuff.
-        matl->flags2 = strtoull(("0x" + mapEntry["flags2"].GetStdString()).c_str(), NULL, 0);
+        this->flags2 = strtoull(("0x" + mapEntry["flags2"].GetStdString()).c_str(), NULL, 0);
     else
-        matl->flags2 = (0x56000020 | 0x10000000000000); // beeg flag is used on most things
+        this->flags2 = (0x56000020 | 0x10000000000000); // beeg flag is used on most things
 
     // dx flags
     // !!!temp!!! - these should be replaced by proper flag string parsing when possible
@@ -64,90 +64,90 @@ void Material_SetupHeaderFromJSON(MaterialAsset_t* matl, rapidjson::Value& mapEn
     {
         // set default as apex values, set r2 later if needed
         for (int j = 0; j < 8; ++j)
-            matl->dxStates[i].blendStates[j] = MaterialBlendState_t(false, 0xf);
+            this->dxStates[i].blendStates[j] = MaterialBlendState_t(false, 0xf);
 
-        matl->dxStates[i].unk = unkFlags;
-        matl->dxStates[i].depthStencilFlags = depthStencilFlags;
-        matl->dxStates[i].rasterizerFlags = rasterizerFlags;
+        this->dxStates[i].unk = unkFlags;
+        this->dxStates[i].depthStencilFlags = depthStencilFlags;
+        this->dxStates[i].rasterizerFlags = rasterizerFlags;
     }
 
     // surfaces are defined in scripts/surfaceproperties.txt or scripts/surfaceproperties.rson
-    matl->surface = JSON_GET_STR(mapEntry, "surface", "default");
+    this->surface = JSON_GET_STR(mapEntry, "surface", "default");
 
     // used for blend materials and the like
-    matl->surface2 = JSON_GET_STR(mapEntry, "surface2", "");
+    this->surface2 = JSON_GET_STR(mapEntry, "surface2", "");
 
     // optional depth material overrides
     // probably should add types and prefixes
     std::string depthPath{};
 
     // defaults
-    //depthPath = "material/code_private/depth_shadow_" + ((rasterizerFlags & 0x4 && !(rasterizerFlags & 0x2)) ? "frontculled_" : "") + matl->materialTypeStr + ".rpak";
-    depthPath = "material/code_private/depth_shadow_" + matl->materialTypeStr + ".rpak";
-    matl->depthShadowMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+    //depthPath = "material/code_private/depth_shadow_" + ((rasterizerFlags & 0x4 && !(rasterizerFlags & 0x2)) ? "frontculled_" : "") + this->materialTypeStr + ".rpak";
+    depthPath = "material/code_private/depth_shadow_" + this->materialTypeStr + ".rpak";
+    this->depthShadowMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
 
-    //depthPath = "material/code_private/depth_prepass_" + ((rasterizerFlags & 0x2 && !(rasterizerFlags & 0x4)) ? "twosided_" : "") + matl->materialTypeStr + ".rpak";
-    depthPath = "material/code_private/depth_prepass_" + matl->materialTypeStr + ".rpak";
-    matl->depthPrepassMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+    //depthPath = "material/code_private/depth_prepass_" + ((rasterizerFlags & 0x2 && !(rasterizerFlags & 0x4)) ? "twosided_" : "") + this->materialTypeStr + ".rpak";
+    depthPath = "material/code_private/depth_prepass_" + this->materialTypeStr + ".rpak";
+    this->depthPrepassMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
 
-    depthPath = "material/code_private/depth_vsm_" + matl->materialTypeStr + ".rpak";
-    matl->depthVSMMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+    depthPath = "material/code_private/depth_vsm_" + this->materialTypeStr + ".rpak";
+    this->depthVSMMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
 
-    depthPath = "material/code_private/depth_shadow_tight_" + matl->materialTypeStr + ".rpak";
-    matl->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+    depthPath = "material/code_private/depth_shadow_tight_" + this->materialTypeStr + ".rpak";
+    this->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
 
     // check for overrides
     if (JSON_IS_STR(mapEntry, "depthShadowMaterial"))
     {
-        depthPath = "material/" + mapEntry["depthShadowMaterial"].GetStdString() + "_" + matl->materialTypeStr + ".rpak";
-        matl->depthShadowMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+        depthPath = "material/" + mapEntry["depthShadowMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
+        this->depthShadowMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
     }
 
     if (JSON_IS_STR(mapEntry, "depthPrepassMaterial"))
     {
-        depthPath = "material/" + mapEntry["depthPrepassMaterial"].GetStdString() + "_" + matl->materialTypeStr + ".rpak";
-        matl->depthPrepassMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+        depthPath = "material/" + mapEntry["depthPrepassMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
+        this->depthPrepassMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
     }
 
     if (JSON_IS_STR(mapEntry, "depthVSMMaterial"))
     {
-        depthPath = "material/" + mapEntry["depthVSMMaterial"].GetStdString() + "_" + matl->materialTypeStr + ".rpak";
-        matl->depthVSMMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+        depthPath = "material/" + mapEntry["depthVSMMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
+        this->depthVSMMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
     }
 
     if (JSON_IS_STR(mapEntry, "depthShadowTightMaterial"))
     {
-        depthPath = "material/" + mapEntry["depthShadowTightMaterial"].GetStdString() + "_" + matl->materialTypeStr + ".rpak";
-        matl->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+        depthPath = "material/" + mapEntry["depthShadowTightMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
+        this->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
     }
 
 
     // get referenced colpass material if exists
     if (JSON_IS_STR(mapEntry, "colpass"))
     {
-        std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString()+ "_" + matl->materialTypeStr + ".rpak"; // auto add type? remove if disagree. materials never have their types in names so I don't think this should be expected?
-        matl->colpassMaterial = RTech::StringToGuid(colpassPath.c_str());
+        std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString()+ "_" + this->materialTypeStr + ".rpak"; // auto add type? remove if disagree. materials never have their types in names so I don't think this should be expected?
+        this->colpassMaterial = RTech::StringToGuid(colpassPath.c_str());
     }
 
 
     // optional shaderset override
     if (JSON_IS_STR(mapEntry, "shaderset"))
-        matl->shaderSet = RTech::GetAssetGUIDFromString(mapEntry["shaderset"].GetString());
+        this->shaderSet = RTech::GetAssetGUIDFromString(mapEntry["shaderset"].GetString());
 
     // this is more desirable but would break guid input
     /*if (JSON_IS_STR(mapEntry, "shaderset"))
     {
         std::string shadersetPath = "shaderset/" + mapEntry["shaderset"].GetStdString() + ".rpak";
-        matl->shaderSet = RTech::GetAssetGUIDFromString(shadersetPath.c_str());
+        this->shaderSet = RTech::GetAssetGUIDFromString(shadersetPath.c_str());
     }*/
 
     // texan
     if (JSON_IS_STR(mapEntry, "textureAnimation"))
-        matl->textureAnimation = RTech::GetAssetGUIDFromString(mapEntry["textureAnimation"].GetString());
+        this->textureAnimation = RTech::GetAssetGUIDFromString(mapEntry["textureAnimation"].GetString());
 }
 
 // shader parsing eventually
-void SetUpStaticDxBufferFromJson(GenericShaderBuffer* shaderBuf, rapidjson::Value& mapEntry)
+void Material_SetupDXBufferFromJson(GenericShaderBuffer* shaderBuf, rapidjson::Value& mapEntry)
 {
     if (mapEntry.HasMember("emissiveTint"))
     {
@@ -256,7 +256,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     matlAsset->materialTypeStr = "skn";
 
     // parse json inputs for matl header
-    Material_SetupHeaderFromJSON(matlAsset, mapEntry);
+    matlAsset->FromJSON(mapEntry);
 
     // used only for string to guid
     std::string fullAssetPath = "material/" + sAssetPath + "_" + matlAsset->materialTypeStr + ".rpak"; // Make full rpak asset path.
@@ -435,7 +435,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     /* SETUP DX SHADER BUF */
     GenericShaderBuffer genericShaderBuf{};
     
-    SetUpStaticDxBufferFromJson(&genericShaderBuf, mapEntry);
+    Material_SetupDXBufferFromJson(&genericShaderBuf, mapEntry);
 
     MaterialShaderBufferV12 shaderBuf = genericShaderBuf.GenericV12();
     /* SETUP DX SHADER BUF */
@@ -518,7 +518,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     matlAsset->materialTypeStr = "sknp";
 
     // parse json inputs for matl header
-    Material_SetupHeaderFromJSON(matlAsset, mapEntry);
+    matlAsset->FromJSON(mapEntry);
 
     // used only for string to guid
     std::string fullAssetPath = "material/" + sAssetPath + "_" + matlAsset->materialTypeStr + ".rpak"; // Make full rpak asset path.
@@ -655,7 +655,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     /* SETUP DX SHADER BUF */
     GenericShaderBuffer genericShaderBuf{};
 
-    SetUpStaticDxBufferFromJson(&genericShaderBuf, mapEntry);
+    Material_SetupDXBufferFromJson(&genericShaderBuf, mapEntry);
 
     MaterialShaderBufferV15 shaderBuf = genericShaderBuf.GenericV15();
     /* SETUP DX SHADER BUF */
@@ -671,7 +671,8 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
         cpuIn.read(uberBufChunk.Data() + sizeof(MaterialCPUHeader), dxStaticBufSize);
         cpuIn.close();
     }
-    else {
+    else
+    {
         dxStaticBufSize = sizeof(MaterialShaderBufferV15);
         uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + dxStaticBufSize, SF_CPU | SF_TEMP, 16);
 
