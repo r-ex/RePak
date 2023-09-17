@@ -58,7 +58,7 @@ void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
     // !!!temp!!! - these should be replaced by proper flag string parsing when possible
     int unkFlags = JSON_GET_INT(mapEntry, "unkFlags", 0x4);
     short depthStencilFlags = JSON_GET_INT(mapEntry, "depthStencilFlags", 0x17);
-    short rasterizerFlags = JSON_GET_INT(mapEntry, "depthStencilFlags", 0x6); // CULL_BACK
+    short rasterizerFlags = JSON_GET_INT(mapEntry, "rasterizerFlags", 0x6); // CULL_BACK
 
     for (int i = 0; i < 2; ++i)
     {
