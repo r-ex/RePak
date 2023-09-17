@@ -384,7 +384,7 @@ struct GenericShaderBuffer
 };
 
 
-struct MaterialAssetHeader_v12_t
+struct __declspec(align(16)) MaterialAssetHeader_v12_t
 {
 	uint64_t vftableReserved; // Gets set to CMaterialGlue vtbl ptr
 	char gap_8[0x8]; // unused?
