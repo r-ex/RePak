@@ -65,7 +65,7 @@ void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
     {
         // set default as apex values, set r2 later if needed
         for (int j = 0; j < 8; ++j)
-            this->dxStates[i].blendStates[j] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+            this->dxStates[i].blendStates[j] = MaterialBlendState_t(false, 0xf);
 
         this->dxStates[i].unk = unkFlags;
         this->dxStates[i].depthStencilFlags = depthStencilFlags;
