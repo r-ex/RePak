@@ -246,7 +246,8 @@ public:
 		case BinaryIOMode::Read:
 			return reader.tellg();
 		default:
-			return -1;
+			assert(0); // Code bug: no mode selected.
+			return 0;
 		}
 	}
 
