@@ -20,27 +20,27 @@ void CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeF
 {
 	if (file["$type"].GetStdString() == type)
 	{
-		switch (this->m_Header.fileVersion)
+		AssetTypeFunc_t targetFunc = nullptr;
+		const short fileVersion = this->m_Header.fileVersion;
+
+		switch (fileVersion)
 		{
 		case 7:
 		{
-			if (func_r2)
-				func_r2(this, &m_Assets, file["path"].GetString(), file);
-			else
-				Warning("Asset type '%s' is not supported on RPak version %i\n", type, 7);
-
+			targetFunc = func_r2;
 			break;
 		}
 		case 8:
 		{
-			if (func_r5)
-				func_r5(this, &m_Assets, file["path"].GetString(), file);
-			else
-				Warning("Asset type '%s' is not supported on RPak version %i\n", type, 8);
-
+			targetFunc = func_r5;
 			break;
 		}
 		}
+
+		if (targetFunc)
+			targetFunc(this, &m_Assets, file["path"].GetString(), file);
+		else
+			Warning("Asset type '%s' is not supported on RPak version %i\n", type, fileVersion);
 	}
 }
 
@@ -117,7 +117,7 @@ void CPakFile::AddOptStarpakReference(const std::string& path)
 //-----------------------------------------------------------------------------
 StreamableDataEntry CPakFile::AddStarpakDataEntry(StreamableDataEntry block)
 {
-	std::string starpakPath = this->GetPrimaryStarpakPath();
+	const std::string starpakPath = this->GetPrimaryStarpakPath();
 
 	if (starpakPath.length() == 0)
 		Error("attempted to create a streaming asset without a starpak assigned. add 'starpakPath' as a global rpak variable to fix\n");
@@ -126,7 +126,7 @@ StreamableDataEntry CPakFile::AddStarpakDataEntry(StreamableDataEntry block)
 	this->AddStarpakReference(starpakPath);
 
 	// starpak data is aligned to 4096 bytes
-	size_t ns = Utils::PadBuffer((char**)&block.pData, block.dataSize, 4096);
+	const size_t ns = Utils::PadBuffer((char**)&block.pData, block.dataSize, 4096);
 
 	block.dataSize = ns;
 	block.offset = m_NextStarpakOffset;
@@ -412,7 +412,7 @@ CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
 }
 
 // find the last page that matches the required flags and check if there is room for new data to be added
-CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, int newDataSize)
+CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSize)
 {
 	for (size_t i = m_vPages.size(); i > 0; --i)
 	{
@@ -430,7 +430,7 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, int newDataSize)
 					CPakVSegment& seg = m_vVirtualSegments[page.segmentIndex];
 					if (seg.alignment < alignment)
 					{
-						size_t j = 0;
+						int j = 0;
 						bool updated = false;
 						for (auto& it : m_vVirtualSegments)
 						{
@@ -494,7 +494,7 @@ void CPakPage::AddDataChunk(CPakDataChunk& chunk)
 	this->chunks.emplace_back(chunk);
 }
 
-CPakDataChunk CPakFile::CreateDataChunk(int size, int flags, int alignment)
+CPakDataChunk CPakFile::CreateDataChunk(size_t size, int flags, int alignment)
 {
 	CPakPage& page = FindOrCreatePage(flags, alignment, size);
 

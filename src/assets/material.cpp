@@ -20,7 +20,7 @@ void Material_CreateTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
             if (RTech::ParseGUIDFromString(it.GetString()))
                 continue;
 
-            Assets::AddTextureAsset(pak, assetEntries, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming", false));
+            Assets::AddTextureAsset(pak, assetEntries, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"));
         }
     }
 }
@@ -36,18 +36,18 @@ void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
     this->materialType = Material_ShaderTypeFromString(this->materialTypeStr);
 
     // material max dimensions
-    this->width = JSON_GET_INT(mapEntry, "width", 0); // Set material width.
-    this->height = JSON_GET_INT(mapEntry, "height", 0); // Set material height.
+    this->width = (short)JSON_GET_INT(mapEntry, "width", 0); // Set material width.
+    this->height = (short)JSON_GET_INT(mapEntry, "height", 0); // Set material height.
 
     // temp samplers !!!
     // this will be done a bit better when material files become real
     // for now this is the only real way of doing it so meh
-    uint32_t samplers = 0x1D0300;
+    uint32_t nSamplers = 0x1D0300;
 
     if (JSON_IS_STR(mapEntry, "samplers")) // Set samplers properly. Responsible for texture stretching, tiling etc.
-        samplers = strtoul(("0x" + mapEntry["samplers"].GetStdString()).c_str(), NULL, 0);
+        nSamplers = strtoul(("0x" + mapEntry["samplers"].GetStdString()).c_str(), NULL, 0);
 
-    memcpy(this->samplers, &samplers, sizeof(samplers));
+    memcpy(this->samplers, &nSamplers, sizeof(nSamplers));
 
     // more tradition vmt like flags
     if (JSON_IS_STR(mapEntry, "flags2")) // This does a lot of very important stuff.
@@ -57,15 +57,15 @@ void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
 
     // dx flags
     // !!!temp!!! - these should be replaced by proper flag string parsing when possible
-    int unkFlags = JSON_GET_INT(mapEntry, "unkFlags", 0x4);
-    short depthStencilFlags = JSON_GET_INT(mapEntry, "depthStencilFlags", 0x17);
-    short rasterizerFlags = JSON_GET_INT(mapEntry, "rasterizerFlags", 0x6); // CULL_BACK
+    const int unkFlags = JSON_GET_INT(mapEntry, "unkFlags", 0x4);
+    const short depthStencilFlags = (short)JSON_GET_INT(mapEntry, "depthStencilFlags", 0x17);
+    const short rasterizerFlags   = (short)JSON_GET_INT(mapEntry, "rasterizerFlags", 0x6); // CULL_BACK
 
     for (int i = 0; i < 2; ++i)
     {
         // set default as apex values, set r2 later if needed
         for (int j = 0; j < 8; ++j)
-            this->dxStates[i].blendStates[j] = MaterialBlendState_t(false, 0xf);
+            this->dxStates[i].blendStates[j] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
 
         this->dxStates[i].unk = unkFlags;
         this->dxStates[i].depthStencilFlags = depthStencilFlags;
@@ -305,7 +305,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
         }
     }
 
-    uint32_t dataBufSize = (textureRefSize * 2) + (matlAsset->surface.length() + 1) + (mapEntry.HasMember("surface2") ? matlAsset->surface2.length() + 1 : 0);
+    const size_t dataBufSize = (textureRefSize * 2) + (matlAsset->surface.length() + 1) + (mapEntry.HasMember("surface2") ? matlAsset->surface2.length() + 1 : 0);
 
     // asset data
     CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
@@ -460,7 +460,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
     cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
-    cpuhdr->dataSize = dxStaticBufSize;
+    cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
     cpuhdr->unk_C = 3; // unsure what this value actually is but it changes
 
     pak->AddPointer(uberBufChunk.GetPointer(offsetof(MaterialCPUHeader, dataPtr)));
@@ -469,11 +469,13 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     PakAsset_t asset;
 
-    asset.InitAsset(matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), -1, -1, (std::uint32_t)AssetType::MATL);
+    asset.InitAsset(matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
     asset.version = 12;
 
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = (asset.dependenciesCount - externalDependencyCount) + 1; // plus one for the asset itself (I think)
+
+    // TODO: should we add +1? figure out and remove comments once confirmed.
+    asset.remainingDependencyCount = (short)(asset.dependenciesCount - externalDependencyCount) + 1; // plus one for the asset itself (I think)
 
     asset.AddGuids(&guids);
 
@@ -519,8 +521,8 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     std::string fullAssetPath = "material/" + sAssetPath + "_" + matlAsset->materialTypeStr + ".rpak"; // Make full rpak asset path.
     matlAsset->guid = RTech::StringToGuid(fullAssetPath.c_str()); // Convert full rpak asset path to guid and set it in the material header.
 
-    size_t alignedPathSize = IALIGN4(sAssetPath.length() + 1);
-    uint32_t dataBufSize = alignedPathSize + (textureRefSize * 2) + (matlAsset->surface.length() + 1) + (mapEntry.HasMember("surface2") ? matlAsset->surface2.length() + 1 : 0);
+    const size_t alignedPathSize = IALIGN4(sAssetPath.length() + 1);
+    const size_t dataBufSize = alignedPathSize + (textureRefSize * 2) + (matlAsset->surface.length() + 1) + (mapEntry.HasMember("surface2") ? matlAsset->surface2.length() + 1 : 0);
 
     // asset data
     CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
@@ -676,7 +678,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
     cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
-    cpuhdr->dataSize = dxStaticBufSize;
+    cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
 
     pak->AddPointer(uberBufChunk.GetPointer(offsetof(MaterialCPUHeader, dataPtr)));
 
@@ -684,11 +686,13 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     PakAsset_t asset;
 
-    asset.InitAsset(matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), -1, -1, (std::uint32_t)AssetType::MATL);
+    asset.InitAsset(matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
     asset.version = 15;
 
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = (asset.dependenciesCount - externalDependencyCount) + 1; // plus one for the asset itself (I think)
+
+    // TODO: should we add +1? figure out and remove comments once confirmed.
+    asset.remainingDependencyCount = (short)(asset.dependenciesCount - externalDependencyCount) + 1; // plus one for the asset itself (I think)
 
     asset.AddGuids(&guids);
 
