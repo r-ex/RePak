@@ -72,29 +72,34 @@ struct MaterialBlendState_t
 
 	MaterialBlendState_t() = default;
 
-	MaterialBlendState_t(bool blendEnable, __int8 renderTargetWriteMask)
+	MaterialBlendState_t(bool /*blendEnable*/, __int8 renderTargetWriteMask)
 	{
 		memset(this, 0, sizeof(MaterialBlendState_t));
 		this->renderTargetWriteMask = renderTargetWriteMask & 0xF;
 	}
 
-	MaterialBlendState_t(bool blendEnable,
-		D3D11_BLEND srcBlend, D3D11_BLEND destBlend,
-		D3D11_BLEND_OP blendOp, D3D11_BLEND srcBlendAlpha,
-		D3D11_BLEND destBlendAlpha, D3D11_BLEND_OP blendOpAlpha,
-		__int8 renderTargetWriteMask)
+	MaterialBlendState_t(bool bBlendEnable,
+		D3D11_BLEND _srcBlend, D3D11_BLEND _destBlend,
+		D3D11_BLEND_OP _blendOp, D3D11_BLEND _srcBlendAlpha,
+		D3D11_BLEND _destBlendAlpha, D3D11_BLEND_OP _blendOpAlpha,
+		__int8 _renderTargetWriteMask)
 	{
-		this->blendEnable = blendEnable ? 1 : 0;
-		this->srcBlend = srcBlend - 1;
-		this->destBlend = destBlend - 1;
-		this->blendOp = blendOp - 1;
-		this->srcBlendAlpha = srcBlendAlpha - 1;
-		this->destBlendAlpha = destBlendAlpha - 1;
-		this->blendOpAlpha = blendOpAlpha - 1;
+		this->blendEnable = bBlendEnable ? 1 : 0;
+		this->srcBlend = _srcBlend - 1;
+		this->destBlend = _destBlend - 1;
+		this->blendOp = _blendOp - 1;
+		this->srcBlendAlpha = _srcBlendAlpha - 1;
+		this->destBlendAlpha = _destBlendAlpha - 1;
+		this->blendOpAlpha = _blendOpAlpha - 1;
 
-		this->renderTargetWriteMask = renderTargetWriteMask & 0xF;
+		this->renderTargetWriteMask = _renderTargetWriteMask & 0xF;
 	}
 };
+
+// Suppress structure alignment warnings, we need to align them to 16 bytes
+// for SIMD alignment.
+#pragma warning(push)
+#pragma warning(disable : 4324)
 
 // aligned to 16 bytes so it can be loaded as 3 m128i structs in engine
 struct __declspec(align(16)) MaterialDXState_t
@@ -125,7 +130,7 @@ struct __declspec(align(16)) MaterialDXState_v12_t
 	uint64_t padding; // alignment to 16 bytes (probably)
 };
 static_assert(sizeof(MaterialDXState_v12_t) == 0x20);
-
+#pragma warning(pop)
 
 #pragma pack(push, 1)
 
@@ -384,6 +389,10 @@ struct GenericShaderBuffer
 	}
 };
 
+// Suppress structure alignment warnings, we need to align them to 16 bytes
+// for SIMD alignment.
+#pragma warning(push)
+#pragma warning(disable : 4324)
 
 struct __declspec(align(16)) MaterialAssetHeader_v12_t
 {
@@ -620,6 +629,8 @@ struct MaterialAsset_t
 		}
 	}
 };
+
+#pragma warning(pop)
 
 // header struct for the material asset cpu data
 struct MaterialCPUHeader

@@ -12,11 +12,11 @@ struct Vector3
 		this->Set(x, y, z);
 	}
 
-	void Set(float x, float y, float z)
+	void Set(float newX, float newY, float newZ)
 	{
-		this->x = x;
-		this->y = y;
-		this->z = z;
+		this->x = newX;
+		this->y = newY;
+		this->z = newZ;
 	}
 
 	float x, y, z;
