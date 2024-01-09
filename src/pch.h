@@ -26,3 +26,5 @@
 #include "utils/binaryio.h"
 #include "utils/utils.h"
 #include "utils/logger.h"
+
+#define UNUSED(x)	(void)(x)
