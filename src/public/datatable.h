@@ -25,9 +25,13 @@ static const std::unordered_map<std::string, dtblcoltype_t> s_dataTableColumnTyp
 
 // gets enum value from type string
 // e.g. "string" to dtblcoltype::StringT
+
+static char char_tolower(const char ch) {
+	return static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+}
 dtblcoltype_t DataTable_GetTypeFromString(std::string& sType)
 {
-	std::transform(sType.begin(), sType.end(), sType.begin(), ::tolower);
+	std::transform(sType.begin(), sType.end(), sType.begin(), char_tolower);
 
 	for (const auto& [key, value] : s_dataTableColumnTypeMap) // get each element in the type map
 	{

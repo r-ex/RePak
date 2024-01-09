@@ -12,12 +12,12 @@ struct Color
 		this->Set(r, g, b, a);
 	}
 
-	void Set(float r, float g, float b, float a)
+	void Set(float newR, float newG, float newB, float newA)
 	{
-		this->r = r;
-		this->g = g;
-		this->b = b;
-		this->a = a;
+		this->r = newR;
+		this->g = newG;
+		this->b = newB;
+		this->a = newA;
 	}
 
 	float r, g, b, a;

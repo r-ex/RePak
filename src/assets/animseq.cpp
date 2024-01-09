@@ -21,8 +21,8 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
     // require rseq file to exist
     REQUIRE_FILE(rseqFilePath);
 
-    int fileNameLength = IALIGN4(strlen(assetPath) + 1);
-    int rseqFileSize = Utils::GetFileSize(rseqFilePath);
+    const size_t fileNameLength = IALIGN4(strlen(assetPath) + 1);
+    const size_t rseqFileSize = Utils::GetFileSize(rseqFilePath);
 
     CPakDataChunk dataChunk = pak->CreateDataChunk(IALIGN4(fileNameLength + rseqFileSize), SF_CPU, 64);
 
@@ -68,7 +68,7 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
     PakAsset_t asset;
 
-    asset.InitAsset(assetPath, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), -1, -1, (std::uint32_t)AssetType::ASEQ);
+    asset.InitAsset(assetPath, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ASEQ);
     asset.version = 7;
 
     asset.pageEnd = pak->GetNumPages();
@@ -80,7 +80,7 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
     assetEntries->push_back(asset);
 }
 
-void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& /*mapEntry*/)
 {
     AddAnimSeqAsset(pak, assetEntries, assetPath);
 }

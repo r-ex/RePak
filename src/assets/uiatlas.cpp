@@ -68,7 +68,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
 
 
-    uint16_t textureCount = mapEntry["textures"].GetArray().Size();
+    uint16_t textureCount = static_cast<uint16_t>(mapEntry["textures"].GetArray().Size());
 
     // grab the dimensions of the atlas
     BinaryIO atlas;
@@ -127,11 +127,16 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     for (auto& it : mapEntry["textures"].GetArray())
     {
         UIImageOffset uiio{};
-        float startX = it["posX"].GetFloat() / pHdr->width;
-        float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->width;
 
-        float startY = it["posY"].GetFloat() / pHdr->height;
-        float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->height;
+        // TODO: commented as these were causing code warnings.
+        // this should be revisited at some point.
+        UNUSED(it);
+
+        //float startX = it["posX"].GetFloat() / pHdr->width;
+        //float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->width;
+
+        //float startY = it["posY"].GetFloat() / pHdr->height;
+        //float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->height;
 
         // this doesn't affect legion but does affect game?
         //uiio.InitUIImageOffset(startX, startY, endX, endY);
@@ -145,14 +150,15 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
 
     for (auto& it : mapEntry["textures"].GetArray())
     {
-        tiBuf.write<uint16_t>(it["width"].GetInt());
-        tiBuf.write<uint16_t>(it["height"].GetInt());
+        tiBuf.write<uint16_t>((uint16_t)it["width"].GetInt());
+        tiBuf.write<uint16_t>((uint16_t)it["height"].GetInt());
     }
 
     // set texture hashes page index and offset
     pHdr->pTextureHashes = textureInfoChunk.GetPointer(textureOffsetsDataSize + textureDimensionsDataSize);
 
-    uint32_t nextStringTableOffset = 0;
+    // TODO: is this used?
+    //uint32_t nextStringTableOffset = 0;
 
     /////////////////////////
     // IMAGE HASHES/NAMES
@@ -192,7 +198,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
 
     // create and init the asset entry
     PakAsset_t asset;
-    asset.InitAsset(sAssetName + ".rpak", hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), -1, -1, (std::uint32_t)AssetType::UIMG);
+    asset.InitAsset(sAssetName + ".rpak", hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
     asset.version = UIMG_VERSION;
 
     asset.pageEnd = pak->GetNumPages(); // number of the highest page that the asset references pageidx + 1

@@ -114,9 +114,9 @@ void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChu
                 // 3 - z
                 if (sm.size() == 4)
                 {
-                    float x = atof(sm[1].str().c_str());
-                    float y = atof(sm[2].str().c_str());
-                    float z = atof(sm[3].str().c_str());
+                    float x = static_cast<float>(atof(sm[1].str().c_str()));
+                    float y = static_cast<float>(atof(sm[2].str().c_str()));
+                    float z = static_cast<float>(atof(sm[3].str().c_str()));
                     Vector3 vec(x, y, z);
 
                     valbuf.write(vec);
@@ -142,7 +142,7 @@ void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChu
 }
 
 // VERSION 8
-void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& /*mapEntry*/)
 {
     Log("Adding dtbl asset '%s'\n", assetPath);
 
@@ -172,8 +172,8 @@ void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntr
 
     datatable_asset_t* pHdr = new datatable_asset_t{}; // temp header that we store values in, this is for sharing funcs across versions
 
-    pHdr->numColumns = doc.GetColumnCount();
-    pHdr->numRows = doc.GetRowCount()-1; // -1 because last row isnt added (used for type info)
+    pHdr->numColumns = static_cast<uint32_t>(doc.GetColumnCount());
+    pHdr->numRows = static_cast<uint32_t>(doc.GetRowCount()-1); // -1 because last row isnt added (used for type info)
     pHdr->assetPath = assetPath;
 
     // create column chunk
@@ -212,7 +212,7 @@ void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntr
         sAssetName + ".rpak", 
         hdrChunk.GetPointer(), hdrChunk.GetSize(),
         rowDataChunk.GetPointer(),
-        -1, -1, (std::uint32_t)AssetType::DTBL);
+        UINT64_MAX, UINT64_MAX, AssetType::DTBL);
 
     // rpak v7: v0
     // rpak v8: v1
