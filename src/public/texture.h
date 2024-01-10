@@ -1,7 +1,7 @@
 #pragma once
 
-#define MAX_PERM_MIP_SIZE	0x3FFF // "Any MIP below 64kiB is permanent."
-#define MAX_STREAM_MIP_SIZE	0x100000
+#define MAX_PERM_MIP_SIZE	0xFFFF // "Any MIP below 64kiB is permanent." most things follow this in apex, however some things do not. seems to be per pak. 0x7FFF used as well
+							
 
 static const std::pair<uint8_t, uint8_t> s_pBytesPerPixel[] =
 {
@@ -83,49 +83,120 @@ static const std::pair<uint8_t, uint8_t> s_pBytesPerPixel[] =
   { 0u, 0u }
 };
 
+#pragma pack(push, 1)
+struct TextureAssetHeader_v8_t
+{
+	uint64_t guid;
+	PagePtr_t name;
+
+	uint16_t width;
+	uint16_t height;
+	uint16_t depth;
+
+	uint16_t imgFormat;
+	uint32_t dataSize; // total data size across all sources
+
+	// following two vars are probably merged for pak version 7 (optStreamed wasn't a thing in R2)
+	uint8_t  unk0;
+
+	uint8_t  optStreamedMipLevels;
+
+	// d3d11 texture desc params
+	uint8_t arraySize;
+	uint8_t layerCount;
+
+	uint8_t unk1;
+	uint8_t permanentMipLevels;
+	uint8_t streamedMipLevels;
+
+	char unk2[13];
+
+	__int64 numPixels; // reserved, not written on disk
+};
+
 enum mipType_t : unsigned char
 {
-	STATIC = 0,
+	PERM = 0,
 	STREAMED,
-	STREAMED_OPT,
+	OPTSTREAMED,
 	_COUNT
 };
 
-struct mipLevel_t
+struct TextureMip_t
 {
-	size_t mipOffset; // offset into dds
-	size_t mipSize;
-	size_t mipSizeAligned; // aligned for rpak
-	unsigned short mipWidth;
-	unsigned short mipHeight;
-	unsigned char mipLevel;
-	mipType_t mipType;
+	size_t offset; // into file(s)
+	size_t size; // per texture (if arraySize > 1)
+	size_t sizeAligned; // size with alignment applied
+
+	uint16_t width;
+	uint16_t height;
+
+	uint32_t pitch;
+	uint32_t slicePitch;
+
+	uint8_t level; // level of this mip, for later reference
+	mipType_t type;
 };
 
-#pragma pack(push, 1)
-struct TextureAssetHeader_t
+struct TextureAsset_t
 {
-	uint64_t guid = 0;
-	PagePtr_t  pName;
+	uint64_t guid;
+	PagePtr_t name;
 
-	uint16_t width = 0;
-	uint16_t height = 0;
+	uint16_t width;
+	uint16_t height;
+	uint16_t depth;
 
-	uint16_t unk0 = 0;
-	uint16_t imgFormat = 0;
-
+	uint16_t imgFormat;
 	uint32_t dataSize; // total data size across all sources
-	uint8_t  unk1;
-	uint8_t  optStreamedMipLevels; // why is this here and not below? respawn moment
 
 	// d3d11 texture desc params
 	uint8_t  arraySize;
 	uint8_t  layerCount;
 
-	uint8_t  unk2;
-	uint8_t  mipLevels;
-	uint8_t  streamedMipLevels;
-	uint8_t  unk3[0x15];
+	uint8_t permanentMipLevels;
+	uint8_t streamedMipLevels;
+	uint8_t optStreamedMipLevels;
+	uint8_t totalMipLevels;
+
+	size_t permanentSize;
+	size_t streamedSize;
+	size_t optStreamedSize;
+
+	std::vector<TextureMip_t> mips;
+
+	void WriteToBuffer(char* buf, int txtrVersion)
+	{
+		switch (txtrVersion)
+		{
+		case 8:
+		{
+			TextureAssetHeader_v8_t* txtr = reinterpret_cast<TextureAssetHeader_v8_t*>(buf);
+
+			txtr->guid = this->guid;
+			txtr->name = this->name;
+
+			txtr->width = this->width;
+			txtr->height = this->height;
+			txtr->depth = this->depth;
+
+			txtr->imgFormat = this->imgFormat;
+			txtr->dataSize = this->dataSize;
+
+			txtr->arraySize = this->arraySize;
+			txtr->layerCount = this->layerCount;
+
+			txtr->permanentMipLevels = this->permanentMipLevels;
+			txtr->streamedMipLevels = this->streamedMipLevels;
+			txtr->optStreamedMipLevels = this->optStreamedMipLevels;
+
+			break;
+		}
+		default:
+			Error("Invaild TXTR version!!!\n");
+			break;
+		}
+	}
 };
 
 struct UIImageAtlasHeader_t

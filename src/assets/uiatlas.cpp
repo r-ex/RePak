@@ -58,7 +58,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     std::string sAtlasFilePath = pak->GetAssetPath() + mapEntry["atlas"].GetStdString() + ".dds";
     std::string sAtlasAssetName = mapEntry["atlas"].GetStdString() + ".rpak";
 
-    AddTextureAsset(pak, assetEntries, mapEntry["atlas"].GetString(), mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool());
+    AddTextureAsset(pak, assetEntries, mapEntry["atlas"].GetString(), mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), 0);
 
     uint64_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
 
