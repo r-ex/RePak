@@ -52,7 +52,7 @@ void DataTable_SetupColumns(CPakFile* pak, CPakDataChunk& colChunk, datatable_as
         }
 
         pHdrTemp->rowStride += DataTable_GetValueSize(type);
-        pHdrTemp->rowDataPageSize += DataTable_GetValueSize(type) * pHdrTemp->numRows; // size of type * row count (excluding the type row)
+        pHdrTemp->rowDataPageSize += static_cast<size_t>(DataTable_GetValueSize(type)) * pHdrTemp->numRows; // size of type * row count (excluding the type row)
 
         colNameBuf += name.length() + 1;
     }
