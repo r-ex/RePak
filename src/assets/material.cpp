@@ -5,23 +5,22 @@
 // we need to take better account of textures once asset caching becomes a thing
 void Material_CreateTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, rapidjson::Value& mapEntry)
 {
-    // cut if statement?
-    if (JSON_IS_ARRAY(mapEntry, "textures"))
+    if (!JSON_IS_ARRAY(mapEntry, "textures"))
+        return;
+
+    for (auto& it : mapEntry["textures"].GetArray())
     {
-        for (auto& it : mapEntry["textures"].GetArray())
-        {
-            if (!it.IsString())
-                continue;
+        if (!it.IsString())
+            continue;
 
-            if (it.GetStringLength() == 0)
-                continue;
+        if (it.GetStringLength() == 0)
+            continue;
 
-            // check if texture string is an asset guid (e.g., "0x5DCAT")
-            if (RTech::ParseGUIDFromString(it.GetString()))
-                continue;
+        // check if texture string is an asset guid (e.g., "0x5DCAT")
+        if (RTech::ParseGUIDFromString(it.GetString()))
+            continue;
 
-            Assets::AddTextureAsset(pak, assetEntries, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming", false));
-        }
+        Assets::AddTextureAsset(pak, assetEntries, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming", false), true);
     }
 }
 

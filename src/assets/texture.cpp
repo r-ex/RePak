@@ -3,14 +3,19 @@
 #include "utils/dxutils.h"
 #include "public/texture.h"
 
-void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, bool forceDisableStreaming)
+void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, bool forceDisableStreaming, bool suppressDuplicateWarning)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
 
     PakAsset_t* existingAsset = pak->GetAssetByGuid(RTech::GetAssetGUIDFromString(assetPath, true), nullptr, true);
     if (existingAsset)
     {
-        Warning("Tried to add texture asset '%s' twice. Skipping redefinition...\n", assetPath);
+        // if the caller has requested that this warning is not emitted
+        // this should only really be from material textures or ui image atlases
+        // as those assets may unavoidably reuse a texture, causing an unresolvable warning here
+        if (!suppressDuplicateWarning)
+            Warning("Tried to add texture asset '%s' twice. Skipping redefinition...\n", assetPath);
+
         return;
     }
 
@@ -236,5 +241,5 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
 void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    AddTextureAsset(pak, assetEntries, assetPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool());
+    AddTextureAsset(pak, assetEntries, assetPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), false);
 }

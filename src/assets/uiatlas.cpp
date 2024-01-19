@@ -58,15 +58,16 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     std::string sAtlasFilePath = pak->GetAssetPath() + mapEntry["atlas"].GetStdString() + ".dds";
     std::string sAtlasAssetName = mapEntry["atlas"].GetStdString() + ".rpak";
 
-    AddTextureAsset(pak, assetEntries, mapEntry["atlas"].GetString(), mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool());
+    AddTextureAsset(pak, assetEntries, mapEntry["atlas"].GetString(), mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), true);
 
     uint64_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
 
     PakAsset_t* atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 
-    if (!atlasAsset)
+    // this really shouldn't happen, since the texture is either automatically added above, or a fatal error is thrown
+    // there is no code path in AddTextureAsset in which the texture does not exist after the call and still continues execution
+    if (!atlasAsset) [[ unlikely ]]
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
-
 
     uint16_t textureCount = mapEntry["textures"].GetArray().Size();
 
