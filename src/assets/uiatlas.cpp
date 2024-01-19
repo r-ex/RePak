@@ -194,6 +194,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     // create and init the asset entry
     PakAsset_t asset;
     asset.InitAsset(sAssetName + ".rpak", hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), -1, -1, (std::uint32_t)AssetType::UIMG);
+    asset.SetHeaderPointer(hdrChunk.Data());
     asset.version = UIMG_VERSION;
 
     asset.pageEnd = pak->GetNumPages(); // number of the highest page that the asset references pageidx + 1

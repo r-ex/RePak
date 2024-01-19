@@ -69,6 +69,7 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
     PakAsset_t asset;
 
     asset.InitAsset(assetPath, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), -1, -1, (std::uint32_t)AssetType::ASEQ);
+    asset.SetHeaderPointer(hdrChunk.Data());
     asset.version = 7;
 
     asset.pageEnd = pak->GetNumPages();

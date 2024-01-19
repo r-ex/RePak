@@ -214,6 +214,8 @@ void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntr
         rowDataChunk.GetPointer(),
         -1, -1, (std::uint32_t)AssetType::DTBL);
 
+    asset.SetHeaderPointer(hdrChunk.Data());
+
     // rpak v7: v0
     // rpak v8: v1
     asset.version = pak->GetVersion() <= 7 ? 0 : 1;

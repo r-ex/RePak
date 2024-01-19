@@ -20,6 +20,19 @@ enum MaterialShaderType_t : uint8_t
 	_TYPE_INVALID = 0xFF,
 };
 
+static const char* s_materialShaderTypeNames[] = {
+	"rgdu",
+	"rgdp",
+	"rgdc",
+	"sknu",
+	"sknp",
+	"sknc",
+	"wldu",
+	"wldc",
+	"ptcu",
+	"ptcs",
+};
+
 static const std::map<int, MaterialShaderType_t> s_materialShaderTypeMap
 {
 	// static props

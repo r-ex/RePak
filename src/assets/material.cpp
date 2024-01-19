@@ -684,6 +684,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     PakAsset_t asset;
 
     asset.InitAsset(matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), -1, -1, (std::uint32_t)AssetType::MATL);
+    asset.SetHeaderPointer(hdrChunk.Data());
     asset.version = 15;
 
     asset.pageEnd = pak->GetNumPages();

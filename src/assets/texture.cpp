@@ -227,6 +227,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
     }
 
     asset.InitAsset(sAssetName + ".rpak", hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, -1, (std::uint32_t)AssetType::TXTR);
+    asset.SetHeaderPointer(hdrChunk.Data());
     asset.version = TXTR_VERSION;
 
     asset.pageEnd = pak->GetNumPages();

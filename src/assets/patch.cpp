@@ -60,6 +60,7 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
 
     // hardcoded guid because it's the only Ptch asset guid
     asset.InitAsset(0x6fc6fa5ad8f8bc9c, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), -1, -1, (std::uint32_t)AssetType::PTCH);
+    asset.SetHeaderPointer(hdrChunk.Data());
     asset.version = 1;
 
     asset.pageEnd = pak->GetNumPages();
