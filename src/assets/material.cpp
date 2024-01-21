@@ -2,26 +2,45 @@
 #include "assets.h"
 #include "public/material.h"
 
+#undef GetObject
 // we need to take better account of textures once asset caching becomes a thing
 void Material_CreateTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, rapidjson::Value& mapEntry)
 {
-    if (!JSON_IS_ARRAY(mapEntry, "textures"))
-        return;
-
-    for (auto& it : mapEntry["textures"].GetArray())
+    if (JSON_IS_ARRAY(mapEntry, "textures"))
     {
-        if (!it.IsString())
-            continue;
+        for (auto& it : mapEntry["textures"].GetArray())
+        {
+            if (!it.IsString())
+                continue;
 
-        if (it.GetStringLength() == 0)
-            continue;
+            if (it.GetStringLength() == 0)
+                continue;
 
-        // check if texture string is an asset guid (e.g., "0x5DCAT")
-        if (RTech::ParseGUIDFromString(it.GetString()))
-            continue;
+            // check if texture string is an asset guid (e.g., "0x5DCAT")
+            if (RTech::ParseGUIDFromString(it.GetString()))
+                continue;
 
-        Assets::AddTextureAsset(pak, assetEntries, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming", false), true);
+            Assets::AddTextureAsset(pak, assetEntries, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming", false), true);
+        }
     }
+    else if (JSON_IS_OBJECT(mapEntry, "textures"))
+    {
+        for (auto& it : mapEntry["textures"].GetObject())
+        {
+            if (!it.value.IsString())
+                continue;
+
+            if (it.value.GetStringLength() == 0)
+                continue;
+
+            // check if texture string is an asset guid (e.g., "0x5DCAT")
+            if (RTech::ParseGUIDFromString(it.value.GetString()))
+                continue;
+
+            Assets::AddTextureAsset(pak, assetEntries, it.value.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming", false), true);
+        }
+    }
+
 }
 
 // ideally replace these with material file funcs
@@ -225,32 +244,69 @@ void Material_SetupDXBufferFromJson(GenericShaderBuffer* shaderBuf, rapidjson::V
     }
 }
 
+size_t Material_GetHighestTextureBindPoint(rapidjson::Value& mapEntry)
+{
+    uint32_t max = 0;
+    for (auto& it : mapEntry["textures"].GetObject())
+    {
+        uint32_t index = static_cast<uint32_t>(atoi(it.name.GetString()));
+        if (index > max)
+            max = index;
+    }
+
+    return max;
+}
+
+size_t Material_AddTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, rapidjson::Value& mapEntry)
+{
+    Material_CreateTextures(pak, assetEntries, mapEntry);
+
+    size_t textureCount = 0;
+    if (JSON_IS_ARRAY(mapEntry, "textures"))
+    {
+        textureCount = mapEntry["textures"].GetArray().Size();
+    }
+    else if (JSON_IS_OBJECT(mapEntry, "textures"))
+    {
+        // uncomment and replace if manually specified texture slot counts are required
+        // i don't think it's entirely necessary though, as really the material should only need
+        // to have as many slots as the highest non-null texture
+
+        // ok! it is necessary
+        // shaderset has a texture input count variable that is used when looping over the texture array
+        // and since we can't modify that from here, we have to rely on the user to set this properly!
+        textureCount = JSON_GET_UINT(mapEntry, "textureSlotCount", 0);
+
+        textureCount = max(textureCount, Material_GetHighestTextureBindPoint(mapEntry) + 1);
+    }
+    else
+    {
+        Warning("Trying to add material with no textures. Skipping asset...\n"); // shouldn't this be possible though??
+        return 0;
+    }
+
+    return textureCount;
+}
+
 // VERSION 7
 void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding matl asset '%s'\n", assetPath);
 
-    if (JSON_IS_ARRAY(mapEntry, "textures"))
-    {
-        Material_CreateTextures(pak, assetEntries, mapEntry);
-    }
-    else
-    {
-        Warning("Trying to add material with no textures. Skipping asset...\n"); // shouldn't this be possible though??
-        return;
-    }
+    std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
 
-    // header data chunk and generic struct
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
+    size_t textureCount = Material_AddTextures(pak, assetEntries, mapEntry);
 
     MaterialAsset_t* matlAsset = new MaterialAsset_t{};
     matlAsset->assetVersion = 12; // set asset as a titanfall 2 material
 
-    std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
+    // header data chunk and generic struct
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
+
 
     // some var declaration
     short externalDependencyCount = 0; // number of dependencies ouside this pak
-    size_t textureRefSize = mapEntry["textures"].GetArray().Size() * 8; // size of the texture guid section.
+    size_t textureRefSize = textureCount * 8; // size of the texture guid section.
 
     // parse json inputs for matl header
     matlAsset->FromJSON(mapEntry);
@@ -313,30 +369,63 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     std::vector<PakGuidRefHdr_t> guids{};
 
-    int textureIdx = 0;
-    for (auto& it : mapEntry["textures"].GetArray())
+    if (mapEntry["textures"].IsArray())
     {
-        uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
-
-        *(uint64_t*)dataBuf = textureGuid;
-
-        if (textureGuid != 0) // only deal with dependencies if the guid is not 0
+        int textureIdx = 0;
+        for (auto& it : mapEntry["textures"].GetArray())
         {
-            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer((textureIdx * sizeof(uint64_t)))); // register guid for this texture reference
+            uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
 
-            PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
+            *(uint64_t*)dataBuf = textureGuid;
 
-            if (txtrAsset)
-                txtrAsset->AddRelation(assetEntries->size());
-            else
+            if (textureGuid != 0) // only deal with dependencies if the guid is not 0
             {
-                externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
-                Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
+                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer((textureIdx * sizeof(uint64_t)))); // register guid for this texture reference
+
+                PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
+
+                if (txtrAsset)
+                    txtrAsset->AddRelation(assetEntries->size());
+                else
+                {
+                    externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
+                    Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
+                }
+            }
+
+            dataBuf += sizeof(uint64_t);
+            textureIdx++;
+        }
+    }
+    else if (mapEntry["textures"].IsObject())
+    {
+        for (auto& it : mapEntry["textures"].GetObject())
+        {
+            uint32_t bindPoint = static_cast<uint32_t>(atoi(it.name.GetString()));
+
+            // this should always be true but might as well check
+            assert(bindPoint < textureCount);
+
+            uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.value.GetString(), true); // get texture guid
+
+            reinterpret_cast<uint64_t*>(dataBuf)[bindPoint] = textureGuid;
+
+            if (textureGuid != 0) // only deal with dependencies if the guid is not 0
+            {
+                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer((bindPoint * sizeof(uint64_t)))); // register guid for this texture reference
+
+                PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
+
+                if (txtrAsset)
+                    txtrAsset->AddRelation(assetEntries->size());
+                else
+                {
+                    externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
+                    Warning("unable to find texture '%s' (%i) for material '%s' within the local assets\n", it.value.GetString(), bindPoint, assetPath);
+                }
             }
         }
-
-        dataBuf += sizeof(uint64_t);
-        textureIdx++;
+        dataBuf += textureRefSize;
     }
 
     dataBuf += textureRefSize; // [rika]: already calculated, no need to do it again.
@@ -489,27 +578,19 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 {
     Log("Adding matl asset '%s'\n", assetPath);
 
-    if (JSON_IS_ARRAY(mapEntry, "textures"))
-    {
-        Material_CreateTextures(pak, assetEntries, mapEntry);
-    }
-    else
-    {
-        Warning("Trying to add material with no textures. Skipping asset...\n"); // shouldn't this be possible though??
-        return;
-    }
+    std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
 
-    // header data chunk and generic struct
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
+    size_t textureCount = Material_AddTextures(pak, assetEntries, mapEntry);
+
     MaterialAsset_t* matlAsset = new MaterialAsset_t{};
     matlAsset->assetVersion = 15;
 
-
-    std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
+    // header data chunk and generic struct
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
 
     // some var declaration
     short externalDependencyCount = 0; // number of dependencies ouside this pak
-    size_t textureRefSize = mapEntry["textures"].GetArray().Size() * 8; // size of the texture guid section.
+    size_t textureRefSize = textureCount * 8; // size of the texture guid section.
 
     // parse json inputs for matl header
     matlAsset->FromJSON(mapEntry);
@@ -532,31 +613,60 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     std::vector<PakGuidRefHdr_t> guids{};
 
-    int textureIdx = 0;
-    for (auto& it : mapEntry["textures"].GetArray())
+    if (mapEntry["textures"].IsArray())
     {
-        uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
-
-        // write texture guid into the texture handles array
-        *(uint64_t*)dataBuf = textureGuid;
-
-        if (textureGuid != 0) // only deal with dependencies if the guid is not 0
+        int textureIdx = 0;
+        for (auto& it : mapEntry["textures"].GetArray())
         {
-            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (textureIdx * sizeof(uint64_t)))); // register guid for this texture reference
+            uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
 
-            PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
+            *(uint64_t*)dataBuf = textureGuid;
 
-            if (txtrAsset)
-                txtrAsset->AddRelation(assetEntries->size());
-            else
+            if (textureGuid != 0) // only deal with dependencies if the guid is not 0
             {
-                externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
-                Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
+                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (textureIdx * sizeof(uint64_t)))); // register guid for this texture reference
+
+                PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
+
+                if (txtrAsset)
+                    txtrAsset->AddRelation(assetEntries->size());
+                else
+                {
+                    externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
+                    Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
+                }
+            }
+
+            dataBuf += sizeof(uint64_t);
+            textureIdx++;
+        }
+    }
+    else if (mapEntry["textures"].IsObject())
+    {
+        for (auto& it : mapEntry["textures"].GetObject())
+        {
+            uint32_t bindPoint = static_cast<uint32_t>(atoi(it.name.GetString()));
+
+            uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.value.GetString(), true); // get texture guid
+
+            reinterpret_cast<uint64_t*>(dataBuf)[bindPoint] = textureGuid;
+
+            if (textureGuid != 0) // only deal with dependencies if the guid is not 0
+            {
+                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (bindPoint * sizeof(uint64_t)))); // register guid for this texture reference
+
+                PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
+
+                if (txtrAsset)
+                    txtrAsset->AddRelation(assetEntries->size());
+                else
+                {
+                    externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
+                    Warning("unable to find texture '%s' (%i) for material '%s' within the local assets\n", it.value.GetString(), bindPoint, assetPath);
+                }
             }
         }
-
-        dataBuf += sizeof(uint64_t);
-        textureIdx++;
+        dataBuf += textureRefSize;
     }
 
     dataBuf += textureRefSize; // [rika]: already calculated, no need to do it again.

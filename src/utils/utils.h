@@ -73,10 +73,11 @@ private:
 #define JSON_IS_UINT(doc, name) (doc.HasMember(name) && doc[name].IsUint())
 #define JSON_IS_STR(doc, name) (doc.HasMember(name) && doc[name].IsString())
 #define JSON_IS_ARRAY(doc, name) (doc.HasMember(name) && doc[name].IsArray())
+#define JSON_IS_OBJECT(doc, name) (doc.HasMember(name) && doc[name].IsObject())
 
-#define JSON_GET_BOOL(doc, name) (doc.HasMember(name) && doc[name].IsBool() && doc[name].GetBool())
-#define JSON_GET_INT(doc, name, defaultValue) ((doc.HasMember(name) && doc[name].IsInt()) ? doc[name].GetInt() : defaultValue)
-#define JSON_GET_UINT(doc, name, defaultValue) ((doc.HasMember(name) && doc[name].IsUint()) ? doc[name].GetUint() : defaultValue)
-#define JSON_GET_STR(doc, name, defaultValue) ((doc.HasMember(name) && doc[name].IsString()) ? doc[name].GetString() : defaultValue)
+#define JSON_GET_BOOL(doc, name) (JSON_IS_BOOL(doc, name) && doc[name].GetBool())
+#define JSON_GET_INT(doc, name, defaultValue) ((JSON_IS_INT(doc, name)) ? doc[name].GetInt() : defaultValue)
+#define JSON_GET_UINT(doc, name, defaultValue) ((JSON_IS_UINT(doc, name)) ? doc[name].GetUint() : defaultValue)
+#define JSON_GET_STR(doc, name, defaultValue) ((JSON_IS_STR(doc, name)) ? doc[name].GetString() : defaultValue)
 
 
