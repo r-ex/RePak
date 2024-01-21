@@ -288,6 +288,68 @@ size_t Material_AddTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntries
     return textureCount;
 }
 
+void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& presetName)
+{
+    // default value for presetName is "none"
+    if (presetName == "none")
+        return;
+
+    MaterialDXState_t& dxState = material->dxStates[0];
+
+    bool useDefaultBlendStates = true;
+
+    if (presetName == "ironsight")
+    {
+        dxState.depthStencilFlags = DF_DEPTH_WRITE_MASK_ALL | DF_COMPARISON_LESS_EQUAL | DF_DEPTH_ENABLE; // 23
+        dxState.rasterizerFlags = RF_CULL_BACK; // 6
+    }
+    else if (presetName == "epg_mag")
+    {
+        dxState.depthStencilFlags = DF_COMPARISON_LESS_EQUAL | DF_DEPTH_ENABLE; // 7
+        dxState.rasterizerFlags = RF_CULL_BACK; // 6
+    }
+    else if (presetName == "hair")
+    {
+        dxState.depthStencilFlags = DF_COMPARISON_LESS_EQUAL | DF_DEPTH_ENABLE; // 7
+        dxState.rasterizerFlags = RF_CULL_NONE; // 2
+    }
+    else if (presetName == "opaque")
+    {
+        useDefaultBlendStates = false;
+
+        dxState.blendStates[0] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+        dxState.blendStates[1] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+        dxState.blendStates[2] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+        dxState.blendStates[3] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
+
+        dxState.unk = 4;
+    }
+    else
+    {
+        Warning("Unexpected preset name '%s' for material '%s'. Ignoring preset.\n", presetName.c_str(), material->materialAssetPath);
+        return;
+    }
+
+
+    // most presets will want to use these blend states, so these are default
+    if (useDefaultBlendStates)
+    {
+        // 0xF0138286
+        dxState.blendStates[0] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+        // 0xF0138286
+        dxState.blendStates[1] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+        // 0xF0008286
+        dxState.blendStates[2] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, 0xF);
+        // 0x00138286
+        dxState.blendStates[3] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0);
+
+        dxState.unk = 5;
+    }
+
+    // copy all settings to the second dx state
+    material->dxStates[1] = material->dxStates[0];
+}
+
 // VERSION 7
 void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
 {
@@ -299,6 +361,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     MaterialAsset_t* matlAsset = new MaterialAsset_t{};
     matlAsset->assetVersion = 12; // set asset as a titanfall 2 material
+    matlAsset->materialAssetPath = assetPath;
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
@@ -358,6 +421,12 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
             matlAsset->dxStates[i].unk = 0x5;
         }
+    }
+
+    if (JSON_IS_STR(mapEntry, "preset"))
+    {
+        // get presets for dxstate, derived from existing r2 materials
+        Material_SetTitanfall2Preset(matlAsset, JSON_GET_STR(mapEntry, "preset", "none"));
     }
 
     uint32_t dataBufSize = (textureRefSize * 2) + (matlAsset->surface.length() + 1) + (mapEntry.HasMember("surface2") ? matlAsset->surface2.length() + 1 : 0);
@@ -584,6 +653,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     MaterialAsset_t* matlAsset = new MaterialAsset_t{};
     matlAsset->assetVersion = 15;
+    matlAsset->materialAssetPath = assetPath;
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
@@ -755,6 +825,10 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     // temp, should be moved to setting things in material files when those exist
     std::string cpuPath = pak->GetAssetPath() + JSON_GET_STR(mapEntry, "cpuPath", sAssetPath + "_" + matlAsset->materialTypeStr + ".cpu");
+    if (mapEntry.HasMember("cpu") && mapEntry["cpu"].IsString())
+    {
+        cpuPath = pak->GetAssetPath() + mapEntry["cpu"].GetStdString() + ".cpu";
+    }
 
     /* SETUP DX SHADER BUF */
     GenericShaderBuffer genericShaderBuf{};

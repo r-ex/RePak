@@ -504,6 +504,7 @@ struct MaterialAsset_t
 
 	uint64_t guid; // guid of this material asset
 
+	const char* materialAssetPath;
 	PagePtr_t materialName; // pointer to partial asset path
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
