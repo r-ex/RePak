@@ -39,6 +39,11 @@ public:
 		open(path, mode);
 	}
 
+	BinaryIO(const std::filesystem::path& path, BinaryIOMode mode)
+	{
+		open(path.u8string(), mode);
+	}
+
 	// the destructor will be responsible for checking if we forgot to close
 	// the file
 	~BinaryIO()
@@ -56,7 +61,7 @@ public:
 
 	// opens a file with either read or write mode. Returns whether
 	// the open operation was successful
-	bool open(std::string fileFullPath, BinaryIOMode mode)
+	bool open(const std::string& fileFullPath, BinaryIOMode mode)
 	{
 		filePath = fileFullPath;
 
