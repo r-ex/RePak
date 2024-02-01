@@ -630,7 +630,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
     asset.version = 12;
 
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = (asset.dependenciesCount - externalDependencyCount) + 1; // plus one for the asset itself (I think)
+    asset.remainingDependencyCount = (guids.size() - externalDependencyCount) + 1; // plus one for the asset itself (I think)
 
     asset.AddGuids(&guids);
 
@@ -825,6 +825,8 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     // temp, should be moved to setting things in material files when those exist
     std::string cpuPath = pak->GetAssetPath() + JSON_GET_STR(mapEntry, "cpuPath", sAssetPath + "_" + matlAsset->materialTypeStr + ".cpu");
+
+    // also bad temp
     if (mapEntry.HasMember("cpu") && mapEntry["cpu"].IsString())
     {
         cpuPath = pak->GetAssetPath() + mapEntry["cpu"].GetStdString() + ".cpu";
@@ -872,7 +874,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     asset.version = 15;
 
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = (asset.dependenciesCount - externalDependencyCount) + 1; // plus one for the asset itself (I think)
+    asset.remainingDependencyCount = (guids.size() - externalDependencyCount) + 1; // plus one for the asset itself (I think)
 
     asset.AddGuids(&guids);
 
