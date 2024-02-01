@@ -105,7 +105,10 @@ public:
 class CPakFile
 {
 public:
-	CPakFile(int version);
+	CPakFile(int version)
+	{
+		m_Header.fileVersion = version;
+	};
 
 	//----------------------------------------------------------------------------
 	// assets

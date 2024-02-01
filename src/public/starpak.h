@@ -7,10 +7,17 @@
 #define STARPAK_FILE_MAGIC MAKE_FOURCC('S', 'R', 'P', 'k')
 
 // starpak header
-struct StreamableSetHeader
+struct StarpakFileHeader_t
 {
 	int magic;
 	int version;
+};
+
+// entry struct for the table at the end of starpak files
+struct StarpakEntry_t
+{
+	size_t dataOffset;
+	size_t dataSize;
 };
 
 // internal data structure for referencing streaming data to be written

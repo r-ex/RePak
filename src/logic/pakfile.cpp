@@ -8,14 +8,6 @@
 #include "pakfile.h"
 #include "assets/assets.h"
 
-//-----------------------------------------------------------------------------
-// purpose: constructor
-//-----------------------------------------------------------------------------
-CPakFile::CPakFile(int version)
-{
-	SetVersion(version);
-}
-
 void CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
 {
 	if (file["$type"].GetStdString() == type)
@@ -718,10 +710,10 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 		srpkOut.open(outputPath + filename, BinaryIOMode::Write);
 
-		StreamableSetHeader srpkHeader{ STARPAK_MAGIC , STARPAK_VERSION };
+		StarpakFileHeader_t srpkHeader{ STARPAK_MAGIC , STARPAK_VERSION };
 		srpkOut.write(srpkHeader);
 
-		int padSize = (STARPAK_DATABLOCK_ALIGNMENT - sizeof(StreamableSetHeader));
+		int padSize = (STARPAK_DATABLOCK_ALIGNMENT - sizeof(StarpakFileHeader_t));
 
 		char* initialPad = new char[padSize];
 		memset(initialPad, STARPAK_DATABLOCK_ALIGNMENT_PADDING, padSize);
