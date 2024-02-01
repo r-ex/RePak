@@ -67,6 +67,8 @@ private:
 #define IALIGN32(a)  IALIGN(a,32)
 #define IALIGN64(a)  IALIGN(a,64)
 
+#define MAKE_FOURCC(a,b,c,d) ((d<<24)+(c<<16)+(b<<8)+a)
+
 // json helper macros
 #define JSON_IS_BOOL(doc, name) (doc.HasMember(name) && doc[name].IsBool())
 #define JSON_IS_INT(doc, name) (doc.HasMember(name) && doc[name].IsInt())
@@ -80,4 +82,6 @@ private:
 #define JSON_GET_UINT(doc, name, defaultValue) ((JSON_IS_UINT(doc, name)) ? doc[name].GetUint() : defaultValue)
 #define JSON_GET_STR(doc, name, defaultValue) ((JSON_IS_STR(doc, name)) ? doc[name].GetString() : defaultValue)
 
+#define REPAK_BEGIN_NAMESPACE(n) namespace n {
 
+#define REPAK_END_NAMESPACE() }

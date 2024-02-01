@@ -5,7 +5,9 @@
 #include "math/color.h"
 #include "public/starpak.h"
 
+#ifndef MAKE_FOURCC
 #define MAKE_FOURCC(a,b,c,d) ((d<<24)+(c<<16)+(b<<8)+a)
+#endif
 
 #define RPAK_MAGIC	MAKE_FOURCC('R', 'P', 'a', 'k')
 #define RPAK_EXTENSION ".rpak"
