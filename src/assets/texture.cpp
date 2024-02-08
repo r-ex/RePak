@@ -3,7 +3,8 @@
 #include "utils/dxutils.h"
 #include "public/texture.h"
 
-void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, bool forceDisableStreaming, bool suppressDuplicateWarning)
+// materialGeneratedTexture - whether this texture's creation was invoked by material automatic texture generation
+void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, bool forceDisableStreaming, bool materialGeneratedTexture)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
 
@@ -13,7 +14,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
         // if the caller has requested that this warning is not emitted
         // this should only really be from material textures or ui image atlases
         // as those assets may unavoidably reuse a texture, causing an unresolvable warning here
-        if (!suppressDuplicateWarning)
+        if (!materialGeneratedTexture)
             Warning("Tried to add texture asset '%s' twice. Skipping redefinition...\n", assetPath);
 
         return;
@@ -22,7 +23,15 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
     std::string filePath = pak->GetAssetPath() + assetPath + ".dds";
 
     if (!FILE_EXISTS(filePath))
-        Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());
+    {
+        if(!materialGeneratedTexture)
+            Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());
+        else
+        {
+            Warning("Failed to find texture source file '%s'. Skipping automatic creation of this texture.\n");
+            return;
+        }
+    }
 
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(TextureAssetHeader_t), SF_HEAD, 8);
 
