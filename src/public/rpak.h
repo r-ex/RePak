@@ -281,7 +281,7 @@ public:
 
 	FORCEINLINE bool IsType(uint32_t type)
 	{
-		return id == type;
+		return static_cast<uint32_t>(id) == type;
 	}
 
 	FORCEINLINE void EnsureType(uint32_t type)

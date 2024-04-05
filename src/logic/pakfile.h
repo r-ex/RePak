@@ -106,7 +106,7 @@ public:
 class CPakFile
 {
 public:
-	CPakFile(int version)
+	CPakFile(short version)
 	{
 		m_Header.fileVersion = version;
 	};

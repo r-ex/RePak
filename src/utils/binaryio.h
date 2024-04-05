@@ -41,7 +41,7 @@ public:
 
 	BinaryIO(const std::filesystem::path& path, BinaryIOMode mode)
 	{
-		open(path.u8string(), mode);
+		open(path.string(), mode);
 	}
 
 	// the destructor will be responsible for checking if we forgot to close

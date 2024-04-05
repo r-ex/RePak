@@ -79,7 +79,7 @@ void Utils::AppendSlash(std::string& in)
 //-----------------------------------------------------------------------------
 std::string Utils::ChangeExtension(const std::string& in, const std::string& ext)
 {
-	return std::filesystem::path(in).replace_extension(ext).u8string();
+	return std::filesystem::path(in).replace_extension(ext).string();
 }
 
 //-----------------------------------------------------------------------------

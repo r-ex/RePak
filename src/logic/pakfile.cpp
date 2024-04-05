@@ -483,7 +483,8 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSiz
 
 void CPakPage::AddDataChunk(CPakDataChunk& chunk)
 {
-	this->PadPageToChunkAlignment(this->alignment);
+	assert(this->alignment > 0 && this->alignment < UINT8_MAX);
+	this->PadPageToChunkAlignment(static_cast<uint8_t>(this->alignment));
 
 	chunk.pageIndex = this->GetIndex();
 	chunk.pageOffset = this->GetSize();
@@ -496,9 +497,9 @@ void CPakPage::AddDataChunk(CPakDataChunk& chunk)
 }
 
 
-void CPakPage::PadPageToChunkAlignment(uint8_t alignment)
+void CPakPage::PadPageToChunkAlignment(uint8_t chunkAlignment)
 {
-	int alignAmount = IALIGN(this->dataSize, static_cast<int>(alignment)) - this->dataSize;
+	uint32_t alignAmount = IALIGN(this->dataSize, static_cast<uint32_t>(chunkAlignment)) - this->dataSize;
 
 	if (alignAmount > 0)
 	{
@@ -573,7 +574,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	{
 		Warning("No assetsDir field provided. Assuming that everything is relative to the working directory.\n");
 		if (inputPath.has_parent_path())
-			m_AssetPath = inputPath.parent_path().u8string();
+			m_AssetPath = inputPath.parent_path().string();
 		else
 			m_AssetPath = ".\\";
 	}
@@ -581,9 +582,9 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	{
 		fs::path assetsDirPath(doc["assetsDir"].GetStdString());
 		if (assetsDirPath.is_relative() && inputPath.has_parent_path())
-			m_AssetPath = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).u8string();
+			m_AssetPath = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).string();
 		else
-			m_AssetPath = assetsDirPath.u8string();
+			m_AssetPath = assetsDirPath.string();
 
 		// ensure that the path has a slash at the end
 		Utils::AppendSlash(m_AssetPath);
@@ -597,9 +598,9 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		fs::path outputDirPath(doc["outputDir"].GetString());
 
 		if (outputDirPath.is_relative() && inputPath.has_parent_path())
-			outputPath = fs::canonical(inputPath.parent_path() / outputDirPath).u8string();
+			outputPath = fs::canonical(inputPath.parent_path() / outputDirPath).string();
 		else
-			outputPath = outputDirPath.u8string();
+			outputPath = outputDirPath.string();
 
 		// ensure that the path has a slash at the end
 		Utils::AppendSlash(outputPath);
@@ -704,7 +705,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	if (GetNumStarpakPaths() == 1)
 	{
 		fs::path path(GetStarpakPath(0));
-		std::string filename = path.filename().u8string();
+		std::string filename = path.filename().string();
 
 		Debug("writing starpak %s with %lld data entries\n", filename.c_str(), GetStreamingAssetCount());
 		BinaryIO srpkOut;

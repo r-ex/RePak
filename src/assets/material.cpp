@@ -20,7 +20,7 @@ void Material_CreateTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
             if (RTech::ParseGUIDFromString(it.GetString()))
                 continue;
 
-            Assets::AddTextureAsset(pak, assetEntries, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming", false), true);
+            Assets::AddTextureAsset(pak, assetEntries, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"), true);
         }
     }
     else if (JSON_IS_OBJECT(mapEntry, "textures"))
@@ -37,7 +37,7 @@ void Material_CreateTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
             if (RTech::ParseGUIDFromString(it.value.GetString()))
                 continue;
 
-            Assets::AddTextureAsset(pak, assetEntries, it.value.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming", false), true);
+            Assets::AddTextureAsset(pak, assetEntries, it.value.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"), true);
         }
     }
 
@@ -627,7 +627,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, std::vector<PakAsset_t>* assetE
 
     asset.pageEnd = pak->GetNumPages();
 
-    asset.remainingDependencyCount = (guids.size() - externalDependencyCount) + 1; // plus one for the asset itself (I think)
+    asset.remainingDependencyCount = static_cast<short>((guids.size() - externalDependencyCount) + 1); // plus one for the asset itself (I think)
   
     asset.AddGuids(&guids);
 
@@ -872,7 +872,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, std::vector<PakAsset_t>* assetE
     asset.version = 15;
 
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = (guids.size() - externalDependencyCount) + 1; // plus one for the asset itself (I think)
+    asset.remainingDependencyCount = static_cast<short>((guids.size() - externalDependencyCount) + 1); // plus one for the asset itself (I think)
 
     asset.AddGuids(&guids);
 
