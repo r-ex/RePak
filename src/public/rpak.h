@@ -5,7 +5,9 @@
 #include "math/color.h"
 #include "public/starpak.h"
 
+#ifndef MAKE_FOURCC
 #define MAKE_FOURCC(a,b,c,d) ((d<<24)+(c<<16)+(b<<8)+a)
+#endif
 
 #define RPAK_MAGIC	MAKE_FOURCC('R', 'P', 'a', 'k')
 #define RPAK_EXTENSION ".rpak"
@@ -236,17 +238,21 @@ public:
 	int _assetidx;
 	std::string name;
 
+	void* header;
+
 	// vector of indexes for local assets that use this asset
 	std::vector<unsigned int> _relations{};
 
-	inline void AddRelation(unsigned int idx) { _relations.push_back({ idx }); };
-	inline void AddRelation(size_t idx) { _relations.push_back({ static_cast<unsigned int>(idx) }); };
-
 	std::vector<PakGuidRefHdr_t> _guids{};
 
-	inline void AddGuid(PakGuidRefHdr_t desc) { _guids.push_back(desc); };
+	FORCEINLINE void SetHeaderPointer(void* pHeader) { this->header = pHeader; };
 
-	inline void AddGuids(std::vector<PakGuidRefHdr_t>* descs)
+	FORCEINLINE void AddRelation(unsigned int idx) { _relations.push_back({ idx }); };
+	FORCEINLINE void AddRelation(size_t idx) { _relations.push_back({ static_cast<unsigned int>(idx) }); };
+
+	FORCEINLINE void AddGuid(PakGuidRefHdr_t desc) { _guids.push_back(desc); };
+
+	FORCEINLINE void AddGuids(std::vector<PakGuidRefHdr_t>* descs)
 	{
 		for (auto& it : *descs)
 			_guids.push_back(it);
@@ -270,6 +276,19 @@ public:
 				Error("Found duplicate asset '%s'. Assets at index %lld and %lld have the same GUID (%llX). Exiting...\n", this->name.c_str(), i, assets->size(), this->guid);
 
 			i++;
+		}
+	}
+
+	FORCEINLINE bool IsType(uint32_t type)
+	{
+		return id == type;
+	}
+
+	FORCEINLINE void EnsureType(uint32_t type)
+	{
+		if (!IsType(type))
+		{
+			Error("Unexpected asset type for '%s'. Expected '%.4s', found '%.4s'\n", this->name.c_str(), reinterpret_cast<char*>(&type), reinterpret_cast<char*>(&this->id));
 		}
 	}
 };

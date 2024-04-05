@@ -73,6 +73,7 @@ public:
 	int GetSize() { return dataSize; };
 
 	void AddDataChunk(CPakDataChunk& chunk);
+	void PadPageToChunkAlignment(uint8_t alignment);
 };
 
 class CPakDataChunk
@@ -81,13 +82,15 @@ class CPakDataChunk
 
 public:
 	CPakDataChunk() = default;
-	CPakDataChunk(size_t size, char* data) : size((int)size), pData(data) {};
-	CPakDataChunk(int pageIndex, int pageOffset, size_t size, char* data) : pageIndex(pageIndex), pageOffset(pageOffset), size((int)size), pData(data) {};
+
+	CPakDataChunk(size_t size, uint8_t alignment, char* data) : size((int)size), alignment(alignment), pData(data) {};
+	CPakDataChunk(int pageIndex, int pageOffset, size_t size, uint8_t alignment, char* data) : pageIndex(pageIndex), pageOffset(pageOffset), size((int)size), alignment(alignment), pData(data) {};
 
 private:
 	int pageIndex;
 	int pageOffset;
 	int size;
+	uint8_t alignment;
 
 	char* pData;
 
@@ -103,7 +106,10 @@ public:
 class CPakFile
 {
 public:
-	CPakFile(int version);
+	CPakFile(int version)
+	{
+		m_Header.fileVersion = version;
+	};
 
 	//----------------------------------------------------------------------------
 	// assets
@@ -206,7 +212,7 @@ public:
 	void BuildFromMap(const string& mapPath);
 
 private:
-	friend void CPakPage::AddDataChunk(CPakDataChunk& chunk);
+	friend class CPakPage;
 
 	// next available starpak data offset
 	uint64_t m_NextStarpakOffset = 0x1000;

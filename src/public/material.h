@@ -20,6 +20,19 @@ enum MaterialShaderType_t : uint8_t
 	_TYPE_INVALID = 0xFF,
 };
 
+static const char* s_materialShaderTypeNames[] = {
+	"rgdu",
+	"rgdp",
+	"rgdc",
+	"sknu",
+	"sknp",
+	"sknc",
+	"wldu",
+	"wldc",
+	"ptcu",
+	"ptcs",
+};
+
 static const std::map<int, MaterialShaderType_t> s_materialShaderTypeMap
 {
 	// static props
@@ -500,6 +513,7 @@ struct MaterialAsset_t
 
 	uint64_t guid; // guid of this material asset
 
+	const char* materialAssetPath;
 	PagePtr_t materialName; // pointer to partial asset path
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 

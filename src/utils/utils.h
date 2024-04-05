@@ -58,7 +58,7 @@ private:
 	if(!FILE_EXISTS(path)) \
 		Error("Unable to find required file '%s'\n", std::string(path).c_str())
 
-#define IALIGN(a,b)  ((a + (b-1)) & ~(b-1))
+#define IALIGN(a,b)  (((a) + ((b)-1)) & ~((b)-1))
 
 #define IALIGN2(a)   IALIGN(a,2)
 #define IALIGN4(a)   IALIGN(a,4)
@@ -67,16 +67,21 @@ private:
 #define IALIGN32(a)  IALIGN(a,32)
 #define IALIGN64(a)  IALIGN(a,64)
 
+#define MAKE_FOURCC(a,b,c,d) ((d<<24)+(c<<16)+(b<<8)+a)
+
 // json helper macros
 #define JSON_IS_BOOL(doc, name) (doc.HasMember(name) && doc[name].IsBool())
 #define JSON_IS_INT(doc, name) (doc.HasMember(name) && doc[name].IsInt())
 #define JSON_IS_UINT(doc, name) (doc.HasMember(name) && doc[name].IsUint())
 #define JSON_IS_STR(doc, name) (doc.HasMember(name) && doc[name].IsString())
 #define JSON_IS_ARRAY(doc, name) (doc.HasMember(name) && doc[name].IsArray())
+#define JSON_IS_OBJECT(doc, name) (doc.HasMember(name) && doc[name].IsObject())
 
-#define JSON_GET_BOOL(doc, name) (doc.HasMember(name) && doc[name].IsBool() && doc[name].GetBool())
-#define JSON_GET_INT(doc, name, defaultValue) ((doc.HasMember(name) && doc[name].IsInt()) ? doc[name].GetInt() : defaultValue)
-#define JSON_GET_UINT(doc, name, defaultValue) ((doc.HasMember(name) && doc[name].IsUint()) ? doc[name].GetUint() : defaultValue)
-#define JSON_GET_STR(doc, name, defaultValue) ((doc.HasMember(name) && doc[name].IsString()) ? doc[name].GetString() : defaultValue)
+#define JSON_GET_BOOL(doc, name) (JSON_IS_BOOL(doc, name) && doc[name].GetBool())
+#define JSON_GET_INT(doc, name, defaultValue) ((JSON_IS_INT(doc, name)) ? doc[name].GetInt() : defaultValue)
+#define JSON_GET_UINT(doc, name, defaultValue) ((JSON_IS_UINT(doc, name)) ? doc[name].GetUint() : defaultValue)
+#define JSON_GET_STR(doc, name, defaultValue) ((JSON_IS_STR(doc, name)) ? doc[name].GetString() : defaultValue)
 
+#define REPAK_BEGIN_NAMESPACE(n) namespace n {
 
+#define REPAK_END_NAMESPACE() }

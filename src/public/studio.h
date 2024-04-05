@@ -65,6 +65,11 @@ struct studiohdr_t
 		return reinterpret_cast<mstudiotexture_t*>((char*)this + textureindex) + i;
 	}
 
+	inline uint8_t materialType(int i)
+	{
+		return reinterpret_cast<uint8_t*>((char*)this + materialtypesindex)[i];
+	}
+
 	// this should always only be one, unless using vmts.
 	// raw textures search paths
 	int numcdtextures;

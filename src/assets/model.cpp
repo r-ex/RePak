@@ -295,13 +295,29 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
             PakAsset_t* asset = pak->GetAssetByGuid(tex->guid);
 
             if (asset)
+            {
+                // make sure referenced asset is a material for sanity
+                asset->EnsureType(TYPE_MATL);
+
+                // model assets don't exist on r2 so we can be sure that this is a v8 pak (and therefore has v15 materials)
+                MaterialAssetHeader_v15_t* matlHdr = reinterpret_cast<MaterialAssetHeader_v15_t*>(asset->header);
+
+                if (matlHdr->materialType != studiohdr->materialType(i))
+                {
+                    Warning("Setting material of unexpected type in material slot %i for model asset '%s'. Expected type '%s', found material with type '%s'.\n",
+                        i, sAssetName.c_str(), s_materialShaderTypeNames[studiohdr->materialType(i)], s_materialShaderTypeNames[matlHdr->materialType]);
+                }
+
                 asset->AddRelation(assetEntries->size());
+            }
         }
     }
 
     PakAsset_t asset;
 
     asset.InitAsset(sAssetName, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.offset, UINT64_MAX, AssetType::RMDL);
+    asset.SetHeaderPointer(hdrChunk.Data());
+  
     asset.version = RMDL_VERSION;
 
     asset.pageEnd = pak->GetNumPages();

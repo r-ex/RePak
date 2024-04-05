@@ -90,7 +90,7 @@ void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimRigAssetHeader_t), SF_HEAD, 16);
     AnimRigAssetHeader_t* pHdr = reinterpret_cast<AnimRigAssetHeader_t*>(hdrChunk.Data());
 
-    CPakDataChunk nameChunk = pak->CreateDataChunk(sAssetName.length() + 1, SF_CPU, 64);
+    CPakDataChunk nameChunk = pak->CreateDataChunk(sAssetName.length() + 1, SF_CPU, 1); // [rika]: only aligned to 1 byte in season 3 paks
     memcpy_s(nameChunk.Data(), sAssetName.length(), assetPath, sAssetName.length());
 
     CPakDataChunk rigChunk = pak->CreateDataChunk(studiohdr->length, SF_CPU, 64);
@@ -98,6 +98,9 @@ void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     pHdr->data = rigChunk.GetPointer();
     pHdr->name = nameChunk.GetPointer();
+
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, data)));
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, name)));
 
     CPakDataChunk guidsChunk;
     if (AnimRig_AddSequenceRefs(&guidsChunk, pak, pHdr, mapEntry, assetEntries))
@@ -116,7 +119,10 @@ void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     PakAsset_t asset;
 
+
     asset.InitAsset(sAssetName, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ARIG);
+    asset.SetHeaderPointer(hdrChunk.Data());
+
     asset.version = 4;
 
     asset.pageEnd = pak->GetNumPages();

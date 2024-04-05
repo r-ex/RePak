@@ -52,7 +52,7 @@ void DataTable_SetupColumns(CPakFile* pak, CPakDataChunk& colChunk, datatable_as
         }
 
         pHdrTemp->rowStride += DataTable_GetValueSize(type);
-        pHdrTemp->rowDataPageSize += DataTable_GetValueSize(type) * pHdrTemp->numRows; // size of type * row count (excluding the type row)
+        pHdrTemp->rowDataPageSize += static_cast<size_t>(DataTable_GetValueSize(type)) * pHdrTemp->numRows; // size of type * row count (excluding the type row)
 
         colNameBuf += name.length() + 1;
     }
@@ -213,6 +213,8 @@ void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntr
         hdrChunk.GetPointer(), hdrChunk.GetSize(),
         rowDataChunk.GetPointer(),
         UINT64_MAX, UINT64_MAX, AssetType::DTBL);
+
+    asset.SetHeaderPointer(hdrChunk.Data());
 
     // rpak v7: v0
     // rpak v8: v1

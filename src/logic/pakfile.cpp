@@ -8,14 +8,6 @@
 #include "pakfile.h"
 #include "assets/assets.h"
 
-//-----------------------------------------------------------------------------
-// purpose: constructor
-//-----------------------------------------------------------------------------
-CPakFile::CPakFile(int version)
-{
-	SetVersion(version);
-}
-
 void CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
 {
 	if (file["$type"].GetStdString() == type)
@@ -249,7 +241,14 @@ void CPakFile::WritePageData(BinaryIO& out)
 	{
 		for (auto& chunk : page.chunks)
 		{
-			out.getWriter()->write(chunk.Data(), chunk.GetSize());
+			if(chunk.Data())
+				out.getWriter()->write(chunk.Data(), chunk.GetSize());
+			else // if chunk is padding to realign the page
+			{
+				//printf("aligning by %i bytes at %lld\n", chunk.GetSize(), out.tell());
+
+				out.getWriter()->seekp(chunk.GetSize(), std::ios::cur);
+			}
 		}
 	}
 }
@@ -465,7 +464,7 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSiz
 							j++;
 						}
 
-						if (!updated)
+						if (!updated) // if a segment has not been found matching the new alignment, update the page's existing segment
 							seg.alignment = alignment;
 					}
 				}
@@ -484,25 +483,50 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSiz
 
 void CPakPage::AddDataChunk(CPakDataChunk& chunk)
 {
+	this->PadPageToChunkAlignment(this->alignment);
+
 	chunk.pageIndex = this->GetIndex();
 	chunk.pageOffset = this->GetSize();
 
-	dataSize += chunk.size;
+	this->dataSize += chunk.size;
 
 	this->pak->m_vVirtualSegments[this->segmentIndex].AddToDataSize(chunk.size);
 
 	this->chunks.emplace_back(chunk);
 }
 
+
+void CPakPage::PadPageToChunkAlignment(uint8_t alignment)
+{
+	int alignAmount = IALIGN(this->dataSize, static_cast<int>(alignment)) - this->dataSize;
+
+	if (alignAmount > 0)
+	{
+		//printf("Aligning by %i bytes...\n", alignAmount);
+		this->dataSize += alignAmount;
+		this->pak->m_vVirtualSegments[this->segmentIndex].AddToDataSize(alignAmount);
+
+		// create null chunk with size of the alignment amount
+		// these chunks are handled specially when writing to file,
+		// writing only null bytes for the size of the chunk when no data ptr is present
+		CPakDataChunk chunk{ 0, 0, alignAmount, 0, nullptr };
+
+		this->chunks.emplace_back(chunk);
+	}	
+}
+
 CPakDataChunk CPakFile::CreateDataChunk(size_t size, int flags, int alignment)
 {
+	// this assert is replicated in r5sdk
+	assert(alignment != 0 && alignment < UINT8_MAX);
+
 	CPakPage& page = FindOrCreatePage(flags, alignment, size);
 
 	char* buf = new char[size];
 
 	memset(buf, 0, size);
 
-	CPakDataChunk chunk{ size, buf };
+	CPakDataChunk chunk{ size, static_cast<uint8_t>(alignment), buf };
 	page.AddDataChunk(chunk);
 
 	return chunk;
@@ -687,10 +711,10 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 		srpkOut.open(outputPath + filename, BinaryIOMode::Write);
 
-		StreamableSetHeader srpkHeader{ STARPAK_MAGIC , STARPAK_VERSION };
+		StarpakFileHeader_t srpkHeader{ STARPAK_MAGIC , STARPAK_VERSION };
 		srpkOut.write(srpkHeader);
 
-		int padSize = (STARPAK_DATABLOCK_ALIGNMENT - sizeof(StreamableSetHeader));
+		int padSize = (STARPAK_DATABLOCK_ALIGNMENT - sizeof(StarpakFileHeader_t));
 
 		char* initialPad = new char[padSize];
 		memset(initialPad, STARPAK_DATABLOCK_ALIGNMENT_PADDING, padSize);
