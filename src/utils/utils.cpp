@@ -79,7 +79,7 @@ void Utils::AppendSlash(std::string& in)
 //-----------------------------------------------------------------------------
 std::string Utils::ChangeExtension(const std::string& in, const std::string& ext)
 {
-	return std::filesystem::path(in).replace_extension(ext).u8string();
+	return std::filesystem::path(in).replace_extension(ext).string();
 }
 
 //-----------------------------------------------------------------------------
@@ -93,8 +93,8 @@ void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
         Error("couldn't open map file.\n");
 
     // begin json parsing
-    js::IStreamWrapper isw{ ifs };
-    doc.ParseStream<js::ParseFlag::kParseCommentsFlag | js::ParseFlag::kParseTrailingCommasFlag>(isw);
+    js::IStreamWrapper jsonStreamWrapper{ ifs };
+    doc.ParseStream<js::ParseFlag::kParseCommentsFlag | js::ParseFlag::kParseTrailingCommasFlag>(jsonStreamWrapper);
 
     // handle parse errors
     if (doc.HasParseError()) {
@@ -110,7 +110,7 @@ void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
 
         for (int i = 0; ; i++)
         {
-            char c = isw.Take();
+            const char c = isw.Take();
             curLine.push_back(c);
             if (c == '\n')
             {

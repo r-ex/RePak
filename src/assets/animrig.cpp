@@ -119,8 +119,10 @@ void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     PakAsset_t asset;
 
-    asset.InitAsset(sAssetName, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), -1, -1, (std::uint32_t)AssetType::ARIG);
+
+    asset.InitAsset(sAssetName, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ARIG);
     asset.SetHeaderPointer(hdrChunk.Data());
+
     asset.version = 4;
 
     asset.pageEnd = pak->GetNumPages();

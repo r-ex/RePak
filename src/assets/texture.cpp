@@ -109,11 +109,11 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
         for (unsigned int mipLevel = 0; mipLevel < ddsh.dwMipMapCount; mipLevel++)
         {
             // subtracts 1 so skip mips w/h at 1, gets added back when setting in mipLevel_t
-            int mipWidth = 0;
+            uint16_t mipWidth = 0;
             if (hdr->width >> mipLevel > 1)
                 mipWidth = (hdr->width >> mipLevel) - 1;
 
-            int mipHeight = 0;
+            uint16_t mipHeight = 0;
             if (hdr->height >> mipLevel > 1)
                 mipHeight = (hdr->height >> mipLevel) - 1;
             
@@ -125,7 +125,8 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
             
             size_t slicePitch = x * bppWidth * bppHeight;
 
-            mipLevel_t mipMap{ mipOffset, slicePitch, IALIGN16(slicePitch), mipWidth + 1, mipHeight + 1, mipLevel + 1 };
+            mipLevel_t mipMap{ mipOffset, slicePitch, IALIGN16(slicePitch),
+                static_cast<uint16_t>(mipWidth + 1), static_cast<uint16_t>(mipHeight + 1), static_cast<uint8_t>(mipLevel + 1) };
 
             hdr->dataSize += IALIGN16(slicePitch); // all mips are aligned to 16 bytes within rpak/starpak
             mipOffset += slicePitch; // add size for the next mip's offset
@@ -185,7 +186,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
     char* pCurrentPosStreamed = streamedbuf;
     char* pCurrentPosStreamedOpt = optstreamedbuf;
 
-    uint8_t mipLevel = mips.size();
+    uint8_t mipLevel = static_cast<uint8_t>(mips.size());
 
     while (mipLevel > 0)
     {
@@ -221,7 +222,7 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
     PakAsset_t asset;
 
     // this should hopefully fix some crashing
-    uint64_t starpakOffset = -1;
+    uint64_t starpakOffset = UINT64_MAX;
 
     if (isStreamable && hdr->streamedMipLevels > 0)
     {
@@ -235,8 +236,10 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
         // do stuff
     }
 
-    asset.InitAsset(sAssetName + ".rpak", hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, -1, (std::uint32_t)AssetType::TXTR);
+
+    asset.InitAsset(sAssetName + ".rpak", hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, UINT64_MAX, AssetType::TXTR);
     asset.SetHeaderPointer(hdrChunk.Data());
+
     asset.version = TXTR_VERSION;
 
     asset.pageEnd = pak->GetNumPages();

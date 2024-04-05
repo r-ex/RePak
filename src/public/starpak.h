@@ -23,7 +23,7 @@ struct StarpakEntry_t
 // internal data structure for referencing streaming data to be written
 struct StreamableDataEntry
 {
-	uint64_t offset = -1; // set when added
-	uint64_t dataSize = 0;
-	uint8_t* pData = nullptr;
+	uint64_t offset;
+	uint64_t dataSize;
+	uint8_t* pData;
 };

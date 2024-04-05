@@ -12,27 +12,27 @@ void CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeF
 {
 	if (file["$type"].GetStdString() == type)
 	{
-		switch (this->m_Header.fileVersion)
+		AssetTypeFunc_t targetFunc = nullptr;
+		const short fileVersion = this->m_Header.fileVersion;
+
+		switch (fileVersion)
 		{
 		case 7:
 		{
-			if (func_r2)
-				func_r2(this, &m_Assets, file["path"].GetString(), file);
-			else
-				Warning("Asset type '%s' is not supported on RPak version %i\n", type, 7);
-
+			targetFunc = func_r2;
 			break;
 		}
 		case 8:
 		{
-			if (func_r5)
-				func_r5(this, &m_Assets, file["path"].GetString(), file);
-			else
-				Warning("Asset type '%s' is not supported on RPak version %i\n", type, 8);
-
+			targetFunc = func_r5;
 			break;
 		}
 		}
+
+		if (targetFunc)
+			targetFunc(this, &m_Assets, file["path"].GetString(), file);
+		else
+			Warning("Asset type '%s' is not supported on RPak version %i\n", type, fileVersion);
 	}
 }
 
@@ -109,7 +109,7 @@ void CPakFile::AddOptStarpakReference(const std::string& path)
 //-----------------------------------------------------------------------------
 StreamableDataEntry CPakFile::AddStarpakDataEntry(StreamableDataEntry block)
 {
-	std::string starpakPath = this->GetPrimaryStarpakPath();
+	const std::string starpakPath = this->GetPrimaryStarpakPath();
 
 	if (starpakPath.length() == 0)
 		Error("attempted to create a streaming asset without a starpak assigned. add 'starpakPath' as a global rpak variable to fix\n");
@@ -118,7 +118,7 @@ StreamableDataEntry CPakFile::AddStarpakDataEntry(StreamableDataEntry block)
 	this->AddStarpakReference(starpakPath);
 
 	// starpak data is aligned to 4096 bytes
-	size_t ns = Utils::PadBuffer((char**)&block.pData, block.dataSize, 4096);
+	const size_t ns = Utils::PadBuffer((char**)&block.pData, block.dataSize, 4096);
 
 	block.dataSize = ns;
 	block.offset = m_NextStarpakOffset;
@@ -411,7 +411,7 @@ CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
 }
 
 // find the last page that matches the required flags and check if there is room for new data to be added
-CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, int newDataSize)
+CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSize)
 {
 	for (size_t i = m_vPages.size(); i > 0; --i)
 	{
@@ -429,7 +429,7 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, int newDataSize)
 					CPakVSegment& seg = m_vVirtualSegments[page.segmentIndex];
 					if (seg.alignment < alignment)
 					{
-						size_t j = 0;
+						int j = 0;
 						bool updated = false;
 						for (auto& it : m_vVirtualSegments)
 						{
@@ -483,7 +483,8 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, int newDataSize)
 
 void CPakPage::AddDataChunk(CPakDataChunk& chunk)
 {
-	this->PadPageToChunkAlignment(this->alignment);
+	assert(this->alignment > 0 && this->alignment < UINT8_MAX);
+	this->PadPageToChunkAlignment(static_cast<uint8_t>(this->alignment));
 
 	chunk.pageIndex = this->GetIndex();
 	chunk.pageOffset = this->GetSize();
@@ -495,9 +496,10 @@ void CPakPage::AddDataChunk(CPakDataChunk& chunk)
 	this->chunks.emplace_back(chunk);
 }
 
-void CPakPage::PadPageToChunkAlignment(uint8_t alignment)
+
+void CPakPage::PadPageToChunkAlignment(uint8_t chunkAlignment)
 {
-	int alignAmount = IALIGN(this->dataSize, static_cast<int>(alignment)) - this->dataSize;
+	uint32_t alignAmount = IALIGN(this->dataSize, static_cast<uint32_t>(chunkAlignment)) - this->dataSize;
 
 	if (alignAmount > 0)
 	{
@@ -514,7 +516,7 @@ void CPakPage::PadPageToChunkAlignment(uint8_t alignment)
 	}	
 }
 
-CPakDataChunk CPakFile::CreateDataChunk(int size, int flags, int alignment)
+CPakDataChunk CPakFile::CreateDataChunk(size_t size, int flags, int alignment)
 {
 	// this assert is replicated in r5sdk
 	assert(alignment != 0 && alignment < UINT8_MAX);
@@ -572,7 +574,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	{
 		Warning("No assetsDir field provided. Assuming that everything is relative to the working directory.\n");
 		if (inputPath.has_parent_path())
-			m_AssetPath = inputPath.parent_path().u8string();
+			m_AssetPath = inputPath.parent_path().string();
 		else
 			m_AssetPath = ".\\";
 	}
@@ -580,9 +582,9 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	{
 		fs::path assetsDirPath(doc["assetsDir"].GetStdString());
 		if (assetsDirPath.is_relative() && inputPath.has_parent_path())
-			m_AssetPath = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).u8string();
+			m_AssetPath = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).string();
 		else
-			m_AssetPath = assetsDirPath.u8string();
+			m_AssetPath = assetsDirPath.string();
 
 		// ensure that the path has a slash at the end
 		Utils::AppendSlash(m_AssetPath);
@@ -596,9 +598,9 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		fs::path outputDirPath(doc["outputDir"].GetString());
 
 		if (outputDirPath.is_relative() && inputPath.has_parent_path())
-			outputPath = fs::canonical(inputPath.parent_path() / outputDirPath).u8string();
+			outputPath = fs::canonical(inputPath.parent_path() / outputDirPath).string();
 		else
-			outputPath = outputDirPath.u8string();
+			outputPath = outputDirPath.string();
 
 		// ensure that the path has a slash at the end
 		Utils::AppendSlash(outputPath);
@@ -703,7 +705,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	if (GetNumStarpakPaths() == 1)
 	{
 		fs::path path(GetStarpakPath(0));
-		std::string filename = path.filename().u8string();
+		std::string filename = path.filename().string();
 
 		Debug("writing starpak %s with %lld data entries\n", filename.c_str(), GetStreamingAssetCount());
 		BinaryIO srpkOut;

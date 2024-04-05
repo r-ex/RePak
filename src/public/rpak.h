@@ -32,6 +32,8 @@
 
 enum class AssetType : uint32_t
 {
+	NONE = 0, // !!!INVALID TYPE!!!
+
 	TXTR = TYPE_TXTR, // texture
 	RMDL = TYPE_RMDL, // model
 	UIMG = TYPE_UIMG, // ui image atlas
@@ -144,39 +146,39 @@ struct PakAsset_t
 {
 	PakAsset_t() = default;
 
-	void InitAsset(const std::string& name,
-		PagePtr_t headPtr,
-		uint32_t headerSize,
-		PagePtr_t cpuPtr,
-		uint64_t starpakOffset,
-		uint64_t optStarpakOffset,
-		uint32_t type)
+	void InitAsset(const std::string& assetName,
+		PagePtr_t pHeadPtr,
+		uint32_t nHeaderSize,
+		PagePtr_t pCpuPtr,
+		uint64_t nStarpakOffset,
+		uint64_t nOptStarpakOffset,
+		AssetType type)
 	{
-		this->name = name;
-		this->guid = RTech::StringToGuid(name.c_str());
-		this->headPtr = headPtr;
-		this->cpuPtr = cpuPtr;
-		this->starpakOffset = starpakOffset;
-		this->optStarpakOffset = optStarpakOffset;
-		this->headDataSize = headerSize;
+		this->name = assetName;
+		this->guid = RTech::StringToGuid(assetName.c_str());
+		this->headPtr = pHeadPtr;
+		this->cpuPtr = pCpuPtr;
+		this->starpakOffset = nStarpakOffset;
+		this->optStarpakOffset = nOptStarpakOffset;
+		this->headDataSize = nHeaderSize;
 		this->id = type;
 	}
 
-	void InitAsset(uint64_t guid,
-		PagePtr_t headPtr,
-		uint32_t headerSize,
-		PagePtr_t cpuPtr,
-		uint64_t starpakOffset,
-		uint64_t optStarpakOffset,
-		uint32_t type)
+	void InitAsset(uint64_t nGuid,
+		PagePtr_t pHeadPtr,
+		uint32_t nHeaderSize,
+		PagePtr_t pCpuPtr,
+		uint64_t nStarpakOffset,
+		uint64_t nOptStarpakOffset,
+		AssetType type)
 	{
 		this->name = "(null)";
-		this->guid = guid;
-		this->headPtr = headPtr;
-		this->cpuPtr = cpuPtr;
-		this->starpakOffset = starpakOffset;
-		this->optStarpakOffset = optStarpakOffset;
-		this->headDataSize = headerSize;
+		this->guid = nGuid;
+		this->headPtr = pHeadPtr;
+		this->cpuPtr = pCpuPtr;
+		this->starpakOffset = nStarpakOffset;
+		this->optStarpakOffset = nOptStarpakOffset;
+		this->headDataSize = nHeaderSize;
 		this->id = type;
 	}
 
@@ -229,7 +231,7 @@ struct PakAsset_t
 	int version = 0;
 
 	// see AssetType enum
-	uint32_t id = 0;
+	AssetType id = AssetType::NONE;
 
 	// internal
 public:
@@ -279,7 +281,7 @@ public:
 
 	FORCEINLINE bool IsType(uint32_t type)
 	{
-		return id == type;
+		return static_cast<uint32_t>(id) == type;
 	}
 
 	FORCEINLINE void EnsureType(uint32_t type)

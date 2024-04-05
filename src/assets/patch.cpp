@@ -19,11 +19,11 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
     for (auto& it : mapEntry["entries"].GetArray())
     {
         std::string name = it["name"].GetStdString();
-        uint8_t patchNum = it["version"].GetInt();
+        uint8_t patchNum = static_cast<uint8_t>(it["version"].GetInt());
 
         patchEntries.push_back({ name, patchNum, entryNamesSectionSize });
 
-        entryNamesSectionSize += name.length() + 1;
+        entryNamesSectionSize += static_cast<uint32_t>(name.length() + 1);
     }
 
     size_t dataPageSize = (sizeof(PagePtr_t) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + entryNamesSectionSize;
@@ -59,8 +59,10 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
     PakAsset_t asset;
 
     // hardcoded guid because it's the only Ptch asset guid
-    asset.InitAsset(0x6fc6fa5ad8f8bc9c, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), -1, -1, (std::uint32_t)AssetType::PTCH);
+
+    asset.InitAsset(0x6fc6fa5ad8f8bc9c, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::PTCH);
     asset.SetHeaderPointer(hdrChunk.Data());
+
     asset.version = 1;
 
     asset.pageEnd = pak->GetNumPages();

@@ -82,8 +82,9 @@ class CPakDataChunk
 
 public:
 	CPakDataChunk() = default;
-	CPakDataChunk(int size, uint8_t alignment, char* data) : size(size), alignment(alignment), pData(data) {};
-	CPakDataChunk(int pageIndex, int pageOffset, int size, uint8_t alignment, char* data) : pageIndex(pageIndex), pageOffset(pageOffset), size(size), alignment(alignment), pData(data) {};
+
+	CPakDataChunk(size_t size, uint8_t alignment, char* data) : size((int)size), alignment(alignment), pData(data) {};
+	CPakDataChunk(int pageIndex, int pageOffset, size_t size, uint8_t alignment, char* data) : pageIndex(pageIndex), pageOffset(pageOffset), size((int)size), alignment(alignment), pData(data) {};
 
 private:
 	int pageIndex;
@@ -95,7 +96,7 @@ private:
 
 public:
 
-	inline PagePtr_t GetPointer(int offset=0) { return { pageIndex, pageOffset + offset }; };
+	inline PagePtr_t GetPointer(size_t offset=0) { return { pageIndex, static_cast<int>(pageOffset + offset) }; };
 
 	int GetIndex() { return pageIndex; };
 	char* Data() { return pData; };
@@ -105,7 +106,7 @@ public:
 class CPakFile
 {
 public:
-	CPakFile(int version)
+	CPakFile(short version)
 	{
 		m_Header.fileVersion = version;
 	};
@@ -137,7 +138,7 @@ public:
 	inline size_t GetNumPages() const { return m_vPages.size(); };
 
 	inline uint32_t GetVersion() const { return m_Header.fileVersion; }
-	inline void SetVersion(uint32_t version) { m_Header.fileVersion = version; }
+	inline void SetVersion(int version) { m_Header.fileVersion = (short)version; }
 
 	inline void SetStarpakPathsSize(uint16_t len, uint16_t optLen)
 	{
@@ -200,9 +201,9 @@ public:
 	void GenerateFileRelations();
 	void GenerateGuidData();
 
-	CPakPage& FindOrCreatePage(int flags, int alignment, int newDataSize);
+	CPakPage& FindOrCreatePage(int flags, int alignment, size_t newDataSize);
 
-	CPakDataChunk CreateDataChunk(int size, int flags, int alignment);
+	CPakDataChunk CreateDataChunk(size_t size, int flags, int alignment);
 	//_vseginfo_t CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
 	CPakVSegment& FindOrCreateSegment(int flags, int alignment);
 

@@ -190,9 +190,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         pHdr->pAnimRigs = animRigsChunk.GetPointer();
         pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pAnimRigs)));
 
-        for (uint32_t i = 0; i < pHdr->animRigCount; ++i)
+        for (uint32_t j = 0; j < pHdr->animRigCount; ++j)
         {
-            guids.emplace_back(animRigsChunk.GetPointer(sizeof(uint64_t) * i));
+            guids.emplace_back(animRigsChunk.GetPointer(sizeof(uint64_t) * j));
         }
     }
 
@@ -203,7 +203,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
         pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pSequences)));
 
-        for (int i = 0; i < pHdr->sequenceCount; ++i)
+        for (uint32_t i = 0; i < pHdr->sequenceCount; ++i)
         {
             guids.emplace_back(sequencesChunk.GetPointer(8 * i));
         }
@@ -272,7 +272,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
         mstudiotexture_t* tex = studiohdr->pTexture(i);
 
         // if material overrides are possible and this material has an entry in the array
-        if (hasMaterialOverrides && mapEntry["materials"].GetArray().Size() > i)
+        if (hasMaterialOverrides && mapEntry["materials"].GetArray().Size() > static_cast<size_t>(i))
         {
             auto& matlEntry = mapEntry["materials"].GetArray()[i];
 
@@ -315,8 +315,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     PakAsset_t asset;
 
-    asset.InitAsset(sAssetName, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.offset, -1, (std::uint32_t)AssetType::RMDL);
+    asset.InitAsset(sAssetName, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.offset, UINT64_MAX, AssetType::RMDL);
     asset.SetHeaderPointer(hdrChunk.Data());
+  
     asset.version = RMDL_VERSION;
 
     asset.pageEnd = pak->GetNumPages();
