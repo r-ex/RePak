@@ -43,6 +43,51 @@ void Material_CreateTextures(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
 }
 
+void MaterialAsset_t::SetupDepthMaterialOverrides(const rapidjson::Value& mapEntry)
+{
+    std::string depthPath;
+
+    if (JSON_IS_NULL(mapEntry, "depthShadowMaterial"))
+    {
+        this->depthShadowMaterial = NULL;
+    }
+    else if (JSON_IS_STR(mapEntry, "depthShadowMaterial"))
+    {
+        depthPath = "material/" + mapEntry["depthShadowMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
+        this->depthShadowMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+    }
+
+    if (JSON_IS_NULL(mapEntry, "depthPrepassMaterial"))
+    {
+        this->depthPrepassMaterial = NULL;
+    }
+    else if (JSON_IS_STR(mapEntry, "depthPrepassMaterial"))
+    {
+        depthPath = "material/" + mapEntry["depthPrepassMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
+        this->depthPrepassMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+    }
+
+    if (JSON_IS_NULL(mapEntry, "depthVSMMaterial"))
+    {
+        this->depthVSMMaterial = NULL;
+    }
+    else if (JSON_IS_STR(mapEntry, "depthVSMMaterial"))
+    {
+        depthPath = "material/" + mapEntry["depthVSMMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
+        this->depthVSMMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+    }
+
+    if (JSON_IS_NULL(mapEntry, "depthShadowTightMaterial"))
+    {
+        this->depthShadowTightMaterial = NULL;
+    }
+    else if (JSON_IS_STR(mapEntry, "depthShadowTightMaterial"))
+    {
+        depthPath = "material/" + mapEntry["depthShadowTightMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
+        this->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
+    }
+}
+
 // ideally replace these with material file funcs
 void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
 {
@@ -96,6 +141,9 @@ void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
     // used for blend materials and the like
     this->surface2 = JSON_GET_STR(mapEntry, "surface2", "");
 
+    if (this->materialTypeStr == "wld")
+        Warning("WLD materials do not have generic depth materials. Make sure that you have set them to null or have created your own.\n");
+
     // optional depth material overrides
     // probably should add types and prefixes
     std::string depthPath{};
@@ -115,30 +163,7 @@ void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
     depthPath = "material/code_private/depth_shadow_tight_" + this->materialTypeStr + ".rpak";
     this->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
 
-    // check for overrides
-    if (JSON_IS_STR(mapEntry, "depthShadowMaterial"))
-    {
-        depthPath = "material/" + mapEntry["depthShadowMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
-        this->depthShadowMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
-    }
-
-    if (JSON_IS_STR(mapEntry, "depthPrepassMaterial"))
-    {
-        depthPath = "material/" + mapEntry["depthPrepassMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
-        this->depthPrepassMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
-    }
-
-    if (JSON_IS_STR(mapEntry, "depthVSMMaterial"))
-    {
-        depthPath = "material/" + mapEntry["depthVSMMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
-        this->depthVSMMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
-    }
-
-    if (JSON_IS_STR(mapEntry, "depthShadowTightMaterial"))
-    {
-        depthPath = "material/" + mapEntry["depthShadowTightMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
-        this->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
-    }
+    this->SetupDepthMaterialOverrides(mapEntry);
 
 
     // get referenced colpass material if exists

@@ -550,6 +550,7 @@ struct MaterialAsset_t
 	std::string surface;
 	std::string surface2;
 
+	void SetupDepthMaterialOverrides(const rapidjson::Value& mapEntry);
 	void FromJSON(rapidjson::Value& mapEntry);
 
 	void WriteToBuffer(char* buf)

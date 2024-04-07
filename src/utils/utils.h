@@ -76,6 +76,7 @@ private:
 #define JSON_IS_STR(doc, name) (doc.HasMember(name) && doc[name].IsString())
 #define JSON_IS_ARRAY(doc, name) (doc.HasMember(name) && doc[name].IsArray())
 #define JSON_IS_OBJECT(doc, name) (doc.HasMember(name) && doc[name].IsObject())
+#define JSON_IS_NULL(doc, name) (doc.HasMember(name) && doc[name].IsNull())
 
 #define JSON_GET_BOOL(doc, name) (JSON_IS_BOOL(doc, name) && doc[name].GetBool())
 #define JSON_GET_INT(doc, name, defaultValue) ((JSON_IS_INT(doc, name)) ? doc[name].GetInt() : defaultValue)
