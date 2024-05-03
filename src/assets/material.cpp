@@ -896,7 +896,10 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, const char* assetPath, rapidjso
     asset.version = 15;
 
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = static_cast<short>((guids.size() - externalDependencyCount) + 1); // plus one for the asset itself (I think)
+    //asset.remainingDependencyCount = static_cast<short>((guids.size() - externalDependencyCount) + 1); // plus one for the asset itself (I think)
+
+    // HACKHACK: i don't really understand what the value of this needs to be, so i have set this back to a (very) incorrect value that at least doesn't crash
+    asset.remainingDependencyCount = static_cast<short>((0i16 - externalDependencyCount) + 1);
 
     asset.AddGuids(&guids);
 
