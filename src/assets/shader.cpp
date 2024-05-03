@@ -45,7 +45,6 @@ void Assets::AddShaderAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEntr
 
 	inputFile.close();
 
-
 	ParsedDXShaderData_t parsedData;
 
 	if (DXUtils::GetParsedShaderData(bytecodeDest, inputFileSize, &parsedData))
@@ -64,9 +63,6 @@ void Assets::AddShaderAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEntr
 
 	hdr->shaderInputFlags = inputFlagChunk.GetPointer();
 	// =======================================
-
-
-
 
 	PakAsset_t asset;
 	asset.InitAsset(
