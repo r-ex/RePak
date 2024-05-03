@@ -224,3 +224,54 @@ const char* DXUtils::GetFormatAsString(DXGI_FORMAT fmt)
 	default: return "DXGI_FORMAT_UNKNOWN";
 	}
 }
+
+// See copyright and license notice in dxutils.h
+bool DXUtils::GetParsedShaderData(const char* bytecode, size_t /*bytecodeLen*/, ParsedDXShaderData_t* outData)
+{
+	const DXBCHeader* fileHeader = reinterpret_cast<const DXBCHeader*>(bytecode);
+
+	if (fileHeader->DXBCHeaderFourCC != DXBC_FOURCC_NAME)
+		return false;
+
+	if (!outData)
+		return false;
+
+	for (uint32_t i = 0; i < fileHeader->BlobCount; ++i)
+	{
+		const DXBCBlobHeader* blob = fileHeader->pBlob(i);
+
+		if (blob->BlobFourCC == DXBC_FOURCC_RDEF_NAME)
+		{
+			outData->EnableFlag(SHDR_FOUND_RDEF);
+
+			const RDEFBlobHeader* rdef = reinterpret_cast<const RDEFBlobHeader*>(blob->GetBlobData());
+
+			switch (rdef->ShaderType)
+			{
+			case PixelShader:
+				outData->pakShaderType = 0; // eShaderType::Pixel
+				break;
+			case VertexShader:
+				outData->pakShaderType = 1; // eShaderType::Vertex
+				break;
+			case GeometryShader:
+				outData->pakShaderType = 2; // eShaderType::Geometry
+				break;
+			case HullShader:
+				outData->pakShaderType = 3; // eShaderType::Hull
+				break;
+			case DomainShader:
+				outData->pakShaderType = 4; // eShaderType::Domain
+				break;
+			case ComputeShader:
+				outData->pakShaderType = 5; // eShaderType::Compute
+				break;
+			default:
+				Error("Unknown shader type: %X\n", rdef->ShaderType);
+				break;
+			}
+		}
+	}
+
+	return true;
+}

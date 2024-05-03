@@ -90,6 +90,12 @@
     <ClCompile Include="assets\animrig.cpp">
       <Filter>assets</Filter>
     </ClCompile>
+    <ClCompile Include="assets\shaderset.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
+    <ClCompile Include="assets\shader.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -270,6 +276,12 @@
       <Filter>public</Filter>
     </ClInclude>
     <ClInclude Include="public\materialflags.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\shaderset.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\shader.h">
       <Filter>public</Filter>
     </ClInclude>
   </ItemGroup>

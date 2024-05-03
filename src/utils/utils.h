@@ -71,6 +71,8 @@ private:
 
 // json helper macros
 #define JSON_IS_BOOL(doc, name) (doc.HasMember(name) && doc[name].IsBool())
+#define JSON_IS_INT64(doc, name) (doc.HasMember(name) && doc[name].IsInt64())
+#define JSON_IS_UINT64(doc, name) (doc.HasMember(name) && doc[name].IsUint64())
 #define JSON_IS_INT(doc, name) (doc.HasMember(name) && doc[name].IsInt())
 #define JSON_IS_UINT(doc, name) (doc.HasMember(name) && doc[name].IsUint())
 #define JSON_IS_STR(doc, name) (doc.HasMember(name) && doc[name].IsString())
@@ -79,6 +81,8 @@ private:
 #define JSON_IS_NULL(doc, name) (doc.HasMember(name) && doc[name].IsNull())
 
 #define JSON_GET_BOOL(doc, name) (JSON_IS_BOOL(doc, name) && doc[name].GetBool())
+#define JSON_GET_INT64(doc, name, defaultValue) ((JSON_IS_INT64(doc, name)) ? doc[name].GetInt64() : defaultValue)
+#define JSON_GET_UINT64(doc, name, defaultValue) ((JSON_IS_UINT64(doc, name)) ? doc[name].GetUint64() : defaultValue)
 #define JSON_GET_INT(doc, name, defaultValue) ((JSON_IS_INT(doc, name)) ? doc[name].GetInt() : defaultValue)
 #define JSON_GET_UINT(doc, name, defaultValue) ((JSON_IS_UINT(doc, name)) ? doc[name].GetUint() : defaultValue)
 #define JSON_GET_STR(doc, name, defaultValue) ((JSON_IS_STR(doc, name)) ? doc[name].GetString() : defaultValue)

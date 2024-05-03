@@ -18,6 +18,8 @@
     <ClCompile Include="assets\material.cpp" />
     <ClCompile Include="assets\model.cpp" />
     <ClCompile Include="assets\patch.cpp" />
+    <ClCompile Include="assets\shader.cpp" />
+    <ClCompile Include="assets\shaderset.cpp" />
     <ClCompile Include="assets\uiatlas.cpp" />
     <ClCompile Include="assets\texture.cpp" />
     <ClCompile Include="logic\pakfile.cpp" />
@@ -44,6 +46,8 @@
     <ClInclude Include="public\material.h" />
     <ClInclude Include="public\materialflags.h" />
     <ClInclude Include="public\rpak.h" />
+    <ClInclude Include="public\shader.h" />
+    <ClInclude Include="public\shaderset.h" />
     <ClInclude Include="public\starpak.h" />
     <ClInclude Include="public\studio.h" />
     <ClInclude Include="public\datatable.h" />
