@@ -262,27 +262,6 @@ public:
 			_guids.push_back(it);
 	};
 
-	// ensures that this asset's guid does not already exist within a given vector of assets
-	inline void EnsureUnique(std::vector<PakAsset_t>* assets)
-	{
-		size_t i = 0;
-		for (PakAsset_t& asset : *assets)
-		{
-			// this check requires a fatal error as by the time this is checked (just before being added to the vector)
-			// all of this asset's pages have already been created and dependencies have been processed
-			// if we simply skip the asset this late, it will cause problems with unused pages and invalid dependencies
-			// 
-			// additionally, a duplicate asset will usually be a mistake that the user wishes to deal with by themselves, and a non-fatal error
-			// may cause them to overlook the problem.
-			// assets in which duplicate additions are expected (e.g. textures being auto-added from materials) already handle non-fatal duplications separately
-			// from an earlier point at which asset skips are acceptable
-			if (asset.guid == this->guid)
-				Error("Found duplicate asset '%s'. Assets at index %lld and %lld have the same GUID (%llX). Exiting...\n", this->name.c_str(), i, assets->size(), this->guid);
-
-			i++;
-		}
-	}
-
 	FORCEINLINE bool IsType(uint32_t type)
 	{
 		return static_cast<uint32_t>(id) == type;

@@ -60,7 +60,7 @@ char* Model_ReadVGFile(const std::string& path, size_t* pFileSize)
     return buf;
 }
 
-bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader_t* hdr, rapidjson::Value& mapEntry, std::vector<PakAsset_t>* assetEntries)
+bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader_t* hdr, rapidjson::Value& mapEntry)
 {
     if (!mapEntry.HasMember("sequences") || !mapEntry["sequences"].IsArray())
         return false;
@@ -79,7 +79,7 @@ bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader
 
         if (!RTech::ParseGUIDFromString(it.GetString(), &guid))
         {
-            Assets::AddAnimSeqAsset(pak, assetEntries, it.GetString());
+            Assets::AddAnimSeqAsset(pak, it.GetString());
 
             guid = RTech::StringToGuid(it.GetString());
         }
@@ -100,7 +100,7 @@ bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader
     return true;
 }
 
-void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddModelAsset_v9(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding mdl_ asset '%s'\n", assetPath);
 
@@ -179,10 +179,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
             arigBuf.write<uint64_t>(guid);
 
             // check if anim rig is a local asset so that the relation can be added
-            PakAsset_t* asset = pak->GetAssetByGuid(guid);
+            PakAsset_t* animRigAsset = pak->GetAssetByGuid(guid);
 
-            if (asset)
-                asset->AddRelation(assetEntries->size());
+            pak->SetCurrentAssetAsDependentForAsset(animRigAsset);
 
             i++;
         }
@@ -197,7 +196,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
     }
 
     CPakDataChunk sequencesChunk;
-    if (Model_AddSequenceRefs(&sequencesChunk, pak, pHdr, mapEntry, assetEntries))
+    if (Model_AddSequenceRefs(&sequencesChunk, pak, pHdr, mapEntry))
     {
         pHdr->pSequences = sequencesChunk.GetPointer();
 
@@ -308,7 +307,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
                         i, sAssetName.c_str(), s_materialShaderTypeNames[studiohdr->materialType(i)], s_materialShaderTypeNames[matlHdr->materialType]);
                 }
 
-                asset->AddRelation(assetEntries->size());
+                pak->SetCurrentAssetAsDependentForAsset(asset);
             }
         }
     }
@@ -325,6 +324,5 @@ void Assets::AddModelAsset_v9(CPakFile* pak, std::vector<PakAsset_t>* assetEntri
 
     asset.AddGuids(&guids);
 
-    asset.EnsureUnique(assetEntries);
-    assetEntries->push_back(asset);
+    pak->PushAsset(asset);
 }

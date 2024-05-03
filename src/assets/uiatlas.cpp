@@ -3,7 +3,7 @@
 #include "utils/dxutils.h"
 #include "public/texture.h"
 
-void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddUIImageAsset_v10(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding uimg asset '%s'\n", assetPath);
 
@@ -58,7 +58,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     std::string sAtlasFilePath = pak->GetAssetPath() + mapEntry["atlas"].GetStdString() + ".dds";
     std::string sAtlasAssetName = mapEntry["atlas"].GetStdString() + ".rpak";
 
-    AddTextureAsset(pak, assetEntries, mapEntry["atlas"].GetString(), mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), true);
+    AddTextureAsset(pak, mapEntry["atlas"].GetString(), mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), true);
 
     uint64_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
 
@@ -177,7 +177,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
 
     // add the file relation from this uimg asset to the atlas txtr
     if (atlasAsset)
-        atlasAsset->AddRelation(assetEntries->size());
+        pak->SetCurrentAssetAsDependentForAsset(atlasAsset);
     else
         Warning("unable to find texture asset locally for uimg asset. assuming it is external...\n");
 
@@ -213,6 +213,5 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, std::vector<PakAsset_t>* assetEn
     asset.AddGuid(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, atlasGUID)));
 
     // add the asset entry
-    asset.EnsureUnique(assetEntries);
-    assetEntries->push_back(asset);
+    pak->PushAsset(asset);
 }

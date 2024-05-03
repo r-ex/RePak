@@ -2,7 +2,7 @@
 #include "assets.h"
 #include "public/studio.h"
 
-void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath)
+void Assets::AddAnimSeqAsset(CPakFile* pak, const char* assetPath)
 {
     Log("Adding aseq asset '%s'\n", assetPath);
 
@@ -63,7 +63,7 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
         PakAsset_t* asset = pak->GetAssetByGuid(autolayer->guid);
 
         if (asset)
-            asset->AddRelation(assetEntries->size());
+            pak->SetCurrentAssetAsDependentForAsset(asset);
     }
 
     PakAsset_t asset;
@@ -77,11 +77,10 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
 
     asset.AddGuids(&guids);
 
-    asset.EnsureUnique(assetEntries);
-    assetEntries->push_back(asset);
+    pak->PushAsset(asset);
 }
 
-void Assets::AddAnimSeqAsset_v7(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& /*mapEntry*/)
+void Assets::AddAnimSeqAsset_v7(CPakFile* pak, const char* assetPath, rapidjson::Value& /*mapEntry*/)
 {
-    AddAnimSeqAsset(pak, assetEntries, assetPath);
+    AddAnimSeqAsset(pak, assetPath);
 }

@@ -30,7 +30,7 @@ void CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeF
 		}
 
 		if (targetFunc)
-			targetFunc(this, &m_Assets, file["path"].GetString(), file);
+			targetFunc(this, file["path"].GetString(), file);
 		else
 			Warning("Asset type '%s' is not supported on RPak version %i\n", type, fileVersion);
 	}
@@ -76,7 +76,7 @@ void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, int idx, i
 	guids->push_back({ idx, offset });
 }
 
-void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, PagePtr_t ptr)
+void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, const PagePtr_t& ptr)
 {
 	guids->push_back(ptr);
 }

@@ -33,7 +33,7 @@ char* AnimRig_ReadRigFile(const std::string& path)
     return buf;
 }
 
-bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHeader_t* hdr, rapidjson::Value& mapEntry, std::vector<PakAsset_t>* assetEntries)
+bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHeader_t* hdr, rapidjson::Value& mapEntry)
 {
     if (!JSON_IS_ARRAY(mapEntry, "sequences")) //mapEntry.HasMember("sequences") || !mapEntry["sequences"].IsArray())
         return false;
@@ -52,7 +52,7 @@ bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHe
 
         if (!RTech::ParseGUIDFromString(it.GetString(), &guid))
         {
-            Assets::AddAnimSeqAsset(pak, assetEntries, it.GetString());
+            Assets::AddAnimSeqAsset(pak, it.GetString());
 
             guid = RTech::StringToGuid(it.GetString());
         }
@@ -73,7 +73,7 @@ bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHe
     return true;
 }
 
-void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddAnimRigAsset_v4(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding mdl_ asset '%s'\n", assetPath);
 
@@ -100,7 +100,7 @@ void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     std::vector<PakGuidRefHdr_t> guids{};
     CPakDataChunk guidsChunk;
-    if (AnimRig_AddSequenceRefs(&guidsChunk, pak, pHdr, mapEntry, assetEntries))
+    if (AnimRig_AddSequenceRefs(&guidsChunk, pak, pHdr, mapEntry))
     {
         pHdr->pSequences = guidsChunk.GetPointer();
 
@@ -126,6 +126,5 @@ void Assets::AddAnimRigAsset_v4(CPakFile* pak, std::vector<PakAsset_t>* assetEnt
 
     asset.AddGuids(&guids);
 
-    asset.EnsureUnique(assetEntries);
-    assetEntries->push_back(asset);
+    pak->PushAsset(asset);
 }

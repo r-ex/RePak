@@ -2,7 +2,7 @@
 #include "assets.h"
 
 // only tested for apex, should be identical on tf2
-void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddPatchAsset(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
 {
     Log("Adding Ptch asset '%s'\n", assetPath);
 
@@ -68,6 +68,5 @@ void Assets::AddPatchAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries,
     asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = 1;
 
-    asset.EnsureUnique(assetEntries);
-    assetEntries->push_back(asset);
+    pak->PushAsset(asset);
 }

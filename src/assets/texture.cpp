@@ -4,7 +4,7 @@
 #include "public/texture.h"
 
 // materialGeneratedTexture - whether this texture's creation was invoked by material automatic texture generation
-void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, bool forceDisableStreaming, bool materialGeneratedTexture)
+void Assets::AddTextureAsset(CPakFile* pak, const char* assetPath, bool forceDisableStreaming, bool materialGeneratedTexture)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
 
@@ -245,14 +245,13 @@ void Assets::AddTextureAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntrie
     asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = 1;
 
-    asset.EnsureUnique(assetEntries);
-    assetEntries->push_back(asset);
+    pak->PushAsset(asset);
 
     input.close();
     printf("\n");
 }
 
-void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddTextureAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    AddTextureAsset(pak, assetEntries, assetPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), false);
+    AddTextureAsset(pak, assetPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), false);
 }

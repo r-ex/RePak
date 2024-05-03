@@ -3,7 +3,7 @@
 #include "public/shader.h"
 #include "utils/dxutils.h"
 
-void Assets::AddShaderAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddShaderAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
 {
 	Log("Adding shdr asset '%s'\n", assetPath);
 
@@ -78,8 +78,7 @@ void Assets::AddShaderAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEntr
 	// this doesnt account for external dependencies atm
 	asset.remainingDependencyCount = 1;
 
-	asset.EnsureUnique(assetEntries);
-	assetEntries->push_back(asset);
+	pak->PushAsset(asset);
 
 	printf("\n");
 }

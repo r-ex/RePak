@@ -142,7 +142,7 @@ void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChu
 }
 
 // VERSION 8
-void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& /*mapEntry*/)
+void Assets::AddDataTableAsset(CPakFile* pak, const char* assetPath, rapidjson::Value& /*mapEntry*/)
 {
     Log("Adding dtbl asset '%s'\n", assetPath);
 
@@ -223,8 +223,7 @@ void Assets::AddDataTableAsset(CPakFile* pak, std::vector<PakAsset_t>* assetEntr
     asset.pageEnd = pak->GetNumPages();
     asset.remainingDependencyCount = 1; // asset only depends on itself
 
-    asset.EnsureUnique(assetEntries);
-    assetEntries->push_back(asset);
+    pak->PushAsset(asset);
 
     delete pHdr;
 }

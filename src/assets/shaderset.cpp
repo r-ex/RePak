@@ -10,7 +10,7 @@
 // Figure out the other count variable before texture input count
 // See if any of the other unknown variables are actually required
 
-void Assets::AddShaderSetAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
 {
 	Log("Adding shds asset '%s'\n", assetPath);
 
@@ -71,8 +71,7 @@ void Assets::AddShaderSetAsset_v8(CPakFile* pak, std::vector<PakAsset_t>* assetE
 	// this doesnt account for external dependencies atm
 	asset.remainingDependencyCount = static_cast<short>(guids.size() + 1);
 
-	asset.EnsureUnique(assetEntries);
-	assetEntries->push_back(asset);
+	pak->PushAsset(asset);
 
 	printf("\n");
 }
