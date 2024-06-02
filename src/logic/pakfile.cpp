@@ -51,7 +51,7 @@ void CPakFile::AddAsset(rapidjson::Value& file)
 	AddJSONAsset("arig", file, nullptr, Assets::AddAnimRigAsset_v4);
 
 	AddJSONAsset("shds", file, Assets::AddShaderSetAsset_v8, nullptr);
-	AddJSONAsset("shdr", file, Assets::AddShaderAsset_v8, nullptr);
+	AddJSONAsset("shdr", file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
 
 }
 

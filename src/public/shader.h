@@ -52,6 +52,17 @@ struct ShaderAssetHeader_v8_t
     PagePtr_t shaderInputFlags; // int64*
 };
 
+struct ShaderAssetHeader_v12_t
+{
+    PagePtr_t name; // const char*
+    eShaderType type;
+
+    char unk_9[7];
+
+    PagePtr_t unk_10; // void*
+    PagePtr_t shaderInputFlags; // int64*
+};
+
 struct ShaderByteCode_t
 {
     PagePtr_t data;
