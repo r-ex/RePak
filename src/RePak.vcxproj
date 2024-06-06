@@ -45,6 +45,7 @@
     <ClInclude Include="public\animrig.h" />
     <ClInclude Include="public\material.h" />
     <ClInclude Include="public\materialflags.h" />
+    <ClInclude Include="public\multishader.h" />
     <ClInclude Include="public\rpak.h" />
     <ClInclude Include="public\shader.h" />
     <ClInclude Include="public\shaderset.h" />

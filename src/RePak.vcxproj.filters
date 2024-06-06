@@ -284,6 +284,9 @@
     <ClInclude Include="public\shader.h">
       <Filter>public</Filter>
     </ClInclude>
+    <ClInclude Include="public\multishader.h">
+      <Filter>public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

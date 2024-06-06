@@ -57,7 +57,7 @@ struct ShaderAssetHeader_v12_t
     PagePtr_t name; // const char*
     eShaderType type;
 
-    char unk_9[7];
+    char shaderFeatures[7];
 
     PagePtr_t unk_10; // void*
     PagePtr_t shaderInputFlags; // int64*
@@ -69,3 +69,5 @@ struct ShaderByteCode_t
     uint32_t dataSize;
     uint32_t unk;
 };
+
+static_assert(sizeof(ShaderByteCode_t) == 0x10);
