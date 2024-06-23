@@ -99,7 +99,7 @@ void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, rapidjso
 	hdr->numResources = static_cast<uint8_t>(JSON_GET_UINT(mapEntry, "numResources", 0));
 
 	if (hdr->numResources != 0)
-		Warning("Shader set '%s' has requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n");
+		Warning("Shader set '%s' has requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n", assetPath);
 
 	PakAsset_t asset;
 	asset.InitAsset(
@@ -212,7 +212,7 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, rapidjs
 	hdr->numResources = static_cast<uint8_t>(JSON_GET_UINT(mapEntry, "numResources", 0));
 
 	if (hdr->numResources != 0)
-		Warning("Shader set '%s' has requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n");
+		Warning("Shader set '%s' has requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n", assetPath);
 
 	PakAsset_t asset;
 	asset.InitAsset(
