@@ -176,7 +176,7 @@ void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
 
     // optional shaderset override
     if (JSON_IS_STR(mapEntry, "shaderset"))
-        this->shaderSet = RTech::GetAssetGUIDFromString(mapEntry["shaderset"].GetString());
+        this->shaderSet = RTech::GetAssetGUIDFromString(mapEntry["shaderset"].GetString(), true);
 
     // this is more desirable but would break guid input
     /*if (JSON_IS_STR(mapEntry, "shaderset"))
