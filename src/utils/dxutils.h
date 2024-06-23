@@ -110,7 +110,40 @@ typedef struct DXBCHeader
 
 } DXBCHeader;
 
-struct RDEFBlobHeader
+static const char* s_SRVDimensionNames[] = {
+	"UNKNOWN",
+	"Buffer",
+	"Texture1D",
+	"Texture1DArray",
+	"Texture2D",
+	"Texture2DArray",
+	"Texture2DMS",
+	"Texture2DMSArray",
+	"Texture3D",
+	"Texture3DArray",
+	"Texture3DCube",
+	"Texture3DCubeArray",
+	"BufferEx",
+};
+
+
+struct RDefResourceBinding_t
+{
+	uint32_t NameOffset; // from start of RDEFBlobHeader
+	D3D_SHADER_INPUT_TYPE Type;
+	D3D_RESOURCE_RETURN_TYPE ReturnType;
+	D3D10_SRV_DIMENSION Dimension;
+	uint32_t NumSamples;
+	uint32_t BindPoint;
+	uint32_t BindCount;
+	D3D_SHADER_INPUT_FLAGS Flags;
+
+	inline const char* name(void* rdefBlob) const { return reinterpret_cast<const char*>((char*)rdefBlob + NameOffset); }
+
+	inline const char* dimensionName() const { return s_SRVDimensionNames[Dimension]; };
+};
+
+struct RDefBlobHeader_t
 {
 	uint32_t ConstBufferCount;
 	uint32_t ConstBufferOffset;
@@ -123,6 +156,9 @@ struct RDEFBlobHeader
 	uint32_t CreatorOffset; // name of compiler?
 	uint32_t ID; // 'RD11'
 	uint32_t unk_20[7];
+
+	const RDefResourceBinding_t* const resource(uint32_t i) const { return reinterpret_cast<const RDefResourceBinding_t*>((char*)this + BoundResourceOffset) + i; };
+	const char* const compilerName() const { return reinterpret_cast<const char*>(this) + CreatorOffset; };
 };
 
 
@@ -130,7 +166,9 @@ struct RDEFBlobHeader
 struct ParsedDXShaderData_t
 {
 	UINT foundFlags;
+	int numTextureResources;
 	uint8_t pakShaderType; // eShaderType
+	uint8_t mtlTexSlotCount; // bind point for the last material-provided texture
 
 	void EnableFlag(UINT flag) { foundFlags |= flag; };
 };

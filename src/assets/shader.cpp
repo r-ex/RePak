@@ -4,7 +4,7 @@
 #include "public/multishader.h"
 #include "utils/dxutils.h"
 
-int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::path& inputPath, CPakDataChunk& cpuDataChunk)
+int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::path& inputPath, CPakDataChunk& cpuDataChunk, ParsedDXShaderData_t* firstShaderData)
 {
 	CMultiShaderWrapperIO io = {};
 
@@ -66,13 +66,11 @@ int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pat
 			// If the shader type hasn't been found yet, parse this buffer and find out what we want to set it as.
 			if (hdr->type == eShaderType::Invalid)
 			{
-				ParsedDXShaderData_t parsedData;
-
-				if (DXUtils::GetParsedShaderData(entry.buffer, entry.size, &parsedData))
+				if (DXUtils::GetParsedShaderData(entry.buffer, entry.size, firstShaderData))
 				{
-					if (parsedData.foundFlags & SHDR_FOUND_RDEF)
+					if (firstShaderData->foundFlags & SHDR_FOUND_RDEF)
 					{
-						hdr->type = static_cast<eShaderType>(parsedData.pakShaderType);
+						hdr->type = static_cast<eShaderType>(firstShaderData->pakShaderType);
 					}
 				}
 			}
@@ -118,7 +116,8 @@ void Assets::AddShaderAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::
 	pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_v8_t, name)));
 
 	CPakDataChunk dataChunk = {};
-	int numShaders = ShaderV8_CreateFromMSW(pak, hdrChunk, inputFilePath, dataChunk);
+	ParsedDXShaderData_t* shaderData = new ParsedDXShaderData_t;
+	int numShaders = ShaderV8_CreateFromMSW(pak, hdrChunk, inputFilePath, dataChunk, shaderData);
 
 	// Data chunk used by pointer "unk_10" and "shaderInputFlags"
 	// The first set of data in the buffer is reserved data for when the asset is loaded (equal to 16 bytes per shader entry)
@@ -183,6 +182,7 @@ void Assets::AddShaderAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::
 	asset.SetHeaderPointer(hdrChunk.Data());
 
 	asset.version = 8;
+	asset.SetPublicData(shaderData);
 
 	asset.pageEnd = pak->GetNumPages();
 
@@ -194,7 +194,7 @@ void Assets::AddShaderAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::
 	printf("\n");
 }
 
-int ShaderV12_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::path& inputPath, CPakDataChunk& cpuDataChunk)
+int ShaderV12_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::path& inputPath, CPakDataChunk& cpuDataChunk, ParsedDXShaderData_t* firstShaderData)
 {
 	CMultiShaderWrapperIO io = {};
 	
@@ -256,13 +256,11 @@ int ShaderV12_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pa
 			// If the shader type hasn't been found yet, parse this buffer and find out what we want to set it as.
 			if (hdr->type == eShaderType::Invalid)
 			{
-				ParsedDXShaderData_t parsedData;
-
-				if (DXUtils::GetParsedShaderData(entry.buffer, entry.size, &parsedData))
+				if (DXUtils::GetParsedShaderData(entry.buffer, entry.size, firstShaderData))
 				{
-					if (parsedData.foundFlags & SHDR_FOUND_RDEF)
+					if (firstShaderData->foundFlags & SHDR_FOUND_RDEF)
 					{
-						hdr->type = static_cast<eShaderType>(parsedData.pakShaderType);
+						hdr->type = static_cast<eShaderType>(firstShaderData->pakShaderType);
 					}
 				}
 			}
@@ -308,7 +306,8 @@ void Assets::AddShaderAsset_v12(CPakFile* pak, const char* assetPath, rapidjson:
 	pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_v12_t, name)));
 
 	CPakDataChunk dataChunk = {};
-	int numShaders = ShaderV12_CreateFromMSW(pak, hdrChunk, inputFilePath, dataChunk);
+	ParsedDXShaderData_t* shaderData = new ParsedDXShaderData_t;
+	int numShaders = ShaderV12_CreateFromMSW(pak, hdrChunk, inputFilePath, dataChunk, shaderData);
 
 	// Data chunk used by pointer "unk_10" and "shaderInputFlags"
 	// The first set of data in the buffer is reserved data for when the asset is loaded (equal to 16 bytes per shader entry)
@@ -373,6 +372,7 @@ void Assets::AddShaderAsset_v12(CPakFile* pak, const char* assetPath, rapidjson:
 	asset.SetHeaderPointer(hdrChunk.Data());
 
 	asset.version = 12;
+	asset.SetPublicData(shaderData);
 
 	asset.pageEnd = pak->GetNumPages();
 

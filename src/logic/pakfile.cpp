@@ -50,7 +50,7 @@ void CPakFile::AddAsset(rapidjson::Value& file)
 	AddJSONAsset("aseq", file, nullptr, Assets::AddAnimSeqAsset_v7);
 	AddJSONAsset("arig", file, nullptr, Assets::AddAnimRigAsset_v4);
 
-	AddJSONAsset("shds", file, Assets::AddShaderSetAsset_v8, nullptr);
+	AddJSONAsset("shds", file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
 	AddJSONAsset("shdr", file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
 
 }
@@ -229,6 +229,8 @@ void CPakFile::WriteAssets(BinaryIO& io)
 		io.write(it.headDataSize);
 		io.write(it.version);
 		io.write(it.id);
+
+		it.SetPublicData<void*>(nullptr);
 	}
 
 	assert(m_Assets.size() <= UINT32_MAX);
@@ -245,6 +247,13 @@ void CPakFile::WritePageData(BinaryIO& out)
 	{
 		for (auto& chunk : page.chunks)
 		{
+			// should never happen
+			if (chunk.IsReleased()) [[unlikely]]
+			{
+				assert(0);
+				continue;
+			}
+
 			if(chunk.Data())
 				out.getWriter()->write(chunk.Data(), chunk.GetSize());
 			else // if chunk is padding to realign the page
@@ -253,6 +262,8 @@ void CPakFile::WritePageData(BinaryIO& out)
 
 				out.getWriter()->seekp(chunk.GetSize(), std::ios::cur);
 			}
+
+			chunk.Release();
 		}
 	}
 }

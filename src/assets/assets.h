@@ -28,6 +28,7 @@ namespace Assets
 	void AddAnimRigAsset_v4(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry);
 
 	void AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry);
+	void AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry);
 	void AddShaderAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry);
 	void AddShaderAsset_v12(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry);
 
