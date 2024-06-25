@@ -52,8 +52,6 @@ int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pat
 	const size_t shaderBufferChunkSize = descriptorSize + totalShaderDataSize;
 	cpuDataChunk = pak->CreateDataChunk(shaderBufferChunkSize, SF_CPU | SF_TEMP, 8);
 
-	ShaderByteCode_t* shaderBCDescriptors = reinterpret_cast<ShaderByteCode_t*>(cpuDataChunk.Data());
-
 	// Offset at which the next bytecode buffer will be written.
 	// Initially starts at the end of the descriptors and then gets increased every time a buffer is written.
 	size_t nextBytecodeBufferOffset = descriptorSize;
@@ -61,7 +59,7 @@ int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pat
 	{
 		const CMultiShaderWrapperIO::ShaderEntry_t& entry = file.shader->entries[i];
 
-		ShaderByteCode_t* bc = &shaderBCDescriptors[i];
+		ShaderByteCode_t* bc = reinterpret_cast<ShaderByteCode_t*>(cpuDataChunk.Data() + (i * entrySize));
 
 		if (entry.buffer)
 		{
@@ -76,8 +74,6 @@ int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pat
 			memcpy_s(cpuDataChunk.Data() + nextBytecodeBufferOffset, entry.size, entry.buffer, entry.size);
 
 			nextBytecodeBufferOffset += IALIGN(entry.size, 8);
-
-
 		}
 		else
 		{
@@ -246,8 +242,6 @@ int ShaderV12_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pa
 	const size_t shaderBufferChunkSize = descriptorSize + totalShaderDataSize;
 	cpuDataChunk = pak->CreateDataChunk(shaderBufferChunkSize, SF_CPU | SF_TEMP, 8);
 
-	ShaderByteCode_t* shaderBCDescriptors = reinterpret_cast<ShaderByteCode_t*>(cpuDataChunk.Data());
-
 	// Offset at which the next bytecode buffer will be written.
 	// Initially starts at the end of the descriptors and then gets increased every time a buffer is written.
 	size_t nextBytecodeBufferOffset = descriptorSize;
@@ -255,7 +249,7 @@ int ShaderV12_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pa
 	{
 		const CMultiShaderWrapperIO::ShaderEntry_t& entry = file.shader->entries[i];
 
-		ShaderByteCode_t* bc = &shaderBCDescriptors[i];
+		ShaderByteCode_t* bc = reinterpret_cast<ShaderByteCode_t*>(cpuDataChunk.Data() + (i * entrySize));
 
 		if (entry.buffer)
 		{
