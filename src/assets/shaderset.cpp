@@ -118,6 +118,8 @@ void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, rapidjso
 	// this doesnt account for external dependencies atm
 	asset.remainingDependencyCount = static_cast<short>(guids.size() + 1);
 
+	asset.AddGuids(&guids);
+
 	pak->PushAsset(asset);
 
 	printf("\n");
@@ -232,6 +234,8 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, rapidjs
 
 	// this doesnt account for external dependencies atm
 	asset.remainingDependencyCount = static_cast<short>(guids.size() + 1);
+
+	asset.AddGuids(&guids);
 
 	pak->PushAsset(asset);
 
