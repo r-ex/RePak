@@ -29,11 +29,25 @@ int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pat
 	{
 		if (it.buffer != nullptr)
 			totalShaderDataSize += IALIGN(it.size, 8);
+
+		// If the shader type hasn't been found yet, parse this buffer and find out what we want to set it as.
+		if (hdr->type == eShaderType::Invalid)
+		{
+			if (DXUtils::GetParsedShaderData(it.buffer, it.size, firstShaderData))
+			{
+				if (firstShaderData->foundFlags & SHDR_FOUND_RDEF)
+				{
+					hdr->type = static_cast<eShaderType>(firstShaderData->pakShaderType);
+				}
+			}
+		}
 	}
 	assert(totalShaderDataSize != 0);
 
+	const int8_t entrySize = hdr->type == eShaderType::Vertex ? 24 : sizeof(ShaderByteCode_t);
+
 	// Size of the data that describes each shader bytecode buffer
-	const size_t descriptorSize = numShaderBuffers * sizeof(ShaderByteCode_t);
+	const size_t descriptorSize = numShaderBuffers * entrySize;
 
 	const size_t shaderBufferChunkSize = descriptorSize + totalShaderDataSize;
 	cpuDataChunk = pak->CreateDataChunk(shaderBufferChunkSize, SF_CPU | SF_TEMP, 8);
@@ -57,23 +71,13 @@ int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pat
 			bc->dataSize = entry.size;
 
 			// Register the data pointer at the 
-			pak->AddPointer(cpuDataChunk.GetPointer((i * sizeof(ShaderByteCode_t)) + offsetof(ShaderByteCode_t, data)));
+			pak->AddPointer(cpuDataChunk.GetPointer((i * entrySize) + offsetof(ShaderByteCode_t, data)));
 
 			memcpy_s(cpuDataChunk.Data() + nextBytecodeBufferOffset, entry.size, entry.buffer, entry.size);
 
 			nextBytecodeBufferOffset += IALIGN(entry.size, 8);
 
-			// If the shader type hasn't been found yet, parse this buffer and find out what we want to set it as.
-			if (hdr->type == eShaderType::Invalid)
-			{
-				if (DXUtils::GetParsedShaderData(entry.buffer, entry.size, firstShaderData))
-				{
-					if (firstShaderData->foundFlags & SHDR_FOUND_RDEF)
-					{
-						hdr->type = static_cast<eShaderType>(firstShaderData->pakShaderType);
-					}
-				}
-			}
+
 		}
 		else
 		{
@@ -219,11 +223,25 @@ int ShaderV12_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pa
 	{
 		if(it.buffer != nullptr)
 			totalShaderDataSize += IALIGN(it.size, 8);
+
+		// If the shader type hasn't been found yet, parse this buffer and find out what we want to set it as.
+		if (hdr->type == eShaderType::Invalid)
+		{
+			if (DXUtils::GetParsedShaderData(it.buffer, it.size, firstShaderData))
+			{
+				if (firstShaderData->foundFlags & SHDR_FOUND_RDEF)
+				{
+					hdr->type = static_cast<eShaderType>(firstShaderData->pakShaderType);
+				}
+			}
+		}
 	}
 	assert(totalShaderDataSize != 0);
 
+	const int8_t entrySize = hdr->type == eShaderType::Vertex ? 24 : sizeof(ShaderByteCode_t);
+
 	// Size of the data that describes each shader bytecode buffer
-	const size_t descriptorSize = numShaderBuffers * sizeof(ShaderByteCode_t);
+	const size_t descriptorSize = numShaderBuffers * entrySize;
 
 	const size_t shaderBufferChunkSize = descriptorSize + totalShaderDataSize;
 	cpuDataChunk = pak->CreateDataChunk(shaderBufferChunkSize, SF_CPU | SF_TEMP, 8);
@@ -247,23 +265,11 @@ int ShaderV12_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pa
 			bc->dataSize = entry.size;
 
 			// Register the data pointer at the 
-			pak->AddPointer(cpuDataChunk.GetPointer( (i * sizeof(ShaderByteCode_t)) + offsetof(ShaderByteCode_t, data) ));
+			pak->AddPointer(cpuDataChunk.GetPointer( (i * entrySize) + offsetof(ShaderByteCode_t, data) ));
 
 			memcpy_s(cpuDataChunk.Data() + nextBytecodeBufferOffset, entry.size, entry.buffer, entry.size);
 
 			nextBytecodeBufferOffset += IALIGN(entry.size, 8);
-
-			// If the shader type hasn't been found yet, parse this buffer and find out what we want to set it as.
-			if (hdr->type == eShaderType::Invalid)
-			{
-				if (DXUtils::GetParsedShaderData(entry.buffer, entry.size, firstShaderData))
-				{
-					if (firstShaderData->foundFlags & SHDR_FOUND_RDEF)
-					{
-						hdr->type = static_cast<eShaderType>(firstShaderData->pakShaderType);
-					}
-				}
-			}
 		}
 		else
 		{
