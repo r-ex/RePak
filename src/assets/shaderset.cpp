@@ -38,10 +38,10 @@ void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, rapidjso
 	const uint64_t pixelShaderGuid = RTech::GetAssetGUIDFromString(pixelShaderInput.c_str(), true);
 
 	if (vertexShaderGuid == 0)
-		Warning("No vertexShader field provided for shader set '%s'. Continuing without a vertex shader.\n", assetPathWithoutExtension.c_str());
+		Error("No vertexShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
 
 	if (pixelShaderGuid == 0)
-		Warning("No pixelShader field provided for shader set '%s'. Continuing without a pixel shader.\n", assetPathWithoutExtension.c_str());
+		Error("No pixelShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
 
 	hdr->vertexShader = vertexShaderGuid;
 	hdr->pixelShader = pixelShaderGuid;
@@ -153,10 +153,10 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, rapidjs
 	const uint64_t pixelShaderGuid = RTech::GetAssetGUIDFromString(pixelShaderInput.c_str(), true);
 
 	if (vertexShaderGuid == 0)
-		Warning("No vertexShader field provided for shader set '%s'. Continuing without a vertex shader.\n", assetPathWithoutExtension.c_str());
+		Error("No vertexShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
 
 	if (pixelShaderGuid == 0)
-		Warning("No pixelShader field provided for shader set '%s'. Continuing without a pixel shader.\n", assetPathWithoutExtension.c_str());
+		Error("No pixelShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
 
 	hdr->vertexShader = vertexShaderGuid;
 	hdr->pixelShader = pixelShaderGuid;
