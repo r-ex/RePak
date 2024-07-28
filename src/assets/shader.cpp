@@ -44,7 +44,7 @@ int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pat
 	}
 	assert(totalShaderDataSize != 0);
 
-	const int8_t entrySize = hdr->type == eShaderType::Vertex ? 24 : sizeof(ShaderByteCode_t);
+	const int8_t entrySize = hdr->type == eShaderType::Vertex ? 24 : 16;
 
 	// Size of the data that describes each shader bytecode buffer
 	const size_t descriptorSize = numShaderBuffers * entrySize;
@@ -67,6 +67,14 @@ int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pat
 
 			bc->data = cpuDataChunk.GetPointer(nextBytecodeBufferOffset);
 			bc->dataSize = entry.size;
+
+			if (hdr->type == eShaderType::Vertex)
+			{
+				bc->inputSignatureBlob = bc->data;
+				bc->unk = bc->dataSize;
+
+				pak->AddPointer(cpuDataChunk.GetPointer((i * entrySize) + offsetof(ShaderByteCode_t, inputSignatureBlob)));
+			}
 
 			// Register the data pointer at the 
 			pak->AddPointer(cpuDataChunk.GetPointer((i * entrySize) + offsetof(ShaderByteCode_t, data)));
@@ -234,7 +242,7 @@ int ShaderV12_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pa
 	}
 	assert(totalShaderDataSize != 0);
 
-	const int8_t entrySize = hdr->type == eShaderType::Vertex ? 24 : sizeof(ShaderByteCode_t);
+	const int8_t entrySize = hdr->type == eShaderType::Vertex ? 24 : 16;
 
 	// Size of the data that describes each shader bytecode buffer
 	const size_t descriptorSize = numShaderBuffers * entrySize;
@@ -257,6 +265,14 @@ int ShaderV12_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pa
 
 			bc->data = cpuDataChunk.GetPointer(nextBytecodeBufferOffset);
 			bc->dataSize = entry.size;
+
+			if (hdr->type == eShaderType::Vertex)
+			{
+				bc->inputSignatureBlob = bc->data;
+				bc->unk = bc->dataSize;
+
+				pak->AddPointer(cpuDataChunk.GetPointer((i * entrySize) + offsetof(ShaderByteCode_t, inputSignatureBlob)));
+			}
 
 			// Register the data pointer at the 
 			pak->AddPointer(cpuDataChunk.GetPointer( (i * entrySize) + offsetof(ShaderByteCode_t, data) ));
