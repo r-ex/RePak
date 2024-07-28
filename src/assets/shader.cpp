@@ -149,7 +149,8 @@ void Assets::AddShaderAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::
 	// get input layout flags from json
 	// this will eventually be taken from the bytecode itself, but that code will be very annoying so for now
 	// the values are manually provided
-	if (JSON_IS_ARRAY(mapEntry, "inputFlags") && mapEntry["inputFlags"].GetArray().Size() == static_cast<size_t>(numShaders))
+	// size check is temporarily disabled while vertex shader differences are investigated
+	if (JSON_IS_ARRAY(mapEntry, "inputFlags") /*&& mapEntry["inputFlags"].GetArray().Size() == static_cast<size_t>(numShaders)*/)
 	{
 		uint64_t* inputFlags = reinterpret_cast<uint64_t*>(shaderInfoChunk.Data() + reservedDataSize);
 
@@ -172,7 +173,11 @@ void Assets::AddShaderAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::
 			if (flag == 0)
 				Warning("Found potentially invalid input flag (idx %lld) for shader asset %s. Flag value is zero.\n", i, assetPath);
 
-			inputFlags[2 * i] = flag;
+			// vertex shaders seem to have data every 8 bytes, unlike (seemingly) every other shader that only uses 8 out of every 16 bytes
+			if(hdr->type == eShaderType::Vertex)
+				inputFlags[i] = flag;
+			else
+				inputFlags[2 * i] = flag;
 
 			i++;
 		}
