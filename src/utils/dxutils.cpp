@@ -288,6 +288,9 @@ bool DXUtils::GetParsedShaderData(const char* bytecode, size_t /*bytecodeLen*/, 
 					if (resource->BindPoint < 40)
 						outData->mtlTexSlotCount = static_cast<uint8_t>(resource->BindPoint) + 1;
 				}
+
+				if (outData->numTextureResources > 0 && resource->Type != D3D_SHADER_INPUT_TYPE::D3D_SIT_TEXTURE)
+					break;
 			}
 		}
 	}
