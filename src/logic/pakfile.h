@@ -122,7 +122,7 @@ public:
 
 	typedef void(*AssetTypeFunc_t)(CPakFile*, const char*, rapidjson::Value&);
 
-	void AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
+	bool AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
 	void AddAsset(rapidjson::Value& file);
 	void AddPointer(PagePtr_t ptr);
 	void AddPointer(int pageIdx, int pageOffset);
