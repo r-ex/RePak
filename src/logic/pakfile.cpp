@@ -282,10 +282,7 @@ void CPakFile::WritePageData(BinaryIO& out)
 //-----------------------------------------------------------------------------
 size_t CPakFile::WriteStarpakPaths(BinaryIO& out, bool optional)
 {
-	if (optional)
-		return Utils::WriteStringVector(out, m_vOptStarpakPaths);
-	else
-		return Utils::WriteStringVector(out, m_vStarpakPaths);
+	return Utils::WriteStringVector(out, optional ? m_vOptStarpakPaths : m_vStarpakPaths);
 }
 
 //-----------------------------------------------------------------------------
