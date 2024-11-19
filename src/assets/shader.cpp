@@ -393,11 +393,11 @@ void Assets::AddShaderAsset_v12(CPakFile* pak, const char* assetPath, rapidjson:
 
 	if (JSON_IS_UINT64(mapEntry, "$guid"))
 	{
-		assetGuid = JSON_GET_UINT64(mapEntry, "guid", 0);
+		assetGuid = JSON_GET_UINT64(mapEntry, "$guid", 0);
 	}
 	else if (JSON_IS_STR(mapEntry, "$guid"))
 	{
-		RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "guid", ""), &assetGuid);
+		RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "$guid", ""), &assetGuid);
 	}
 	else
 	{

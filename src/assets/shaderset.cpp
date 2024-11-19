@@ -108,11 +108,11 @@ void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, rapidjso
 
 	if (JSON_IS_UINT64(mapEntry, "$guid"))
 	{
-		assetGuid = JSON_GET_UINT64(mapEntry, "guid", 0);
+		assetGuid = JSON_GET_UINT64(mapEntry, "$guid", 0);
 	}
 	else if (JSON_IS_STR(mapEntry, "$guid"))
 	{
-		RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "guid", ""), &assetGuid);
+		RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "$guid", ""), &assetGuid);
 	}
 	else
 	{
@@ -243,11 +243,11 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, rapidjs
 
 	if (JSON_IS_UINT64(mapEntry, "$guid"))
 	{
-		assetGuid = JSON_GET_UINT64(mapEntry, "guid", 0);
+		assetGuid = JSON_GET_UINT64(mapEntry, "$guid", 0);
 	}
 	else if(JSON_IS_STR(mapEntry, "$guid"))
 	{
-		RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "guid", ""), &assetGuid);
+		RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "$guid", ""), &assetGuid);
 	}
 	else
 	{
