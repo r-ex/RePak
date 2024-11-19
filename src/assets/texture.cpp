@@ -4,7 +4,7 @@
 #include "public/texture.h"
 
 // materialGeneratedTexture - whether this texture's creation was invoked by material automatic texture generation
-void Assets::AddTextureAsset(CPakFile* pak, const uint64_t guid, const char* assetPath, bool forceDisableStreaming, bool materialGeneratedTexture)
+void Assets::AddTextureAsset(CPakFile* pak, uint64_t guid, const char* assetPath, bool forceDisableStreaming, bool materialGeneratedTexture)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
 
@@ -236,6 +236,8 @@ void Assets::AddTextureAsset(CPakFile* pak, const uint64_t guid, const char* ass
         // do stuff
     }
 
+    if (guid == 0)
+        guid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
     asset.InitAsset(guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, UINT64_MAX, AssetType::TXTR);
     asset.SetHeaderPointer(hdrChunk.Data());

@@ -20,7 +20,7 @@ void Material_CreateTextures(CPakFile* pak, rapidjson::Value& mapEntry)
             if (RTech::ParseGUIDFromString(it.GetString()))
                 continue;
 
-            Assets::AddTextureAsset(pak, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"), true);
+            Assets::AddTextureAsset(pak, 0, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"), true);
         }
     }
     else if (JSON_IS_OBJECT(mapEntry, "textures"))
@@ -37,7 +37,7 @@ void Material_CreateTextures(CPakFile* pak, rapidjson::Value& mapEntry)
             if (RTech::ParseGUIDFromString(it.value.GetString()))
                 continue;
 
-            Assets::AddTextureAsset(pak, it.value.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"), true);
+            Assets::AddTextureAsset(pak, 0, it.value.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"), true);
         }
     }
 
