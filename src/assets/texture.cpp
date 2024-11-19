@@ -4,7 +4,7 @@
 #include "public/texture.h"
 
 // materialGeneratedTexture - whether this texture's creation was invoked by material automatic texture generation
-void Assets::AddTextureAsset(CPakFile* pak, const char* assetPath, bool forceDisableStreaming, bool materialGeneratedTexture)
+void Assets::AddTextureAsset(CPakFile* pak, const uint64_t guid, const char* assetPath, bool forceDisableStreaming, bool materialGeneratedTexture)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
 
@@ -237,7 +237,7 @@ void Assets::AddTextureAsset(CPakFile* pak, const char* assetPath, bool forceDis
     }
 
 
-    asset.InitAsset(sAssetName + ".rpak", hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, UINT64_MAX, AssetType::TXTR);
+    asset.InitAsset(guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, UINT64_MAX, AssetType::TXTR);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = TXTR_VERSION;
@@ -253,5 +253,23 @@ void Assets::AddTextureAsset(CPakFile* pak, const char* assetPath, bool forceDis
 
 void Assets::AddTextureAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
 {
-    AddTextureAsset(pak, assetPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), false);
+    uint64_t assetGuid = 0;
+
+    if (JSON_IS_UINT64(mapEntry, "$guid"))
+    {
+        assetGuid = JSON_GET_UINT64(mapEntry, "$guid", 0);
+    }
+    else if (JSON_IS_STR(mapEntry, "$guid"))
+    {
+        RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "$guid", ""), &assetGuid);
+    }
+    else
+    {
+        assetGuid = RTech::StringToGuid((std::string(assetPath) + ".rpak").c_str());
+    }
+
+    if (assetGuid == 0)
+        Error("Invalid GUID provided for asset '%s'.\n", assetPath);
+
+    AddTextureAsset(pak, assetGuid, assetPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), false);
 }

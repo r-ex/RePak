@@ -12,7 +12,7 @@ namespace Assets
 {
 	void AddPatchAsset(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry);
 
-	void AddTextureAsset(CPakFile* pak, const char* assetPath, bool forceDisableStreaming, bool materialGeneratedTexture);
+	void AddTextureAsset(CPakFile* pak, const uint64_t guid, const char* assetPath, bool forceDisableStreaming, bool materialGeneratedTexture);
 	void AddTextureAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry);
 
 	void AddMaterialAsset_v12(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry);
