@@ -103,10 +103,28 @@ void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, rapidjso
 
 	if (hdr->numResources != 0)
 		Warning("Shader set '%s' has requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n", assetPath);
+	
+	uint64_t assetGuid = 0;
+
+	if (JSON_IS_UINT64(mapEntry, "$guid"))
+	{
+		assetGuid = JSON_GET_UINT64(mapEntry, "guid", 0);
+	}
+	else if (JSON_IS_STR(mapEntry, "$guid"))
+	{
+		RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "guid", ""), &assetGuid);
+	}
+	else
+	{
+		assetGuid = RTech::StringToGuid((assetPathWithoutExtension + ".rpak").c_str());
+	}
+
+	if (assetGuid == 0)
+		Error("Invalid GUID provided for asset '%s'.\n", assetPath);
 
 	PakAsset_t asset;
 	asset.InitAsset(
-		assetPathWithoutExtension + ".rpak",
+		assetGuid,
 		hdrChunk.GetPointer(), hdrChunk.GetSize(),
 		PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::SHDS);
 	asset.SetHeaderPointer(hdrChunk.Data());
@@ -221,9 +239,27 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, rapidjs
 	if (hdr->numResources != 0)
 		Warning("Shader set '%s' has requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n", assetPath);
 
+	uint64_t assetGuid = 0;
+
+	if (JSON_IS_UINT64(mapEntry, "$guid"))
+	{
+		assetGuid = JSON_GET_UINT64(mapEntry, "guid", 0);
+	}
+	else if(JSON_IS_STR(mapEntry, "$guid"))
+	{
+		RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "guid", ""), &assetGuid);
+	}
+	else
+	{
+		assetGuid = RTech::StringToGuid((assetPathWithoutExtension + ".rpak").c_str());
+	}
+
+	if (assetGuid == 0)
+		Error("Invalid GUID provided for asset '%s'.\n", assetPath);
+
 	PakAsset_t asset;
 	asset.InitAsset(
-		assetPathWithoutExtension + ".rpak",
+		assetGuid,
 		hdrChunk.GetPointer(), hdrChunk.GetSize(),
 		PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::SHDS);
 	asset.SetHeaderPointer(hdrChunk.Data());
