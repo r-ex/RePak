@@ -30,6 +30,7 @@
     </ClCompile>
     <ClCompile Include="utils\dxutils.cpp" />
     <ClCompile Include="utils\logger.cpp" />
+    <ClCompile Include="utils\strutils.cpp" />
     <ClCompile Include="utils\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -95,6 +96,7 @@
     <ClInclude Include="utils\binaryio.h" />
     <ClInclude Include="utils\dxutils.h" />
     <ClInclude Include="utils\logger.h" />
+    <ClInclude Include="utils\strutils.h" />
     <ClInclude Include="utils\utils.h" />
   </ItemGroup>
   <ItemGroup>

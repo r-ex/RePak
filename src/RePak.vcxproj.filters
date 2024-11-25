@@ -96,6 +96,9 @@
     <ClCompile Include="assets\shader.cpp">
       <Filter>assets</Filter>
     </ClCompile>
+    <ClCompile Include="utils\strutils.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -286,6 +289,9 @@
     </ClInclude>
     <ClInclude Include="public\multishader.h">
       <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\strutils.h">
+      <Filter>utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
