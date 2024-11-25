@@ -167,6 +167,25 @@ inline bool JSON_GetIterator(const T& data, const char* const member,
     return false;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: checks if the member exists, and sets 'out' to its iterator if the
+// aforementioned condition is met
+//-----------------------------------------------------------------------------
+template <class T>
+inline bool JSON_GetIterator(const T& data, const char* const member, typename T::ConstMemberIterator& out)
+{
+    const T::ConstMemberIterator it = data.FindMember(member);
+
+    if (it != data.MemberEnd())
+    {
+        out = it;
+        return true;
+    }
+
+    // Not found.
+    return false;
+}
+
 void JSON_DocumentToBufferDeserialize(const rapidjson::Document& document, rapidjson::StringBuffer& buffer, unsigned int indent = 4);
 
 #endif // JSONUTILS_H
