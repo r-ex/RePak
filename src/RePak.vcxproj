@@ -29,6 +29,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="utils\dxutils.cpp" />
+    <ClCompile Include="utils\jsonutils.cpp" />
     <ClCompile Include="utils\logger.cpp" />
     <ClCompile Include="utils\strutils.cpp" />
     <ClCompile Include="utils\utils.cpp" />
@@ -95,6 +96,7 @@
     <ClInclude Include="thirdparty\rapidjson\writer.h" />
     <ClInclude Include="utils\binaryio.h" />
     <ClInclude Include="utils\dxutils.h" />
+    <ClInclude Include="utils\jsonutils.h" />
     <ClInclude Include="utils\logger.h" />
     <ClInclude Include="utils\strutils.h" />
     <ClInclude Include="utils\utils.h" />
