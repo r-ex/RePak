@@ -283,7 +283,13 @@ public:
 	{
 		if (!IsType(type))
 		{
-			Error("Unexpected asset type for '%s'. Expected '%.4s', found '%.4s'\n", this->name.c_str(), reinterpret_cast<char*>(&type), reinterpret_cast<char*>(&this->id));
+			Utils::FourCCString_t expected;
+			Utils::FourCCString_t found;
+
+			Utils::FourCCToString(expected, type);
+			Utils::FourCCToString(found, type);
+
+			Error("Unexpected asset type for '%s'. Expected '%.4s', found '%.4s'\n", this->name.c_str(), expected, found);
 		}
 	}
 };
