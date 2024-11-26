@@ -266,7 +266,7 @@ void CPakFile::WritePageData(BinaryIO& out)
 				out.getWriter()->write(chunk.Data(), chunk.GetSize());
 			else // if chunk is padding to realign the page
 			{
-				//printf("aligning by %i bytes at %lld\n", chunk.GetSize(), out.tell());
+				//printf("aligning by %i bytes at %zu\n", chunk.GetSize(), out.tell());
 
 				out.getWriter()->seekp(chunk.GetSize(), std::ios::cur);
 			}
@@ -713,7 +713,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	out.seek(0); // go back to the beginning to finally write the rpakHeader now
 	WriteHeader(out); out.close();
 
-	Debug("written rpak file with size %lld\n", GetCompressedSize());
+	Debug("written rpak file with size %zu\n", GetCompressedSize());
 
 	// !TODO: we really should add support for multiple starpak files and share existing
 	// assets across rpaks. e.g. if the base 'pc_all.opt.starpak' already contains the
@@ -727,7 +727,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		fs::path path(GetStarpakPath(0));
 		std::string filename = path.filename().string();
 
-		Debug("writing starpak %s with %lld data entries\n", filename.c_str(), GetStreamingAssetCount());
+		Debug("writing starpak %s with %zu data entries\n", filename.c_str(), GetStreamingAssetCount());
 		BinaryIO srpkOut;
 
 		srpkOut.open(outputPath + filename, BinaryIOMode::Write);
@@ -749,7 +749,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		uint64_t entryCount = GetStreamingAssetCount();
 		srpkOut.write(entryCount);
 
-		Debug("written starpak file with size %lld\n", srpkOut.tell());
+		Debug("written starpak file with size %zu\n", srpkOut.tell());
 
 		FreeStarpakDataBlocks();
 		srpkOut.close();
