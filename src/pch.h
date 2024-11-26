@@ -12,9 +12,12 @@
 #include <string>
 #include <fstream>
 #include <regex>
+
 #include <rapidcsv/rapidcsv.h>
+
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
+#include "rapidjson/prettywriter.h"
 
 #include "common/decls.h"
 #include "common/const.h"
