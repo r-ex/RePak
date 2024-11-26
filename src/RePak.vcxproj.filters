@@ -43,6 +43,21 @@
     <Filter Include="thirdparty\rapidjson\msinttypes">
       <UniqueIdentifier>{58a81cc1-184c-4333-95fc-09e2f3419e5c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="thirdparty\zstandard">
+      <UniqueIdentifier>{4cc0fcf6-972b-4663-859f-fc8e83f5f005}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty\zstandard\common">
+      <UniqueIdentifier>{dfca00ca-5f66-4ae3-a5b2-fd368c26d00a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty\zstandard\compress">
+      <UniqueIdentifier>{30a97d38-095d-4d32-b7cd-31a8959ea7e3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty\zstandard\decompress">
+      <UniqueIdentifier>{5c891791-7b2e-4559-acee-7fb997d023a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty\zstandard\dictbuilder">
+      <UniqueIdentifier>{c5204ec0-a4b2-4ba2-9fbd-f755609bb616}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="application\repak.cpp">
@@ -101,6 +116,93 @@
     </ClCompile>
     <ClCompile Include="utils\jsonutils.cpp">
       <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\debug.c">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\entropy_common.c">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\error_private.c">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\fse_decompress.c">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\pool.c">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\threading.c">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\xxhash.c">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\zstd_common.c">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_fast.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_lazy.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_ldm.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_opt.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstdmt_compress.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\fse_compress.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\hist.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\huf_compress.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_compress.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_compress_literals.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_compress_sequences.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_compress_superblock.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_double_fast.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\decompress\zstd_ddict.c">
+      <Filter>thirdparty\zstandard\decompress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\decompress\zstd_decompress.c">
+      <Filter>thirdparty\zstandard\decompress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\decompress\zstd_decompress_block.c">
+      <Filter>thirdparty\zstandard\decompress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\decompress\huf_decompress.c">
+      <Filter>thirdparty\zstandard\decompress</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\dictBuilder\fastcover.c">
+      <Filter>thirdparty\zstandard\dictbuilder</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\dictBuilder\zdict.c">
+      <Filter>thirdparty\zstandard\dictbuilder</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\dictBuilder\cover.c">
+      <Filter>thirdparty\zstandard\dictbuilder</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\dictBuilder\divsufsort.c">
+      <Filter>thirdparty\zstandard\dictbuilder</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -299,8 +401,129 @@
     <ClInclude Include="utils\jsonutils.h">
       <Filter>utils</Filter>
     </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\debug.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\error_private.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\fse.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\huf.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\mem.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\pool.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\portability_macros.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\threading.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\xxhash.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\zstd_deps.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\zstd_internal.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\zstd_trace.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\allocations.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\bits.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\bitstream.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\compiler.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\common\cpu.h">
+      <Filter>thirdparty\zstandard\common</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstd_double_fast.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstd_fast.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstd_lazy.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstd_ldm.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstd_ldm_geartab.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstd_opt.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstdmt_compress.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\clevels.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\hist.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstd_compress_internal.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstd_compress_literals.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstd_compress_sequences.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstd_compress_superblock.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstd_cwksp.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\decompress\zstd_ddict.h">
+      <Filter>thirdparty\zstandard\decompress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\decompress\zstd_decompress_block.h">
+      <Filter>thirdparty\zstandard\decompress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\decompress\zstd_decompress_internal.h">
+      <Filter>thirdparty\zstandard\decompress</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\dictBuilder\divsufsort.h">
+      <Filter>thirdparty\zstandard\dictbuilder</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\dictBuilder\cover.h">
+      <Filter>thirdparty\zstandard\dictbuilder</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\zstd.h">
+      <Filter>thirdparty\zstandard</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\zstd_errors.h">
+      <Filter>thirdparty\zstandard</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\zdict.h">
+      <Filter>thirdparty\zstandard</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
+    <None Include="thirdparty\zstd\decompress\huf_decompress_amd64.S">
+      <Filter>thirdparty\zstandard\decompress</Filter>
+    </None>
+    <None Include="thirdparty\zstd\decompress\huf_decompress_amd64.S.vsspell" />
   </ItemGroup>
 </Project>

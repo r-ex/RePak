@@ -28,6 +28,122 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\debug.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\entropy_common.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\error_private.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\fse_decompress.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\pool.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\threading.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\xxhash.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\common\zstd_common.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\fse_compress.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\hist.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\huf_compress.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstdmt_compress.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_compress.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_compress_literals.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_compress_sequences.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_compress_superblock.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_double_fast.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_fast.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_lazy.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_ldm.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_opt.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\decompress\huf_decompress.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\decompress\zstd_ddict.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\decompress\zstd_decompress.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\decompress\zstd_decompress_block.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\dictBuilder\cover.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\dictBuilder\divsufsort.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\dictBuilder\fastcover.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zstd\dictBuilder\zdict.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="utils\dxutils.cpp" />
     <ClCompile Include="utils\jsonutils.cpp" />
     <ClCompile Include="utils\logger.cpp" />
@@ -94,6 +210,45 @@
     <ClInclude Include="thirdparty\rapidjson\stringbuffer.h" />
     <ClInclude Include="thirdparty\rapidjson\uri.h" />
     <ClInclude Include="thirdparty\rapidjson\writer.h" />
+    <ClInclude Include="thirdparty\zstd\common\allocations.h" />
+    <ClInclude Include="thirdparty\zstd\common\bits.h" />
+    <ClInclude Include="thirdparty\zstd\common\bitstream.h" />
+    <ClInclude Include="thirdparty\zstd\common\compiler.h" />
+    <ClInclude Include="thirdparty\zstd\common\cpu.h" />
+    <ClInclude Include="thirdparty\zstd\common\debug.h" />
+    <ClInclude Include="thirdparty\zstd\common\error_private.h" />
+    <ClInclude Include="thirdparty\zstd\common\fse.h" />
+    <ClInclude Include="thirdparty\zstd\common\huf.h" />
+    <ClInclude Include="thirdparty\zstd\common\mem.h" />
+    <ClInclude Include="thirdparty\zstd\common\pool.h" />
+    <ClInclude Include="thirdparty\zstd\common\portability_macros.h" />
+    <ClInclude Include="thirdparty\zstd\common\threading.h" />
+    <ClInclude Include="thirdparty\zstd\common\xxhash.h" />
+    <ClInclude Include="thirdparty\zstd\common\zstd_deps.h" />
+    <ClInclude Include="thirdparty\zstd\common\zstd_internal.h" />
+    <ClInclude Include="thirdparty\zstd\common\zstd_trace.h" />
+    <ClInclude Include="thirdparty\zstd\compress\clevels.h" />
+    <ClInclude Include="thirdparty\zstd\compress\hist.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstdmt_compress.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_compress_internal.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_compress_literals.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_compress_sequences.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_compress_superblock.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_cwksp.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_double_fast.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_fast.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_lazy.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_ldm.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_ldm_geartab.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_opt.h" />
+    <ClInclude Include="thirdparty\zstd\decompress\zstd_ddict.h" />
+    <ClInclude Include="thirdparty\zstd\decompress\zstd_decompress_block.h" />
+    <ClInclude Include="thirdparty\zstd\decompress\zstd_decompress_internal.h" />
+    <ClInclude Include="thirdparty\zstd\dictBuilder\cover.h" />
+    <ClInclude Include="thirdparty\zstd\dictBuilder\divsufsort.h" />
+    <ClInclude Include="thirdparty\zstd\zdict.h" />
+    <ClInclude Include="thirdparty\zstd\zstd.h" />
+    <ClInclude Include="thirdparty\zstd\zstd_errors.h" />
     <ClInclude Include="utils\binaryio.h" />
     <ClInclude Include="utils\dxutils.h" />
     <ClInclude Include="utils\jsonutils.h" />
@@ -103,6 +258,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
+    <None Include="thirdparty\zstd\decompress\huf_decompress_amd64.S" />
+    <None Include="thirdparty\zstd\decompress\huf_decompress_amd64.S.vsspell" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -161,6 +318,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)\;$(ProjectDir)thirdparty\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <AdditionalOptions>/D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -184,6 +342,7 @@
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <AdditionalOptions>/D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
