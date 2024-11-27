@@ -164,47 +164,47 @@ void CPakFile::WriteHeader(BinaryIO& io)
 
 	short version = m_Header.fileVersion;
 
-	io.write(m_Header.magic);
-	io.write(m_Header.fileVersion);
-	io.write(m_Header.flags);
-	io.write(m_Header.fileTime);
-	io.write(m_Header.unk0);
-	io.write(m_Header.compressedSize);
+	io.Write(m_Header.magic);
+	io.Write(m_Header.fileVersion);
+	io.Write(m_Header.flags);
+	io.Write(m_Header.fileTime);
+	io.Write(m_Header.unk0);
+	io.Write(m_Header.compressedSize);
 
 	if (version == 8)
-		io.write(m_Header.embeddedStarpakOffset);
+		io.Write(m_Header.embeddedStarpakOffset);
 
-	io.write(m_Header.unk1);
-	io.write(m_Header.decompressedSize);
-
-	if (version == 8)
-		io.write(m_Header.embeddedStarpakSize);
-
-	io.write(m_Header.unk2);
-	io.write(m_Header.starpakPathsSize);
+	io.Write(m_Header.unk1);
+	io.Write(m_Header.decompressedSize);
 
 	if (version == 8)
-		io.write(m_Header.optStarpakPathsSize);
+		io.Write(m_Header.embeddedStarpakSize);
 
-	io.write(m_Header.virtualSegmentCount);
-	io.write(m_Header.pageCount);
-	io.write(m_Header.patchIndex);
+	io.Write(m_Header.unk2);
+	io.Write(m_Header.starpakPathsSize);
 
 	if (version == 8)
-		io.write(m_Header.alignment);
+		io.Write(m_Header.optStarpakPathsSize);
 
-	io.write(m_Header.descriptorCount);
-	io.write(m_Header.assetCount);
-	io.write(m_Header.guidDescriptorCount);
-	io.write(m_Header.relationCount);
+	io.Write(m_Header.virtualSegmentCount);
+	io.Write(m_Header.pageCount);
+	io.Write(m_Header.patchIndex);
+
+	if (version == 8)
+		io.Write(m_Header.alignment);
+
+	io.Write(m_Header.descriptorCount);
+	io.Write(m_Header.assetCount);
+	io.Write(m_Header.guidDescriptorCount);
+	io.Write(m_Header.relationCount);
 
 	if (version == 7)
 	{
-		io.write(m_Header.unk7count);
-		io.write(m_Header.unk8count);
+		io.Write(m_Header.unk7count);
+		io.Write(m_Header.unk8count);
 	}
 	else if (version == 8)
-		io.write(m_Header.unk3);
+		io.Write(m_Header.unk3);
 }
 
 //-----------------------------------------------------------------------------
@@ -214,29 +214,29 @@ void CPakFile::WriteAssets(BinaryIO& io)
 {
 	for (auto& it : m_Assets)
 	{
-		io.write(it.guid);
-		io.write(it.unk0);
-		io.write(it.headPtr.index);
-		io.write(it.headPtr.offset);
-		io.write(it.cpuPtr.index);
-		io.write(it.cpuPtr.offset);
-		io.write(it.starpakOffset);
+		io.Write(it.guid);
+		io.Write(it.unk0);
+		io.Write(it.headPtr.index);
+		io.Write(it.headPtr.offset);
+		io.Write(it.cpuPtr.index);
+		io.Write(it.cpuPtr.offset);
+		io.Write(it.starpakOffset);
 
 		if (this->m_Header.fileVersion == 8)
-			io.write(it.optStarpakOffset);
+			io.Write(it.optStarpakOffset);
 
 		assert(it.pageEnd <= UINT16_MAX);
 		uint16_t pageEnd = static_cast<uint16_t>(it.pageEnd);
-		io.write(pageEnd);
+		io.Write(pageEnd);
 
-		io.write(it.remainingDependencyCount);
-		io.write(it.dependentsIndex);
-		io.write(it.dependenciesIndex);
-		io.write(it.dependentsCount);
-		io.write(it.dependenciesCount);
-		io.write(it.headDataSize);
-		io.write(it.version);
-		io.write(it.id);
+		io.Write(it.remainingDependencyCount);
+		io.Write(it.dependentsIndex);
+		io.Write(it.dependenciesIndex);
+		io.Write(it.dependentsCount);
+		io.Write(it.dependenciesCount);
+		io.Write(it.headDataSize);
+		io.Write(it.version);
+		io.Write(it.id);
 
 		it.SetPublicData<void*>(nullptr);
 	}
@@ -263,12 +263,12 @@ void CPakFile::WritePageData(BinaryIO& out)
 			}
 
 			if(chunk.Data())
-				out.getWriter()->write(chunk.Data(), chunk.GetSize());
+				out.Write(chunk.Data(), chunk.GetSize());
 			else // if chunk is padding to realign the page
 			{
 				//printf("aligning by %i bytes at %zu\n", chunk.GetSize(), out.tell());
 
-				out.getWriter()->seekp(chunk.GetSize(), std::ios::cur);
+				out.SeekPut(chunk.GetSize(), std::ios::cur);
 			}
 
 			chunk.Release();
@@ -293,7 +293,7 @@ void CPakFile::WriteSegmentHeaders(BinaryIO& out)
 	for (auto& segment : m_vVirtualSegments)
 	{
 		PakSegmentHdr_t segmentHdr = segment.GetHeader();
-		out.write(segmentHdr);
+		out.Write(segmentHdr);
 	}
 }
 
@@ -305,7 +305,7 @@ void CPakFile::WriteMemPageHeaders(BinaryIO& out)
 	for (auto& page : m_vPages)
 	{
 		PakPageHdr_t pageHdr = page.GetHeader();
-		out.write(pageHdr);
+		out.Write(pageHdr);
 	}
 }
 
@@ -327,7 +327,7 @@ void CPakFile::WriteStarpakDataBlocks(BinaryIO& out)
 {
 	for (auto& it : m_vStarpakDataBlocks)
 	{
-		out.getWriter()->write((const char*)it.pData, it.dataSize);
+		out.Write((const char*)it.pData, it.dataSize);
 	}
 }
 
@@ -343,7 +343,7 @@ void CPakFile::WriteStarpakSortsTable(BinaryIO& out)
 		fe.m_nOffset = it.offset;
 		fe.m_nSize = it.dataSize;
 
-		out.write(fe);
+		out.Write(fe);
 	}
 }
 
@@ -660,7 +660,12 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 	// create file stream from path created above
 	BinaryIO out;
-	out.open(GetPath(), BinaryIOMode::Write);
+	const std::string outPath = GetPath();
+	
+	if (!out.Open(outPath, BinaryIO::Mode_e::ReadWriteCreate))
+	{
+		Error("Failed to open output pak file '%s'\n", outPath.c_str());
+	}
 
 	// write a placeholder header so we can come back and complete it
 	// when we have all the info
@@ -681,7 +686,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		else
 			starpakPathsLength += padBytes;
 
-		out.seek(padBytes, std::ios::cur);
+		out.Seek(padBytes, std::ios::end);
 
 		SetStarpakPathsSize(static_cast<uint16_t>(starpakPathsLength), static_cast<uint16_t>(optStarpakPathsLength));
 	}
@@ -710,8 +715,8 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	SetDecompressedSize(out.tell());
 
 
-	out.seek(0); // go back to the beginning to finally write the rpakHeader now
-	WriteHeader(out); out.close();
+	out.SeekPut(0); // go back to the beginning to finally write the rpakHeader now
+	WriteHeader(out); out.Close();
 
 	Debug("written rpak file with size %zu\n", GetCompressedSize());
 
@@ -730,28 +735,33 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		Debug("writing starpak %s with %zu data entries\n", filename.c_str(), GetStreamingAssetCount());
 		BinaryIO srpkOut;
 
-		srpkOut.open(outputPath + filename, BinaryIOMode::Write);
+		const std::string fullFilePath = outputPath + filename;
+
+		if (!srpkOut.Open(fullFilePath.c_str(), BinaryIO::Mode_e::Write))
+		{
+			Error("Failed to open output streaming file '%s'\n", outPath.c_str());
+		}
 
 		StarpakFileHeader_t srpkHeader{ STARPAK_MAGIC , STARPAK_VERSION };
-		srpkOut.write(srpkHeader);
+		srpkOut.Write(srpkHeader);
 
 		int padSize = (STARPAK_DATABLOCK_ALIGNMENT - sizeof(StarpakFileHeader_t));
 
 		char* initialPad = new char[padSize];
 		memset(initialPad, STARPAK_DATABLOCK_ALIGNMENT_PADDING, padSize);
 
-		srpkOut.getWriter()->write(initialPad, padSize);
+		srpkOut.Write(initialPad, padSize);
 		delete[] initialPad;
 
 		WriteStarpakDataBlocks(srpkOut);
 		WriteStarpakSortsTable(srpkOut);
 
 		uint64_t entryCount = GetStreamingAssetCount();
-		srpkOut.write(entryCount);
+		srpkOut.Write(entryCount);
 
-		Debug("written starpak file with size %zu\n", srpkOut.tell());
+		Debug("written starpak file with size %zu\n", srpkOut.TellPut());
 
 		FreeStarpakDataBlocks();
-		srpkOut.close();
+		srpkOut.Close();
 	}
 }
