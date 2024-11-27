@@ -244,12 +244,24 @@ public:
 
 	void* header;
 
+	// Extra information about the asset that is made available to other assets when being created.
+	std::shared_ptr<void> _publicData;
+
 	// vector of indexes for local assets that use this asset
 	std::vector<unsigned int> _relations{};
 
 	std::vector<PakGuidRefHdr_t> _guids{};
 
 	FORCEINLINE void SetHeaderPointer(void* pHeader) { this->header = pHeader; };
+
+	template <typename T>
+	inline void SetPublicData(T* const data)
+	{
+		std::shared_ptr<T> ptr(data);
+		_publicData = std::move(ptr);
+	}
+
+	char* const PublicData() { return reinterpret_cast<char*>(_publicData.get()); };
 
 	FORCEINLINE void AddRelation(unsigned int idx) { _relations.push_back({ idx }); };
 	FORCEINLINE void AddRelation(size_t idx) { _relations.push_back({ static_cast<unsigned int>(idx) }); };
@@ -271,7 +283,13 @@ public:
 	{
 		if (!IsType(type))
 		{
-			Error("Unexpected asset type for '%s'. Expected '%.4s', found '%.4s'\n", this->name.c_str(), reinterpret_cast<char*>(&type), reinterpret_cast<char*>(&this->id));
+			Utils::FourCCString_t expected;
+			Utils::FourCCString_t found;
+
+			Utils::FourCCToString(expected, type);
+			Utils::FourCCToString(found, type);
+
+			Error("Unexpected asset type for '%s'. Expected '%.4s', found '%.4s'\n", this->name.c_str(), expected, found);
 		}
 	}
 };

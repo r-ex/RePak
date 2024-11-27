@@ -29,7 +29,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="utils\dxutils.cpp" />
+    <ClCompile Include="utils\jsonutils.cpp" />
     <ClCompile Include="utils\logger.cpp" />
+    <ClCompile Include="utils\strutils.cpp" />
     <ClCompile Include="utils\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -45,6 +47,7 @@
     <ClInclude Include="public\animrig.h" />
     <ClInclude Include="public\material.h" />
     <ClInclude Include="public\materialflags.h" />
+    <ClInclude Include="public\multishader.h" />
     <ClInclude Include="public\rpak.h" />
     <ClInclude Include="public\shader.h" />
     <ClInclude Include="public\shaderset.h" />
@@ -93,7 +96,9 @@
     <ClInclude Include="thirdparty\rapidjson\writer.h" />
     <ClInclude Include="utils\binaryio.h" />
     <ClInclude Include="utils\dxutils.h" />
+    <ClInclude Include="utils\jsonutils.h" />
     <ClInclude Include="utils\logger.h" />
+    <ClInclude Include="utils\strutils.h" />
     <ClInclude Include="utils\utils.h" />
   </ItemGroup>
   <ItemGroup>

@@ -50,7 +50,8 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, const char* assetPath)
     rmem dataBuf(dataChunk.Data());
     dataBuf.seek(rseqNameLenAligned + seqdesc.autolayerindex, rseekdir::beg);
 
-    // register autolayer aseq guids
+    // Iterate over each of the sequence's autolayers to register each of the autolayer GUIDs
+    // This is required as otherwise the game will crash while trying to dereference a non-converted GUID.
     for (int i = 0; i < seqdesc.numautolayers; ++i)
     {
         dataBuf.seek(rseqNameLenAligned + seqdesc.autolayerindex + (i * sizeof(mstudioautolayer_t)), rseekdir::beg);
@@ -62,6 +63,7 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, const char* assetPath)
 
         PakAsset_t* asset = pak->GetAssetByGuid(autolayer->guid);
 
+        // If the autolayer's guid is present in the same RPak, add this ASEQ asset to the referenced asset's dependents.
         if (asset)
             pak->SetCurrentAssetAsDependentForAsset(asset);
     }

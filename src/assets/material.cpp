@@ -20,7 +20,7 @@ void Material_CreateTextures(CPakFile* pak, rapidjson::Value& mapEntry)
             if (RTech::ParseGUIDFromString(it.GetString()))
                 continue;
 
-            Assets::AddTextureAsset(pak, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"), true);
+            Assets::AddTextureAsset(pak, 0, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"), true);
         }
     }
     else if (JSON_IS_OBJECT(mapEntry, "textures"))
@@ -37,10 +37,159 @@ void Material_CreateTextures(CPakFile* pak, rapidjson::Value& mapEntry)
             if (RTech::ParseGUIDFromString(it.value.GetString()))
                 continue;
 
-            Assets::AddTextureAsset(pak, it.value.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"), true);
+            Assets::AddTextureAsset(pak, 0, it.value.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"), true);
         }
     }
 
+}
+
+#define DEFAULT_UNK_FLAGS 0x4
+#define DEFAULT_DEPTH_STENCIL_FLAGS 0x17
+#define DEFAULT_RASTERIZER_FLAGS 0x6
+
+static bool ParseDXStateFlags(const rapidjson::Value& mapEntry, int& unkFlags, int& depthStencilFlags, int& rasterizerFlags)
+{
+    // dx flags
+    // !!!temp!!! - these should be replaced by proper flag string parsing when possible
+    unkFlags = DEFAULT_UNK_FLAGS;
+    depthStencilFlags = DEFAULT_DEPTH_STENCIL_FLAGS;
+    rasterizerFlags = DEFAULT_RASTERIZER_FLAGS; // CULL_BACK
+
+    JSON_GetValue(mapEntry, "unkFlags", JSONFieldType_e::kNumber, unkFlags);
+    JSON_GetValue(mapEntry, "depthStencilFlags", JSONFieldType_e::kNumber, depthStencilFlags);
+    JSON_GetValue(mapEntry, "rasterizerFlags", JSONFieldType_e::kNumber, rasterizerFlags);
+
+    return true;
+}
+
+template <size_t BLEND_STATE_COUNT>
+static bool ParseBlendStateFlags(const rapidjson::Value& mapEntry, unsigned int blendStates[BLEND_STATE_COUNT])
+{
+    rapidjson::Document::ConstMemberIterator blendStatesIt;
+    const bool hasField = JSON_GetIterator(mapEntry, "blendStates", blendStatesIt);
+
+    if (!hasField)
+        return false;
+
+    const rapidjson::Value& blendStateJson = blendStatesIt->value;
+
+    if (blendStateJson.IsArray())
+    {
+        const rapidjson::Value::ConstArray blendStateElems = blendStateJson.GetArray();
+        const int numBlendStates = static_cast<int>(blendStateElems.Size());
+
+        if (numBlendStates != BLEND_STATE_COUNT)
+        {
+            Error("Expected %i blend state flags, found %i\n", BLEND_STATE_COUNT, numBlendStates);
+            return false;
+        }
+
+        for (int i = 0; i < numBlendStates; i++)
+        {
+            const rapidjson::Value& obj = blendStateElems[i];
+            const rapidjson::Type type = obj.GetType();
+
+            if (type == rapidjson::kNumberType)
+                blendStates[i] = obj.GetUint();
+            else if (type == rapidjson::kStringType)
+            {
+                const char* const startPtr = obj.GetString();
+                char* endPtr;
+
+                const unsigned int result = strtoul(startPtr, &endPtr, 16);
+
+                if (endPtr != &startPtr[obj.GetStringLength()])
+                {
+                    Error("Failed parsing blend state flag #%i (%s)\n", (int)i, startPtr);
+                    return false;
+                }
+
+                blendStates[i] = result;
+            }
+            else
+            {
+                Error("Unsupported type for blend state flag #i (got %s, expected %s)\n", (int)i,
+                    JSON_TypeToString(type), JSON_TypeToString(rapidjson::kStringType));
+
+                return false;
+            }
+        }
+    }
+    else if (blendStateJson.IsString()) // Split the flags from provided string.
+    {
+        const std::vector<std::string> blendStateElems = Utils::StringSplit(blendStateJson.GetString(), ' ');
+        const int numBlendStates = static_cast<int>(blendStateElems.size());
+
+        if (numBlendStates != BLEND_STATE_COUNT)
+        {
+            Error("Expected %i blend state flags, found %i\n", BLEND_STATE_COUNT, numBlendStates);
+            return false;
+        }
+
+        for (int i = 0; i < BLEND_STATE_COUNT; i++)
+        {
+            const std::string& val = blendStateElems[i];
+
+            const char* const startPtr = val.c_str();
+            char* endPtr;
+
+            const unsigned int result = strtoul(startPtr, &endPtr, 16);
+
+            if (endPtr != &startPtr[val.length()])
+            {
+                Error("Failed parsing blend state flag #%i (%s)\n", i, startPtr);
+                return false;
+            }
+            else
+                blendStates[i] = result;
+        }
+    }
+    else
+    {
+        Error("Unsupported type for blend state flags (got %s, expected %s or %s)\n",
+            JSON_TypeToString(blendStateJson.GetType()), JSON_TypeToString(rapidjson::kArrayType),
+            JSON_TypeToString(rapidjson::kStringType));
+
+        return false;
+    }
+
+    return true;
+}
+
+template <typename MaterialDXState_t>
+static void SetDXStates(const rapidjson::Value& mapEntry, MaterialDXState_t dxStates[MAT_DX_STATE_COUNT])
+{
+    int unkFlags, depthStencilFlags, rasterizerFlags;
+    ParseDXStateFlags(mapEntry, unkFlags, depthStencilFlags, rasterizerFlags);
+
+    static const int totalBlendStateCount = ARRAYSIZE(dxStates[0].blendStates);
+
+    unsigned int blendStateMap[totalBlendStateCount];
+    const bool hasBlendStates = ParseBlendStateFlags<totalBlendStateCount>(mapEntry, blendStateMap);
+
+    for (int i = 0; i < MAT_DX_STATE_COUNT; i++)
+    {
+        MaterialDXState_t& dxState = dxStates[i];
+
+        dxState.unk = unkFlags;
+        dxState.depthStencilFlags = (uint16_t)depthStencilFlags;
+        dxState.rasterizerFlags = (uint16_t)rasterizerFlags;
+
+        for (int j = 0; j < ARRAYSIZE(dxState.blendStates); j++)
+        {
+            MaterialBlendState_t& blendState = dxState.blendStates[j];
+
+            if (!hasBlendStates) // Default it off.
+            {
+                // todo(amos): is there a reason we default to setting all
+                // bits for renderTargetWriteMask ?
+                blendState = MaterialBlendState_t(0xF0000000);
+                continue;
+            }
+
+            blendState = MaterialBlendState_t(blendStateMap[j]);
+        }
+    }
 }
 
 void MaterialAsset_t::SetupDepthMaterialOverrides(const rapidjson::Value& mapEntry)
@@ -118,22 +267,7 @@ void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
     else
         this->flags2 = (0x56000020 | 0x10000000000000); // beeg flag is used on most things
 
-    // dx flags
-    // !!!temp!!! - these should be replaced by proper flag string parsing when possible
-    const int unkFlags = JSON_GET_INT(mapEntry, "unkFlags", 0x4);
-    const short depthStencilFlags = (short)JSON_GET_INT(mapEntry, "depthStencilFlags", 0x17);
-    const short rasterizerFlags   = (short)JSON_GET_INT(mapEntry, "rasterizerFlags", 0x6); // CULL_BACK
-
-    for (int i = 0; i < 2; ++i)
-    {
-        // set default as apex values, set r2 later if needed
-        for (int j = 0; j < 8; ++j)
-            this->dxStates[i].blendStates[j] = MaterialBlendState_t(false, 0xf);
-
-        this->dxStates[i].unk = unkFlags;
-        this->dxStates[i].depthStencilFlags = depthStencilFlags;
-        this->dxStates[i].rasterizerFlags = rasterizerFlags;
-    }
+    SetDXStates(mapEntry, dxStates);
 
     // surfaces are defined in scripts/surfaceproperties.txt or scripts/surfaceproperties.rson
     this->surface = JSON_GET_STR(mapEntry, "surface", "default");
@@ -176,7 +310,7 @@ void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
 
     // optional shaderset override
     if (JSON_IS_STR(mapEntry, "shaderset"))
-        this->shaderSet = RTech::GetAssetGUIDFromString(mapEntry["shaderset"].GetString());
+        this->shaderSet = RTech::GetAssetGUIDFromString(mapEntry["shaderset"].GetString(), true);
 
     // this is more desirable but would break guid input
     /*if (JSON_IS_STR(mapEntry, "shaderset"))
@@ -319,7 +453,7 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
     if (presetName == "none")
         return;
 
-    MaterialDXState_t& dxState = material->dxStates[0];
+    MaterialDXState_v15_t& dxState = material->dxStates[0];
 
     bool useDefaultBlendStates = true;
 
@@ -342,10 +476,10 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
     {
         useDefaultBlendStates = false;
 
-        dxState.blendStates[0] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-        dxState.blendStates[1] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-        dxState.blendStates[2] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-        dxState.blendStates[3] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
+        dxState.blendStates[0] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+        dxState.blendStates[1] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+        dxState.blendStates[2] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+        dxState.blendStates[3] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
 
         dxState.unk = 4;
     }
@@ -360,13 +494,13 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
     if (useDefaultBlendStates)
     {
         // 0xF0138286
-        dxState.blendStates[0] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+        dxState.blendStates[0] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
         // 0xF0138286
-        dxState.blendStates[1] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+        dxState.blendStates[1] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
         // 0xF0008286
-        dxState.blendStates[2] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, 0xF);
+        dxState.blendStates[2] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, 0xF);
         // 0x00138286
-        dxState.blendStates[3] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0);
+        dxState.blendStates[3] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0);
 
         dxState.unk = 5;
     }
@@ -423,24 +557,24 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, const char* assetPath, rapidjso
     {
         for (int i = 0; i < 2; ++i)
         {
-            MaterialDXState_t& dxState = matlAsset->dxStates[i];
+            MaterialDXState_v15_t& dxState = matlAsset->dxStates[i];
 
-            dxState.blendStates[0] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-            dxState.blendStates[1] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-            dxState.blendStates[2] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-            dxState.blendStates[3] = MaterialBlendState_t(false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
+            dxState.blendStates[0] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+            dxState.blendStates[1] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+            dxState.blendStates[2] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+            dxState.blendStates[3] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
         }
     }
     else
     {
         for (int i = 0; i < 2; ++i)
         {
-            MaterialDXState_t& dxState = matlAsset->dxStates[i];
+            MaterialDXState_v15_t& dxState = matlAsset->dxStates[i];
 
-            dxState.blendStates[0] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-            dxState.blendStates[1] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-            dxState.blendStates[2] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, 0xF);
-            dxState.blendStates[3] = MaterialBlendState_t(true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
+            dxState.blendStates[0] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+            dxState.blendStates[1] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
+            dxState.blendStates[2] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, 0xF);
+            dxState.blendStates[3] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
         }
     }
 

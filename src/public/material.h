@@ -1,6 +1,9 @@
 #pragma once
 #include "materialflags.h"
 
+#define MAT_DX_STATE_COUNT 2 // the same for r2 and r5
+#define MAT_BLEND_STATE_COUNT 8 // r2 is 4
+
 enum MaterialShaderType_t : uint8_t
 {
 	RGDU = 0x0,
@@ -73,7 +76,7 @@ inline MaterialShaderType_t Material_ShaderTypeFromString(std::string& str)
 
 struct MaterialBlendState_t
 {
-	__int32 unk : 1;
+	__int32 unknown : 1;
 	__int32 blendEnable : 1;
 	__int32 srcBlend : 5;
 	__int32 destBlend : 5;
@@ -85,27 +88,38 @@ struct MaterialBlendState_t
 
 	MaterialBlendState_t() = default;
 
-	MaterialBlendState_t(bool /*blendEnable*/, __int8 renderTargetWriteMask)
+	MaterialBlendState_t(const bool bUnknown, const bool bBlendEnable,
+		const D3D11_BLEND _srcBlend, const D3D11_BLEND _destBlend,
+		const D3D11_BLEND_OP _blendOp, const D3D11_BLEND _srcBlendAlpha,
+		const D3D11_BLEND _destBlendAlpha, const D3D11_BLEND_OP _blendOpAlpha,
+		const __int8 _renderTargetWriteMask)
 	{
-		memset(this, 0, sizeof(MaterialBlendState_t));
-		this->renderTargetWriteMask = renderTargetWriteMask & 0xF;
-	}
-
-	MaterialBlendState_t(bool bBlendEnable,
-		D3D11_BLEND _srcBlend, D3D11_BLEND _destBlend,
-		D3D11_BLEND_OP _blendOp, D3D11_BLEND _srcBlendAlpha,
-		D3D11_BLEND _destBlendAlpha, D3D11_BLEND_OP _blendOpAlpha,
-		__int8 _renderTargetWriteMask)
-	{
+		this->unknown = bUnknown ? 1 : 0;
 		this->blendEnable = bBlendEnable ? 1 : 0;
-		this->srcBlend = _srcBlend - 1;
-		this->destBlend = _destBlend - 1;
-		this->blendOp = _blendOp - 1;
-		this->srcBlendAlpha = _srcBlendAlpha - 1;
-		this->destBlendAlpha = _destBlendAlpha - 1;
-		this->blendOpAlpha = _blendOpAlpha - 1;
+
+		this->srcBlend = _srcBlend;
+		this->destBlend = _destBlend;
+		this->blendOp = _blendOp;
+		this->srcBlendAlpha = _srcBlendAlpha;
+		this->destBlendAlpha = _destBlendAlpha;
+		this->blendOpAlpha = _blendOpAlpha;
 
 		this->renderTargetWriteMask = _renderTargetWriteMask & 0xF;
+	}
+
+	MaterialBlendState_t(const unsigned int nFlags)
+	{
+		this->unknown = (nFlags & 1);
+		this->blendEnable = ((nFlags >> 1) & 1);
+
+		this->srcBlend = ((nFlags >> 2) & 0x1F);
+		this->destBlend = ((nFlags >> 7) & 0x1F);
+		this->blendOp = ((nFlags >> 12) & 7);
+		this->srcBlendAlpha = ((nFlags >> 15) & 0x1F);
+		this->destBlendAlpha = ((nFlags >> 20) & 0x1F);
+		this->blendOpAlpha = ((nFlags >> 25) & 7);
+
+		this->renderTargetWriteMask = (nFlags >> 28) & 0xF;
 	}
 };
 
@@ -115,10 +129,10 @@ struct MaterialBlendState_t
 #pragma warning(disable : 4324)
 
 // aligned to 16 bytes so it can be loaded as 3 m128i structs in engine
-struct __declspec(align(16)) MaterialDXState_t
+struct __declspec(align(16)) MaterialDXState_v15_t
 {
 	// bitfield defining a D3D11_RENDER_TARGET_BLEND_DESC for each of the 8 possible DX render targets
-	MaterialBlendState_t blendStates[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+	MaterialBlendState_t blendStates[MAT_BLEND_STATE_COUNT];
 
 	uint32_t unk;
 
@@ -129,7 +143,7 @@ struct __declspec(align(16)) MaterialDXState_t
 	uint16_t rasterizerFlags;
 };
 
-static_assert(sizeof(MaterialDXState_t) == 0x30);
+static_assert(sizeof(MaterialDXState_v15_t) == 0x30);
 
 struct __declspec(align(16)) MaterialDXState_v12_t
 {
@@ -495,7 +509,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 
 	uint64_t flags2;
 
-	MaterialDXState_t dxStates[2]; // seems to be used for setting up some D3D states?
+	MaterialDXState_v15_t dxStates[2]; // seems to be used for setting up some D3D states?
 
 	uint16_t numAnimationFrames; // used in CMaterialGlue::GetNumAnimationFrames (0x1403B4250), which is called from GetSpriteInfo @ 0x1402561FC
 	MaterialShaderType_t materialType;
@@ -541,7 +555,7 @@ struct MaterialAsset_t
 	char samplers[4];
 	uint64_t flags2;
 
-	MaterialDXState_t dxStates[2]; // seems to be used for setting up some D3D states?
+	MaterialDXState_v15_t dxStates[MAT_DX_STATE_COUNT]; // seems to be used for setting up some D3D states?
 
 	std::string materialTypeStr;
 	MaterialShaderType_t materialType;

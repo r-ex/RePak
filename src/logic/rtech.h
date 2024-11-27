@@ -1,5 +1,8 @@
 #pragma once
 
+// todo(amos): reorder headers so this can be moved into public.
+typedef uint64_t PakGuid_t;
+
 // contains the offset and size of a data entry within the starpak
 // offset must be larger than 0x1000 (4096), as the beginning of 
 // the file is filled with 0xCB until that point
@@ -14,9 +17,9 @@ struct SRPkFileEntry
 
 namespace RTech
 {
-	std::uint64_t __fastcall StringToGuid(const char* pData);
-	std::uint32_t __fastcall StringToUIMGHash(const char* str);
+	PakGuid_t StringToGuid(const char* const string);
+	std::uint32_t StringToUIMGHash(const char* const str);
 
-	bool ParseGUIDFromString(const char* str, uint64_t* pGuid = nullptr);
-	std::uint64_t GetAssetGUIDFromString(const char* str, bool forceRpakExtension = false);
+	bool ParseGUIDFromString(const char* const str, PakGuid_t* const pGuid = nullptr);
+	PakGuid_t GetAssetGUIDFromString(const char* const str, const bool forceRpakExtension = false);
 }

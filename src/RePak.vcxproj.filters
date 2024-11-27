@@ -96,6 +96,12 @@
     <ClCompile Include="assets\shader.cpp">
       <Filter>assets</Filter>
     </ClCompile>
+    <ClCompile Include="utils\strutils.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\jsonutils.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -283,6 +289,15 @@
     </ClInclude>
     <ClInclude Include="public\shader.h">
       <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\multishader.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\strutils.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\jsonutils.h">
+      <Filter>utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

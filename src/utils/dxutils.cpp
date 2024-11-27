@@ -85,6 +85,8 @@ DXGI_FORMAT DXUtils::GetFormatFromHeaderEx(const DDS_HEADER& hdr)
 			if (pf.dwABitMask == 0xff)
 				return DXGI_FORMAT_A8_UNORM;
 		}
+		else if (pf.dwRBitMask == 0xff)
+			return DXGI_FORMAT_R8_UNORM;
 	}
 
 	// unsupported
@@ -236,6 +238,8 @@ bool DXUtils::GetParsedShaderData(const char* bytecode, size_t /*bytecodeLen*/, 
 	if (!outData)
 		return false;
 
+	outData->numTextureResources = 0;
+	outData->mtlTexSlotCount = 0;
 	for (uint32_t i = 0; i < fileHeader->BlobCount; ++i)
 	{
 		const DXBCBlobHeader* blob = fileHeader->pBlob(i);
@@ -244,7 +248,8 @@ bool DXUtils::GetParsedShaderData(const char* bytecode, size_t /*bytecodeLen*/, 
 		{
 			outData->EnableFlag(SHDR_FOUND_RDEF);
 
-			const RDEFBlobHeader* rdef = reinterpret_cast<const RDEFBlobHeader*>(blob->GetBlobData());
+			const RDefBlobHeader_t* rdef = reinterpret_cast<const RDefBlobHeader_t*>(blob->GetBlobData());
+			Debug("Shader built by \"%s\"\n", rdef->compilerName());
 
 			switch (rdef->ShaderType)
 			{
@@ -269,6 +274,23 @@ bool DXUtils::GetParsedShaderData(const char* bytecode, size_t /*bytecodeLen*/, 
 			default:
 				Error("Unknown shader type: %X\n", rdef->ShaderType);
 				break;
+			}
+
+			for (uint32_t j = 0; j < rdef->BoundResourceCount; ++j)
+			{
+				const RDefResourceBinding_t* resource = rdef->resource(j);
+				//printf("%s %s (%X)\n", resource->dimensionName(), resource->name(blob->GetBlobData()), resource->Flags);
+
+				if (resource->Type == D3D_SHADER_INPUT_TYPE::D3D_SIT_TEXTURE)
+				{
+					outData->numTextureResources++;
+
+					if (resource->BindPoint < 40)
+						outData->mtlTexSlotCount = static_cast<uint8_t>(resource->BindPoint) + 1;
+				}
+
+				if (outData->numTextureResources > 0 && resource->Type != D3D_SHADER_INPUT_TYPE::D3D_SIT_TEXTURE)
+					break;
 			}
 		}
 	}

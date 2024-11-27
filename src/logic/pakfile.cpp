@@ -8,7 +8,7 @@
 #include "pakfile.h"
 #include "assets/assets.h"
 
-void CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
+bool CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
 {
 	if (file["$type"].GetStdString() == type)
 	{
@@ -33,26 +33,34 @@ void CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeF
 			targetFunc(this, file["path"].GetString(), file);
 		else
 			Warning("Asset type '%s' is not supported on RPak version %i\n", type, fileVersion);
+
+		// Asset type has been handled.
+		return true;
 	}
+	else return false;
 }
+
+#define HANDLE_ASSET_TYPE(type, asset, func_r2, func_r5) if (AddJSONAsset(type, asset, func_r2, func_r5)) return;
 
 //-----------------------------------------------------------------------------
 // purpose: installs asset types and their callbacks
 //-----------------------------------------------------------------------------
 void CPakFile::AddAsset(rapidjson::Value& file)
 {
-	AddJSONAsset("txtr", file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
-	AddJSONAsset("uimg", file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
-	AddJSONAsset("Ptch", file, Assets::AddPatchAsset, Assets::AddPatchAsset);
-	AddJSONAsset("dtbl", file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
-	AddJSONAsset("matl", file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
-	AddJSONAsset("rmdl", file, nullptr, Assets::AddModelAsset_v9);
-	AddJSONAsset("aseq", file, nullptr, Assets::AddAnimSeqAsset_v7);
-	AddJSONAsset("arig", file, nullptr, Assets::AddAnimRigAsset_v4);
+	HANDLE_ASSET_TYPE("txtr", file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
+	HANDLE_ASSET_TYPE("uimg", file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
+	HANDLE_ASSET_TYPE("Ptch", file, Assets::AddPatchAsset, Assets::AddPatchAsset);
+	HANDLE_ASSET_TYPE("dtbl", file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
+	HANDLE_ASSET_TYPE("matl", file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
+	HANDLE_ASSET_TYPE("rmdl", file, nullptr, Assets::AddModelAsset_v9);
+	HANDLE_ASSET_TYPE("aseq", file, nullptr, Assets::AddAnimSeqAsset_v7);
+	HANDLE_ASSET_TYPE("arig", file, nullptr, Assets::AddAnimRigAsset_v4);
 
-	AddJSONAsset("shds", file, Assets::AddShaderSetAsset_v8, nullptr);
-	AddJSONAsset("shdr", file, Assets::AddShaderAsset_v8, nullptr);
+	HANDLE_ASSET_TYPE("shds", file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
+	HANDLE_ASSET_TYPE("shdr", file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
 
+	// If the function has not returned by this point, we have an invalid asset type name.
+	Error("Invalid asset type '%s' provided for asset '%s'.\n", JSON_GET_STR(file, "$type", "(invalid)"), JSON_GET_STR(file, "path", "(unknown)"));
 }
 
 //-----------------------------------------------------------------------------
@@ -229,6 +237,8 @@ void CPakFile::WriteAssets(BinaryIO& io)
 		io.write(it.headDataSize);
 		io.write(it.version);
 		io.write(it.id);
+
+		it.SetPublicData<void*>(nullptr);
 	}
 
 	assert(m_Assets.size() <= UINT32_MAX);
@@ -245,6 +255,13 @@ void CPakFile::WritePageData(BinaryIO& out)
 	{
 		for (auto& chunk : page.chunks)
 		{
+			// should never happen
+			if (chunk.IsReleased()) [[unlikely]]
+			{
+				assert(0);
+				continue;
+			}
+
 			if(chunk.Data())
 				out.getWriter()->write(chunk.Data(), chunk.GetSize());
 			else // if chunk is padding to realign the page
@@ -253,6 +270,8 @@ void CPakFile::WritePageData(BinaryIO& out)
 
 				out.getWriter()->seekp(chunk.GetSize(), std::ios::cur);
 			}
+
+			chunk.Release();
 		}
 	}
 }
@@ -263,10 +282,7 @@ void CPakFile::WritePageData(BinaryIO& out)
 //-----------------------------------------------------------------------------
 size_t CPakFile::WriteStarpakPaths(BinaryIO& out, bool optional)
 {
-	if (optional)
-		return Utils::WriteStringVector(out, m_vOptStarpakPaths);
-	else
-		return Utils::WriteStringVector(out, m_vStarpakPaths);
+	return Utils::WriteStringVector(out, optional ? m_vOptStarpakPaths : m_vStarpakPaths);
 }
 
 //-----------------------------------------------------------------------------

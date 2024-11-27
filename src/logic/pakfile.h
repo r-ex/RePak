@@ -79,24 +79,33 @@ class CPakDataChunk
 public:
 	CPakDataChunk() = default;
 
-	CPakDataChunk(size_t size, uint8_t alignment, char* data) : size((int)size), alignment(alignment), pData(data) {};
-	CPakDataChunk(int pageIndex, int pageOffset, size_t size, uint8_t alignment, char* data) : pageIndex(pageIndex), pageOffset(pageOffset), size((int)size), alignment(alignment), pData(data) {};
+	CPakDataChunk(size_t size, uint8_t alignment, char* data) : size((int)size), alignment(alignment), pData(data), released(false) {};
+	CPakDataChunk(int pageIndex, int pageOffset, size_t size, uint8_t alignment, char* data) : pageIndex(pageIndex), pageOffset(pageOffset), size((int)size), alignment(alignment), pData(data), released(false) {};
 
 private:
 	int pageIndex;
 	int pageOffset;
 	int size;
-	uint8_t alignment;
 
 	char* pData;
-
+	uint8_t alignment;
+	bool released;
 public:
 
 	inline PagePtr_t GetPointer(size_t offset=0) { return { pageIndex, static_cast<int>(pageOffset + offset) }; };
 
-	int GetIndex() { return pageIndex; };
-	char* Data() { return pData; };
-	int GetSize() { return size; };
+	inline int GetIndex() const { return pageIndex; };
+	inline char* Data() { return pData; };
+	inline int GetSize() const { return size; };
+	inline bool IsReleased() const { return released; };
+
+	inline void Release()
+	{
+		delete[] pData;
+		
+		this->pData = nullptr;
+		this->released = true;
+	}
 };
 
 class CPakFile
@@ -113,7 +122,7 @@ public:
 
 	typedef void(*AssetTypeFunc_t)(CPakFile*, const char*, rapidjson::Value&);
 
-	void AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
+	bool AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
 	void AddAsset(rapidjson::Value& file);
 	void AddPointer(PagePtr_t ptr);
 	void AddPointer(int pageIdx, int pageOffset);

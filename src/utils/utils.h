@@ -12,8 +12,6 @@ namespace Utils
 	std::string ChangeExtension(const std::string& in, const std::string& ext);
 
 	void ParseMapDocument(js::Document& doc, const fs::path& path);
-
-	const std::string VFormat(const char* const zcFormat, ...);
 };
 
 using namespace std::chrono;
@@ -70,6 +68,7 @@ private:
 #define MAKE_FOURCC(a,b,c,d) ((d<<24)+(c<<16)+(b<<8)+a)
 
 // json helper macros
+// todo: move to jsonutils.h and reuse cache iterator
 #define JSON_IS_BOOL(doc, name) (doc.HasMember(name) && doc[name].IsBool())
 #define JSON_IS_INT64(doc, name) (doc.HasMember(name) && doc[name].IsInt64())
 #define JSON_IS_UINT64(doc, name) (doc.HasMember(name) && doc[name].IsUint64())

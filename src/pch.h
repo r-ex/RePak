@@ -12,9 +12,12 @@
 #include <string>
 #include <fstream>
 #include <regex>
+
 #include <rapidcsv/rapidcsv.h>
+
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
+#include "rapidjson/prettywriter.h"
 
 #include "common/decls.h"
 #include "common/const.h"
@@ -24,6 +27,8 @@
 
 #include "utils/binaryio.h"
 #include "utils/utils.h"
+#include "utils/strutils.h"
+#include "utils/jsonutils.h"
 #include "utils/logger.h"
 
 #define UNUSED(x)	(void)(x)

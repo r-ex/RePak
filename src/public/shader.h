@@ -52,9 +52,27 @@ struct ShaderAssetHeader_v8_t
     PagePtr_t shaderInputFlags; // int64*
 };
 
+struct ShaderAssetHeader_v12_t
+{
+    PagePtr_t name; // const char*
+    eShaderType type;
+
+    char shaderFeatures[7];
+
+    PagePtr_t unk_10; // void*
+    PagePtr_t shaderInputFlags; // int64*
+};
+
 struct ShaderByteCode_t
 {
     PagePtr_t data;
     uint32_t dataSize;
+
     uint32_t unk;
+
+    // only exists in vertex shaders. shader writing code handles this by forcing the size to be 16 bytes (instead of 24)
+    // on non-vertex shaders
+    PagePtr_t inputSignatureBlob;
 };
+
+static_assert(sizeof(ShaderByteCode_t) == 0x18);
