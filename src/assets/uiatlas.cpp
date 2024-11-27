@@ -134,15 +134,12 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, const char* assetPath, rapidjson
         // this should be revisited at some point.
         UNUSED(it);
 
-<<<<<<<< HEAD:src/assets/uiatlas.cpp
         //float startX = it["posX"].GetFloat() / pHdr->width;
         //float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->width;
 
         //float startY = it["posY"].GetFloat() / pHdr->height;
         //float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->height;
 
-========
->>>>>>>> main:src/assets/rui.cpp
         // this doesn't affect legion but does affect game?
         //uiio.InitUIImageOffset(startX, startY, endX, endY);
         tiBuf.write(uiio);
