@@ -19,18 +19,6 @@
     <Filter Include="thirdparty\rapidcsv">
       <UniqueIdentifier>{bf331444-e1f1-4480-a6e3-a831b4e57439}</UniqueIdentifier>
     </Filter>
-    <Filter Include="thirdparty\rapidjson">
-      <UniqueIdentifier>{f2535fa9-7c9b-477f-bd70-02c78d48667d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="thirdparty\rapidjson\error">
-      <UniqueIdentifier>{6671524a-da72-4cf7-b53a-1868471b651f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="thirdparty\rapidjson\internal">
-      <UniqueIdentifier>{cb755283-87ee-4d58-a538-84b3ecde6945}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="thirdparty\rapidjson\msinttypes">
-      <UniqueIdentifier>{993a857e-f330-4472-af3a-54110f5ea1c3}</UniqueIdentifier>
-    </Filter>
     <Filter Include="utils">
       <UniqueIdentifier>{d8cac474-8ee1-4954-bbae-492bc87a5422}</UniqueIdentifier>
     </Filter>
@@ -43,6 +31,18 @@
     <Filter Include="common">
       <UniqueIdentifier>{f614dccd-d01b-46e8-ac53-969a42f24549}</UniqueIdentifier>
     </Filter>
+    <Filter Include="thirdparty\rapidjson">
+      <UniqueIdentifier>{a29ca55a-bc18-432d-b885-477aa6936064}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty\rapidjson\error">
+      <UniqueIdentifier>{6c0592c8-8c00-4f29-9efe-2f71dc9f787c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty\rapidjson\internal">
+      <UniqueIdentifier>{9edee00a-29ae-422b-9e4e-27d1a619cc4e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty\rapidjson\msinttypes">
+      <UniqueIdentifier>{58a81cc1-184c-4333-95fc-09e2f3419e5c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="application\repak.cpp">
@@ -54,13 +54,13 @@
     <ClCompile Include="assets\patch.cpp">
       <Filter>assets</Filter>
     </ClCompile>
-    <ClCompile Include="assets\rui.cpp">
+    <ClCompile Include="assets\uiatlas.cpp">
       <Filter>assets</Filter>
     </ClCompile>
     <ClCompile Include="assets\texture.cpp">
       <Filter>assets</Filter>
     </ClCompile>
-    <ClCompile Include="assets\animation.cpp">
+    <ClCompile Include="assets\animseq.cpp">
       <Filter>assets</Filter>
     </ClCompile>
     <ClCompile Include="assets\datatable.cpp">
@@ -84,11 +84,20 @@
     <ClCompile Include="logic\pakfile.cpp">
       <Filter>logic</Filter>
     </ClCompile>
+    <ClCompile Include="utils\dxutils.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="assets\animrig.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
+    <ClCompile Include="assets\shaderset.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
+    <ClCompile Include="assets\shader.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="application\repak.h">
-      <Filter>application</Filter>
-    </ClInclude>
     <ClInclude Include="assets\assets.h">
       <Filter>assets</Filter>
     </ClInclude>
@@ -101,56 +110,65 @@
     <ClInclude Include="thirdparty\rapidcsv\rapidcsv.h">
       <Filter>thirdparty\rapidcsv</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\error\en.h">
-      <Filter>thirdparty\rapidjson\error</Filter>
+    <ClInclude Include="utils\dxutils.h">
+      <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\error\error.h">
-      <Filter>thirdparty\rapidjson\error</Filter>
+    <ClInclude Include="utils\utils.h">
+      <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\dtoa.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="utils\binaryio.h">
+      <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\ieee754.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="pch.h">
+      <Filter>core</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\itoa.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="math\color.h">
+      <Filter>math</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\meta.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="math\vector.h">
+      <Filter>math</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\pow10.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="utils\logger.h">
+      <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\regex.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="logic\pakfile.h">
+      <Filter>logic</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\stack.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="public\studio.h">
+      <Filter>public</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\strfunc.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="public\material.h">
+      <Filter>public</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\strtod.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="public\texture.h">
+      <Filter>public</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\swap.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="public\datatable.h">
+      <Filter>public</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\biginteger.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="public\rpak.h">
+      <Filter>public</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\clzll.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="common\decls.h">
+      <Filter>common</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\internal\diyfp.h">
-      <Filter>thirdparty\rapidjson\internal</Filter>
+    <ClInclude Include="common\const.h">
+      <Filter>common</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\msinttypes\inttypes.h">
-      <Filter>thirdparty\rapidjson\msinttypes</Filter>
+    <ClInclude Include="public\animrig.h">
+      <Filter>public</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\msinttypes\stdint.h">
-      <Filter>thirdparty\rapidjson\msinttypes</Filter>
+    <ClInclude Include="thirdparty\rapidjson\allocators.h">
+      <Filter>thirdparty\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\rapidjson\cursorstreamwrapper.h">
+      <Filter>thirdparty\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\rapidjson\document.h">
+      <Filter>thirdparty\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\rapidjson\encodedstream.h">
+      <Filter>thirdparty\rapidjson</Filter>
     </ClInclude>
     <ClInclude Include="thirdparty\rapidjson\encodings.h">
       <Filter>thirdparty\rapidjson</Filter>
@@ -203,62 +221,71 @@
     <ClInclude Include="thirdparty\rapidjson\writer.h">
       <Filter>thirdparty\rapidjson</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\allocators.h">
-      <Filter>thirdparty\rapidjson</Filter>
+    <ClInclude Include="thirdparty\rapidjson\error\en.h">
+      <Filter>thirdparty\rapidjson\error</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\cursorstreamwrapper.h">
-      <Filter>thirdparty\rapidjson</Filter>
+    <ClInclude Include="thirdparty\rapidjson\error\error.h">
+      <Filter>thirdparty\rapidjson\error</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\document.h">
-      <Filter>thirdparty\rapidjson</Filter>
+    <ClInclude Include="thirdparty\rapidjson\internal\biginteger.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
     </ClInclude>
-    <ClInclude Include="thirdparty\rapidjson\encodedstream.h">
-      <Filter>thirdparty\rapidjson</Filter>
+    <ClInclude Include="thirdparty\rapidjson\internal\clzll.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
     </ClInclude>
-    <ClInclude Include="utils\dxutils.h">
-      <Filter>utils</Filter>
+    <ClInclude Include="thirdparty\rapidjson\internal\diyfp.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
     </ClInclude>
-    <ClInclude Include="utils\utils.h">
-      <Filter>utils</Filter>
+    <ClInclude Include="thirdparty\rapidjson\internal\dtoa.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
     </ClInclude>
-    <ClInclude Include="utils\binaryio.h">
-      <Filter>utils</Filter>
+    <ClInclude Include="thirdparty\rapidjson\internal\ieee754.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
     </ClInclude>
-    <ClInclude Include="pch.h">
-      <Filter>core</Filter>
+    <ClInclude Include="thirdparty\rapidjson\internal\itoa.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
     </ClInclude>
-    <ClInclude Include="math\color.h">
-      <Filter>math</Filter>
+    <ClInclude Include="thirdparty\rapidjson\internal\meta.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
     </ClInclude>
-    <ClInclude Include="math\vector.h">
-      <Filter>math</Filter>
+    <ClInclude Include="thirdparty\rapidjson\internal\pow10.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
     </ClInclude>
-    <ClInclude Include="utils\logger.h">
-      <Filter>utils</Filter>
+    <ClInclude Include="thirdparty\rapidjson\internal\regex.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
     </ClInclude>
-    <ClInclude Include="logic\pakfile.h">
-      <Filter>logic</Filter>
+    <ClInclude Include="thirdparty\rapidjson\internal\stack.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
     </ClInclude>
-    <ClInclude Include="public\studio.h">
+    <ClInclude Include="thirdparty\rapidjson\internal\strfunc.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\rapidjson\internal\strtod.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\rapidjson\internal\swap.h">
+      <Filter>thirdparty\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\rapidjson\msinttypes\inttypes.h">
+      <Filter>thirdparty\rapidjson\msinttypes</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\rapidjson\msinttypes\stdint.h">
+      <Filter>thirdparty\rapidjson\msinttypes</Filter>
+    </ClInclude>
+    <ClInclude Include="public\starpak.h">
       <Filter>public</Filter>
     </ClInclude>
-    <ClInclude Include="public\material.h">
+    <ClInclude Include="public\materialflags.h">
       <Filter>public</Filter>
     </ClInclude>
-    <ClInclude Include="public\texture.h">
+    <ClInclude Include="public\shaderset.h">
       <Filter>public</Filter>
     </ClInclude>
-    <ClInclude Include="public\table.h">
+    <ClInclude Include="public\shader.h">
       <Filter>public</Filter>
     </ClInclude>
-    <ClInclude Include="public\rpak.h">
-      <Filter>public</Filter>
-    </ClInclude>
-    <ClInclude Include="common\decls.h">
-      <Filter>common</Filter>
-    </ClInclude>
-    <ClInclude Include="common\const.h">
-      <Filter>common</Filter>
-    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

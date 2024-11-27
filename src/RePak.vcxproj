@@ -12,12 +12,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="application\repak.cpp" />
-    <ClCompile Include="assets\animation.cpp" />
+    <ClCompile Include="assets\animrig.cpp" />
+    <ClCompile Include="assets\animseq.cpp" />
     <ClCompile Include="assets\datatable.cpp" />
     <ClCompile Include="assets\material.cpp" />
     <ClCompile Include="assets\model.cpp" />
     <ClCompile Include="assets\patch.cpp" />
-    <ClCompile Include="assets\rui.cpp" />
+    <ClCompile Include="assets\shader.cpp" />
+    <ClCompile Include="assets\shaderset.cpp" />
+    <ClCompile Include="assets\uiatlas.cpp" />
     <ClCompile Include="assets\texture.cpp" />
     <ClCompile Include="logic\pakfile.cpp" />
     <ClCompile Include="logic\rtech.cpp" />
@@ -25,11 +28,11 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="utils\dxutils.cpp" />
     <ClCompile Include="utils\logger.cpp" />
     <ClCompile Include="utils\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="application\repak.h" />
     <ClInclude Include="assets\assets.h" />
     <ClInclude Include="common\const.h" />
     <ClInclude Include="common\decls.h" />
@@ -39,10 +42,15 @@
     <ClInclude Include="math\color.h" />
     <ClInclude Include="math\vector.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="public\animrig.h" />
     <ClInclude Include="public\material.h" />
+    <ClInclude Include="public\materialflags.h" />
     <ClInclude Include="public\rpak.h" />
+    <ClInclude Include="public\shader.h" />
+    <ClInclude Include="public\shaderset.h" />
+    <ClInclude Include="public\starpak.h" />
     <ClInclude Include="public\studio.h" />
-    <ClInclude Include="public\table.h" />
+    <ClInclude Include="public\datatable.h" />
     <ClInclude Include="public\texture.h" />
     <ClInclude Include="thirdparty\rapidcsv\rapidcsv.h" />
     <ClInclude Include="thirdparty\rapidjson\allocators.h" />
@@ -88,6 +96,9 @@
     <ClInclude Include="utils\logger.h" />
     <ClInclude Include="utils\utils.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -130,19 +141,21 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(IncludePath)</IncludePath>
-    <IntDir>$(SolutionDir)build\</IntDir>
-    <OutDir>$(SolutionDir)bin\</OutDir>
+    <IntDir>$(SolutionDir)build\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)bin\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir)\;$(ProjectDir)thirdparty\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -151,16 +164,21 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir)\;$(ProjectDir)thirdparty\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <StringPooling>true</StringPooling>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

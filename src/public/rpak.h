@@ -3,11 +3,16 @@
 #include <d3d11.h>
 #include "math/vector.h"
 #include "math/color.h"
+#include "public/starpak.h"
 
-#define RPAK_MAGIC		(('k'<<24)+('a'<<16)+('P'<<8)+'R')
+#ifndef MAKE_FOURCC
+#define MAKE_FOURCC(a,b,c,d) ((d<<24)+(c<<16)+(b<<8)+a)
+#endif
+
+#define RPAK_MAGIC	MAKE_FOURCC('R', 'P', 'a', 'k')
 #define RPAK_EXTENSION ".rpak"
 
-#define STARPAK_MAGIC	(('k'<<24)+('P'<<16)+('R'<<8)+'S')
+#define STARPAK_MAGIC	MAKE_FOURCC('S', 'R', 'P', 'k')
 #define STARPAK_VERSION	1
 #define STARPAK_EXTENSION ".starpak"
 
@@ -16,32 +21,59 @@
 #define STARPAK_DATABLOCK_ALIGNMENT 4096
 #define STARPAK_DATABLOCK_ALIGNMENT_PADDING 0xCB
 
+#define TYPE_TXTR	MAKE_FOURCC('t', 'x', 't', 'r') // txtr
+#define TYPE_RMDL	MAKE_FOURCC('m', 'd', 'l', '_') // mdl_
+#define TYPE_UIMG	MAKE_FOURCC('u', 'i', 'm', 'g') // uimg
+#define TYPE_PTCH	MAKE_FOURCC('P', 't', 'c', 'h') // Ptch
+#define TYPE_DTBL	MAKE_FOURCC('d', 't', 'b', 'l') // dtbl
+#define TYPE_MATL	MAKE_FOURCC('m', 'a', 't', 'l') // matl
+#define TYPE_ASEQ	MAKE_FOURCC('a', 's', 'e', 'q') // aseq
+#define TYPE_ARIG	MAKE_FOURCC('a', 'r', 'i', 'g') // arig
+#define TYPE_SHDS	MAKE_FOURCC('s', 'h', 'd', 's') // shds
+#define TYPE_SHDR	MAKE_FOURCC('s', 'h', 'd', 'r') // shdr
 
 enum class AssetType : uint32_t
 {
-	TXTR = 0x72747874, // b'txtr' - texture
-	RMDL = 0x5f6c646d, // b'mdl_' - model
-	UIMG = 0x676d6975, // b'uimg' - ui image atlas
-	PTCH = 0x68637450, // b'Ptch' - patch
-	DTBL = 0x6c627464, // b'dtbl' - datatable
-	MATL = 0x6c74616d, // b'matl' - material
-	ASEQ = 'qesa',	   // b'aseq' - animation sequence
+	NONE = 0, // !!!INVALID TYPE!!!
+
+	TXTR = TYPE_TXTR, // texture
+	RMDL = TYPE_RMDL, // model
+	UIMG = TYPE_UIMG, // ui image atlas
+	PTCH = TYPE_PTCH, // patch
+	DTBL = TYPE_DTBL, // datatable
+	MATL = TYPE_MATL, // material
+	ASEQ = TYPE_ASEQ, // animation sequence
+	ARIG = TYPE_ARIG, // animation rig
+	SHDS = TYPE_SHDS, // shaderset
+	SHDR = TYPE_SHDR, // shader
 };
 
 #pragma pack(push, 1)
 
 // represents a "pointer" into a mempage by page index and offset
 // when loaded, these usually get converted to a real pointer
-struct RPakPtr
+struct PagePtr_t
 {
-	uint32_t index = 0;
-	uint32_t offset = 0;
+	int index = 0;
+	int offset = 0;
+
+	static PagePtr_t NullPtr()
+	{
+		return { -1, 0 };
+	}
+
+	size_t value() const { return (static_cast<size_t>(index) << 32) | offset; };
+
+	bool operator<(const PagePtr_t& a) const
+	{
+		return value() < a.value();
+	}
 };
 
 // generic header struct for both apex and titanfall 2
 // contains all the necessary members for both, RPakFileBase::WriteHeader decides
 // which should be written depending on the version
-struct RPakFileHeader
+struct PakHdr_t
 {
 	DWORD magic = 0x6b615052;
 
@@ -73,9 +105,9 @@ struct RPakFileHeader
 	// only in apex
 	char  unk3[0x1c];
 };
-static_assert(sizeof(RPakFileHeader) == 136);
+static_assert(sizeof(PakHdr_t) == 136);
 
-struct RPakPatchCompressedHeader // follows immediately after the file header in patch rpaks
+struct PakPatchFileHdr_t // follows immediately after the file header in patch rpaks
 {
 	uint64_t compressedSize;
 	uint64_t decompressedSize;
@@ -85,10 +117,10 @@ struct RPakPatchCompressedHeader // follows immediately after the file header in
 // these probably aren't actually called virtual segments
 // this struct doesn't really describe any real data segment, but collects info
 // about the size of pages that are using specific flags/types/whatever
-struct RPakVirtualSegment
+struct PakSegmentHdr_t
 {
-	uint32_t flags = 0; // not sure what this actually is, doesn't seem to be used in that many places
-	uint32_t alignment = 0;
+	int flags = 0;
+	int alignment = 0;
 	uint64_t dataSize = 0;
 };
 
@@ -97,45 +129,61 @@ struct RPakVirtualSegment
 // with page at idx 0 being just after the asset relation data
 // in patched rpaks (e.g. common(01).rpak), these sections don't fully line up with the data,
 // because of both the patch edit stream and also missing pages that are only present in the base rpak
-struct RPakPageInfo
+struct PakPageHdr_t
 {
-	uint32_t segIdx; // index into vseg array
-	uint32_t pageAlignment; // alignment size when buffer is allocated
-	uint32_t dataSize; // actual size of page in bytes
+	int segIdx; // index into vseg array
+	int pageAlignment; // alignment size when buffer is allocated
+	int dataSize; // actual size of page in bytes
 };
+#pragma pack(pop)
 
 // defines the location of a data "pointer" within the pak's mem pages
 // allows the engine to read the index/offset pair and replace it with an actual memory pointer at runtime
-typedef RPakPtr RPakDescriptor;
+typedef PagePtr_t PakPointerHdr_t;
 
 // same kinda thing as RPakDescriptor, but this one tells the engine where
 // guid references to other assets are within mem pages
-typedef RPakDescriptor RPakGuidDescriptor;
+typedef PakPointerHdr_t PakGuidRefHdr_t;
 
 // defines a bunch of values for registering/using an asset from the rpak
-struct RPakAssetEntry
+struct PakAsset_t
 {
-	RPakAssetEntry() = default;
+	PakAsset_t() = default;
 
-	void InitAsset(uint64_t nGUID,
-		uint32_t nSubHeaderBlockIdx,
-		uint32_t nSubHeaderBlockOffset,
-		uint32_t nSubHeaderSize,
-		uint32_t nRawDataBlockIdx,
-		uint32_t nRawDataBlockOffset,
+	void InitAsset(const std::string& assetName,
+		PagePtr_t pHeadPtr,
+		uint32_t nHeaderSize,
+		PagePtr_t pCpuPtr,
 		uint64_t nStarpakOffset,
 		uint64_t nOptStarpakOffset,
-		uint32_t Type)
+		AssetType type)
 	{
-		this->guid = nGUID;
-		this->headIdx = nSubHeaderBlockIdx;
-		this->headOffset = nSubHeaderBlockOffset;
-		this->cpuIdx = nRawDataBlockIdx;
-		this->cpuOffset = nRawDataBlockOffset;
+		this->name = assetName;
+		this->guid = RTech::StringToGuid(assetName.c_str());
+		this->headPtr = pHeadPtr;
+		this->cpuPtr = pCpuPtr;
 		this->starpakOffset = nStarpakOffset;
 		this->optStarpakOffset = nOptStarpakOffset;
-		this->headDataSize = nSubHeaderSize;
-		this->id = Type;
+		this->headDataSize = nHeaderSize;
+		this->id = type;
+	}
+
+	void InitAsset(uint64_t nGuid,
+		PagePtr_t pHeadPtr,
+		uint32_t nHeaderSize,
+		PagePtr_t pCpuPtr,
+		uint64_t nStarpakOffset,
+		uint64_t nOptStarpakOffset,
+		AssetType type)
+	{
+		this->name = "(null)";
+		this->guid = nGuid;
+		this->headPtr = pHeadPtr;
+		this->cpuPtr = pCpuPtr;
+		this->starpakOffset = nStarpakOffset;
+		this->optStarpakOffset = nOptStarpakOffset;
+		this->headDataSize = nHeaderSize;
+		this->id = type;
 	}
 
 	// hashed version of the asset path
@@ -148,16 +196,14 @@ struct RPakAssetEntry
 	uint8_t  unk0[0x8]{};
 
 	// page index and offset for where this asset's header is located
-	int headIdx = 0;
-	int headOffset = 0;
+	PagePtr_t headPtr;
 
 	// page index and offset for where this asset's data is located
 	// note: this may not always be used for finding the data:
 	//		 some assets use their own idx/offset pair from within the subheader
 	//		 when adding pairs like this, you MUST register it as a descriptor
 	//		 otherwise the pointer won't be converted
-	int cpuIdx = 0;
-	int cpuOffset = 0;
+	PagePtr_t cpuPtr;
 
 	// offset to any available streamed data
 	// starpakOffset    = "mandatory" starpak file offset
@@ -168,92 +214,88 @@ struct RPakAssetEntry
 	__int64 starpakOffset = -1;
 	__int64 optStarpakOffset = -1;
 
-	uint16_t pageEnd = 0; // highest mem page used by this asset
-	uint16_t unk1 = 0; // might be local "uses" + 1
+	// this is actually uint16 in file. we store it as size_t here to avoid casts in every asset function
+	size_t pageEnd = 0; // highest mem page used by this asset
 
-	uint32_t relStartIdx = 0;
+	// value is decremented every time a dependency finishes processing its own dependencies
+	short remainingDependencyCount = 0;
 
-	uint32_t usesStartIdx = 0;
-	uint32_t relationCount = 0;
-	uint32_t usesCount = 0; // number of other assets that this asset uses
+	// start index for this asset's dependents/dependencies in respective arrays
+	uint32_t dependentsIndex = 0;
+	uint32_t dependenciesIndex = 0;
+
+	uint32_t dependentsCount = 0; // number of local assets that use this asset
+	uint32_t dependenciesCount = 0; // number of local assets that are used by this asset
 
 	// size of the asset header
-	uint32_t headDataSize = 0;
+	int headDataSize = 0;
 
 	// this isn't always changed when the asset gets changed
 	// but respawn calls it a version so i will as well
 	int version = 0;
 
-	// see AssetType enum below
-	uint32_t id = 0;
+	// see AssetType enum
+	AssetType id = AssetType::NONE;
 
 	// internal
 public:
 	int _assetidx;
+	std::string name;
+
+	void* header;
 
 	// vector of indexes for local assets that use this asset
 	std::vector<unsigned int> _relations{};
 
-	inline void AddRelation(unsigned int idx) { _relations.push_back({ idx }); };
+	std::vector<PakGuidRefHdr_t> _guids{};
 
-	std::vector<RPakGuidDescriptor> _guids{};
+	FORCEINLINE void SetHeaderPointer(void* pHeader) { this->header = pHeader; };
 
-	inline void AddGuid(RPakGuidDescriptor desc) { _guids.push_back(desc); };
+	FORCEINLINE void AddRelation(unsigned int idx) { _relations.push_back({ idx }); };
+	FORCEINLINE void AddRelation(size_t idx) { _relations.push_back({ static_cast<unsigned int>(idx) }); };
 
-	inline void AddGuids(std::vector<RPakGuidDescriptor>* descs)
+	FORCEINLINE void AddGuid(PakGuidRefHdr_t desc) { _guids.push_back(desc); };
+
+	FORCEINLINE void AddGuids(std::vector<PakGuidRefHdr_t>* descs)
 	{
 		for (auto& it : *descs)
 			_guids.push_back(it);
 	};
-};
-#pragma pack(pop)
 
-// internal data structure for referencing file data to be written
-struct RPakRawDataBlock
-{
-	uint32_t m_nPageIdx;
-	uint64_t m_nDataSize;
-	uint8_t* m_nDataPtr;
-};
+	FORCEINLINE bool IsType(uint32_t type)
+	{
+		return static_cast<uint32_t>(id) == type;
+	}
 
-// starpak header
-struct StreamableSetHeader
-{
-	int magic;
-	int version;
-};
-
-// internal data structure for referencing streaming data to be written
-struct StreamableDataEntry
-{
-	uint64_t m_nOffset = -1; // set when added
-	uint64_t m_nDataSize = 0;
-	uint8_t* m_nDataPtr = nullptr;
+	FORCEINLINE void EnsureType(uint32_t type)
+	{
+		if (!IsType(type))
+		{
+			Error("Unexpected asset type for '%s'. Expected '%.4s', found '%.4s'\n", this->name.c_str(), reinterpret_cast<char*>(&type), reinterpret_cast<char*>(&this->id));
+		}
+	}
 };
 
 //
 //	Assets
 //
-#pragma pack(push, 1)
-
-struct PtchHeader
+struct PatchAssetHeader_t
 {
 	uint32_t unknown_1 = 255; // always FF 00 00 00?
 	uint32_t patchedPakCount = 0;
 
-	RPakPtr pPakNames;
+	PagePtr_t pPakNames;
 
-	RPakPtr pPakPatchNums;
+	PagePtr_t pPakPatchNums;
 };
-
-#pragma pack(pop)
+static_assert(sizeof(PatchAssetHeader_t) == 24);
 
 // internal data structure for storing patch_master entries before being written
 struct PtchEntry
 {
-	std::string FileName = "";
-	uint8_t PatchNum = 0;
-	uint32_t FileNamePageOffset = 0;
+	std::string pakFileName = "";
+	uint8_t highestPatchNum = 0;
+	uint32_t pakFileNameOffset = 0;
 };
 
 #define SF_HEAD   0 // :skull:

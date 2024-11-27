@@ -2,6 +2,15 @@
 #include "math/vector.h"
 
 #pragma pack(push, 1)
+// used for referencing a material from within a model
+// pathoffset is the offset to the material's path (duh)
+// guid is the material's asset guid (or 0 if it's a vmt, i think)
+struct mstudiotexture_t
+{
+	uint32_t pathoffset;
+	uint64_t guid;
+};
+
 // modified source engine studio mdl header struct
 struct studiohdr_t
 {
@@ -24,6 +33,8 @@ struct studiohdr_t
 	Vector3 view_bbmax;
 
 	int flags;
+
+	inline bool IsStaticProp() { return flags & 0x10; };
 
 	int numbones; // bones
 	int boneindex;
@@ -48,6 +59,16 @@ struct studiohdr_t
 	int materialtypesindex;
 	int numtextures; // the material limit exceeds 128, probably 256.
 	int textureindex;
+
+	inline mstudiotexture_t* pTexture(int i)
+	{
+		return reinterpret_cast<mstudiotexture_t*>((char*)this + textureindex) + i;
+	}
+
+	inline uint8_t materialType(int i)
+	{
+		return reinterpret_cast<uint8_t*>((char*)this + materialtypesindex)[i];
+	}
 
 	// this should always only be one, unless using vmts.
 	// raw textures search paths
@@ -276,55 +297,45 @@ struct mstudioautolayer_t
 	float end;	 // end of all influence
 };
 
-struct AnimSequenceHeader
+struct AnimSeqAssetHeader_t
 {
-	RPakPtr data{}; // pointer to raw rseq.
-	RPakPtr szname{}; // pointer to debug name, placed before raw rseq normally.
+	PagePtr_t data; // pointer to raw rseq.
+	PagePtr_t szname; // pointer to debug name, placed before raw rseq normally.
 
 	// this can point to a group of guids and not one singular one.
-	RPakPtr modelGuid{};
-	uint32_t modelCount = 0;
+	PagePtr_t pModels;
+	uint32_t modelCount;
 
-	uint32_t reserved = 0;
+	uint32_t padding_0; // aligns next member to 8 bytes
 
-	// this can point to a group of guids and not one singular one.
-	RPakPtr settingsGuid{};
-	uint32_t settingsCount = 0;
+	PagePtr_t pSettings; // points to an array of settings asset guids
+	uint32_t settingsCount;
 
-	uint32_t reserved1 = 0; // assumed
-};
-
-// small struct to allow verification of the 0tVG section of starpak
-// model data without needing to load the entire thing into memory for a simple
-// validation check
-struct BasicRMDLVGHeader
-{
-	uint32_t magic;
-	uint32_t version;
+	uint32_t padding_1; // aligns full struct to 8 bytes
 };
 
 // size: 0x78 (120 bytes)
-struct ModelHeader
+struct ModelAssetHeader_t
 {
 	// IDST data
-	// .mdl
-	RPakPtr pRMDL;
+	// .rmdl
+	PagePtr_t pData;
 	uint64_t Padding = 0;
 
 	// model path
 	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
-	RPakPtr pName;
+	PagePtr_t pName;
 	uint64_t Padding2 = 0;
 
 	// .phy
-	RPakPtr pPhyData;
+	PagePtr_t pPhyData;
 	uint64_t Padding3 = 0;
 
 	// preload cache data for static props
-	RPakPtr pStaticPropVtxCache;
+	PagePtr_t pStaticPropVtxCache;
 
 	// pointer to data for the model's arig guid(s?)
-	RPakPtr pAnimRigs;
+	PagePtr_t pAnimRigs;
 
 	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
 	uint32_t animRigCount = 0;
@@ -336,12 +347,51 @@ struct ModelHeader
 	uint64_t Padding6 = 0;
 
 	// number of anim sequences directly associated with this model
-	uint32_t animSeqCount = 0;
-	RPakPtr pAnimSeqs;
+	uint32_t sequenceCount = 0;
+	PagePtr_t pSequences;
 
 	uint64_t Padding7 = 0;
 	uint64_t Padding8 = 0;
 	uint64_t Padding9 = 0;
 };
-static_assert(sizeof(ModelHeader) == 120);
+static_assert(sizeof(ModelAssetHeader_t) == 120);
+
+struct VertexGroupHeader_t
+{
+	int id;		        // 0x47567430	'0tVG'
+	int version;	    // 0x1
+	int unk;	        // Usually 0
+	int dataSize;	    // Total size of data + header in starpak
+
+	__int64 boneStateChangeOffset; // offset to bone remap buffer
+	__int64 numBoneStateChanges;   // number of "bone remaps" (size: 1)
+
+	__int64 meshOffset;            // offset to mesh buffer
+	__int64 numMeshes;             // number of meshes (size: 0x48)
+
+	__int64 indexOffset;           // offset to index buffer
+	__int64 numIndices;            // number of indices (size: 2 (uint16_t))
+
+	__int64 vertOffset;            // offset to vertex buffer
+	__int64 vertDataSize;          // number of bytes in vertex buffer
+
+	__int64 externalWeightOffset;  // offset to extended weights buffer
+	__int64 externalWeightsSize;   // number of bytes in extended weights buffer
+
+	// there is one for every LOD mesh
+	// i.e, unknownCount == lod.meshCount for all LODs
+	__int64 unknownOffset;         // offset to buffer
+	__int64 numUnknown;            // count (size: 0x30)
+
+	__int64 lodOffset;             // offset to LOD buffer
+	__int64 numLODs;               // number of LODs (size: 0x8)
+
+	__int64 legacyWeightOffset;	   // seems to be an offset into the "external weights" buffer for this mesh
+	__int64 numLegacyWeights;      // seems to be the number of "external weights" that this mesh uses
+
+	__int64 stripOffset;           // offset to strips buffer
+	__int64 numStrips;             // number of strips (size: 0x23)
+
+	int unused[16];
+};
 #pragma pack(pop)

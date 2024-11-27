@@ -1,12 +1,12 @@
 #pragma once
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+//#include <windows.h>
+#include <d3d11.h>
 
 #include <filesystem>
 #include <iostream>
 #include <unordered_map>
-#include <sysinfoapi.h>
+//#include <sysinfoapi.h>
 #include <vector>
 #include <cstdint>
 #include <string>
@@ -25,3 +25,5 @@
 #include "utils/binaryio.h"
 #include "utils/utils.h"
 #include "utils/logger.h"
+
+#define UNUSED(x)	(void)(x)

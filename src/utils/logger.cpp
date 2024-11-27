@@ -46,5 +46,7 @@ void Debug(const char* fmt, ...)
 	vprintf(msg.c_str(), args);
 
 	va_end(args);
+#else
+	UNUSED(fmt);
 #endif
 }

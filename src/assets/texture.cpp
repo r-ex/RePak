@@ -3,151 +3,68 @@
 #include "utils/dxutils.h"
 #include "public/texture.h"
 
-void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* assetEntries, const char* assetPath, rapidjson::Value& mapEntry)
+// materialGeneratedTexture - whether this texture's creation was invoked by material automatic texture generation
+void Assets::AddTextureAsset(CPakFile* pak, const char* assetPath, bool forceDisableStreaming, bool materialGeneratedTexture)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
+
+    PakAsset_t* existingAsset = pak->GetAssetByGuid(RTech::GetAssetGUIDFromString(assetPath, true), nullptr, true);
+    if (existingAsset)
+    {
+        // if the caller has requested that this warning is not emitted
+        // this should only really be from material textures or ui image atlases
+        // as those assets may unavoidably reuse a texture, causing an unresolvable warning here
+        if (!materialGeneratedTexture)
+            Warning("Tried to add texture asset '%s' twice. Skipping redefinition...\n", assetPath);
+
+        return;
+    }
 
     std::string filePath = pak->GetAssetPath() + assetPath + ".dds";
 
     if (!FILE_EXISTS(filePath))
-        Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());
+    {
+        if(!materialGeneratedTexture)
+            Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());
+        else
+        {
+            Warning("Failed to find texture source file '%s'. Skipping automatic creation of this texture.\n");
+            return;
+        }
+    }
 
-    TextureHeader* hdr = new TextureHeader();
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(TextureAssetHeader_t), SF_HEAD, 8);
 
-    BinaryIO input;
-    input.open(filePath, BinaryIOMode::Read);
+    TextureAssetHeader_t* hdr = reinterpret_cast<TextureAssetHeader_t*>(hdrChunk.Data());
 
-    uint64_t nInputFileSize = Utils::GetFileSize(filePath);
+    BinaryIO input(filePath, BinaryIOMode::Read);
 
     std::string sAssetName = assetPath;
 
-    uint32_t nLargestMipSize = 0;
-    uint32_t nStreamedMipSize = 0;
-    uint32_t nDDSHeaderSize = 0;
+    // used for creating data buffers
+    struct {
+        size_t staticSize;
+        size_t streamedSize;
+        size_t streamedOptSize;
+    } mipSizes{};
 
-    bool bStreamable = false;
+    std::vector<mipLevel_t> mips;
+
+    bool isStreamable = false; // does this texture require streaming? true if total size of mip levels would exceed 64KiB. can be forced to false.
+    bool isStreamableOpt = false; // can this texture use optional starpaks? can only be set if pak is version v8
+    bool isDX10 = false;
 
     // parse input image file
     {
         int magic;
         input.read(magic);
 
-        if (magic != 0x20534444) // b'DDS '
+        if (magic != DDS_MAGIC) // b'DDS '
             Error("Attempted to add txtr asset '%s' that was not a valid DDS file (invalid magic). Exiting...\n", assetPath);
 
         DDS_HEADER ddsh = input.read<DDS_HEADER>();
 
-        int nStreamedMipCount = 0;
-
-        if (ddsh.dwMipMapCount > 9)
-        {
-            if (mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool())
-            {
-                nStreamedMipCount = 0;
-                bStreamable = false;
-            }
-            else
-            {
-                nStreamedMipCount = ddsh.dwMipMapCount - 9;
-                bStreamable = true;
-            }
-        }
-
-        uint32_t nTotalSize = 0;
-        for (unsigned int ml = 0; ml < ddsh.dwMipMapCount; ml++)
-        {
-            uint32_t nCurrentMipSize = (ddsh.dwPitchOrLinearSize / std::pow(4, ml));
-
-            // add 16 bytes if mip data size is below 8 bytes else add calculated size
-            nTotalSize += (nCurrentMipSize <= 8 ? 16 : nCurrentMipSize);
-
-            // if this texture and mip are streaming
-            if (bStreamable && ml < (ddsh.dwMipMapCount - 9))
-                nStreamedMipSize += nCurrentMipSize;
-        }
-
-        hdr->dataSize = nTotalSize;
-        hdr->width = (uint16_t)ddsh.dwWidth;
-        hdr->height = (uint16_t)ddsh.dwHeight;
-
-        Log("-> dimensions: %ix%i\n", ddsh.dwWidth, ddsh.dwHeight);
-
-        hdr->mipLevels = (uint8_t)(ddsh.dwMipMapCount - nStreamedMipCount);
-        hdr->streamedMipLevels = nStreamedMipCount;
-
-        Log("-> total mipmaps permanent:streamed : %i:%i\n", hdr->mipLevels, hdr->streamedMipLevels);
-
-        nLargestMipSize = ddsh.dwPitchOrLinearSize;
-
-        DXGI_FORMAT dxgiFormat;
-
-        switch (ddsh.ddspf.dwFourCC)
-        {
-        case '1TXD': // DXT1
-            dxgiFormat = DXGI_FORMAT_BC1_UNORM;
-            break;
-        case '3TXD': // DXT3
-            dxgiFormat = DXGI_FORMAT_BC2_UNORM;
-            break;
-        case '5TXD': // DXT5
-            dxgiFormat = DXGI_FORMAT_BC3_UNORM;
-            break;
-        case '1ITA':
-        case 'U4CB': // BC4U
-            dxgiFormat = DXGI_FORMAT_BC4_UNORM;
-            break;
-        case 'S4CB':
-            dxgiFormat = DXGI_FORMAT_BC4_SNORM;
-            break;
-        case '2ITA': // ATI2
-        case 'U5CB': // BC5U
-            dxgiFormat = DXGI_FORMAT_BC5_UNORM;
-            break;
-        case 'S5CB': // BC5S
-            dxgiFormat = DXGI_FORMAT_BC5_SNORM;
-            break;
-        case '01XD': // DX10
-            dxgiFormat = DXGI_FORMAT_UNKNOWN;
-            break;
-        // legacy format codes
-        case 36:
-            dxgiFormat = DXGI_FORMAT_R16G16B16A16_UNORM;
-            break;
-        case 110:
-            dxgiFormat = DXGI_FORMAT_R16G16B16A16_SNORM;
-            break;
-        case 111:
-            dxgiFormat = DXGI_FORMAT_R16_FLOAT;
-            break;
-        case 112:
-            dxgiFormat = DXGI_FORMAT_R16G16_FLOAT;
-            break;
-        case 113:
-            dxgiFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
-            break;
-        case 114:
-            dxgiFormat = DXGI_FORMAT_R32_FLOAT;
-            break;
-        case 115:
-            dxgiFormat = DXGI_FORMAT_R32G32_FLOAT;
-            break;
-        case 116:
-            dxgiFormat = DXGI_FORMAT_R32G32B32A32_FLOAT;
-            break;
-        default:
-            dxgiFormat = dxutils::GetFormatFromHeader(ddsh);
-            
-            if(dxgiFormat == DXGI_FORMAT_UNKNOWN)
-                Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
-            
-            return;
-        }
-
-        // Go to the end of the main header.
-        input.seek(ddsh.dwSize + 4);
-
-        // this is used for some math later
-        nDDSHeaderSize = ddsh.dwSize + 4;
+        DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN;
 
         // Go to the end of the DX10 header if it exists.
         if (ddsh.ddspf.dwFourCC == '01XD')
@@ -157,125 +74,184 @@ void Assets::AddTextureAsset_v8(CPakFile* pak, std::vector<RPakAssetEntry>* asse
             dxgiFormat = ddsh_dx10.dxgiFormat;
 
             if (s_txtrFormatMap.count(dxgiFormat) == 0)
-                Error("Attempted to add txtr asset '%s' using unsupported DDS type '%s'. Exiting...\n", assetPath, dxutils::GetFormatAsString(dxgiFormat).c_str());
+                Error("Attempted to add txtr asset '%s' using unsupported DDS type '%s'. Exiting...\n", assetPath, DXUtils::GetFormatAsString(dxgiFormat));
 
-            nDDSHeaderSize += 20;
+            isDX10 = true;
+        }
+        else {
+            dxgiFormat = DXUtils::GetFormatFromHeader(ddsh);
+
+            if (dxgiFormat == DXGI_FORMAT_UNKNOWN)
+                Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
         }
 
-        Log("-> fmt: %s\n", dxutils::GetFormatAsString(dxgiFormat).c_str());
+        const char* pDxgiFormat = DXUtils::GetFormatAsString(dxgiFormat);
 
+        Log("-> fmt: %s\n", pDxgiFormat);
         hdr->imgFormat = s_txtrFormatMap.at(dxgiFormat);
+
+        Log("-> dimensions: %ix%i\n", ddsh.dwWidth, ddsh.dwHeight);
+        hdr->width = static_cast<uint16_t>(ddsh.dwWidth);
+        hdr->height = static_cast<uint16_t>(ddsh.dwHeight);
+
+        /*MIPMAP HANDLING*/
+        // set streamable boolean based on if we have disabled it, also don't stream if we have only one mip
+        if (!forceDisableStreaming && ddsh.dwMipMapCount > 1)
+            isStreamable = true;
+
+        if (isStreamable && pak->GetVersion() >= 8)
+            isStreamableOpt = true;
+
+        isStreamableOpt = false; // force false until we have proper optional starpaks
+
+        size_t mipOffset = isDX10 ? 0x94 : 0x80; // add header length
+
+        for (unsigned int mipLevel = 0; mipLevel < ddsh.dwMipMapCount; mipLevel++)
+        {
+            // subtracts 1 so skip mips w/h at 1, gets added back when setting in mipLevel_t
+            uint16_t mipWidth = 0;
+            if (hdr->width >> mipLevel > 1)
+                mipWidth = (hdr->width >> mipLevel) - 1;
+
+            uint16_t mipHeight = 0;
+            if (hdr->height >> mipLevel > 1)
+                mipHeight = (hdr->height >> mipLevel) - 1;
+            
+            uint8_t x = s_pBytesPerPixel[hdr->imgFormat].first;
+            uint8_t y = s_pBytesPerPixel[hdr->imgFormat].second;
+
+            uint32_t bppWidth = (y + mipWidth) >> (y >> 1);
+            uint32_t bppHeight = (y + mipHeight) >> (y >> 1);
+            
+            size_t slicePitch = x * bppWidth * bppHeight;
+
+            mipLevel_t mipMap{ mipOffset, slicePitch, IALIGN16(slicePitch),
+                static_cast<uint16_t>(mipWidth + 1), static_cast<uint16_t>(mipHeight + 1), static_cast<uint8_t>(mipLevel + 1) };
+
+            hdr->dataSize += IALIGN16(slicePitch); // all mips are aligned to 16 bytes within rpak/starpak
+            mipOffset += slicePitch; // add size for the next mip's offset
+
+            // if opt streamable textures are enabled, check if this mip is supposed to be opt streamed
+            if (isStreamableOpt && mipMap.mipSizeAligned >= MAX_STREAM_MIP_SIZE)
+            {
+                mipSizes.streamedOptSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
+                hdr->optStreamedMipLevels++; // add a streamed mip level
+
+                mipMap.mipType = STREAMED_OPT;
+                mips.push_back(mipMap);
+
+                continue;
+            }
+
+            // if streamable textures are enabled, check if this mip is supposed to be streamed
+            if (isStreamable && mipMap.mipSizeAligned > MAX_PERM_MIP_SIZE)
+            {
+                mipSizes.streamedSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
+                hdr->streamedMipLevels++; // add a streamed mip level
+
+                mipMap.mipType = STREAMED;
+                mips.push_back(mipMap);
+
+                continue;
+            }
+
+            mipSizes.staticSize += mipMap.mipSizeAligned;
+            hdr->mipLevels++;
+
+            mipMap.mipType = STATIC;
+            mips.push_back(mipMap);
+        }
+
+        Log("-> total mipmaps permanent:streamed:streamed opt : %i:%i:%i\n", hdr->mipLevels, hdr->streamedMipLevels, hdr->optStreamedMipLevels);
     }
 
     hdr->guid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
-    bool bSaveDebugName = pak->IsFlagSet(PF_KEEP_DEV) || (mapEntry.HasMember("saveDebugName") && mapEntry["saveDebugName"].GetBool());
-
-    // asset header
-    _vseginfo_t subhdrinfo = pak->CreateNewSegment(sizeof(TextureHeader), SF_HEAD, 8);
-
-    _vseginfo_t nameseginfo{};
-
-    char* namebuf = new char[sAssetName.size() + 1];
-
-    if (bSaveDebugName)
+    if (pak->IsFlagSet(PF_KEEP_DEV))
     {
-        sprintf_s(namebuf, sAssetName.length() + 1, "%s", sAssetName.c_str());
-        nameseginfo = pak->CreateNewSegment(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
-    }
-    else delete[] namebuf;
+        CPakDataChunk nameChunk = pak->CreateDataChunk(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
 
-    // woo more segments
-    // cpu data
+        sprintf_s(nameChunk.Data(), sAssetName.length() + 1, "%s", sAssetName.c_str());
 
-    _vseginfo_t dataseginfo = pak->CreateNewSegment(hdr->dataSize - nStreamedMipSize, SF_CPU | SF_TEMP, 16);
+        hdr->pName = nameChunk.GetPointer();
 
-    char* databuf = new char[hdr->dataSize - nStreamedMipSize];
-
-    char* streamedbuf = new char[nStreamedMipSize];
-
-    int currentDDSOffset = 0;
-    int remainingDDSData = hdr->dataSize;
-    int remainingStreamedData = nStreamedMipSize;
-
-    for (int ml = 0; ml < (hdr->mipLevels + hdr->streamedMipLevels); ml++)
-    {
-        uint32_t nCurrentMipSize = (unsigned int)(nLargestMipSize / std::pow(4, ml));
-        uint32_t mipSizeDDS = 0;
-        uint32_t mipSizeRpak = 0;
-
-        if (nCurrentMipSize <= 8)
-        {
-            currentDDSOffset += 8;
-            mipSizeDDS = 8;
-            mipSizeRpak = 16;
-        }
-        else
-        {
-            currentDDSOffset += nCurrentMipSize;
-            mipSizeDDS = nCurrentMipSize;
-            mipSizeRpak = nCurrentMipSize;
-        }
-
-        remainingDDSData -= mipSizeRpak;
-
-        input.seek(nDDSHeaderSize + (currentDDSOffset - mipSizeDDS), std::ios::beg);
-
-        if (bStreamable && ml < hdr->streamedMipLevels)
-        {
-            remainingStreamedData -= nCurrentMipSize;
-            input.getReader()->read(streamedbuf + remainingStreamedData, mipSizeDDS);
-        }
-        else
-        {
-            input.getReader()->read(databuf + remainingDDSData, mipSizeDDS);
-        }
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(TextureAssetHeader_t, pName)));
     }
 
-    pak->AddRawDataBlock({ subhdrinfo.index, subhdrinfo.size, (uint8_t*)hdr });
+    CPakDataChunk dataChunk = pak->CreateDataChunk(mipSizes.staticSize, SF_CPU | SF_TEMP, 16);
+    char* streamedbuf = new char[mipSizes.streamedSize];
+    char* optstreamedbuf = new char[mipSizes.streamedOptSize];
 
-    if (bSaveDebugName)
+    char* pCurrentPosStatic = dataChunk.Data();
+    char* pCurrentPosStreamed = streamedbuf;
+    char* pCurrentPosStreamedOpt = optstreamedbuf;
+
+    uint8_t mipLevel = static_cast<uint8_t>(mips.size());
+
+    while (mipLevel > 0)
     {
-        pak->AddRawDataBlock({ nameseginfo.index, nameseginfo.size, (uint8_t*)namebuf });
-        hdr->pName = { nameseginfo.index, 0 };
+        mipLevel_t& mipMap = mips.at(mipLevel - 1);
 
-        pak->AddPointer(subhdrinfo.index, offsetof(TextureHeader, pName));
+        input.seek(mipMap.mipOffset, std::ios::beg);
+
+        switch (mipMap.mipType)
+        {
+        case STATIC:
+            input.getReader()->read(pCurrentPosStatic, mipMap.mipSize);
+            pCurrentPosStatic += mipMap.mipSizeAligned; // move ptr
+
+            break;
+        case STREAMED:
+            input.getReader()->read(pCurrentPosStreamed, mipMap.mipSize);
+            pCurrentPosStreamed += mipMap.mipSizeAligned; // move ptr
+
+            break;
+        case STREAMED_OPT:
+            input.getReader()->read(pCurrentPosStreamedOpt, mipMap.mipSize);
+            pCurrentPosStreamedOpt += mipMap.mipSizeAligned; // move ptr
+
+            break;
+        default:
+            break;
+        }
+
+        mipLevel--;
     }
-
-    pak->AddRawDataBlock({ dataseginfo.index, dataseginfo.size, (uint8_t*)databuf });
 
     // now time to add the higher level asset entry
-    RPakAssetEntry asset;
+    PakAsset_t asset;
 
     // this should hopefully fix some crashing
-    uint64_t starpakOffset = -1;
+    uint64_t starpakOffset = UINT64_MAX;
 
-    if (bStreamable)
+    if (isStreamable && hdr->streamedMipLevels > 0)
     {
-        std::string starpakPath = pak->GetPrimaryStarpakPath();
-
-        // check per texture just in case for whatever reason you want stuff in different starpaks (if it ever gets fixed).
-        if (mapEntry.HasMember("starpakPath"))
-            starpakPath = mapEntry["starpakPath"].GetString();
-
-        if (starpakPath.length() == 0)
-            Error("attempted to add asset '%s' as a streaming asset, but no starpak files were available.\nto fix: add 'starpakPath' as an rpak-wide variable\nor: add 'starpakPath' as an asset specific variable\n", assetPath);
-       
-        pak->AddStarpakReference(starpakPath);
-
-        StreamableDataEntry de{ 0, nStreamedMipSize, (uint8_t*)streamedbuf };
+        StreamableDataEntry de{ 0, mipSizes.streamedSize, (uint8_t*)streamedbuf };
         de = pak->AddStarpakDataEntry(de);
-        starpakOffset = de.m_nOffset;
+        starpakOffset = de.offset;
     }
 
-    asset.InitAsset(RTech::StringToGuid((sAssetName + ".rpak").c_str()), subhdrinfo.index, 0, subhdrinfo.size, dataseginfo.index, 0, starpakOffset, -1, (std::uint32_t)AssetType::TXTR);
+    if (isStreamableOpt && hdr->optStreamedMipLevels > 0)
+    {
+        // do stuff
+    }
+
+
+    asset.InitAsset(sAssetName + ".rpak", hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, UINT64_MAX, AssetType::TXTR);
+    asset.SetHeaderPointer(hdrChunk.Data());
+
     asset.version = TXTR_VERSION;
 
-    asset.pageEnd = dataseginfo.index + 1; // number of the highest page that the asset references pageidx + 1
-    asset.unk1 = 1;
+    asset.pageEnd = pak->GetNumPages();
+    asset.remainingDependencyCount = 1;
 
-    assetEntries->push_back(asset);
+    pak->PushAsset(asset);
 
     input.close();
     printf("\n");
+}
+
+void Assets::AddTextureAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
+{
+    AddTextureAsset(pak, assetPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), false);
 }

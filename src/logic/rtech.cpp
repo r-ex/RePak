@@ -50,3 +50,34 @@ std::uint32_t __fastcall RTech::StringToUIMGHash(const char* str)
 
 	return x;
 }
+
+std::uint64_t RTech::GetAssetGUIDFromString(const char* str, bool forceRpakExtension)
+{
+	if (strlen(str) == 0)
+		return 0;
+
+	uint64_t guid = 0;
+
+	// check for upper and lower case hex guids (e.g. 0x5DCAT, 0x5dcat)
+	if (!sscanf_s(str, "0x%llX", &guid) && !sscanf_s(str, "0x%llx", &guid))
+	{
+		if (forceRpakExtension)
+			guid = RTech::StringToGuid(Utils::ChangeExtension(str, ".rpak").c_str());
+		else
+			guid = RTech::StringToGuid(str);
+	}
+
+	return guid;
+}
+
+bool RTech::ParseGUIDFromString(const char* str, uint64_t* pGuid)
+{
+	uint64_t guid = 0;
+
+	bool found = sscanf_s(str, "0x%llX", &guid) || sscanf_s(str, "0x%llx", &guid);
+
+	if (found && pGuid != nullptr)
+		*pGuid = guid;
+
+	return found;
+}

@@ -34,6 +34,16 @@ public:
 		currentMode = BinaryIOMode::None;
 	}
 
+	BinaryIO(const std::string& path, BinaryIOMode mode)
+	{
+		open(path, mode);
+	}
+
+	BinaryIO(const std::filesystem::path& path, BinaryIOMode mode)
+	{
+		open(path.string(), mode);
+	}
+
 	// the destructor will be responsible for checking if we forgot to close
 	// the file
 	~BinaryIO()
@@ -51,7 +61,7 @@ public:
 
 	// opens a file with either read or write mode. Returns whether
 	// the open operation was successful
-	bool open(std::string fileFullPath, BinaryIOMode mode)
+	bool open(const std::string& fileFullPath, BinaryIOMode mode)
 	{
 		filePath = fileFullPath;
 
@@ -241,7 +251,8 @@ public:
 		case BinaryIOMode::Read:
 			return reader.tellg();
 		default:
-			return -1;
+			assert(0); // Code bug: no mode selected.
+			return 0;
 		}
 	}
 
