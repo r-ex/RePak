@@ -126,7 +126,15 @@ void BinaryIO::SeekGet(const std::streampos offset, const std::ios_base::seekdir
 void BinaryIO::SeekPut(const std::streampos offset, const std::ios_base::seekdir way)
 {
 	assert(IsWriteMode());
+
 	m_stream.seekp(offset, way);
+	const std::streampos newOffset = m_stream.tellp();
+
+	// seekp writes padding when we go beyond eof, therefore we should update
+	// the size in case this happens.
+	if (newOffset > m_size)
+		m_size = newOffset;
+
 }
 void BinaryIO::Seek(const std::streampos offset, const std::ios_base::seekdir way)
 {
