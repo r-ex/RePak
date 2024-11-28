@@ -207,6 +207,9 @@ public:
 	void WriteMemPageHeaders(BinaryIO& out);
 	void WritePakDescriptors(BinaryIO& out);
 
+	bool StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, const int compressLevel, const int workerCount);
+	size_t CompressStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount);
+
 	//----------------------------------------------------------------------------
 	// starpak
 	//----------------------------------------------------------------------------

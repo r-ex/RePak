@@ -8,6 +8,9 @@
 #include "pakfile.h"
 #include "assets/assets.h"
 
+#include "thirdparty/zstd/zstd.h"
+#include "thirdparty/zstd/decompress/zstd_decompress_internal.h"
+
 bool CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
 {
 	if (file["$type"].GetStdString() == type)
@@ -577,6 +580,191 @@ PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/,
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: initialize pak encoder context
+// 
+// note(amos): unlike the pak file header, the zstd frame header needs to know
+// the uncompressed size without the file header.
+//-----------------------------------------------------------------------------
+static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const int compressLevel, const int workerCount)
+{
+	ZSTD_CCtx* const cctx = ZSTD_createCCtx();
+
+	if (!cctx)
+	{
+		Warning("Failed to create encoder context\n", workerCount);
+		return nullptr;
+	}
+
+	size_t result = ZSTD_CCtx_setPledgedSrcSize(cctx, uncompressedBlockSize);
+
+	if (ZSTD_isError(result))
+	{
+		Warning("Failed to set pledged source size %zu: [%s]\n", uncompressedBlockSize, ZSTD_getErrorName(result));
+		ZSTD_freeCCtx(cctx);
+
+		return nullptr;
+	}
+
+	result = ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, compressLevel);
+
+	if (ZSTD_isError(result))
+	{
+		Warning("Failed to set compression level %i: [%s]\n", compressLevel, ZSTD_getErrorName(result));
+		ZSTD_freeCCtx(cctx);
+
+		return nullptr;
+	}
+
+	result = ZSTD_CCtx_setParameter(cctx, ZSTD_c_nbWorkers, workerCount);
+
+	if (ZSTD_isError(result))
+	{
+		Warning("Failed to set worker count %i: [%s]\n", workerCount, ZSTD_getErrorName(result));
+		ZSTD_freeCCtx(cctx);
+
+		return nullptr;
+	}
+
+	return cctx;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: stream encode pak file with given level and worker count
+//-----------------------------------------------------------------------------
+bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, const int compressLevel, const int workerCount)
+{
+	// only the data past the main header gets compressed.
+	const size_t headerSize = GetHeaderSize();
+	const size_t decodedFrameSize = (static_cast<size_t>(inStream.GetSize()) - headerSize);
+
+	ZSTD_CCtx* const cctx = InitEncoderContext(decodedFrameSize, compressLevel, workerCount);
+
+	if (!cctx)
+	{
+		return false;
+	}
+
+	const size_t buffInSize = ZSTD_CStreamInSize();
+	std::unique_ptr<uint8_t[]> buffInPtr(new uint8_t[buffInSize]);
+
+	if (!buffInPtr)
+	{
+		Warning("Failed to allocate input stream buffer of size %zu\n", buffInSize);
+		ZSTD_freeCCtx(cctx);
+
+		return false;
+	}
+
+	const size_t buffOutSize = ZSTD_CStreamOutSize();
+	std::unique_ptr<uint8_t[]> buffOutPtr(new uint8_t[buffOutSize]);
+
+	if (!buffOutPtr)
+	{
+		Warning("Failed to allocate output stream buffer of size %zu\n", buffOutSize);
+		ZSTD_freeCCtx(cctx);
+
+		return false;
+	}
+
+	void* const buffIn = buffInPtr.get();
+	void* const buffOut = buffOutPtr.get();
+
+	inStream.SeekGet(headerSize);
+	outStream.SeekPut(headerSize);
+
+	size_t bytesLeft = decodedFrameSize;
+
+	while (bytesLeft)
+	{
+		const bool lastChunk = (bytesLeft < buffInSize);
+		const size_t numBytesToRead = lastChunk ? bytesLeft : buffInSize;
+
+		inStream.Read((uint8_t*)buffIn, numBytesToRead);
+		bytesLeft -= numBytesToRead;
+
+		ZSTD_EndDirective const mode = lastChunk ? ZSTD_e_end : ZSTD_e_continue;
+		ZSTD_inBuffer inputFrame = { buffIn, numBytesToRead, 0 };
+
+		bool finished;
+		do {
+			ZSTD_outBuffer outputFrame = { buffOut, buffOutSize, 0 };
+			size_t const remaining = ZSTD_compressStream2(cctx, &outputFrame, &inputFrame, mode);
+
+			if (ZSTD_isError(remaining))
+			{
+				Warning("Failed to compress frame at %zu to frame at %zu: [%s]\n",
+					inStream.TellGet(), outStream.TellPut(), ZSTD_getErrorName(remaining));
+
+				ZSTD_freeCCtx(cctx);
+				return false;
+			}
+
+			outStream.Write((uint8_t*)buffOut, outputFrame.pos);
+
+			finished = lastChunk ? (remaining == 0) : (inputFrame.pos == inputFrame.size);
+		} while (!finished);
+	}
+
+	ZSTD_freeCCtx(cctx);
+	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: stream encode pak file to new stream and swap old stream with new
+//-----------------------------------------------------------------------------
+size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount)
+{
+	BinaryIO outCompressed;
+	const std::string outCompressedPath = GetPath() + "_encoded";
+
+	if (!outCompressed.Open(outCompressedPath, BinaryIO::Mode_e::Write))
+	{
+		Warning("Failed to open output pak file '%s' for compression\n", outCompressedPath.c_str());
+		return 0;
+	}
+
+	if (!StreamToStreamEncode(io, outCompressed, compressLevel, workerCount))
+		return 0;
+
+	const size_t compressedSize = outCompressed.TellPut();
+
+	outCompressed.Close();
+	io.Close();
+
+	// note(amos): we must reopen the file in ReadWrite mode as otherwise
+	// the file gets truncated.
+
+	if (!std::filesystem::remove(m_Path))
+	{
+		Warning("Failed to remove uncompressed pak file '%s' for swap\n", outCompressedPath.c_str());
+		
+		// reopen and continue uncompressed.
+		if (io.Open(m_Path, BinaryIO::Mode_e::ReadWrite))
+			Error("Failed to reopen pak file '%s'\n", m_Path.c_str());
+
+		return 0;
+	}
+
+	std::filesystem::rename(outCompressedPath, m_Path);
+
+	// either the rename failed or something holds an open handle to the
+	// newly renamed compressed file, irrecoverable.
+	if (!io.Open(m_Path, BinaryIO::Mode_e::ReadWrite))
+		Error("Failed to reopen pak file '%s'\n", m_Path.c_str());
+
+	const size_t reopenedPakSize = io.GetSize();
+
+	if (reopenedPakSize != compressedSize)
+		Error("Reopened pak file '%s' appears truncated or corrupt; compressed size: %zu expected: %zu\n",
+			m_Path.c_str(), reopenedPakSize, compressedSize);
+
+	// set the header flags indicating this pak is compressed.
+	m_Header.flags |= (PAK_HEADER_FLAGS_COMPRESSED | PAK_HEADER_FLAGS_ZSTREAM_ENCODED);
+
+	return compressedSize;
+}
+
+//-----------------------------------------------------------------------------
 // purpose: builds rpak and starpak from input map file
 //-----------------------------------------------------------------------------
 void CPakFile::BuildFromMap(const string& mapPath)
@@ -710,10 +898,20 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	// set header descriptors
 	SetFileTime(Utils::GetSystemFileTime());
 
-	// !TODO: implement LZHAM and set these accordingly.
-	SetCompressedSize(out.tell());
-	SetDecompressedSize(out.tell());
+	// We are done building the data of the pack, this is the actual size.
+	const size_t decompressedFileSize = out.GetSize();
+	size_t compressedFileSize = 0;
 
+	const int compressLevel = JSON_GET_INT(doc, "compressLevel", 0);
+
+	if (compressLevel > 0 && decompressedFileSize > GetHeaderSize())
+	{
+		const int workerCount = JSON_GET_INT(doc, "compressWorkers", 0);
+		compressedFileSize = EncodeStreamAndSwap(out, compressLevel, workerCount);
+	}
+
+	SetCompressedSize(compressedFileSize == 0 ? decompressedFileSize : compressedFileSize);
+	SetDecompressedSize(decompressedFileSize);
 
 	out.SeekPut(0); // go back to the beginning to finally write the rpakHeader now
 	WriteHeader(out); out.Close();
