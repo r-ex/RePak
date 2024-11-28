@@ -16,7 +16,7 @@ public:
 	~BinaryIO();
 
 	bool Open(const char* const filePath, const Mode_e mode);
-	inline bool Open(const std::string& const filePath, const Mode_e mode) { return Open(filePath.c_str(), mode); };
+	inline bool Open(const std::string& filePath, const Mode_e mode) { return Open(filePath.c_str(), mode); };
 
 	void Close();
 	void Flush();
