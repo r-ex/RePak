@@ -81,7 +81,7 @@ struct PakHdr_t
 	DWORD magic = 0x6b615052;
 
 	short fileVersion = 0x8;
-	char  flags[0x2];
+	uint16_t flags;
 	FILETIME fileTime;
 	char  unk0[0x8];
 	uint64_t compressedSize; // size of the rpak file on disk before decompression

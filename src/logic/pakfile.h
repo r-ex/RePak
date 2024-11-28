@@ -201,7 +201,7 @@ public:
 	void WriteAssets(BinaryIO& io);
 	void WritePageData(BinaryIO& out);
 
-	size_t WriteStarpakPaths(BinaryIO& out, bool optional = false);
+	size_t WriteStarpakPaths(BinaryIO& out, const bool optional);
 
 	void WriteSegmentHeaders(BinaryIO& out);
 	void WriteMemPageHeaders(BinaryIO& out);

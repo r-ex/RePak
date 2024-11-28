@@ -283,7 +283,7 @@ void CPakFile::WritePageData(BinaryIO& out)
 // purpose: writes starpak paths to file stream
 // returns: total length of written path vector
 //-----------------------------------------------------------------------------
-size_t CPakFile::WriteStarpakPaths(BinaryIO& out, bool optional)
+size_t CPakFile::WriteStarpakPaths(BinaryIO& out, const bool optional)
 {
 	return Utils::WriteStringVector(out, optional ? m_vOptStarpakPaths : m_vStarpakPaths);
 }
@@ -861,7 +861,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 	{
 		// write string vectors for starpak paths and get the total length of each vector
-		size_t starpakPathsLength = WriteStarpakPaths(out);
+		size_t starpakPathsLength = WriteStarpakPaths(out, false);
 		size_t optStarpakPathsLength = WriteStarpakPaths(out, true);
 		size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
 
@@ -935,7 +935,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 		const std::string fullFilePath = outputPath + filename;
 
-		if (!srpkOut.Open(fullFilePath.c_str(), BinaryIO::Mode_e::Write))
+		if (!srpkOut.Open(fullFilePath, BinaryIO::Mode_e::Write))
 		{
 			Error("Failed to open output streaming file '%s'\n", outPath.c_str());
 		}
