@@ -75,7 +75,7 @@ bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHe
     return true;
 }
 
-void Assets::AddAnimRigAsset_v4(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     Log("Adding mdl_ asset '%s'\n", assetPath);
 

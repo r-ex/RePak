@@ -4,11 +4,11 @@
 #include "public/texture.h"
 
 // materialGeneratedTexture - whether this texture's creation was invoked by material automatic texture generation
-void Assets::AddTextureAsset(CPakFile* pak, uint64_t guid, const char* assetPath, bool forceDisableStreaming, bool materialGeneratedTexture)
+void Assets::AddTextureAsset(CPakFile* const  pak, const PakGuid_t guid, const char* assetPath, const bool forceDisableStreaming, const bool materialGeneratedTexture)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
 
-    PakAsset_t* existingAsset = pak->GetAssetByGuid(RTech::GetAssetGUIDFromString(assetPath, true), nullptr, true);
+    PakAsset_t* const existingAsset = pak->GetAssetByGuid(RTech::GetAssetGUIDFromString(assetPath, true), nullptr, true);
     if (existingAsset)
     {
         // if the caller has requested that this warning is not emitted
@@ -238,10 +238,11 @@ void Assets::AddTextureAsset(CPakFile* pak, uint64_t guid, const char* assetPath
         // do stuff
     }
 
-    if (guid == 0)
-        guid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
+    const PakGuid_t assetGuid = guid != 0
+        ? guid
+        : RTech::StringToGuid((sAssetName + ".rpak").c_str());
 
-    asset.InitAsset(guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, UINT64_MAX, AssetType::TXTR);
+    asset.InitAsset(assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, UINT64_MAX, AssetType::TXTR);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = TXTR_VERSION;
@@ -255,10 +256,10 @@ void Assets::AddTextureAsset(CPakFile* pak, uint64_t guid, const char* assetPath
     printf("\n");
 }
 
-void Assets::AddTextureAsset_v8(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddTextureAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     // dedup
-    uint64_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
+    PakGuid_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
 
     if (!assetGuid)
         assetGuid = RTech::StringToGuid((std::string(assetPath) + ".rpak").c_str());

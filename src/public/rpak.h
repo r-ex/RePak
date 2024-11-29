@@ -171,13 +171,13 @@ struct PakAsset_t
 		this->id = type;
 	}
 
-	void InitAsset(uint64_t nGuid,
-		PagePtr_t pHeadPtr,
-		uint32_t nHeaderSize,
-		PagePtr_t pCpuPtr,
-		uint64_t nStarpakOffset,
-		uint64_t nOptStarpakOffset,
-		AssetType type)
+	void InitAsset(const PakGuid_t nGuid,
+		const PagePtr_t pHeadPtr,
+		const uint32_t nHeaderSize,
+		const PagePtr_t pCpuPtr,
+		const uint64_t nStarpakOffset,
+		const uint64_t nOptStarpakOffset,
+		const AssetType type)
 	{
 		this->name = "(null)";
 		this->guid = nGuid;
@@ -195,7 +195,7 @@ struct PakAsset_t
 	// - when referenced from other assets, the GUID is used directly
 	// - when referenced from scripts, the GUID is calculated from the original asset path
 	//   by a function such as RTech::StringToGuid
-	uint64_t guid = 0;
+	PakGuid_t guid = 0;
 	uint8_t  unk0[0x8]{};
 
 	// page index and offset for where this asset's header is located
@@ -266,8 +266,8 @@ public:
 
 	char* const PublicData() { return reinterpret_cast<char*>(_publicData.get()); };
 
-	FORCEINLINE void AddRelation(unsigned int idx) { _relations.push_back({ idx }); };
-	FORCEINLINE void AddRelation(size_t idx) { _relations.push_back({ static_cast<unsigned int>(idx) }); };
+	FORCEINLINE void AddRelation(const unsigned int idx) { _relations.push_back({ idx }); };
+	FORCEINLINE void AddRelation(const size_t idx) { _relations.push_back({ static_cast<unsigned int>(idx) }); };
 
 	FORCEINLINE void AddGuid(PakGuidRefHdr_t desc) { _guids.push_back(desc); };
 

@@ -65,7 +65,7 @@ bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader
     if (!mapEntry.HasMember("sequences") || !mapEntry["sequences"].IsArray())
         return false;
 
-    std::vector<uint64_t> sequenceGuids;
+    std::vector<PakGuid_t> sequenceGuids;
 
     for (auto& it : mapEntry["sequences"].GetArray())
     {
@@ -75,7 +75,7 @@ bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader
         if (it.GetStringLength() == 0)
             continue;
 
-        uint64_t guid = 0;
+        PakGuid_t guid = 0;
 
         if (!RTech::ParseGUIDFromString(it.GetString(), &guid))
         {
@@ -88,9 +88,9 @@ bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader
         hdr->sequenceCount++;
     }
 
-    CPakDataChunk guidsChunk = pak->CreateDataChunk(sizeof(uint64_t) * sequenceGuids.size(), SF_CPU, 64);
+    CPakDataChunk guidsChunk = pak->CreateDataChunk(sizeof(PakGuid_t) * sequenceGuids.size(), SF_CPU, 64);
 
-    uint64_t* pGuids = reinterpret_cast<uint64_t*>(guidsChunk.Data());
+    PakGuid_t* pGuids = reinterpret_cast<PakGuid_t*>(guidsChunk.Data());
     for (int i = 0; i < sequenceGuids.size(); ++i)
     {
         pGuids[i] = sequenceGuids[i];
@@ -100,7 +100,7 @@ bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader
     return true;
 }
 
-void Assets::AddModelAsset_v9(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     Log("Adding mdl_ asset '%s'\n", assetPath);
 
@@ -161,7 +161,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, const char* assetPath, const rapidj
         const rapidjson::Value::ConstArray animrigs = it->value.GetArray();
         pHdr->animRigCount = animrigs.Size();
 
-        animRigsChunk = pak->CreateDataChunk(animrigs.Size() * sizeof(uint64_t), SF_CPU, 64);
+        animRigsChunk = pak->CreateDataChunk(animrigs.Size() * sizeof(PakGuid_t), SF_CPU, 64);
 
         rmem arigBuf(animRigsChunk.Data());
 
@@ -174,9 +174,9 @@ void Assets::AddModelAsset_v9(CPakFile* pak, const char* assetPath, const rapidj
             if (animrig.GetStringLength() == 0)
                 Error("anim rig #%i for model '%s' was defined as an invalid empty string\n", i, assetPath);
 
-            uint64_t guid = RTech::StringToGuid(animrig.GetStdString().c_str());
+            const PakGuid_t guid = RTech::StringToGuid(animrig.GetStdString().c_str());
 
-            arigBuf.write<uint64_t>(guid);
+            arigBuf.write<PakGuid_t>(guid);
 
             // check if anim rig is a local asset so that the relation can be added
             PakAsset_t* animRigAsset = pak->GetAssetByGuid(guid);

@@ -142,7 +142,7 @@ void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChu
 }
 
 // VERSION 8
-void Assets::AddDataTableAsset(CPakFile* pak, const char* assetPath, const rapidjson::Value& /*mapEntry*/)
+void Assets::AddDataTableAsset(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& /*mapEntry*/)
 {
     Log("Adding dtbl asset '%s'\n", assetPath);
 

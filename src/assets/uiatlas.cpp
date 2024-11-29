@@ -3,7 +3,7 @@
 #include "utils/dxutils.h"
 #include "public/texture.h"
 
-void Assets::AddUIImageAsset_v10(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     Log("Adding uimg asset '%s'\n", assetPath);
 
@@ -60,7 +60,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, const char* assetPath, const rap
 
     AddTextureAsset(pak, 0, mapEntry["atlas"].GetString(), mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), true);
 
-    uint64_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
+    const PakGuid_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
 
     PakAsset_t* atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 

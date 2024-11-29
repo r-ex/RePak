@@ -494,7 +494,7 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
 }
 
 // VERSION 7
-void Assets::AddMaterialAsset_v12(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     Log("Adding matl asset '%s'\n", assetPath);
 
@@ -584,13 +584,13 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, const char* assetPath, const ra
         int textureIdx = 0;
         for (auto& it : mapEntry["textures"].GetArray())
         {
-            uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
+            const PakGuid_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
 
-            *(uint64_t*)dataBuf = textureGuid;
+            *(PakGuid_t*)dataBuf = textureGuid;
 
             if (textureGuid != 0) // only deal with dependencies if the guid is not 0
             {
-                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer((textureIdx * sizeof(uint64_t)))); // register guid for this texture reference
+                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer((textureIdx * sizeof(PakGuid_t)))); // register guid for this texture reference
 
                 PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
 
@@ -603,7 +603,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, const char* assetPath, const ra
                 }
             }
 
-            dataBuf += sizeof(uint64_t);
+            dataBuf += sizeof(PakGuid_t);
             textureIdx++;
         }
     }
@@ -616,15 +616,15 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, const char* assetPath, const ra
             // this should always be true but might as well check
             assert(bindPoint < textureCount);
 
-            uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.value.GetString(), true); // get texture guid
+            const PakGuid_t textureGuid = RTech::GetAssetGUIDFromString(it.value.GetString(), true); // get texture guid
 
-            reinterpret_cast<uint64_t*>(dataBuf)[bindPoint] = textureGuid;
+            reinterpret_cast<PakGuid_t*>(dataBuf)[bindPoint] = textureGuid;
 
             if (textureGuid != 0) // only deal with dependencies if the guid is not 0
             {
-                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer((bindPoint * sizeof(uint64_t)))); // register guid for this texture reference
+                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer((bindPoint * sizeof(PakGuid_t)))); // register guid for this texture reference
 
-                PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
+                PakAsset_t* const txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
 
                 if (txtrAsset)
                     pak->SetCurrentAssetAsDependentForAsset(txtrAsset);
@@ -680,7 +680,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, const char* assetPath, const ra
     // loop thru referenced assets (depth materials, colpass material) note: shaderset isn't inline with these vars in r2, so we set it after
     for (int i = 0; i < 3; ++i)
     {
-        uint64_t guid = *((uint64_t*)&matlAsset->depthShadowMaterial + i);
+        const PakGuid_t guid = *((PakGuid_t*)&matlAsset->depthShadowMaterial + i);
 
         if (guid != 0)
         {
@@ -759,7 +759,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, const char* assetPath, const ra
 }
 
 // VERSION 8
-void Assets::AddMaterialAsset_v15(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     Log("Adding matl asset '%s'\n", assetPath);
 
@@ -804,13 +804,13 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, const char* assetPath, const ra
         int textureIdx = 0;
         for (auto& it : mapEntry["textures"].GetArray())
         {
-            uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
+            const PakGuid_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
 
-            *(uint64_t*)dataBuf = textureGuid;
+            *(PakGuid_t*)dataBuf = textureGuid;
 
             if (textureGuid != 0) // only deal with dependencies if the guid is not 0
             {
-                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (textureIdx * sizeof(uint64_t)))); // register guid for this texture reference
+                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (textureIdx * sizeof(PakGuid_t)))); // register guid for this texture reference
 
                 PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
 
@@ -823,7 +823,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, const char* assetPath, const ra
                 }
             }
 
-            dataBuf += sizeof(uint64_t);
+            dataBuf += sizeof(PakGuid_t);
             textureIdx++;
         }
     }
@@ -833,13 +833,13 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, const char* assetPath, const ra
         {
             uint32_t bindPoint = static_cast<uint32_t>(atoi(it.name.GetString()));
 
-            uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.value.GetString(), true); // get texture guid
+            const PakGuid_t textureGuid = RTech::GetAssetGUIDFromString(it.value.GetString(), true); // get texture guid
 
-            reinterpret_cast<uint64_t*>(dataBuf)[bindPoint] = textureGuid;
+            reinterpret_cast<PakGuid_t*>(dataBuf)[bindPoint] = textureGuid;
 
             if (textureGuid != 0) // only deal with dependencies if the guid is not 0
             {
-                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (bindPoint * sizeof(uint64_t)))); // register guid for this texture reference
+                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (bindPoint * sizeof(PakGuid_t)))); // register guid for this texture reference
 
                 PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
 
@@ -902,7 +902,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* pak, const char* assetPath, const ra
     // loop thru referenced assets (depth materials, colpass material) note: shaderset isn't inline with these vars in r2, so we set it after
     for (int i = 0; i < 6; ++i)
     {
-        uint64_t guid = *((uint64_t*)&matlAsset->depthShadowMaterial + i);
+        const PakGuid_t guid = *((PakGuid_t*)&matlAsset->depthShadowMaterial + i);
 
         if (guid != 0)
         {

@@ -10,7 +10,7 @@
 // Figure out the other count variable before texture input count
 // See if any of the other unknown variables are actually required
 
-void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
 	Log("Adding shds asset '%s'\n", assetPath);
 
@@ -33,13 +33,13 @@ void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, const ra
 	// dedup
 	// === Shader Inputs ===
 	const char* const vertexShaderInput = JSON_GetValueOrDefault(mapEntry, "vertexShader", "");
-	const uint64_t vertexShaderGuid = RTech::GetAssetGUIDFromString(vertexShaderInput, true);
+	const PakGuid_t vertexShaderGuid = RTech::GetAssetGUIDFromString(vertexShaderInput, true);
 
 	if (vertexShaderGuid == 0)
 		Error("No vertexShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
 
 	const char* const pixelShaderInput = JSON_GetValueOrDefault(mapEntry, "pixelShader", "");
-	const uint64_t pixelShaderGuid = RTech::GetAssetGUIDFromString(pixelShaderInput, true);
+	const PakGuid_t pixelShaderGuid = RTech::GetAssetGUIDFromString(pixelShaderInput, true);
 
 	if (pixelShaderGuid == 0)
 		Error("No pixelShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
@@ -116,7 +116,7 @@ void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, const ra
 	
 	// dedup
 
-	uint64_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
+	PakGuid_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
 
 	if (!assetGuid)
 		assetGuid = RTech::StringToGuid((assetPathWithoutExtension + ".rpak").c_str());
@@ -147,7 +147,7 @@ void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, const ra
 	printf("\n");
 }
 
-void Assets::AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
 	Log("Adding shds asset '%s'\n", assetPath);
 
@@ -170,13 +170,13 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, const r
 	// dedup
 	// === Shader Inputs ===
 	const char* const vertexShaderInput = JSON_GetValueOrDefault(mapEntry, "vertexShader", "");
-	const uint64_t vertexShaderGuid = RTech::GetAssetGUIDFromString(vertexShaderInput, true);
+	const PakGuid_t vertexShaderGuid = RTech::GetAssetGUIDFromString(vertexShaderInput, true);
 
 	if (vertexShaderGuid == 0)
 		Error("No vertexShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
 
 	const char* const pixelShaderInput = JSON_GetValueOrDefault(mapEntry, "pixelShader", "");
-	const uint64_t pixelShaderGuid = RTech::GetAssetGUIDFromString(pixelShaderInput, true);
+	const PakGuid_t pixelShaderGuid = RTech::GetAssetGUIDFromString(pixelShaderInput, true);
 
 	if (pixelShaderGuid == 0)
 		Error("No pixelShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
@@ -255,7 +255,7 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, const r
 
 	// dedup
 
-	uint64_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
+	PakGuid_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
 
 	if (!assetGuid)
 		assetGuid = RTech::StringToGuid((assetPathWithoutExtension + ".rpak").c_str());

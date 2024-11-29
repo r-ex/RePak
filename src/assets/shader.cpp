@@ -102,7 +102,7 @@ int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pat
 	return static_cast<int>(file.shader->entries.size());
 }
 
-void Assets::AddShaderAsset_v8(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
 	Log("Adding shdr asset '%s'\n", assetPath);
 
@@ -300,7 +300,7 @@ int ShaderV12_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pa
 	return static_cast<int>(file.shader->entries.size());
 }
 
-void Assets::AddShaderAsset_v12(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderAsset_v12(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
 	Log("Adding shdr asset '%s'\n", assetPath);
 
@@ -382,7 +382,7 @@ void Assets::AddShaderAsset_v12(CPakFile* pak, const char* assetPath, const rapi
 
 	// dedup
 
-	uint64_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
+	PakGuid_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
 
 	if (!assetGuid)
 		assetGuid = RTech::StringToGuid((pakFilePath.string() + ".rpak").c_str());

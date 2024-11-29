@@ -10,25 +10,25 @@
 
 namespace Assets
 {
-	void AddPatchAsset(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
+	void AddPatchAsset(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 
-	void AddTextureAsset(CPakFile* pak, uint64_t guid, const char* assetPath, bool forceDisableStreaming, bool materialGeneratedTexture);
-	void AddTextureAsset_v8(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
+	void AddTextureAsset(CPakFile* const pak, const PakGuid_t guid, const char* assetPath, const bool forceDisableStreaming, const bool materialGeneratedTexture);
+	void AddTextureAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 
-	void AddMaterialAsset_v12(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
-	void AddMaterialAsset_v15(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
+	void AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
+	void AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 
-	void AddUIImageAsset_v10(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
+	void AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 
-	void AddDataTableAsset(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
-	void AddModelAsset_v9(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
+	void AddDataTableAsset(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
+	void AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 
-	void AddAnimSeqAsset(CPakFile* pak, const char* assetPath);
-	void AddAnimSeqAsset_v7(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
-	void AddAnimRigAsset_v4(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
+	void AddAnimSeqAsset(CPakFile* const pak, const char* const assetPath);
+	void AddAnimSeqAsset_v7(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
+	void AddAnimRigAsset_v4(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 
-	void AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
-	void AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
-	void AddShaderAsset_v8(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
-	void AddShaderAsset_v12(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry);
+	void AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
+	void AddShaderSetAsset_v11(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
+	void AddShaderAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
+	void AddShaderAsset_v12(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 };

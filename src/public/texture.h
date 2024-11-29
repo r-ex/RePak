@@ -105,7 +105,7 @@ struct mipLevel_t
 #pragma pack(push, 1)
 struct TextureAssetHeader_t
 {
-	uint64_t guid = 0;
+	PakGuid_t guid = 0;
 	PagePtr_t  pName;
 
 	uint16_t width = 0;
@@ -142,7 +142,7 @@ struct UIImageAtlasHeader_t
 	uint32_t unk2 = 0;
 	PagePtr_t pTextureHashes{};
 	PagePtr_t pTextureNames{};
-	uint64_t atlasGUID = 0;
+	PakGuid_t atlasGUID = 0;
 };
 
 struct UIImageUV

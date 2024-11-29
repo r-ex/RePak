@@ -18,8 +18,8 @@ struct ShaderSetAssetHeader_v8_t
 
 	uint8_t unk_20[32];
 
-	uint64_t vertexShader;
-	uint64_t pixelShader;
+	PakGuid_t vertexShader;
+	PakGuid_t pixelShader;
 };
 static_assert(sizeof(ShaderSetAssetHeader_v8_t) == 88);
 static_assert(offsetof(ShaderSetAssetHeader_v8_t, vertexShader) == 72);
@@ -41,8 +41,8 @@ struct ShaderSetAssetHeader_v11_t
 
 	uint8_t unk_20[16]; // at least some of this is reserved, potentially all of it
 
-	uint64_t vertexShader;
-	uint64_t pixelShader;
+	PakGuid_t vertexShader;
+	PakGuid_t pixelShader;
 };
 static_assert(sizeof(ShaderSetAssetHeader_v11_t) == 64);
 static_assert(offsetof(ShaderSetAssetHeader_v11_t, vertexShader) == 48);

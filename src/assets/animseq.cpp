@@ -2,7 +2,7 @@
 #include "assets.h"
 #include "public/studio.h"
 
-void Assets::AddAnimSeqAsset(CPakFile* pak, const char* assetPath)
+void Assets::AddAnimSeqAsset(CPakFile* const pak, const char* const assetPath)
 {
     Log("Adding aseq asset '%s'\n", assetPath);
 
@@ -88,7 +88,7 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, const char* assetPath)
     pak->PushAsset(asset);
 }
 
-void Assets::AddAnimSeqAsset_v7(CPakFile* pak, const char* assetPath, const rapidjson::Value& /*mapEntry*/)
+void Assets::AddAnimSeqAsset_v7(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& /*mapEntry*/)
 {
     AddAnimSeqAsset(pak, assetPath);
 }

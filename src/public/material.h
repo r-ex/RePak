@@ -418,22 +418,22 @@ struct __declspec(align(16)) MaterialAssetHeader_v12_t
 {
 	uint64_t vftableReserved; // Gets set to CMaterialGlue vtbl ptr
 	char gap_8[0x8]; // unused?
-	uint64_t guid; // guid of this material asset
+	PakGuid_t guid; // guid of this material asset
 
 	PagePtr_t materialName; // pointer to partial asset path
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
 
-	uint64_t depthShadowMaterial;
-	uint64_t depthPrepassMaterial;
-	uint64_t depthVSMMaterial;
-	uint64_t colpassMaterial;
+	PakGuid_t depthShadowMaterial;
+	PakGuid_t depthPrepassMaterial;
+	PakGuid_t depthVSMMaterial;
+	PakGuid_t colpassMaterial;
 
 	// these blocks dont seem to change often but are the same?
 	// these blocks relate to different render filters and flags. still not well understood.
 	MaterialDXState_v12_t dxStates[2];
 
-	uint64_t shaderSet; // guid of the shaderset asset that this material uses
+	PakGuid_t shaderSet; // guid of the shaderset asset that this material uses
 
 	PagePtr_t textureHandles; // TextureGUID Map
 	PagePtr_t streamingTextureHandles; // Streamable TextureGUID Map
@@ -469,19 +469,19 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 	uint64_t vftableReserved; // reserved for virtual function table pointer (when copied into native CMaterialGlue)
 
 	char gap_8[0x8]; // unused?
-	uint64_t guid; // guid of this material asset
+	PakGuid_t guid; // guid of this material asset
 
 	PagePtr_t materialName; // pointer to partial asset path
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
 
-	uint64_t depthShadowMaterial;
-	uint64_t depthPrepassMaterial;
-	uint64_t depthVSMMaterial;
-	uint64_t depthShadowTightMaterial;
-	uint64_t colpassMaterial;
+	PakGuid_t depthShadowMaterial;
+	PakGuid_t depthPrepassMaterial;
+	PakGuid_t depthVSMMaterial;
+	PakGuid_t depthShadowTightMaterial;
+	PakGuid_t colpassMaterial;
 
-	uint64_t shaderSet; // guid of the shaderset asset that this material uses
+	PakGuid_t shaderSet; // guid of the shaderset asset that this material uses
 
 	PagePtr_t textureHandles; // ptr to array of texture guids
 	PagePtr_t streamingTextureHandles; // ptr to array of streamable texture guids (empty at build time)
@@ -512,7 +512,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 
 	//char pad_00F4[0x4];
 
-	uint64_t textureAnimation;
+	PakGuid_t textureAnimation;
 };
 static_assert(sizeof(MaterialAssetHeader_v15_t) == 256);
 
@@ -520,23 +520,23 @@ struct MaterialAsset_t
 {
 	int assetVersion;
 
-	uint64_t guid; // guid of this material asset
+	PakGuid_t guid; // guid of this material asset
 
 	const char* materialAssetPath;
 	PagePtr_t materialName; // pointer to partial asset path
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
 
-	uint64_t depthShadowMaterial;
-	uint64_t depthPrepassMaterial;
-	uint64_t depthVSMMaterial;
-	uint64_t depthShadowTightMaterial;
-	uint64_t colpassMaterial;
+	PakGuid_t depthShadowMaterial;
+	PakGuid_t depthPrepassMaterial;
+	PakGuid_t depthVSMMaterial;
+	PakGuid_t depthShadowTightMaterial;
+	PakGuid_t colpassMaterial;
 
-	uint64_t shaderSet = 0; // guid of the shaderset asset that this material uses
+	PakGuid_t shaderSet = 0; // guid of the shaderset asset that this material uses
 
 	uint16_t numAnimationFrames;
-	uint64_t textureAnimation;
+	PakGuid_t textureAnimation;
 
 	PagePtr_t textureHandles; // ptr to array of texture guids
 	PagePtr_t streamingTextureHandles; // ptr to array of streamable texture guids (empty at build time)

@@ -560,7 +560,7 @@ CPakDataChunk CPakFile::CreateDataChunk(size_t size, int flags, int alignment)
 // purpose: 
 // returns: 
 //-----------------------------------------------------------------------------
-PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/, bool silent /*= false*/)
+PakAsset_t* CPakFile::GetAssetByGuid(const PakGuid_t guid, uint32_t* const idx /*= nullptr*/, const bool silent /*= false*/)
 {
 	uint32_t i = 0;
 	for (auto& it : m_Assets)

@@ -8,7 +8,7 @@
 struct mstudiotexture_t
 {
 	uint32_t pathoffset;
-	uint64_t guid;
+	PakGuid_t guid;
 };
 
 // modified source engine studio mdl header struct
@@ -285,7 +285,7 @@ struct mstudioseqdesc_t
 
 struct mstudioautolayer_t
 {
-	uint64_t guid; // hashed aseq guid asset
+	PakGuid_t guid; // hashed aseq guid asset
 
 	short iSequence;
 	short iPose;
