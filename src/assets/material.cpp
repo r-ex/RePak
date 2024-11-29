@@ -31,18 +31,9 @@ static void CheckAndAddTexture(CPakFile* const pak, const rapidjson::Value& text
 }
 
 // we need to take better account of textures once asset caching becomes a thing
-void Material_CreateTextures(CPakFile* const pak, const rapidjson::Value& mapEntry)
+void Material_CreateTextures(CPakFile* const pak, const rapidjson::Value& textures, const bool disableStreaming)
 {
-    rapidjson::Value::ConstMemberIterator it;
-
-    if (!JSON_GetIterator(mapEntry, "textures", JSONFieldType_e::kObject, it))
-        return; // note: no error as materials without textures do exist.
-                // typically, these are prepass/vsm/etc materials.
-
-    const bool disableStreaming = JSON_GetValueOrDefault(mapEntry, "disableStreaming", false);
-    const rapidjson::Value& value = it->value;
-
-    for (const auto& texture : value.GetObject())
+    for (const auto& texture : textures.GetObject())
         CheckAndAddTexture(pak, texture.value, disableStreaming);
 }
 
@@ -357,12 +348,15 @@ void Material_SetupDXBufferFromJson(GenericShaderBuffer* shaderBuf, const rapidj
     SetUVOverrides(mapEntry, "uv5", shaderBuf->c_uv5);
 }
 
-size_t Material_GetHighestTextureBindPoint(const rapidjson::Value& mapEntry)
+size_t Material_GetHighestTextureBindPoint(const rapidjson::Value& textures)
 {
-    uint32_t max = 0;// REWORK!!
-    for (auto& it : mapEntry["textures"].GetObject())
+    uint32_t max = 0;
+
+    for (const auto& it : textures.GetObject())
     {
-        uint32_t index = static_cast<uint32_t>(atoi(it.name.GetString()));
+        char* end;
+        const uint32_t index = strtoul(it.name.GetString(), &end, 0);
+
         if (index > max)
             max = index;
     }
@@ -372,21 +366,21 @@ size_t Material_GetHighestTextureBindPoint(const rapidjson::Value& mapEntry)
 
 static size_t Material_AddTextures(CPakFile* const pak, const rapidjson::Value& mapEntry)
 {
-    Material_CreateTextures(pak, mapEntry);
-
     rapidjson::Value::ConstMemberIterator it;
-    const bool hasMember = JSON_GetIterator(mapEntry, "textures", JSONFieldType_e::kObject, it);
 
-    // material with no texture.
-    if (!hasMember)
-        return 0;
+    if (!JSON_GetIterator(mapEntry, "textures", JSONFieldType_e::kObject, it))
+        return 0; // note: no error as materials without textures do exist.
+                  // typically, these are prepass/vsm/etc materials.
+
+    const bool disableStreaming = JSON_GetValueOrDefault(mapEntry, "disableStreaming", false);
+    Material_CreateTextures(pak, it->value, disableStreaming);
 
     // textureSlotCount determines the total number of texture slots in the assigned shaderset.
     // shaderset has a texture input count variable that is used when looping over the texture array
     // and since we can't modify that from here, we have to rely on the user to set this properly!
     const size_t textureCount = JSON_GetValueOrDefault(mapEntry, "textureSlotCount", 0ull);
 
-    return max(textureCount, Material_GetHighestTextureBindPoint(mapEntry) + 1);
+    return max(textureCount, Material_GetHighestTextureBindPoint(it->value) + 1);
 }
 
 static std::string Material_GetCpuPath(CPakFile* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry)
