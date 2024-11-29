@@ -33,14 +33,13 @@ void Assets::AddTextureAsset(CPakFile* pak, uint64_t guid, const char* assetPath
         }
     }
 
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(TextureAssetHeader_t), SF_HEAD, 8);
-
-    TextureAssetHeader_t* hdr = reinterpret_cast<TextureAssetHeader_t*>(hdrChunk.Data());
-
     BinaryIO input;
 
     if (!input.Open(filePath, BinaryIO::Mode_e::Read))
         Error("Failed to open texture asset '%s'\n", filePath.c_str());
+
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(TextureAssetHeader_t), SF_HEAD, 8);
+    TextureAssetHeader_t* hdr = reinterpret_cast<TextureAssetHeader_t*>(hdrChunk.Data());
 
     std::string sAssetName = assetPath;
 
@@ -256,25 +255,18 @@ void Assets::AddTextureAsset(CPakFile* pak, uint64_t guid, const char* assetPath
     printf("\n");
 }
 
-void Assets::AddTextureAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddTextureAsset_v8(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
 {
-    uint64_t assetGuid = 0;
+    // dedup
+    uint64_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
 
-    if (JSON_IS_UINT64(mapEntry, "$guid"))
-    {
-        assetGuid = JSON_GET_UINT64(mapEntry, "$guid", 0);
-    }
-    else if (JSON_IS_STR(mapEntry, "$guid"))
-    {
-        RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "$guid", ""), &assetGuid);
-    }
-    else
-    {
+    if (!assetGuid)
         assetGuid = RTech::StringToGuid((std::string(assetPath) + ".rpak").c_str());
-    }
 
     if (assetGuid == 0)
         Error("Invalid GUID provided for asset '%s'.\n", assetPath);
+
+    // end dedup
 
     AddTextureAsset(pak, assetGuid, assetPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), false);
 }

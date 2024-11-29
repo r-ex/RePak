@@ -10,7 +10,7 @@
 // Figure out the other count variable before texture input count
 // See if any of the other unknown variables are actually required
 
-void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
 {
 	Log("Adding shds asset '%s'\n", assetPath);
 
@@ -30,18 +30,21 @@ void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, rapidjso
 
 	pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_v8_t, name)));
 
-	// === Shader Inputs === //
-	const std::string vertexShaderInput = JSON_GET_STR(mapEntry, "vertexShader", "");
-	const std::string pixelShaderInput = JSON_GET_STR(mapEntry, "pixelShader", "");
-
-	const uint64_t vertexShaderGuid = RTech::GetAssetGUIDFromString(vertexShaderInput.c_str(), true);
-	const uint64_t pixelShaderGuid = RTech::GetAssetGUIDFromString(pixelShaderInput.c_str(), true);
+	// dedup
+	// === Shader Inputs ===
+	const char* const vertexShaderInput = JSON_GetValueOrDefault(mapEntry, "vertexShader", "");
+	const uint64_t vertexShaderGuid = RTech::GetAssetGUIDFromString(vertexShaderInput, true);
 
 	if (vertexShaderGuid == 0)
 		Error("No vertexShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
 
+	const char* const pixelShaderInput = JSON_GetValueOrDefault(mapEntry, "pixelShader", "");
+	const uint64_t pixelShaderGuid = RTech::GetAssetGUIDFromString(pixelShaderInput, true);
+
 	if (pixelShaderGuid == 0)
 		Error("No pixelShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
+
+	// end dedup
 
 	hdr->vertexShader = vertexShaderGuid;
 	hdr->pixelShader = pixelShaderGuid;
@@ -75,52 +78,53 @@ void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, rapidjso
 		}
 	}
 
+	// dedup
 	// TEMPORARY VARS
 
-	if (JSON_IS_UINT(mapEntry, "numVertexShaderTextures"))
+	uint32_t numVertexShaderTextures;
+
+	if (JSON_GetValue(mapEntry, "numVertexShaderTextures", numVertexShaderTextures))
 	{
 		Debug("Overriding field \"numVertexShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
-		hdr->textureInputCounts[0] = static_cast<uint16_t>(JSON_GET_UINT(mapEntry, "numVertexShaderTextures", 0));
+		hdr->textureInputCounts[0] = static_cast<uint16_t>(numVertexShaderTextures);
 	}
 	else if (!vertexShader && hdr->vertexShader != 0) // warn if there is an asset guid, but it's not present in the current pak
 		Warning("Creating shader set '%s' without a local vertex shader asset and without a \'numVertexShaderTextures\' field. Shader set will assume 0 vertex shader textures.\n", assetPath);
 
-	if (JSON_IS_UINT(mapEntry, "numPixelShaderTextures"))
+	uint32_t numPixelShaderTextures;
+
+	if (JSON_GetValue(mapEntry, "numPixelShaderTextures", numPixelShaderTextures))
 	{
 		Debug("Overriding field \"numPixelShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
-		hdr->textureInputCounts[1] = static_cast<uint16_t>(JSON_GET_UINT(mapEntry, "numPixelShaderTextures", 0));
+		hdr->textureInputCounts[1] = static_cast<uint16_t>(numPixelShaderTextures);
 	}
 	else if (!pixelShader && hdr->pixelShader != 0) // warn if there is an asset guid, but it's not present in the current pak
 		Warning("Creating shader set '%s' without a local pixel shader asset and without a \'numPixelShaderTextures\' field. Shader set will assume 0 pixel shader textures.\n", assetPath);
 
-	hdr->numSamplers = static_cast<uint16_t>(JSON_GET_UINT(mapEntry, "numSamplers", 0));
+	// end dedup
+
+	hdr->numSamplers = static_cast<uint16_t>(JSON_GetNumberOrDefault(mapEntry, "numSamplers", 0u));
 
 	// only used for ui/ui_world shadersets in R5
 	// for now this will have to be manually set if used, because i cannot figure out a way to programmatically
 	// detect these resources without incorrectly identifying some, and i doubt that's a good thing
-	hdr->firstResourceBindPoint = static_cast<uint8_t>(JSON_GET_UINT(mapEntry, "firstResource", 0));
-	hdr->numResources = static_cast<uint8_t>(JSON_GET_UINT(mapEntry, "numResources", 0));
+	hdr->firstResourceBindPoint = static_cast<uint8_t>(JSON_GetNumberOrDefault(mapEntry, "firstResource", 0u));
+	hdr->numResources = static_cast<uint8_t>(JSON_GetNumberOrDefault(mapEntry, "numResources", 0u));
 
 	if (hdr->numResources != 0)
 		Warning("Shader set '%s' has requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n", assetPath);
 	
-	uint64_t assetGuid = 0;
+	// dedup
 
-	if (JSON_IS_UINT64(mapEntry, "$guid"))
-	{
-		assetGuid = JSON_GET_UINT64(mapEntry, "$guid", 0);
-	}
-	else if (JSON_IS_STR(mapEntry, "$guid"))
-	{
-		RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "$guid", ""), &assetGuid);
-	}
-	else
-	{
+	uint64_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
+
+	if (!assetGuid)
 		assetGuid = RTech::StringToGuid((assetPathWithoutExtension + ".rpak").c_str());
-	}
 
 	if (assetGuid == 0)
 		Error("Invalid GUID provided for asset '%s'.\n", assetPath);
+
+	// end dedup
 
 	PakAsset_t asset;
 	asset.InitAsset(
@@ -143,7 +147,7 @@ void Assets::AddShaderSetAsset_v8(CPakFile* pak, const char* assetPath, rapidjso
 	printf("\n");
 }
 
-void Assets::AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
 {
 	Log("Adding shds asset '%s'\n", assetPath);
 
@@ -163,18 +167,21 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, rapidjs
 
 	pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_v11_t, name)));
 
-	// === Shader Inputs === //
-	const std::string vertexShaderInput = JSON_GET_STR(mapEntry, "vertexShader", "");
-	const std::string pixelShaderInput = JSON_GET_STR(mapEntry, "pixelShader", "");
-
-	const uint64_t vertexShaderGuid = RTech::GetAssetGUIDFromString(vertexShaderInput.c_str(), true);
-	const uint64_t pixelShaderGuid = RTech::GetAssetGUIDFromString(pixelShaderInput.c_str(), true);
+	// dedup
+	// === Shader Inputs ===
+	const char* const vertexShaderInput = JSON_GetValueOrDefault(mapEntry, "vertexShader", "");
+	const uint64_t vertexShaderGuid = RTech::GetAssetGUIDFromString(vertexShaderInput, true);
 
 	if (vertexShaderGuid == 0)
 		Error("No vertexShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
 
+	const char* const pixelShaderInput = JSON_GetValueOrDefault(mapEntry, "pixelShader", "");
+	const uint64_t pixelShaderGuid = RTech::GetAssetGUIDFromString(pixelShaderInput, true);
+
 	if (pixelShaderGuid == 0)
 		Error("No pixelShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
+
+	// end dedup
 
 	hdr->vertexShader = vertexShaderGuid;
 	hdr->pixelShader = pixelShaderGuid;
@@ -210,52 +217,53 @@ void Assets::AddShaderSetAsset_v11(CPakFile* pak, const char* assetPath, rapidjs
 
 	hdr->textureInputCounts[1] += hdr->textureInputCounts[0];
 
+	// dedup
 	// TEMPORARY VARS
 
-	if (JSON_IS_UINT(mapEntry, "numVertexShaderTextures"))
+	uint32_t numVertexShaderTextures;
+
+	if (JSON_GetValue(mapEntry, "numVertexShaderTextures", numVertexShaderTextures))
 	{
-		Warning("Overriding field \"numVertexShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
-		hdr->textureInputCounts[0] = static_cast<uint16_t>(JSON_GET_UINT(mapEntry, "numVertexShaderTextures", 0));
+		Debug("Overriding field \"numVertexShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
+		hdr->textureInputCounts[0] = static_cast<uint16_t>(numVertexShaderTextures);
 	}
 	else if (!vertexShader && hdr->vertexShader != 0) // warn if there is an asset guid, but it's not present in the current pak
 		Warning("Creating shader set '%s' without a local vertex shader asset and without a \'numVertexShaderTextures\' field. Shader set will assume 0 vertex shader textures.\n", assetPath);
 
-	if (JSON_IS_UINT(mapEntry, "numPixelShaderTextures"))
+	uint32_t numPixelShaderTextures;
+
+	if (JSON_GetValue(mapEntry, "numPixelShaderTextures", numPixelShaderTextures))
 	{
-		Warning("Overriding field \"numPixelShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
-		hdr->textureInputCounts[1] = static_cast<uint16_t>(JSON_GET_UINT(mapEntry, "numPixelShaderTextures", 0));
+		Debug("Overriding field \"numPixelShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
+		hdr->textureInputCounts[1] = static_cast<uint16_t>(numPixelShaderTextures);
 	}
 	else if (!pixelShader && hdr->pixelShader != 0) // warn if there is an asset guid, but it's not present in the current pak
 		Warning("Creating shader set '%s' without a local pixel shader asset and without a \'numPixelShaderTextures\' field. Shader set will assume 0 pixel shader textures.\n", assetPath);
 
-	hdr->numSamplers = static_cast<uint16_t>(JSON_GET_UINT(mapEntry, "numSamplers", 0));
+	// end dedup
+
+	hdr->numSamplers = static_cast<uint16_t>(JSON_GetNumberOrDefault(mapEntry, "numSamplers", 0u));
 
 	// only used for ui/ui_world shadersets in R5
 	// for now this will have to be manually set if used, because i cannot figure out a way to programmatically
 	// detect these resources without incorrectly identifying some, and i doubt that's a good thing
-	hdr->firstResourceBindPoint = static_cast<uint8_t>(JSON_GET_UINT(mapEntry, "firstResource", 0));
-	hdr->numResources = static_cast<uint8_t>(JSON_GET_UINT(mapEntry, "numResources", 0));
+	hdr->firstResourceBindPoint = static_cast<uint8_t>(JSON_GetNumberOrDefault(mapEntry, "firstResource", 0u));
+	hdr->numResources = static_cast<uint8_t>(JSON_GetNumberOrDefault(mapEntry, "numResources", 0u));
 
 	if (hdr->numResources != 0)
 		Warning("Shader set '%s' has requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n", assetPath);
 
-	uint64_t assetGuid = 0;
+	// dedup
 
-	if (JSON_IS_UINT64(mapEntry, "$guid"))
-	{
-		assetGuid = JSON_GET_UINT64(mapEntry, "$guid", 0);
-	}
-	else if(JSON_IS_STR(mapEntry, "$guid"))
-	{
-		RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "$guid", ""), &assetGuid);
-	}
-	else
-	{
+	uint64_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
+
+	if (!assetGuid)
 		assetGuid = RTech::StringToGuid((assetPathWithoutExtension + ".rpak").c_str());
-	}
 
 	if (assetGuid == 0)
 		Error("Invalid GUID provided for asset '%s'.\n", assetPath);
+
+	// end dedup
 
 	PakAsset_t asset;
 	asset.InitAsset(

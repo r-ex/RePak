@@ -2,7 +2,7 @@
 #include "assets.h"
 
 // only tested for apex, should be identical on tf2
-void Assets::AddPatchAsset(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddPatchAsset(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
 {
     Log("Adding Ptch asset '%s'\n", assetPath);
 

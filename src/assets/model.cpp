@@ -60,7 +60,7 @@ char* Model_ReadVGFile(const std::string& path, size_t* pFileSize)
     return buf;
 }
 
-bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader_t* hdr, rapidjson::Value& mapEntry)
+bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader_t* hdr, const rapidjson::Value& mapEntry)
 {
     if (!mapEntry.HasMember("sequences") || !mapEntry["sequences"].IsArray())
         return false;
@@ -100,7 +100,7 @@ bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader
     return true;
 }
 
-void Assets::AddModelAsset_v9(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddModelAsset_v9(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
 {
     Log("Adding mdl_ asset '%s'\n", assetPath);
 
@@ -134,7 +134,7 @@ void Assets::AddModelAsset_v9(CPakFile* pak, const char* assetPath, rapidjson::V
 
     CPakDataChunk phyChunk;
     
-    if (JSON_GET_BOOL(mapEntry, "usePhysics"))
+    if (JSON_GetValueOrDefault(mapEntry, "usePhysics", false))
     {
         BinaryIO phyInput;
         const std::string physicsFile = Utils::ChangeExtension(rmdlFilePath, "phy");
@@ -153,10 +153,12 @@ void Assets::AddModelAsset_v9(CPakFile* pak, const char* assetPath, rapidjson::V
     //
     CPakDataChunk animRigsChunk;
 
-    if (JSON_IS_ARRAY(mapEntry, "animrigs"))
-    {
-        rapidjson::Value& animrigs = mapEntry["animrigs"];
+    rapidjson::Value::ConstMemberIterator it;
+    const bool hasAnimRigs = JSON_GetIterator(mapEntry, "animrigs", JSONFieldType_e::kArray, it);
 
+    if (hasAnimRigs)
+    {
+        const rapidjson::Value::ConstArray animrigs = it->value.GetArray();
         pHdr->animRigCount = animrigs.Size();
 
         animRigsChunk = pak->CreateDataChunk(animrigs.Size() * sizeof(uint64_t), SF_CPU, 64);
@@ -164,15 +166,15 @@ void Assets::AddModelAsset_v9(CPakFile* pak, const char* assetPath, rapidjson::V
         rmem arigBuf(animRigsChunk.Data());
 
         int i = 0;
-        for (auto& it : animrigs.GetArray())
+        for (const auto& animrig : animrigs)
         {
-            if (!it.IsString())
+            if (!animrig.IsString())
                 Error("invalid animrig entry for model '%s'\n", assetPath);
 
-            if (it.GetStringLength() == 0)
+            if (animrig.GetStringLength() == 0)
                 Error("anim rig #%i for model '%s' was defined as an invalid empty string\n", i, assetPath);
 
-            uint64_t guid = RTech::StringToGuid(it.GetStdString().c_str());
+            uint64_t guid = RTech::StringToGuid(animrig.GetStdString().c_str());
 
             arigBuf.write<uint64_t>(guid);
 

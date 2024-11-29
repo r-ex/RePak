@@ -102,7 +102,7 @@ int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pat
 	return static_cast<int>(file.shader->entries.size());
 }
 
-void Assets::AddShaderAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddShaderAsset_v8(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
 {
 	Log("Adding shdr asset '%s'\n", assetPath);
 
@@ -148,41 +148,37 @@ void Assets::AddShaderAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::
 
 	const uint8_t numFlagsPerShader = hdr->type == eShaderType::Vertex ? 2 : 1;
 
+	// dedup
+
 	// get input layout flags from json
 	// this will eventually be taken from the bytecode itself, but that code will be very annoying so for now
 	// the values are manually provided
-	if (JSON_IS_ARRAY(mapEntry, "inputFlags") && mapEntry["inputFlags"].GetArray().Size() == static_cast<size_t>(numFlagsPerShader * numShaders))
-	{
-		uint64_t* inputFlags = reinterpret_cast<uint64_t*>(shaderInfoChunk.Data() + reservedDataSize);
 
-		size_t i = 0;
-		for (auto& elem : mapEntry["inputFlags"].GetArray())
-		{
-			uint64_t flag = 0;
-			if (elem.IsUint64())
-			{
-				flag = elem.GetUint64();
-			}
-			else if (elem.IsString())
-			{
-				flag = strtoull(elem.GetString(), NULL, 0);
-			}
-			else
-				Error("Found invalid input flag (idx %zu) for shader asset %s. Flag must be either an integer literal or a hex number as a string.\n", i, assetPath);
+	rapidjson::Value::ConstMemberIterator flagsIt;
 
-
-			if (flag == 0)
-				Warning("Found potentially invalid input flag (idx %zu) for shader asset %s. Flag value is zero.\n", i, assetPath);
-
-			// vertex shaders seem to have data every 8 bytes, unlike (seemingly) every other shader that only uses 8 out of every 16 bytes
-
-			inputFlags[(3 - numFlagsPerShader) * i] = flag;
-
-			i++;
-		}
-	}
-	else
+	if (!JSON_GetIterator(mapEntry, "inputFlags", JSONFieldType_e::kArray, flagsIt))
 		Error("Invalid \"inputFlags\" field for shader asset %s. Must be an array with the same number of elements as there are shader buffers in the MSW file (%i).\n", assetPath, numShaders);
+
+	uint64_t* inputFlags = reinterpret_cast<uint64_t*>(shaderInfoChunk.Data() + reservedDataSize);
+
+	size_t i = 0;
+	for (const auto& elem : flagsIt->value.GetArray())
+	{
+		uint64_t flag = 0;
+
+		if (!JSON_ParseNumber(elem, flag))
+			Error("Found invalid input flag (idx %zu) for shader asset %s. Flag must be either an integer literal or a number as a string.\n", i, assetPath);
+
+		if (flag == 0)
+			Warning("Found potentially invalid input flag (idx %zu) for shader asset %s. Flag value is zero.\n", i, assetPath);
+
+		// vertex shaders seem to have data every 8 bytes, unlike (seemingly) every other shader that only uses 8 out of every 16 bytes
+
+		inputFlags[(3 - numFlagsPerShader) * i] = flag;
+		i++;
+	}
+
+	// end dedup
 
 	// =======================================
 
@@ -304,7 +300,7 @@ int ShaderV12_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pa
 	return static_cast<int>(file.shader->entries.size());
 }
 
-void Assets::AddShaderAsset_v12(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddShaderAsset_v12(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
 {
 	Log("Adding shdr asset '%s'\n", assetPath);
 
@@ -350,62 +346,51 @@ void Assets::AddShaderAsset_v12(CPakFile* pak, const char* assetPath, rapidjson:
 
 	const uint8_t numFlagsPerShader = hdr->type == eShaderType::Vertex ? 2 : 1;
 
+	// dedup
+
 	// get input layout flags from json
 	// this will eventually be taken from the bytecode itself, but that code will be very annoying so for now
 	// the values are manually provided
-	if (JSON_IS_ARRAY(mapEntry, "inputFlags") && mapEntry["inputFlags"].GetArray().Size() == static_cast<size_t>(numFlagsPerShader * numShaders))
-	{
-		uint64_t* inputFlags = reinterpret_cast<uint64_t*>(shaderInfoChunk.Data() + reservedDataSize);
 
-		size_t i = 0;
-		for (auto& elem : mapEntry["inputFlags"].GetArray())
-		{
-			uint64_t flag = 0;
-			if (elem.IsUint64())
-			{
-				flag = elem.GetUint64();
-			}
-			else if (elem.IsString())
-			{
-				flag = strtoull(elem.GetString(), NULL, 0);
-			}
-			else
-				Error("Found invalid input flag (idx %zu) for shader asset %s. Flag must be either an integer literal or a hex number as a string.\n", i, assetPath);
+	rapidjson::Value::ConstMemberIterator flagsIt;
 
-
-			if (flag == 0)
-				Warning("Found potentially invalid input flag (idx %zu) for shader asset %s. Flag value is zero.\n", i, assetPath);
-
-			// vertex shaders seem to have data every 8 bytes, unlike (seemingly) every other shader that only uses 8 out of every 16 bytes
-
-			inputFlags[(3 - numFlagsPerShader) * i] = flag;
-
-			i++;
-		}
-	}
-	else
+	if (!JSON_GetIterator(mapEntry, "inputFlags", JSONFieldType_e::kArray, flagsIt))
 		Error("Invalid \"inputFlags\" field for shader asset %s. Must be an array with the same number of elements as there are shader buffers in the MSW file (%i).\n", assetPath, numShaders);
+
+	uint64_t* inputFlags = reinterpret_cast<uint64_t*>(shaderInfoChunk.Data() + reservedDataSize);
+
+	size_t i = 0;
+	for (const auto& elem : flagsIt->value.GetArray())
+	{
+		uint64_t flag = 0;
+
+		if (!JSON_ParseNumber(elem, flag))
+			Error("Found invalid input flag (idx %zu) for shader asset %s. Flag must be either an integer literal or a number as a string.\n", i, assetPath);
+
+		if (flag == 0)
+			Warning("Found potentially invalid input flag (idx %zu) for shader asset %s. Flag value is zero.\n", i, assetPath);
+
+		// vertex shaders seem to have data every 8 bytes, unlike (seemingly) every other shader that only uses 8 out of every 16 bytes
+
+		inputFlags[(3 - numFlagsPerShader) * i] = flag;
+		i++;
+	}
+
+	// end dedup
 
 	// =======================================
 
+	// dedup
 
-	uint64_t assetGuid = 0;
+	uint64_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
 
-	if (JSON_IS_UINT64(mapEntry, "$guid"))
-	{
-		assetGuid = JSON_GET_UINT64(mapEntry, "$guid", 0);
-	}
-	else if (JSON_IS_STR(mapEntry, "$guid"))
-	{
-		RTech::ParseGUIDFromString(JSON_GET_STR(mapEntry, "$guid", ""), &assetGuid);
-	}
-	else
-	{
+	if (!assetGuid)
 		assetGuid = RTech::StringToGuid((pakFilePath.string() + ".rpak").c_str());
-	}
 
 	if (assetGuid == 0)
 		Error("Invalid GUID provided for asset '%s'.\n", assetPath);
+
+	// end dedup
 
 	PakAsset_t asset;
 	asset.InitAsset(

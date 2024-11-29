@@ -11,7 +11,7 @@
 #include "thirdparty/zstd/zstd.h"
 #include "thirdparty/zstd/decompress/zstd_decompress_internal.h"
 
-bool CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
+bool CPakFile::AddJSONAsset(const char* type, const rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
 {
 	if (file["$type"].GetStdString() == type)
 	{
@@ -48,7 +48,7 @@ bool CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeF
 //-----------------------------------------------------------------------------
 // purpose: installs asset types and their callbacks
 //-----------------------------------------------------------------------------
-void CPakFile::AddAsset(rapidjson::Value& file)
+void CPakFile::AddAsset(const rapidjson::Value& file)
 {
 	HANDLE_ASSET_TYPE("txtr", file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
 	HANDLE_ASSET_TYPE("uimg", file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
@@ -63,7 +63,7 @@ void CPakFile::AddAsset(rapidjson::Value& file)
 	HANDLE_ASSET_TYPE("shdr", file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
 
 	// If the function has not returned by this point, we have an invalid asset type name.
-	Error("Invalid asset type '%s' provided for asset '%s'.\n", JSON_GET_STR(file, "$type", "(invalid)"), JSON_GET_STR(file, "path", "(unknown)"));
+	Error("Invalid asset type '%s' provided for asset '%s'.\n", JSON_GetValueOrDefault(file, "$type", "(invalid)"), JSON_GetValueOrDefault(file, "path", "(unknown)"));
 }
 
 //-----------------------------------------------------------------------------
@@ -679,7 +679,7 @@ bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, con
 		const bool lastChunk = (bytesLeft < buffInSize);
 		const size_t numBytesToRead = lastChunk ? bytesLeft : buffInSize;
 
-		inStream.Read((uint8_t*)buffIn, numBytesToRead);
+		inStream.Read(reinterpret_cast<uint8_t*>(buffIn), numBytesToRead);
 		bytesLeft -= numBytesToRead;
 
 		ZSTD_EndDirective const mode = lastChunk ? ZSTD_e_end : ZSTD_e_continue;
@@ -699,7 +699,7 @@ bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, con
 				return false;
 			}
 
-			outStream.Write((uint8_t*)buffOut, outputFrame.pos);
+			outStream.Write(reinterpret_cast<uint8_t*>(buffOut), outputFrame.pos);
 
 			finished = lastChunk ? (remaining == 0) : (inputFrame.pos == inputFrame.size);
 		} while (!finished);
@@ -775,10 +775,12 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	fs::path inputPath(mapPath);
 	Utils::ParseMapDocument(doc, inputPath);
 
-	string pakName = JSON_GET_STR(doc, "name", DEFAULT_RPAK_NAME);
+	const string pakName = JSON_GetValueOrDefault(doc, "name", DEFAULT_RPAK_NAME);
 
 	// determine source asset directory from map file
-	if (!JSON_IS_STR(doc, "assetsDir"))
+	const char* assetDir;
+
+	if (!JSON_GetValue(doc, "assetsDir", assetDir))
 	{
 		Warning("No assetsDir field provided. Assuming that everything is relative to the working directory.\n");
 		if (inputPath.has_parent_path())
@@ -788,7 +790,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	}
 	else
 	{
-		fs::path assetsDirPath(doc["assetsDir"].GetStdString());
+		const fs::path assetsDirPath(assetDir);
 		if (assetsDirPath.is_relative() && inputPath.has_parent_path())
 			m_AssetPath = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).string();
 		else
@@ -800,8 +802,9 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 
 	// determine final build path from map file
-	std::string outputPath(DEFAULT_RPAK_PATH);
-	if (JSON_IS_STR(doc, "outputDir"))
+	std::string outputPath;
+
+	if (JSON_GetValue(doc, "outputDir", outputPath))
 	{
 		fs::path outputDirPath(doc["outputDir"].GetString());
 
@@ -813,11 +816,15 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		// ensure that the path has a slash at the end
 		Utils::AppendSlash(outputPath);
 	}
+	else
+		outputPath = DEFAULT_RPAK_PATH;
 
-	if (!JSON_IS_INT(doc, "version"))
+	const int pakVersion = JSON_GetValueOrDefault(doc, "version", -1);
+
+	if (pakVersion < 0)
 		Warning("No version field provided; assuming version 8 (r5)\n");
 
-	this->SetVersion(JSON_GET_INT(doc, "version", 8));
+	this->SetVersion(JSON_GetValueOrDefault(doc, "version", 8));
 
 	// print parsed settings
 	Log("build settings:\n");
@@ -833,17 +840,26 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	SetPath(outputPath + pakName + ".rpak");
 
 	// should dev-only data be kept - e.g. texture asset names, uimg texture names
-	if (JSON_GET_BOOL(doc, "keepDevOnly"))
+	if (JSON_GetValueOrDefault(doc, "keepDevOnly", false))
 		AddFlags(PF_KEEP_DEV);
 
-	if (JSON_IS_STR(doc, "starpakPath"))
-		SetPrimaryStarpakPath(doc["starpakPath"].GetStdString());
+	const char* starpakPath;
+
+	if (JSON_GetValue(doc, "starpakPath", starpakPath))
+		SetPrimaryStarpakPath(starpakPath);
 
 	// build asset data;
 	// loop through all assets defined in the map file
-	for (auto& file : doc["files"].GetArray())
+
+	rapidjson::Value::ConstMemberIterator filesIt;
+
+	if (JSON_GetIterator(doc, "files", JSONFieldType_e::kArray, filesIt))
 	{
-		AddAsset(file);
+		for (const auto& file : filesIt->value.GetArray())
+		{
+			// todo: print asset name here?
+			AddAsset(file);
+		}
 	}
 
 	// create file stream from path created above
@@ -902,11 +918,12 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	const size_t decompressedFileSize = out.GetSize();
 	size_t compressedFileSize = 0;
 
-	const int compressLevel = JSON_GET_INT(doc, "compressLevel", 0);
+	const int compressLevel = JSON_GetValueOrDefault(doc, "compressLevel", 0);
 
 	if (compressLevel > 0 && decompressedFileSize > GetHeaderSize())
 	{
-		const int workerCount = JSON_GET_INT(doc, "compressWorkers", 0);
+		// todo: add compress print
+		const int workerCount = JSON_GetValueOrDefault(doc, "compressWorkers", 0);
 		compressedFileSize = EncodeStreamAndSwap(out, compressLevel, workerCount);
 	}
 

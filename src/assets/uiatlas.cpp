@@ -3,7 +3,7 @@
 #include "utils/dxutils.h"
 #include "public/texture.h"
 
-void Assets::AddUIImageAsset_v10(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddUIImageAsset_v10(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
 {
     Log("Adding uimg asset '%s'\n", assetPath);
 

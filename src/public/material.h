@@ -64,9 +64,10 @@ static const std::map<int, MaterialShaderType_t> s_materialShaderTypeMap
 };
 
 
-inline MaterialShaderType_t Material_ShaderTypeFromString(std::string& str)
+inline MaterialShaderType_t Material_ShaderTypeFromString(const std::string& str)
 {
-	int type = *reinterpret_cast<const int*>(str.c_str());
+	// todo: is this reliable?
+	const int type = *reinterpret_cast<const int*>(str.c_str());
 
 	if (s_materialShaderTypeMap.count(type) != 0)
 		return s_materialShaderTypeMap.at(type);
@@ -134,7 +135,7 @@ struct __declspec(align(16)) MaterialDXState_v15_t
 	// bitfield defining a D3D11_RENDER_TARGET_BLEND_DESC for each of the 8 possible DX render targets
 	MaterialBlendState_t blendStates[MAT_BLEND_STATE_COUNT];
 
-	uint32_t unk;
+	uint32_t blendStateMask;
 
 	// flags to determine how the D3D11_DEPTH_STENCIL_DESC is defined for this material
 	uint16_t depthStencilFlags;
@@ -150,7 +151,7 @@ struct __declspec(align(16)) MaterialDXState_v12_t
 	// r2 only supports 4 render targets?
 	MaterialBlendState_t blendStates[4];
 
-	uint32_t unk; // 0x5
+	uint32_t blendStateMask; // 0x5
 	uint16_t depthStencilFlags; // different render settings, such as opacity and transparency.
 	uint16_t rasterizerFlags; // how the face is drawn, culling, wireframe, etc.
 
@@ -353,10 +354,8 @@ struct GenericShaderBuffer
 	float c_L0_perfSpecColor[3];
 	float c_L1_perfSpecColor[3];
 
-	MaterialShaderBufferV12 GenericV12()
+	void Generic(MaterialShaderBufferV12& out)
 	{
-		MaterialShaderBufferV12 out{};
-
 		out.c_uv1 = this->c_uv1;
 		out.c_uv2 = this->c_uv2;
 		out.c_uv3 = this->c_uv3;
@@ -379,14 +378,10 @@ struct GenericShaderBuffer
 		{
 			out.c_emissiveTint[i] = this->c_L0_emissiveTint[i];
 		}
-
-		return out;
 	}
 
-	MaterialShaderBufferV15 GenericV15()
+	void Generic(MaterialShaderBufferV15& out)
 	{
-		MaterialShaderBufferV15 out{};
-
 		out.c_uv1 = this->c_uv1;
 		out.c_uv2 = this->c_uv2;
 		out.c_uv3 = this->c_uv3;
@@ -411,8 +406,6 @@ struct GenericShaderBuffer
 		{
 			out.c_L0_emissiveTint[i] = this->c_L0_emissiveTint[i];
 		}
-
-		return out;
 	}
 };
 
@@ -456,7 +449,8 @@ struct __declspec(align(16)) MaterialAssetHeader_v12_t
 
 	uint32_t unk_BC; // this might actually be "Alignment"
 
-	uint64_t flags2;
+	uint32_t flags;
+	uint32_t flags2;
 
 	short width;
 	short height;
@@ -507,7 +501,8 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 
 	uint32_t unk_84;
 
-	uint64_t flags2;
+	uint32_t flags;
+	uint32_t flags2;
 
 	MaterialDXState_v15_t dxStates[2]; // seems to be used for setting up some D3D states?
 
@@ -553,7 +548,9 @@ struct MaterialAsset_t
 	uint32_t unk; // 0x1F5A92BD, REQUIRED but why?
 
 	char samplers[4];
-	uint64_t flags2;
+
+	uint32_t flags;
+	uint32_t flags2;
 
 	MaterialDXState_v15_t dxStates[MAT_DX_STATE_COUNT]; // seems to be used for setting up some D3D states?
 
@@ -564,8 +561,8 @@ struct MaterialAsset_t
 	std::string surface;
 	std::string surface2;
 
-	void SetupDepthMaterialOverrides(const rapidjson::Value& mapEntry);
-	void FromJSON(rapidjson::Value& mapEntry);
+	void SetupDepthMaterials(const rapidjson::Value& mapEntry);
+	void FromJSON(const rapidjson::Value& mapEntry);
 
 	void WriteToBuffer(char* buf)
 	{
@@ -596,6 +593,7 @@ struct MaterialAsset_t
 
 			memcpy(matl->samplers, this->samplers, sizeof(matl->samplers));
 			//matl->samplers = this->samplers;
+			matl->flags = this->flags;
 			matl->flags2 = this->flags2;
 
 			for (int i = 0; i < 2; i++)
@@ -605,7 +603,7 @@ struct MaterialAsset_t
 				matl->dxStates[i].blendStates[2] = this->dxStates[i].blendStates[2];
 				matl->dxStates[i].blendStates[3] = this->dxStates[i].blendStates[3];
 
-				matl->dxStates[i].unk = this->dxStates[i].unk;
+				matl->dxStates[i].blendStateMask = this->dxStates[i].blendStateMask;
 				matl->dxStates[i].depthStencilFlags = this->dxStates[i].depthStencilFlags;
 				matl->dxStates[i].rasterizerFlags = this->dxStates[i].rasterizerFlags;
 			}
@@ -637,6 +635,7 @@ struct MaterialAsset_t
 			matl->unk_80 = this->unk;
 
 			memcpy(matl->samplers, this->samplers, sizeof(matl->samplers));
+			matl->flags = this->flags;
 			matl->flags2 = this->flags2;
 
 			matl->materialType = this->materialType;
@@ -651,7 +650,7 @@ struct MaterialAsset_t
 					matl->dxStates[i].blendStates[targetIdx] = this->dxStates[i].blendStates[targetIdx];
 				}
 
-				matl->dxStates[i].unk = this->dxStates[i].unk;
+				matl->dxStates[i].blendStateMask = this->dxStates[i].blendStateMask;
 				matl->dxStates[i].depthStencilFlags = this->dxStates[i].depthStencilFlags;
 				matl->dxStates[i].rasterizerFlags = this->dxStates[i].rasterizerFlags;
 			}

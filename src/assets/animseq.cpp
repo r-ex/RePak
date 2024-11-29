@@ -88,7 +88,7 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, const char* assetPath)
     pak->PushAsset(asset);
 }
 
-void Assets::AddAnimSeqAsset_v7(CPakFile* pak, const char* assetPath, rapidjson::Value& /*mapEntry*/)
+void Assets::AddAnimSeqAsset_v7(CPakFile* pak, const char* assetPath, const rapidjson::Value& /*mapEntry*/)
 {
     AddAnimSeqAsset(pak, assetPath);
 }

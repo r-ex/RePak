@@ -15,7 +15,7 @@ char* AnimRig_ReadRigFile(const std::string& path)
 
     char* const buf = new char[fileSize];
 
-    std::ifstream ifs(path, std::ios::in | std::ios::binary);
+    std::ifstream ifs(path, std::ios::in | std::ios::binary); // todo: BinaryIO
     ifs.read(buf, fileSize);
     ifs.close();
 
@@ -33,37 +33,39 @@ char* AnimRig_ReadRigFile(const std::string& path)
     return buf;
 }
 
-bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHeader_t* hdr, rapidjson::Value& mapEntry)
+bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHeader_t* hdr, const rapidjson::Value& mapEntry)
 {
-    if (!JSON_IS_ARRAY(mapEntry, "sequences")) //mapEntry.HasMember("sequences") || !mapEntry["sequences"].IsArray())
+    rapidjson::Value::ConstMemberIterator it;
+
+    if (!JSON_GetIterator(mapEntry, "sequences", JSONFieldType_e::kArray, it))
         return false;
 
-    std::vector<uint64_t> sequenceGuids;
+    std::vector<PakGuid_t> sequenceGuids;
 
-    for (auto& it : mapEntry["sequences"].GetArray())
+    for (const auto& sequenceElem : it->value.GetArray())
     {
-        if (!it.IsString())
+        if (!sequenceElem.IsString())
             continue;
 
-        if (it.GetStringLength() == 0)
+        if (sequenceElem.GetStringLength() == 0)
             continue;
 
-        uint64_t guid = 0;
+        PakGuid_t guid = 0;
 
-        if (!RTech::ParseGUIDFromString(it.GetString(), &guid))
+        if (!RTech::ParseGUIDFromString(sequenceElem.GetString(), &guid))
         {
-            Assets::AddAnimSeqAsset(pak, it.GetString());
+            Assets::AddAnimSeqAsset(pak, sequenceElem.GetString());
 
-            guid = RTech::StringToGuid(it.GetString());
+            guid = RTech::StringToGuid(sequenceElem.GetString());
         }
 
         sequenceGuids.emplace_back(guid);
         hdr->sequenceCount++;
     }
 
-    CPakDataChunk guidsChunk = pak->CreateDataChunk(sizeof(uint64_t) * sequenceGuids.size(), SF_CPU, 64);
+    CPakDataChunk guidsChunk = pak->CreateDataChunk(sizeof(PakGuid_t) * sequenceGuids.size(), SF_CPU, 64);
 
-    uint64_t* const pGuids = reinterpret_cast<uint64_t*>(guidsChunk.Data());
+    PakGuid_t* const pGuids = reinterpret_cast<PakGuid_t*>(guidsChunk.Data());
     for (int i = 0; i < sequenceGuids.size(); ++i)
     {
         pGuids[i] = sequenceGuids[i];
@@ -73,7 +75,7 @@ bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHe
     return true;
 }
 
-void Assets::AddAnimRigAsset_v4(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddAnimRigAsset_v4(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
 {
     Log("Adding mdl_ asset '%s'\n", assetPath);
 

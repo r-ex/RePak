@@ -120,10 +120,10 @@ public:
 	// assets
 	//----------------------------------------------------------------------------
 
-	typedef void(*AssetTypeFunc_t)(CPakFile*, const char*, rapidjson::Value&);
+	typedef void(*AssetTypeFunc_t)(CPakFile*, const char*, const rapidjson::Value&);
 
-	bool AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
-	void AddAsset(rapidjson::Value& file);
+	bool AddJSONAsset(const char* type, const rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
+	void AddAsset(const rapidjson::Value& file);
 	void AddPointer(PagePtr_t ptr);
 	void AddPointer(int pageIdx, int pageOffset);
 	void AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, const PagePtr_t& ptr);
