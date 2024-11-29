@@ -45,13 +45,16 @@ size_t Utils::PadBuffer(char** buf, size_t size, size_t alignment)
 //-----------------------------------------------------------------------------
 size_t Utils::WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVector)
 {
-	size_t length = 0;
+	size_t lenTotal = 0;
 	for (auto it = dataVector.begin(); it != dataVector.end(); ++it)
 	{
-		length += (*it).length() + 1;
-		out.writeString(*it);
+		// NOTE: +1 because we need to take the null char into account too.
+		const size_t lenPath = (*it).length() + 1;
+		lenTotal += lenPath;
+
+		out.Write((*it).c_str(), lenPath);
 	}
-	return length;
+	return lenTotal;
 }
 
 //-----------------------------------------------------------------------------

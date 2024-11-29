@@ -10,7 +10,7 @@ char* Model_ReadRMDLFile(const std::string& path)
     size_t fileSize = Utils::GetFileSize(path);
 
     if (fileSize < sizeof(studiohdr_t))
-        Error("invalid model file '%s'. must be at least %i bytes, found %lld\n", path.c_str(), sizeof(studiohdr_t), fileSize);
+        Error("invalid model file '%s'. must be at least %i bytes, found %zu\n", path.c_str(), sizeof(studiohdr_t), fileSize);
 
     char* buf = new char[fileSize];
 
@@ -39,7 +39,7 @@ char* Model_ReadVGFile(const std::string& path, size_t* pFileSize)
     size_t fileSize = Utils::GetFileSize(path);
 
     if (fileSize < sizeof(VertexGroupHeader_t))
-        Error("invalid model file '%s'. must be at least %i bytes, found %lld\n", path.c_str(), sizeof(VertexGroupHeader_t), fileSize);
+        Error("invalid model file '%s'. must be at least %i bytes, found %zu\n", path.c_str(), sizeof(VertexGroupHeader_t), fileSize);
 
     char* buf = new char[fileSize];
 
@@ -137,17 +137,15 @@ void Assets::AddModelAsset_v9(CPakFile* pak, const char* assetPath, rapidjson::V
     if (JSON_GET_BOOL(mapEntry, "usePhysics"))
     {
         BinaryIO phyInput;
-        phyInput.open(Utils::ChangeExtension(rmdlFilePath, "phy"), BinaryIOMode::Read);
+        const std::string physicsFile = Utils::ChangeExtension(rmdlFilePath, "phy");
 
-        phyInput.seek(0, std::ios::end);
+        if (!phyInput.Open(physicsFile, BinaryIO::Mode_e::Read))
+            Error("Failed to open physics asset '%s'\n", physicsFile.c_str());
 
-        phyFileSize = phyInput.tell();
-
+        phyFileSize = phyInput.GetSize();
         phyChunk = pak->CreateDataChunk(phyFileSize, SF_CPU, 64);
 
-        phyInput.seek(0);
-        phyInput.getReader()->read(phyChunk.Data(), phyFileSize);
-        phyInput.close();
+        phyInput.Read(phyChunk.Data(), phyFileSize);
     }
 
     //

@@ -74,11 +74,14 @@ void Assets::AddUIImageAsset_v10(CPakFile* pak, const char* assetPath, rapidjson
 
     // grab the dimensions of the atlas
     BinaryIO atlas;
-    atlas.open(sAtlasFilePath, BinaryIOMode::Read);
-    atlas.seek(4, std::ios::beg);
-    DDS_HEADER ddsh = atlas.read<DDS_HEADER>();
 
-    atlas.close();
+    if (!atlas.Open(sAtlasFilePath, BinaryIO::Mode_e::Read))
+        Error("Failed to open atlas asset '%s'\n", sAtlasFilePath.c_str());
+
+    atlas.SeekGet(4);
+    DDS_HEADER ddsh = atlas.Read<DDS_HEADER>();
+
+    atlas.Close();
 
 
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(UIImageAtlasHeader_t), SF_HEAD | SF_CLIENT, 8);

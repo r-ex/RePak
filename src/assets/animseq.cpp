@@ -29,11 +29,17 @@ void Assets::AddAnimSeqAsset(CPakFile* pak, const char* assetPath)
     snprintf(dataChunk.Data(), rseqNameLenAligned, "%s", assetPath);
 
     // begin rseq input
-    BinaryIO rseqInput(rseqFilePath, BinaryIOMode::Read);
+    BinaryIO rseqInput;
+
+    if (!rseqInput.Open(rseqFilePath, BinaryIO::Mode_e::Read))
+    {
+        Error("Failed to open animseq asset '%s'\n", assetPath);
+        return;
+    }
 
     // write the rseq data into the data buffer
-    rseqInput.getReader()->read(dataChunk.Data() + rseqNameLenAligned, rseqFileSize);
-    rseqInput.close();
+    rseqInput.Read(dataChunk.Data() + rseqNameLenAligned, rseqFileSize);
+    rseqInput.Close();
 
     mstudioseqdesc_t seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(dataChunk.Data() + rseqNameLenAligned);
     

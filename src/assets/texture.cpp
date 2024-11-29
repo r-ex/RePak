@@ -37,7 +37,10 @@ void Assets::AddTextureAsset(CPakFile* pak, uint64_t guid, const char* assetPath
 
     TextureAssetHeader_t* hdr = reinterpret_cast<TextureAssetHeader_t*>(hdrChunk.Data());
 
-    BinaryIO input(filePath, BinaryIOMode::Read);
+    BinaryIO input;
+
+    if (!input.Open(filePath, BinaryIO::Mode_e::Read))
+        Error("Failed to open texture asset '%s'\n", filePath.c_str());
 
     std::string sAssetName = assetPath;
 
@@ -57,19 +60,19 @@ void Assets::AddTextureAsset(CPakFile* pak, uint64_t guid, const char* assetPath
     // parse input image file
     {
         int magic;
-        input.read(magic);
+        input.Read(magic);
 
         if (magic != DDS_MAGIC) // b'DDS '
             Error("Attempted to add txtr asset '%s' that was not a valid DDS file (invalid magic). Exiting...\n", assetPath);
 
-        DDS_HEADER ddsh = input.read<DDS_HEADER>();
+        DDS_HEADER ddsh = input.Read<DDS_HEADER>();
 
         DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN;
 
         // Go to the end of the DX10 header if it exists.
         if (ddsh.ddspf.dwFourCC == '01XD')
         {
-            DDS_HEADER_DXT10 ddsh_dx10 = input.read<DDS_HEADER_DXT10>();
+            DDS_HEADER_DXT10 ddsh_dx10 = input.Read<DDS_HEADER_DXT10>();
 
             dxgiFormat = ddsh_dx10.dxgiFormat;
 
@@ -192,22 +195,22 @@ void Assets::AddTextureAsset(CPakFile* pak, uint64_t guid, const char* assetPath
     {
         mipLevel_t& mipMap = mips.at(mipLevel - 1);
 
-        input.seek(mipMap.mipOffset, std::ios::beg);
+        input.SeekGet(mipMap.mipOffset);
 
         switch (mipMap.mipType)
         {
         case STATIC:
-            input.getReader()->read(pCurrentPosStatic, mipMap.mipSize);
+            input.Read(pCurrentPosStatic, mipMap.mipSize);
             pCurrentPosStatic += mipMap.mipSizeAligned; // move ptr
 
             break;
         case STREAMED:
-            input.getReader()->read(pCurrentPosStreamed, mipMap.mipSize);
+            input.Read(pCurrentPosStreamed, mipMap.mipSize);
             pCurrentPosStreamed += mipMap.mipSizeAligned; // move ptr
 
             break;
         case STREAMED_OPT:
-            input.getReader()->read(pCurrentPosStreamedOpt, mipMap.mipSize);
+            input.Read(pCurrentPosStreamedOpt, mipMap.mipSize);
             pCurrentPosStreamedOpt += mipMap.mipSizeAligned; // move ptr
 
             break;
@@ -249,7 +252,7 @@ void Assets::AddTextureAsset(CPakFile* pak, uint64_t guid, const char* assetPath
 
     pak->PushAsset(asset);
 
-    input.close();
+    input.Close();
     printf("\n");
 }
 

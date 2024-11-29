@@ -8,6 +8,9 @@
 #include "pakfile.h"
 #include "assets/assets.h"
 
+#include "thirdparty/zstd/zstd.h"
+#include "thirdparty/zstd/decompress/zstd_decompress_internal.h"
+
 bool CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
 {
 	if (file["$type"].GetStdString() == type)
@@ -164,47 +167,47 @@ void CPakFile::WriteHeader(BinaryIO& io)
 
 	short version = m_Header.fileVersion;
 
-	io.write(m_Header.magic);
-	io.write(m_Header.fileVersion);
-	io.write(m_Header.flags);
-	io.write(m_Header.fileTime);
-	io.write(m_Header.unk0);
-	io.write(m_Header.compressedSize);
+	io.Write(m_Header.magic);
+	io.Write(m_Header.fileVersion);
+	io.Write(m_Header.flags);
+	io.Write(m_Header.fileTime);
+	io.Write(m_Header.unk0);
+	io.Write(m_Header.compressedSize);
 
 	if (version == 8)
-		io.write(m_Header.embeddedStarpakOffset);
+		io.Write(m_Header.embeddedStarpakOffset);
 
-	io.write(m_Header.unk1);
-	io.write(m_Header.decompressedSize);
-
-	if (version == 8)
-		io.write(m_Header.embeddedStarpakSize);
-
-	io.write(m_Header.unk2);
-	io.write(m_Header.starpakPathsSize);
+	io.Write(m_Header.unk1);
+	io.Write(m_Header.decompressedSize);
 
 	if (version == 8)
-		io.write(m_Header.optStarpakPathsSize);
+		io.Write(m_Header.embeddedStarpakSize);
 
-	io.write(m_Header.virtualSegmentCount);
-	io.write(m_Header.pageCount);
-	io.write(m_Header.patchIndex);
+	io.Write(m_Header.unk2);
+	io.Write(m_Header.starpakPathsSize);
 
 	if (version == 8)
-		io.write(m_Header.alignment);
+		io.Write(m_Header.optStarpakPathsSize);
 
-	io.write(m_Header.descriptorCount);
-	io.write(m_Header.assetCount);
-	io.write(m_Header.guidDescriptorCount);
-	io.write(m_Header.relationCount);
+	io.Write(m_Header.virtualSegmentCount);
+	io.Write(m_Header.pageCount);
+	io.Write(m_Header.patchIndex);
+
+	if (version == 8)
+		io.Write(m_Header.alignment);
+
+	io.Write(m_Header.descriptorCount);
+	io.Write(m_Header.assetCount);
+	io.Write(m_Header.guidDescriptorCount);
+	io.Write(m_Header.relationCount);
 
 	if (version == 7)
 	{
-		io.write(m_Header.unk7count);
-		io.write(m_Header.unk8count);
+		io.Write(m_Header.unk7count);
+		io.Write(m_Header.unk8count);
 	}
 	else if (version == 8)
-		io.write(m_Header.unk3);
+		io.Write(m_Header.unk3);
 }
 
 //-----------------------------------------------------------------------------
@@ -214,29 +217,29 @@ void CPakFile::WriteAssets(BinaryIO& io)
 {
 	for (auto& it : m_Assets)
 	{
-		io.write(it.guid);
-		io.write(it.unk0);
-		io.write(it.headPtr.index);
-		io.write(it.headPtr.offset);
-		io.write(it.cpuPtr.index);
-		io.write(it.cpuPtr.offset);
-		io.write(it.starpakOffset);
+		io.Write(it.guid);
+		io.Write(it.unk0);
+		io.Write(it.headPtr.index);
+		io.Write(it.headPtr.offset);
+		io.Write(it.cpuPtr.index);
+		io.Write(it.cpuPtr.offset);
+		io.Write(it.starpakOffset);
 
 		if (this->m_Header.fileVersion == 8)
-			io.write(it.optStarpakOffset);
+			io.Write(it.optStarpakOffset);
 
 		assert(it.pageEnd <= UINT16_MAX);
 		uint16_t pageEnd = static_cast<uint16_t>(it.pageEnd);
-		io.write(pageEnd);
+		io.Write(pageEnd);
 
-		io.write(it.remainingDependencyCount);
-		io.write(it.dependentsIndex);
-		io.write(it.dependenciesIndex);
-		io.write(it.dependentsCount);
-		io.write(it.dependenciesCount);
-		io.write(it.headDataSize);
-		io.write(it.version);
-		io.write(it.id);
+		io.Write(it.remainingDependencyCount);
+		io.Write(it.dependentsIndex);
+		io.Write(it.dependenciesIndex);
+		io.Write(it.dependentsCount);
+		io.Write(it.dependenciesCount);
+		io.Write(it.headDataSize);
+		io.Write(it.version);
+		io.Write(it.id);
 
 		it.SetPublicData<void*>(nullptr);
 	}
@@ -263,12 +266,12 @@ void CPakFile::WritePageData(BinaryIO& out)
 			}
 
 			if(chunk.Data())
-				out.getWriter()->write(chunk.Data(), chunk.GetSize());
+				out.Write(chunk.Data(), chunk.GetSize());
 			else // if chunk is padding to realign the page
 			{
-				//printf("aligning by %i bytes at %lld\n", chunk.GetSize(), out.tell());
+				//printf("aligning by %i bytes at %zu\n", chunk.GetSize(), out.tell());
 
-				out.getWriter()->seekp(chunk.GetSize(), std::ios::cur);
+				out.SeekPut(chunk.GetSize(), std::ios::cur);
 			}
 
 			chunk.Release();
@@ -280,7 +283,7 @@ void CPakFile::WritePageData(BinaryIO& out)
 // purpose: writes starpak paths to file stream
 // returns: total length of written path vector
 //-----------------------------------------------------------------------------
-size_t CPakFile::WriteStarpakPaths(BinaryIO& out, bool optional)
+size_t CPakFile::WriteStarpakPaths(BinaryIO& out, const bool optional)
 {
 	return Utils::WriteStringVector(out, optional ? m_vOptStarpakPaths : m_vStarpakPaths);
 }
@@ -293,7 +296,7 @@ void CPakFile::WriteSegmentHeaders(BinaryIO& out)
 	for (auto& segment : m_vVirtualSegments)
 	{
 		PakSegmentHdr_t segmentHdr = segment.GetHeader();
-		out.write(segmentHdr);
+		out.Write(segmentHdr);
 	}
 }
 
@@ -305,7 +308,7 @@ void CPakFile::WriteMemPageHeaders(BinaryIO& out)
 	for (auto& page : m_vPages)
 	{
 		PakPageHdr_t pageHdr = page.GetHeader();
-		out.write(pageHdr);
+		out.Write(pageHdr);
 	}
 }
 
@@ -327,7 +330,7 @@ void CPakFile::WriteStarpakDataBlocks(BinaryIO& out)
 {
 	for (auto& it : m_vStarpakDataBlocks)
 	{
-		out.getWriter()->write((const char*)it.pData, it.dataSize);
+		out.Write((const char*)it.pData, it.dataSize);
 	}
 }
 
@@ -343,7 +346,7 @@ void CPakFile::WriteStarpakSortsTable(BinaryIO& out)
 		fe.m_nOffset = it.offset;
 		fe.m_nSize = it.dataSize;
 
-		out.write(fe);
+		out.Write(fe);
 	}
 }
 
@@ -577,6 +580,191 @@ PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/,
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: initialize pak encoder context
+// 
+// note(amos): unlike the pak file header, the zstd frame header needs to know
+// the uncompressed size without the file header.
+//-----------------------------------------------------------------------------
+static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const int compressLevel, const int workerCount)
+{
+	ZSTD_CCtx* const cctx = ZSTD_createCCtx();
+
+	if (!cctx)
+	{
+		Warning("Failed to create encoder context\n", workerCount);
+		return nullptr;
+	}
+
+	size_t result = ZSTD_CCtx_setPledgedSrcSize(cctx, uncompressedBlockSize);
+
+	if (ZSTD_isError(result))
+	{
+		Warning("Failed to set pledged source size %zu: [%s]\n", uncompressedBlockSize, ZSTD_getErrorName(result));
+		ZSTD_freeCCtx(cctx);
+
+		return nullptr;
+	}
+
+	result = ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, compressLevel);
+
+	if (ZSTD_isError(result))
+	{
+		Warning("Failed to set compression level %i: [%s]\n", compressLevel, ZSTD_getErrorName(result));
+		ZSTD_freeCCtx(cctx);
+
+		return nullptr;
+	}
+
+	result = ZSTD_CCtx_setParameter(cctx, ZSTD_c_nbWorkers, workerCount);
+
+	if (ZSTD_isError(result))
+	{
+		Warning("Failed to set worker count %i: [%s]\n", workerCount, ZSTD_getErrorName(result));
+		ZSTD_freeCCtx(cctx);
+
+		return nullptr;
+	}
+
+	return cctx;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: stream encode pak file with given level and worker count
+//-----------------------------------------------------------------------------
+bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, const int compressLevel, const int workerCount)
+{
+	// only the data past the main header gets compressed.
+	const size_t headerSize = GetHeaderSize();
+	const size_t decodedFrameSize = (static_cast<size_t>(inStream.GetSize()) - headerSize);
+
+	ZSTD_CCtx* const cctx = InitEncoderContext(decodedFrameSize, compressLevel, workerCount);
+
+	if (!cctx)
+	{
+		return false;
+	}
+
+	const size_t buffInSize = ZSTD_CStreamInSize();
+	std::unique_ptr<uint8_t[]> buffInPtr(new uint8_t[buffInSize]);
+
+	if (!buffInPtr)
+	{
+		Warning("Failed to allocate input stream buffer of size %zu\n", buffInSize);
+		ZSTD_freeCCtx(cctx);
+
+		return false;
+	}
+
+	const size_t buffOutSize = ZSTD_CStreamOutSize();
+	std::unique_ptr<uint8_t[]> buffOutPtr(new uint8_t[buffOutSize]);
+
+	if (!buffOutPtr)
+	{
+		Warning("Failed to allocate output stream buffer of size %zu\n", buffOutSize);
+		ZSTD_freeCCtx(cctx);
+
+		return false;
+	}
+
+	void* const buffIn = buffInPtr.get();
+	void* const buffOut = buffOutPtr.get();
+
+	inStream.SeekGet(headerSize);
+	outStream.SeekPut(headerSize);
+
+	size_t bytesLeft = decodedFrameSize;
+
+	while (bytesLeft)
+	{
+		const bool lastChunk = (bytesLeft < buffInSize);
+		const size_t numBytesToRead = lastChunk ? bytesLeft : buffInSize;
+
+		inStream.Read((uint8_t*)buffIn, numBytesToRead);
+		bytesLeft -= numBytesToRead;
+
+		ZSTD_EndDirective const mode = lastChunk ? ZSTD_e_end : ZSTD_e_continue;
+		ZSTD_inBuffer inputFrame = { buffIn, numBytesToRead, 0 };
+
+		bool finished;
+		do {
+			ZSTD_outBuffer outputFrame = { buffOut, buffOutSize, 0 };
+			size_t const remaining = ZSTD_compressStream2(cctx, &outputFrame, &inputFrame, mode);
+
+			if (ZSTD_isError(remaining))
+			{
+				Warning("Failed to compress frame at %zu to frame at %zu: [%s]\n",
+					inStream.TellGet(), outStream.TellPut(), ZSTD_getErrorName(remaining));
+
+				ZSTD_freeCCtx(cctx);
+				return false;
+			}
+
+			outStream.Write((uint8_t*)buffOut, outputFrame.pos);
+
+			finished = lastChunk ? (remaining == 0) : (inputFrame.pos == inputFrame.size);
+		} while (!finished);
+	}
+
+	ZSTD_freeCCtx(cctx);
+	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: stream encode pak file to new stream and swap old stream with new
+//-----------------------------------------------------------------------------
+size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount)
+{
+	BinaryIO outCompressed;
+	const std::string outCompressedPath = GetPath() + "_encoded";
+
+	if (!outCompressed.Open(outCompressedPath, BinaryIO::Mode_e::Write))
+	{
+		Warning("Failed to open output pak file '%s' for compression\n", outCompressedPath.c_str());
+		return 0;
+	}
+
+	if (!StreamToStreamEncode(io, outCompressed, compressLevel, workerCount))
+		return 0;
+
+	const size_t compressedSize = outCompressed.TellPut();
+
+	outCompressed.Close();
+	io.Close();
+
+	// note(amos): we must reopen the file in ReadWrite mode as otherwise
+	// the file gets truncated.
+
+	if (!std::filesystem::remove(m_Path))
+	{
+		Warning("Failed to remove uncompressed pak file '%s' for swap\n", outCompressedPath.c_str());
+		
+		// reopen and continue uncompressed.
+		if (io.Open(m_Path, BinaryIO::Mode_e::ReadWrite))
+			Error("Failed to reopen pak file '%s'\n", m_Path.c_str());
+
+		return 0;
+	}
+
+	std::filesystem::rename(outCompressedPath, m_Path);
+
+	// either the rename failed or something holds an open handle to the
+	// newly renamed compressed file, irrecoverable.
+	if (!io.Open(m_Path, BinaryIO::Mode_e::ReadWrite))
+		Error("Failed to reopen pak file '%s'\n", m_Path.c_str());
+
+	const size_t reopenedPakSize = io.GetSize();
+
+	if (reopenedPakSize != compressedSize)
+		Error("Reopened pak file '%s' appears truncated or corrupt; compressed size: %zu expected: %zu\n",
+			m_Path.c_str(), reopenedPakSize, compressedSize);
+
+	// set the header flags indicating this pak is compressed.
+	m_Header.flags |= (PAK_HEADER_FLAGS_COMPRESSED | PAK_HEADER_FLAGS_ZSTREAM_ENCODED);
+
+	return compressedSize;
+}
+
+//-----------------------------------------------------------------------------
 // purpose: builds rpak and starpak from input map file
 //-----------------------------------------------------------------------------
 void CPakFile::BuildFromMap(const string& mapPath)
@@ -660,7 +848,12 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 	// create file stream from path created above
 	BinaryIO out;
-	out.open(GetPath(), BinaryIOMode::Write);
+	const std::string outPath = GetPath();
+	
+	if (!out.Open(outPath, BinaryIO::Mode_e::ReadWriteCreate))
+	{
+		Error("Failed to open output pak file '%s'\n", outPath.c_str());
+	}
 
 	// write a placeholder header so we can come back and complete it
 	// when we have all the info
@@ -668,7 +861,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 	{
 		// write string vectors for starpak paths and get the total length of each vector
-		size_t starpakPathsLength = WriteStarpakPaths(out);
+		size_t starpakPathsLength = WriteStarpakPaths(out, false);
 		size_t optStarpakPathsLength = WriteStarpakPaths(out, true);
 		size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
 
@@ -681,7 +874,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		else
 			starpakPathsLength += padBytes;
 
-		out.seek(padBytes, std::ios::cur);
+		out.Seek(padBytes, std::ios::end);
 
 		SetStarpakPathsSize(static_cast<uint16_t>(starpakPathsLength), static_cast<uint16_t>(optStarpakPathsLength));
 	}
@@ -705,15 +898,25 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	// set header descriptors
 	SetFileTime(Utils::GetSystemFileTime());
 
-	// !TODO: implement LZHAM and set these accordingly.
-	SetCompressedSize(out.tell());
-	SetDecompressedSize(out.tell());
+	// We are done building the data of the pack, this is the actual size.
+	const size_t decompressedFileSize = out.GetSize();
+	size_t compressedFileSize = 0;
 
+	const int compressLevel = JSON_GET_INT(doc, "compressLevel", 0);
 
-	out.seek(0); // go back to the beginning to finally write the rpakHeader now
-	WriteHeader(out); out.close();
+	if (compressLevel > 0 && decompressedFileSize > GetHeaderSize())
+	{
+		const int workerCount = JSON_GET_INT(doc, "compressWorkers", 0);
+		compressedFileSize = EncodeStreamAndSwap(out, compressLevel, workerCount);
+	}
 
-	Debug("written rpak file with size %lld\n", GetCompressedSize());
+	SetCompressedSize(compressedFileSize == 0 ? decompressedFileSize : compressedFileSize);
+	SetDecompressedSize(decompressedFileSize);
+
+	out.SeekPut(0); // go back to the beginning to finally write the rpakHeader now
+	WriteHeader(out); out.Close();
+
+	Debug("written rpak file with size %zu\n", GetCompressedSize());
 
 	// !TODO: we really should add support for multiple starpak files and share existing
 	// assets across rpaks. e.g. if the base 'pc_all.opt.starpak' already contains the
@@ -727,31 +930,36 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		fs::path path(GetStarpakPath(0));
 		std::string filename = path.filename().string();
 
-		Debug("writing starpak %s with %lld data entries\n", filename.c_str(), GetStreamingAssetCount());
+		Debug("writing starpak %s with %zu data entries\n", filename.c_str(), GetStreamingAssetCount());
 		BinaryIO srpkOut;
 
-		srpkOut.open(outputPath + filename, BinaryIOMode::Write);
+		const std::string fullFilePath = outputPath + filename;
+
+		if (!srpkOut.Open(fullFilePath, BinaryIO::Mode_e::Write))
+		{
+			Error("Failed to open output streaming file '%s'\n", outPath.c_str());
+		}
 
 		StarpakFileHeader_t srpkHeader{ STARPAK_MAGIC , STARPAK_VERSION };
-		srpkOut.write(srpkHeader);
+		srpkOut.Write(srpkHeader);
 
 		int padSize = (STARPAK_DATABLOCK_ALIGNMENT - sizeof(StarpakFileHeader_t));
 
 		char* initialPad = new char[padSize];
 		memset(initialPad, STARPAK_DATABLOCK_ALIGNMENT_PADDING, padSize);
 
-		srpkOut.getWriter()->write(initialPad, padSize);
+		srpkOut.Write(initialPad, padSize);
 		delete[] initialPad;
 
 		WriteStarpakDataBlocks(srpkOut);
 		WriteStarpakSortsTable(srpkOut);
 
 		uint64_t entryCount = GetStreamingAssetCount();
-		srpkOut.write(entryCount);
+		srpkOut.Write(entryCount);
 
-		Debug("written starpak file with size %lld\n", srpkOut.tell());
+		Debug("written starpak file with size %zu\n", srpkOut.TellPut());
 
 		FreeStarpakDataBlocks();
-		srpkOut.close();
+		srpkOut.Close();
 	}
 }

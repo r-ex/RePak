@@ -168,11 +168,11 @@ void Assets::AddShaderAsset_v8(CPakFile* pak, const char* assetPath, rapidjson::
 				flag = strtoull(elem.GetString(), NULL, 0);
 			}
 			else
-				Error("Found invalid input flag (idx %lld) for shader asset %s. Flag must be either an integer literal or a hex number as a string.\n", i, assetPath);
+				Error("Found invalid input flag (idx %zu) for shader asset %s. Flag must be either an integer literal or a hex number as a string.\n", i, assetPath);
 
 
 			if (flag == 0)
-				Warning("Found potentially invalid input flag (idx %lld) for shader asset %s. Flag value is zero.\n", i, assetPath);
+				Warning("Found potentially invalid input flag (idx %zu) for shader asset %s. Flag value is zero.\n", i, assetPath);
 
 			// vertex shaders seem to have data every 8 bytes, unlike (seemingly) every other shader that only uses 8 out of every 16 bytes
 
@@ -370,11 +370,11 @@ void Assets::AddShaderAsset_v12(CPakFile* pak, const char* assetPath, rapidjson:
 				flag = strtoull(elem.GetString(), NULL, 0);
 			}
 			else
-				Error("Found invalid input flag (idx %lld) for shader asset %s. Flag must be either an integer literal or a hex number as a string.\n", i, assetPath);
+				Error("Found invalid input flag (idx %zu) for shader asset %s. Flag must be either an integer literal or a hex number as a string.\n", i, assetPath);
 
 
 			if (flag == 0)
-				Warning("Found potentially invalid input flag (idx %lld) for shader asset %s. Flag value is zero.\n", i, assetPath);
+				Warning("Found potentially invalid input flag (idx %zu) for shader asset %s. Flag value is zero.\n", i, assetPath);
 
 			// vertex shaders seem to have data every 8 bytes, unlike (seemingly) every other shader that only uses 8 out of every 16 bytes
 
