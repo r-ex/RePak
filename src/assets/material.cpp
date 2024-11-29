@@ -58,97 +58,40 @@ static bool ParseDXStateFlags(const rapidjson::Value& mapEntry, int& blendStateM
 }
 
 template <size_t BLEND_STATE_COUNT>
-static bool ParseBlendStateFlags(const rapidjson::Value& mapEntry, unsigned int blendStates[BLEND_STATE_COUNT])
+static void ParseBlendStateFlags(const rapidjson::Value& mapEntry, unsigned int blendStates[BLEND_STATE_COUNT])
 {
     rapidjson::Document::ConstMemberIterator blendStatesIt;
     const bool hasField = JSON_GetIterator(mapEntry, "blendStates", blendStatesIt);
 
     if (!hasField)
-        return false;
+        Error("No blend states provided\n", i);
 
     const rapidjson::Value& blendStateJson = blendStatesIt->value;
 
-    if (blendStateJson.IsArray())
+    if (!blendStateJson.IsArray())
     {
-        const rapidjson::Value::ConstArray blendStateElems = blendStateJson.GetArray();
-        const int numBlendStates = static_cast<int>(blendStateElems.Size());
-
-        if (numBlendStates != BLEND_STATE_COUNT)
-        {
-            Error("Expected %i blend state flags, found %i\n", BLEND_STATE_COUNT, numBlendStates);
-            return false;
-        }
-
-        for (int i = 0; i < numBlendStates; i++)
-        {
-            const rapidjson::Value& obj = blendStateElems[i];
-            const rapidjson::Type type = obj.GetType();
-
-            if (type == rapidjson::kNumberType)
-                blendStates[i] = obj.GetUint();
-            else if (type == rapidjson::kStringType)
-            {
-                const char* const startPtr = obj.GetString();
-                char* endPtr;
-
-                const unsigned int result = strtoul(startPtr, &endPtr, 16);
-
-                if (endPtr != &startPtr[obj.GetStringLength()])
-                {
-                    Error("Failed parsing blend state flag #%i (%s)\n", (int)i, startPtr);
-                    return false;
-                }
-
-                blendStates[i] = result;
-            }
-            else
-            {
-                Error("Unsupported type for blend state flag #i (got %s, expected %s)\n", (int)i,
-                    JSON_TypeToString(type), JSON_TypeToString(rapidjson::kStringType));
-
-                return false;
-            }
-        }
-    }
-    else if (blendStateJson.IsString()) // Split the flags from provided string.
-    {
-        const std::vector<std::string> blendStateElems = Utils::StringSplit(blendStateJson.GetString(), ' ');
-        const int numBlendStates = static_cast<int>(blendStateElems.size());
-
-        if (numBlendStates != BLEND_STATE_COUNT)
-        {
-            Error("Expected %i blend state flags, found %i\n", BLEND_STATE_COUNT, numBlendStates);
-            return false;
-        }
-
-        for (int i = 0; i < BLEND_STATE_COUNT; i++)
-        {
-            const std::string& val = blendStateElems[i];
-
-            const char* const startPtr = val.c_str();
-            char* endPtr;
-
-            const unsigned int result = strtoul(startPtr, &endPtr, 16);
-
-            if (endPtr != &startPtr[val.length()])
-            {
-                Error("Failed parsing blend state flag #%i (%s)\n", i, startPtr);
-                return false;
-            }
-            else
-                blendStates[i] = result;
-        }
-    }
-    else
-    {
-        Error("Unsupported type for blend state flags (got %s, expected %s or %s)\n",
-            JSON_TypeToString(blendStateJson.GetType()), JSON_TypeToString(rapidjson::kArrayType),
-            JSON_TypeToString(rapidjson::kStringType));
-
-        return false;
+        Error("Unsupported type for blend state flags (got %s, expected %s)\n",
+            JSON_TypeToString(blendStateJson.GetType()), JSON_TypeToString(rapidjson::kArrayType));
     }
 
-    return true;
+    const rapidjson::Value::ConstArray blendStateElems = blendStateJson.GetArray();
+    const size_t numBlendStates = blendStateElems.Size();
+
+    if (numBlendStates != BLEND_STATE_COUNT)
+    {
+        Error("Expected %zu blend state flags, found %zu\n", BLEND_STATE_COUNT, numBlendStates);
+    }
+
+    for (size_t i = 0; i < numBlendStates; i++)
+    {
+        const rapidjson::Value& obj = blendStateElems[i];
+        uint32_t blendState;
+
+        if (!JSON_ParseNumber(obj, blendState))
+            Error("Failed parsing blend state flag #%zu\n", i);
+
+        blendStates[i] = blendState;
+    }
 }
 
 template <typename MaterialDXState_t>
