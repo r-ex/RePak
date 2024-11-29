@@ -159,7 +159,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
     if (hasAnimRigs)
     {
         const rapidjson::Value::ConstArray animrigs = it->value.GetArray();
-        pHdr->animRigCount = animrigs.Size();
+        pHdr->animRigCount = (uint32_t)animrigs.Size();
 
         animRigsChunk = pak->CreateDataChunk(animrigs.Size() * sizeof(PakGuid_t), SF_CPU, 64);
 

@@ -15,9 +15,13 @@
 
 #include <rapidcsv/rapidcsv.h>
 
+// Use 64bit size types for RapidJSON
+#define RAPIDJSON_NO_SIZETYPEDEFINE
+namespace rapidjson { typedef ::std::size_t SizeType; }
+
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
-#include "rapidjson/prettywriter.h"
+#include <rapidjson/prettywriter.h>
 
 #include "common/decls.h"
 #include "common/const.h"

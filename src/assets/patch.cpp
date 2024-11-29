@@ -11,7 +11,7 @@ void Assets::AddPatchAsset(CPakFile* pak, const char* assetPath, const rapidjson
     PatchAssetHeader_t* pHdr = reinterpret_cast<PatchAssetHeader_t*>(hdrChunk.Data());
 
     pHdr->unknown_1 = 0xFF;
-    pHdr->patchedPakCount = mapEntry["entries"].GetArray().Size();
+    pHdr->patchedPakCount = (uint32_t)mapEntry["entries"].GetArray().Size();
 
     std::vector<PtchEntry> patchEntries{};
     uint32_t entryNamesSectionSize = 0;
