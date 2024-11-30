@@ -576,6 +576,10 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
     }
 
     dataBuf += textureRefSize; // [rika]: already calculated, no need to do it again.
+                               // [amos]: this offset is necessary for the streaming
+                               //         texture handles. we should look into only
+                               //         writing this out if we have streaming
+                               //         textures and only up to the count thereof.
 
     // write the surface name into the buffer
     snprintf(dataBuf, matlAsset->surface.length() + 1, "%s", matlAsset->surface.c_str());
@@ -793,6 +797,10 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     }
 
     dataBuf += textureRefSize; // [rika]: already calculated, no need to do it again.
+                               // [amos]: this offset is necessary for the streaming
+                               //         texture handles. we should look into only
+                               //         writing this out if we have streaming
+                               //         textures and only up to the count thereof.
 
     // write the surface name into the buffer
     snprintf(dataBuf, matlAsset->surface.length() + 1, "%s", matlAsset->surface.c_str());
