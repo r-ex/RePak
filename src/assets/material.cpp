@@ -4,7 +4,7 @@
 
 #undef GetObject
 
-static void CheckAndAddTexture(CPakFile* const pak, const rapidjson::Value& texture, const bool disableStreaming)
+static void Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Value& texture, const bool disableStreaming)
 {
     if (!texture.IsString())
         return;
@@ -31,10 +31,39 @@ static void CheckAndAddTexture(CPakFile* const pak, const rapidjson::Value& text
 }
 
 // we need to take better account of textures once asset caching becomes a thing
-void Material_CreateTextures(CPakFile* const pak, const rapidjson::Value& textures, const bool disableStreaming)
+static void Material_CreateTextures(CPakFile* const pak, const rapidjson::Value& textures, const bool disableStreaming)
 {
     for (const auto& texture : textures.GetObject())
-        CheckAndAddTexture(pak, texture.value, disableStreaming);
+        Material_CheckAndAddTexture(pak, texture.value, disableStreaming);
+}
+
+static size_t Material_GetHighestTextureBindPoint(const rapidjson::Value& textures)
+{
+    uint32_t max = 0;
+
+    for (const auto& it : textures.GetObject())
+    {
+        char* end;
+        const uint32_t index = strtoul(it.name.GetString(), &end, 0);
+
+        if (index > max)
+            max = index;
+    }
+
+    return max;
+}
+
+static size_t Material_AddTextures(CPakFile* const pak, const rapidjson::Value& mapEntry, const rapidjson::Value& textures)
+{
+    const bool disableStreaming = JSON_GetValueOrDefault(mapEntry, "disableStreaming", false);
+    Material_CreateTextures(pak, textures, disableStreaming);
+
+    // textureSlotCount determines the total number of texture slots in the assigned shaderset.
+    // shaderset has a texture input count variable that is used when looping over the texture array
+    // and since we can't modify that from here, we have to rely on the user to set this properly!
+    const size_t textureCount = JSON_GetValueOrDefault(mapEntry, "textureSlotCount", 0ull);
+
+    return max(textureCount, Material_GetHighestTextureBindPoint(textures) + 1);
 }
 
 static short Material_AddTextureRefs(CPakFile* const pak, CPakDataChunk& dataChunk, char* const dataBuf, std::vector<PakGuidRefHdr_t>& guids,
@@ -81,7 +110,7 @@ static short Material_AddTextureRefs(CPakFile* const pak, CPakDataChunk& dataChu
     return externalDependencyCount;
 }
 
-static bool ParseDXStateFlags(const rapidjson::Value& mapEntry, int& blendStateMask, int& depthStencilFlags, int& rasterizerFlags)
+static bool Material_ParseDXStateFlags(const rapidjson::Value& mapEntry, int& blendStateMask, int& depthStencilFlags, int& rasterizerFlags)
 {
     JSON_ParseNumberRequired(mapEntry, "blendStateMask", blendStateMask);
     JSON_ParseNumberRequired(mapEntry, "depthStencilFlags", depthStencilFlags);
@@ -91,7 +120,7 @@ static bool ParseDXStateFlags(const rapidjson::Value& mapEntry, int& blendStateM
 }
 
 template <size_t BLEND_STATE_COUNT>
-static void ParseBlendStateFlags(const rapidjson::Value& mapEntry, unsigned int blendStates[BLEND_STATE_COUNT])
+static void Material_ParseBlendStateFlags(const rapidjson::Value& mapEntry, unsigned int blendStates[BLEND_STATE_COUNT])
 {
     rapidjson::Document::ConstMemberIterator blendStatesIt;
     JSON_GetRequired(mapEntry, "blendStates", blendStatesIt);
@@ -125,15 +154,15 @@ static void ParseBlendStateFlags(const rapidjson::Value& mapEntry, unsigned int 
 }
 
 template <typename MaterialDXState_t>
-static void SetDXStates(const rapidjson::Value& mapEntry, MaterialDXState_t dxStates[MAT_DX_STATE_COUNT])
+static void Material_SetDXStates(const rapidjson::Value& mapEntry, MaterialDXState_t dxStates[MAT_DX_STATE_COUNT])
 {
     int blendStateMask, depthStencilFlags, rasterizerFlags;
-    ParseDXStateFlags(mapEntry, blendStateMask, depthStencilFlags, rasterizerFlags);
+    Material_ParseDXStateFlags(mapEntry, blendStateMask, depthStencilFlags, rasterizerFlags);
 
     static const int totalBlendStateCount = ARRAYSIZE(dxStates[0].blendStates);
 
     unsigned int blendStateMap[totalBlendStateCount];
-    ParseBlendStateFlags<totalBlendStateCount>(mapEntry, blendStateMap);
+    Material_ParseBlendStateFlags<totalBlendStateCount>(mapEntry, blendStateMap);
 
     for (int i = 0; i < MAT_DX_STATE_COUNT; i++)
     {
@@ -204,39 +233,6 @@ void MaterialAsset_t::SetupDepthMaterials(const rapidjson::Value& mapEntry)
         depthShadowTightMaterial = Material_DetermineDefaultDepthMaterial(MaterialDepthType_e::ShadowTight, materialType, dxStates[0].rasterizerFlags);
 }
 
-void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
-{
-    this->materialTypeStr = JSON_GetValueRequired<const char*>(mapEntry, "shaderType");
-    this->materialType = Material_ShaderTypeFromString(this->materialTypeStr);
-
-    // material max dimensions
-    this->width = (short)JSON_GetNumberRequired<int>(mapEntry, "width"); // Set material width.
-    this->height = (short)JSON_GetNumberRequired<int>(mapEntry, "height"); // Set material height.
-
-    // base material glue flags. defaults are flags used on most materials.
-    this->flags = JSON_GetNumberRequired<uint32_t>(mapEntry, "glueFlags");
-    this->flags2 = JSON_GetNumberRequired<uint32_t>(mapEntry, "glueFlags2");
-
-    // surfaces are defined in scripts/surfaceproperties.txt or scripts/surfaceproperties.rson
-    this->surface = JSON_GetValueRequired<const char*>(mapEntry, "surfaceProp");
-
-    // used for blend materials and the like
-    this->surface2 = JSON_GetValueRequired<const char*>(mapEntry, "surfaceProp2");
-
-    // Set samplers properly. Responsible for texture stretching, tiling etc.
-    const uint32_t nSamplers = JSON_GetNumberRequired<uint32_t>(mapEntry, "samplers");
-    memcpy(this->samplers, &nSamplers, sizeof(nSamplers));
-
-    SetDXStates(mapEntry, dxStates);
-    this->SetupDepthMaterials(mapEntry);
-
-    // get referenced colpass material, can be 0 as many materials don't have them
-    this->colpassMaterial = Pak_ParseGuid(mapEntry, "$colpassMaterial");
-
-    this->shaderSet = Pak_ParseGuidRequired(mapEntry, "shaderSet");
-    this->textureAnimation = Pak_ParseGuid(mapEntry, "$textureAnimation");
-}
-
 static inline void CheckCountOrError(const rapidjson::Value::ConstArray& elements, const size_t expectedCount, const char* const fieldName)
 {
     const size_t elemCount = elements.Size();
@@ -245,7 +241,11 @@ static inline void CheckCountOrError(const rapidjson::Value::ConstArray& element
         Error("Expected %zu element for field '%s', found %zu\n", expectedCount, fieldName, elemCount);
 }
 
-static inline void SetTintOverrides(const rapidjson::Value& mapEntry, const char* const fieldName, float tintVars[3])
+/*
+* note(amos): commented for now until we can parse shaders and set all fields
+*             correctly. currently, when we fall back to this when a cpu asset
+*             hasn't been found the material will always end up looking incorrect.
+static inline void Material_SetTintOverrides(const rapidjson::Value& mapEntry, const char* const fieldName, float tintVars[3])
 {
     rapidjson::Value::ConstMemberIterator it;
 
@@ -259,7 +259,7 @@ static inline void SetTintOverrides(const rapidjson::Value& mapEntry, const char
     }
 }
 
-static inline void SetUVOverrides(const rapidjson::Value& mapEntry, const char* const fieldName, uvTransform_t& transform)
+static inline void Material_SetUVOverrides(const rapidjson::Value& mapEntry, const char* const fieldName, uvTransform_t& transform)
 {
     rapidjson::Value::ConstMemberIterator it;
 
@@ -274,7 +274,7 @@ static inline void SetUVOverrides(const rapidjson::Value& mapEntry, const char* 
 }
 
 // shader parsing eventually
-void Material_SetupDXBufferFromJson(GenericShaderBuffer* shaderBuf, const rapidjson::Value& mapEntry)
+static void Material_SetupDXBufferFromJson(GenericShaderBuffer* shaderBuf, const rapidjson::Value& mapEntry)
 {
     float layerBlendRamp;
 
@@ -286,45 +286,18 @@ void Material_SetupDXBufferFromJson(GenericShaderBuffer* shaderBuf, const rapidj
     if (JSON_GetValue(mapEntry, "opacity", opacity))
         shaderBuf->c_opacity = opacity;
 
-    SetTintOverrides(mapEntry, "emissiveTint", shaderBuf->c_L0_emissiveTint);
-    SetTintOverrides(mapEntry, "albedoTint", shaderBuf->c_L0_albedoTint);
-    SetTintOverrides(mapEntry, "perfSpecColor", shaderBuf->c_L0_perfSpecColor);
+    Material_SetTintOverrides(mapEntry, "emissiveTint", shaderBuf->c_L0_emissiveTint);
+    Material_SetTintOverrides(mapEntry, "albedoTint", shaderBuf->c_L0_albedoTint);
+    Material_SetTintOverrides(mapEntry, "perfSpecColor", shaderBuf->c_L0_perfSpecColor);
 
-    SetUVOverrides(mapEntry, "uv1", shaderBuf->c_uv1);
-    SetUVOverrides(mapEntry, "uv2", shaderBuf->c_uv2);
-    SetUVOverrides(mapEntry, "uv3", shaderBuf->c_uv3);
-    SetUVOverrides(mapEntry, "uv4", shaderBuf->c_uv4);
-    SetUVOverrides(mapEntry, "uv5", shaderBuf->c_uv5);
+    Material_SetUVOverrides(mapEntry, "uv1", shaderBuf->c_uv1);
+    Material_SetUVOverrides(mapEntry, "uv2", shaderBuf->c_uv2);
+    Material_SetUVOverrides(mapEntry, "uv3", shaderBuf->c_uv3);
+    Material_SetUVOverrides(mapEntry, "uv4", shaderBuf->c_uv4);
+    Material_SetUVOverrides(mapEntry, "uv5", shaderBuf->c_uv5);
 }
+*/
 
-static size_t Material_GetHighestTextureBindPoint(const rapidjson::Value& textures)
-{
-    uint32_t max = 0;
-
-    for (const auto& it : textures.GetObject())
-    {
-        char* end;
-        const uint32_t index = strtoul(it.name.GetString(), &end, 0);
-
-        if (index > max)
-            max = index;
-    }
-
-    return max;
-}
-
-static size_t Material_AddTextures(CPakFile* const pak, const rapidjson::Value& mapEntry, const rapidjson::Value& textures)
-{
-    const bool disableStreaming = JSON_GetValueOrDefault(mapEntry, "disableStreaming", false);
-    Material_CreateTextures(pak, textures, disableStreaming);
-
-    // textureSlotCount determines the total number of texture slots in the assigned shaderset.
-    // shaderset has a texture input count variable that is used when looping over the texture array
-    // and since we can't modify that from here, we have to rely on the user to set this properly!
-    const size_t textureCount = JSON_GetValueOrDefault(mapEntry, "textureSlotCount", 0ull);
-
-    return max(textureCount, Material_GetHighestTextureBindPoint(textures) + 1);
-}
 
 static std::string Material_GetCpuPath(CPakFile* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry)
 {
@@ -336,7 +309,7 @@ static std::string Material_GetCpuPath(CPakFile* const pak, MaterialAsset_t* con
 
 template <typename MaterialShaderBuffer_t>
 static void Material_AddCpuData(CPakFile* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry,
-                                CPakDataChunk& uberBufChunk, size_t& staticBufSize)
+    CPakDataChunk& uberBufChunk, size_t& staticBufSize)
 {
     const std::string cpuPath = Material_GetCpuPath(pak, matlAsset, mapEntry);
     BinaryIO cpuFile;
@@ -371,6 +344,39 @@ static void Material_AddCpuData(CPakFile* const pak, MaterialAsset_t* const matl
 
         //memcpy(uberBufChunk.Data() + sizeof(MaterialCPUHeader), shaderBuf.AsCharPtr(), staticBufSize);
     }
+}
+
+void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
+{
+    this->materialTypeStr = JSON_GetValueRequired<const char*>(mapEntry, "shaderType");
+    this->materialType = Material_ShaderTypeFromString(this->materialTypeStr);
+
+    // material max dimensions
+    this->width = (short)JSON_GetNumberRequired<int>(mapEntry, "width"); // Set material width.
+    this->height = (short)JSON_GetNumberRequired<int>(mapEntry, "height"); // Set material height.
+
+    // base material glue flags. defaults are flags used on most materials.
+    this->flags = JSON_GetNumberRequired<uint32_t>(mapEntry, "glueFlags");
+    this->flags2 = JSON_GetNumberRequired<uint32_t>(mapEntry, "glueFlags2");
+
+    // surfaces are defined in scripts/surfaceproperties.txt or scripts/surfaceproperties.rson
+    this->surface = JSON_GetValueRequired<const char*>(mapEntry, "surfaceProp");
+
+    // used for blend materials and the like
+    this->surface2 = JSON_GetValueRequired<const char*>(mapEntry, "surfaceProp2");
+
+    // Set samplers properly. Responsible for texture stretching, tiling etc.
+    const uint32_t nSamplers = JSON_GetNumberRequired<uint32_t>(mapEntry, "samplers");
+    memcpy(this->samplers, &nSamplers, sizeof(nSamplers));
+
+    Material_SetDXStates(mapEntry, dxStates);
+    this->SetupDepthMaterials(mapEntry);
+
+    // get referenced colpass material, can be 0 as many materials don't have them
+    this->colpassMaterial = Pak_ParseGuid(mapEntry, "$colpassMaterial");
+
+    this->shaderSet = Pak_ParseGuidRequired(mapEntry, "shaderSet");
+    this->textureAnimation = Pak_ParseGuid(mapEntry, "$textureAnimation");
 }
 
 void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& presetName)
