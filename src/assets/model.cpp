@@ -27,7 +27,7 @@ char* Model_ReadRMDLFile(const std::string& path)
         Error("invalid model file '%s'. expected version %i, found %i\n", path.c_str(), 54, pHdr->version);
 
     if (pHdr->length > fileSize)
-        Error("invalid model file '%s'. studiohdr->length > fileSize (%i > %i)\n", path.c_str(), pHdr->length, fileSize);
+        Error("invalid model file '%s'. studiohdr->length(%i) > fileSize(%i)\n", path.c_str(), pHdr->length, fileSize);
 
     return buf;
 }
@@ -39,7 +39,7 @@ char* Model_ReadVGFile(const std::string& path, size_t* pFileSize)
     size_t fileSize = Utils::GetFileSize(path);
 
     if (fileSize < sizeof(VertexGroupHeader_t))
-        Error("invalid model file '%s'. must be at least %i bytes, found %zu\n", path.c_str(), sizeof(VertexGroupHeader_t), fileSize);
+        Error("invalid model file '%s'. must be at least %zu bytes, found %zu\n", path.c_str(), sizeof(VertexGroupHeader_t), fileSize);
 
     char* buf = new char[fileSize];
 
