@@ -138,3 +138,69 @@ void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
             lastLine.c_str(), curLine.c_str(), (std::string(columnNum, ' ') += '^').c_str());
     }
 }
+
+PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success)
+{
+    PakGuid_t guid;
+
+    // Try parsing it out from number
+    if (JSON_ParseNumber(val, guid))
+    {
+        if (success) *success = true;
+        return guid;
+    }
+
+    // Parse it from string
+    if (val.IsString())
+    {
+        if (success) *success = true;
+        return RTech::StringToGuid(val.GetString());
+    }
+
+    if (success) *success = false;
+    return 0;
+}
+
+PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, const char* const member, bool* const success)
+{
+    rapidjson::Value::ConstMemberIterator it;
+
+    if (JSON_GetIterator(val, member, it))
+        return Pak_ParseGuid(it->value, success);
+
+    if (success) *success = false;
+    return 0;
+}
+
+PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const PakGuid_t fallback)
+{
+    bool success;
+    const PakGuid_t guid = Pak_ParseGuid(val, member, &success);
+
+    if (success)
+        return guid;
+
+    return fallback;
+}
+
+PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const char* const fallback)
+{
+    bool success;
+    const PakGuid_t guid = Pak_ParseGuid(val, member, &success);
+
+    if (success)
+        return guid;
+
+    return RTech::StringToGuid(fallback);
+}
+
+PakGuid_t Pak_ParseGuidRequired(const rapidjson::Value& val, const char* const member)
+{
+    bool success;
+    const PakGuid_t guid = Pak_ParseGuid(val, member, &success);
+
+    if (!success)
+        Error("%s: failed to parse field \"%s\".\n", __FUNCTION__, member);
+
+    return guid;
+}
