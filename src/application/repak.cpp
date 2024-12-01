@@ -13,6 +13,7 @@ const char startupVersion[] = {
 int main(int argc, char** argv)
 {
     printf(startupVersion);
+    g_jsonErrorCallback = Error;
 
     if (argc < 2)
         Error("invalid usage\n");
