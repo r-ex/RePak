@@ -11,59 +11,68 @@
 #include "thirdparty/zstd/zstd.h"
 #include "thirdparty/zstd/decompress/zstd_decompress_internal.h"
 
-bool CPakFile::AddJSONAsset(const char* type, const rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
+bool CPakFile::AddJSONAsset(const char* const targetType, const char* const assetType, const char* const assetPath,
+							const rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
 {
-	if (file["$type"].GetStdString() == type)
+	if (strcmp(assetType, targetType) != 0)
+		return false;
+
+	AssetTypeFunc_t targetFunc = nullptr;
+	const uint16_t fileVersion = this->m_Header.fileVersion;
+
+	switch (fileVersion)
 	{
-		AssetTypeFunc_t targetFunc = nullptr;
-		const short fileVersion = this->m_Header.fileVersion;
-
-		switch (fileVersion)
-		{
-		case 7:
-		{
-			targetFunc = func_r2;
-			break;
-		}
-		case 8:
-		{
-			targetFunc = func_r5;
-			break;
-		}
-		}
-
-		if (targetFunc)
-			targetFunc(this, file["path"].GetString(), file);
-		else
-			Warning("Asset type '%s' is not supported on RPak version %i\n", type, fileVersion);
-
-		// Asset type has been handled.
-		return true;
+	case 7:
+	{
+		targetFunc = func_r2;
+		break;
 	}
-	else return false;
+	case 8:
+	{
+		targetFunc = func_r5;
+		break;
+	}
+	}
+
+	if (targetFunc)
+		targetFunc(this, assetPath, file);
+	else
+		Warning("Asset type '%.4s' is not supported on RPak version %hu.\n", targetType, fileVersion);
+
+	// Asset type has been handled.
+	return true;
 }
 
-#define HANDLE_ASSET_TYPE(type, asset, func_r2, func_r5) if (AddJSONAsset(type, asset, func_r2, func_r5)) return;
+#define HANDLE_ASSET_TYPE(targetType, assetType, assetPath, asset, func_r2, func_r5) if (AddJSONAsset(targetType, assetType, assetPath, asset, func_r2, func_r5)) return;
 
 //-----------------------------------------------------------------------------
 // purpose: installs asset types and their callbacks
 //-----------------------------------------------------------------------------
 void CPakFile::AddAsset(const rapidjson::Value& file)
 {
-	HANDLE_ASSET_TYPE("txtr", file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
-	HANDLE_ASSET_TYPE("uimg", file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
-	HANDLE_ASSET_TYPE("Ptch", file, Assets::AddPatchAsset, Assets::AddPatchAsset);
-	HANDLE_ASSET_TYPE("dtbl", file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
-	HANDLE_ASSET_TYPE("matl", file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
-	HANDLE_ASSET_TYPE("rmdl", file, nullptr, Assets::AddModelAsset_v9);
-	HANDLE_ASSET_TYPE("aseq", file, nullptr, Assets::AddAnimSeqAsset_v7);
-	HANDLE_ASSET_TYPE("arig", file, nullptr, Assets::AddAnimRigAsset_v4);
+	const char* const assetType = JSON_GetValueOrDefault(file, "_type", static_cast<const char*>(nullptr));
+	const char* const assetPath = JSON_GetValueOrDefault(file, "_path", static_cast<const char*>(nullptr));
 
-	HANDLE_ASSET_TYPE("shds", file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
-	HANDLE_ASSET_TYPE("shdr", file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
+	if (!assetType)
+		Error("No type provided for asset \"%s\".\n", assetPath ? assetPath : "(unknown)");
 
-	// If the function has not returned by this point, we have an invalid asset type name.
-	Error("Invalid asset type '%s' provided for asset '%s'.\n", JSON_GetValueOrDefault(file, "$type", "(invalid)"), JSON_GetValueOrDefault(file, "path", "(unknown)"));
+	if (!assetPath)
+		Error("No path provided for an asset of type '%.4s'.\n", assetType);
+
+	HANDLE_ASSET_TYPE(assetType, "txtr", assetPath, file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
+	HANDLE_ASSET_TYPE(assetType, "uimg", assetPath, file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
+	HANDLE_ASSET_TYPE(assetType, "Ptch", assetPath, file, Assets::AddPatchAsset, Assets::AddPatchAsset);
+	HANDLE_ASSET_TYPE(assetType, "dtbl", assetPath, file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
+	HANDLE_ASSET_TYPE(assetType, "matl", assetPath, file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
+	HANDLE_ASSET_TYPE(assetType, "rmdl", assetPath, file, nullptr, Assets::AddModelAsset_v9);
+	HANDLE_ASSET_TYPE(assetType, "aseq", assetPath, file, nullptr, Assets::AddAnimSeqAsset_v7);
+	HANDLE_ASSET_TYPE(assetType, "arig", assetPath, file, nullptr, Assets::AddAnimRigAsset_v4);
+
+	HANDLE_ASSET_TYPE(assetType, "shds", assetPath, file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
+	HANDLE_ASSET_TYPE(assetType, "shdr", assetPath, file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
+
+	// If the function has not returned by this point, we have an unhandled asset type.
+	Error("Unhandled asset type '%.4s' provided for asset \"%s\".\n", assetType, assetPath);
 }
 
 //-----------------------------------------------------------------------------
@@ -165,7 +174,7 @@ void CPakFile::WriteHeader(BinaryIO& io)
 	assert(m_vFileRelations.size() <= UINT32_MAX);
 	m_Header.relationCount = static_cast<uint32_t>(m_vFileRelations.size());
 
-	short version = m_Header.fileVersion;
+	const uint16_t version = m_Header.fileVersion;
 
 	io.Write(m_Header.magic);
 	io.Write(m_Header.fileVersion);

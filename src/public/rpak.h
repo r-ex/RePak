@@ -80,7 +80,7 @@ struct PakHdr_t
 {
 	DWORD magic = 0x6b615052;
 
-	short fileVersion = 0x8;
+	uint16_t fileVersion = 0x8;
 	uint16_t flags;
 	FILETIME fileTime;
 	char  unk0[0x8];
@@ -292,7 +292,7 @@ public:
 			Utils::FourCCToString(expected, type);
 			Utils::FourCCToString(found, type);
 
-			Error("Unexpected asset type for '%s'. Expected '%.4s', found '%.4s'\n", this->name.c_str(), expected, found);
+			Error("Unexpected asset type for \"%s\". Expected '%.4s', found '%.4s'\n", this->name.c_str(), expected, found);
 		}
 	}
 };
