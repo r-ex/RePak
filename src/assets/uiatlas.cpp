@@ -7,8 +7,6 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
 {
     Log("Adding uimg asset '%s'\n", assetPath);
 
-    std::string sAssetName = assetPath;
-
     ///////////////////////
     // JSON VALIDATION
     {
@@ -55,14 +53,11 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
     }
 
     // get the info for the ui atlas image
-    std::string sAtlasFilePath = pak->GetAssetPath() + mapEntry["atlas"].GetStdString() + ".dds";
-    std::string sAtlasAssetName = mapEntry["atlas"].GetStdString() + ".rpak";
+    const char* const atlasPath = JSON_GetValueRequired<const char*>(mapEntry, "atlas");
+    AddTextureAsset(pak, 0, atlasPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), true);
 
-    AddTextureAsset(pak, 0, mapEntry["atlas"].GetString(), mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), true);
-
-    const PakGuid_t atlasGuid = RTech::StringToGuid(sAtlasAssetName.c_str());
-
-    PakAsset_t* atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
+    const PakGuid_t atlasGuid = RTech::StringToGuid(atlasPath);
+    PakAsset_t* const atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 
     // this really shouldn't happen, since the texture is either automatically added above, or a fatal error is thrown
     // there is no code path in AddTextureAsset in which the texture does not exist after the call and still continues execution
@@ -71,12 +66,12 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
 
     uint16_t textureCount = static_cast<uint16_t>(mapEntry["textures"].GetArray().Size());
 
-
     // grab the dimensions of the atlas
+    const std::string filePath = Utils::ChangeExtension(pak->GetAssetPath() + atlasPath, ".dds");
     BinaryIO atlas;
 
-    if (!atlas.Open(sAtlasFilePath, BinaryIO::Mode_e::Read))
-        Error("Failed to open atlas asset '%s'\n", sAtlasFilePath.c_str());
+    if (!atlas.Open(filePath, BinaryIO::Mode_e::Read))
+        Error("Failed to open atlas asset '%s'\n", filePath.c_str());
 
     atlas.SeekGet(4);
     DDS_HEADER ddsh = atlas.Read<DDS_HEADER>();
@@ -204,7 +199,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
     // create and init the asset entry
     PakAsset_t asset;
 
-    asset.InitAsset(sAssetName + ".rpak", hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
+    asset.InitAsset(assetPath, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = UIMG_VERSION;

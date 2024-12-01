@@ -4,7 +4,7 @@
 #define MAT_DX_STATE_COUNT 2 // the same for r2 and r5
 #define MAT_BLEND_STATE_COUNT 8 // r2 is 4
 
-enum MaterialShaderType_t : uint8_t
+enum MaterialShaderType_e : uint8_t
 {
 	RGDU = 0x0,
 	RGDP = 0x1,
@@ -36,7 +36,7 @@ static const char* s_materialShaderTypeNames[] = {
 	"ptcs",
 };
 
-static const std::map<int, MaterialShaderType_t> s_materialShaderTypeMap
+static const std::map<int, MaterialShaderType_e> s_materialShaderTypeMap
 {
 	// static props
 	{'udgr', RGDU}, // rgdu
@@ -64,7 +64,7 @@ static const std::map<int, MaterialShaderType_t> s_materialShaderTypeMap
 };
 
 
-inline MaterialShaderType_t Material_ShaderTypeFromString(const std::string& str)
+inline MaterialShaderType_e Material_ShaderTypeFromString(const std::string& str)
 {
 	// todo: is this reliable?
 	const int type = *reinterpret_cast<const int*>(str.c_str());
@@ -507,7 +507,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 	MaterialDXState_v15_t dxStates[2]; // seems to be used for setting up some D3D states?
 
 	uint16_t numAnimationFrames; // used in CMaterialGlue::GetNumAnimationFrames (0x1403B4250), which is called from GetSpriteInfo @ 0x1402561FC
-	MaterialShaderType_t materialType;
+	MaterialShaderType_e materialType;
 	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
 
 	//char pad_00F4[0x4];
@@ -555,7 +555,7 @@ struct MaterialAsset_t
 	MaterialDXState_v15_t dxStates[MAT_DX_STATE_COUNT]; // seems to be used for setting up some D3D states?
 
 	std::string materialTypeStr;
-	MaterialShaderType_t materialType;
+	MaterialShaderType_e materialType;
 
 	//std::string name;
 	std::string surface;

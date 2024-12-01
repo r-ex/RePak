@@ -8,7 +8,7 @@ void Assets::AddTextureAsset(CPakFile* const  pak, const PakGuid_t guid, const c
 {
     Log("Adding txtr asset '%s'\n", assetPath);
 
-    PakAsset_t* const existingAsset = pak->GetAssetByGuid(RTech::GetAssetGUIDFromString(assetPath, true), nullptr, true);
+    PakAsset_t* const existingAsset = pak->GetAssetByGuid(RTech::GetAssetGUIDFromString(assetPath, false), nullptr, true);
     if (existingAsset)
     {
         // if the caller has requested that this warning is not emitted
@@ -20,7 +20,7 @@ void Assets::AddTextureAsset(CPakFile* const  pak, const PakGuid_t guid, const c
         return;
     }
 
-    std::string filePath = pak->GetAssetPath() + assetPath + ".dds";
+    const std::string filePath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".dds");
 
     if (!FILE_EXISTS(filePath))
     {
@@ -36,12 +36,10 @@ void Assets::AddTextureAsset(CPakFile* const  pak, const PakGuid_t guid, const c
     BinaryIO input;
 
     if (!input.Open(filePath, BinaryIO::Mode_e::Read))
-        Error("Failed to open texture asset '%s'\n", filePath.c_str());
+        Error("Failed to open texture asset \"%s\"\n", filePath.c_str());
 
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(TextureAssetHeader_t), SF_HEAD, 8);
     TextureAssetHeader_t* hdr = reinterpret_cast<TextureAssetHeader_t*>(hdrChunk.Data());
-
-    std::string sAssetName = assetPath;
 
     // used for creating data buffers
     struct {
@@ -167,13 +165,14 @@ void Assets::AddTextureAsset(CPakFile* const  pak, const PakGuid_t guid, const c
         Log("-> total mipmaps permanent:streamed:streamed opt : %i:%i:%i\n", hdr->mipLevels, hdr->streamedMipLevels, hdr->optStreamedMipLevels);
     }
 
-    hdr->guid = RTech::StringToGuid((sAssetName + ".rpak").c_str());
+    hdr->guid = RTech::StringToGuid(assetPath);
 
     if (pak->IsFlagSet(PF_KEEP_DEV))
     {
-        CPakDataChunk nameChunk = pak->CreateDataChunk(sAssetName.size() + 1, SF_DEV | SF_CPU, 1);
+        const size_t nameBufLen = strlen(assetPath) + 1;
+        CPakDataChunk nameChunk = pak->CreateDataChunk(nameBufLen, SF_DEV | SF_CPU, 1);
 
-        sprintf_s(nameChunk.Data(), sAssetName.length() + 1, "%s", sAssetName.c_str());
+        sprintf_s(nameChunk.Data(), nameBufLen, "%s", assetPath);
 
         hdr->pName = nameChunk.GetPointer();
 
@@ -240,7 +239,7 @@ void Assets::AddTextureAsset(CPakFile* const  pak, const PakGuid_t guid, const c
 
     const PakGuid_t assetGuid = guid != 0
         ? guid
-        : RTech::StringToGuid((sAssetName + ".rpak").c_str());
+        : RTech::StringToGuid(assetPath);
 
     asset.InitAsset(assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, UINT64_MAX, AssetType::TXTR);
     asset.SetHeaderPointer(hdrChunk.Data());
@@ -262,7 +261,7 @@ void Assets::AddTextureAsset_v8(CPakFile* const pak, const char* const assetPath
     PakGuid_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
 
     if (!assetGuid)
-        assetGuid = RTech::StringToGuid((std::string(assetPath) + ".rpak").c_str());
+        assetGuid = RTech::StringToGuid(assetPath);
 
     if (assetGuid == 0)
         Error("Invalid GUID provided for asset '%s'.\n", assetPath);
