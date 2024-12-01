@@ -499,7 +499,10 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
         }
     }
 
-    const size_t dataBufSize = (textureRefSize * 2) + (matlAsset->surface.length() + 1) + (mapEntry.HasMember("surface2") ? matlAsset->surface2.length() + 1 : 0);
+    const size_t surfaceProp1Size = !matlAsset->surface.empty() ? (matlAsset->surface.length() + 1) : 0;
+    const size_t surfaceProp2Size = !matlAsset->surface2.empty() ? (matlAsset->surface2.length() + 1) : 0;
+
+    const size_t dataBufSize = (textureRefSize * 2) + surfaceProp1Size + surfaceProp2Size;
 
     const char* presetValue;
 
@@ -581,14 +584,17 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
                                //         writing this out if we have streaming
                                //         textures and only up to the count thereof.
 
-    // write the surface name into the buffer
-    snprintf(dataBuf, matlAsset->surface.length() + 1, "%s", matlAsset->surface.c_str());
-
-    // write surface2 name into the buffer if used
-    if (matlAsset->surface2.length() > 0)
+    // write the surface names into the buffer
+    if (surfaceProp1Size)
     {
-        dataBuf += (matlAsset->surface.length() + 1);
-        snprintf(dataBuf, matlAsset->surface2.length() + 1, "%s", matlAsset->surface2.c_str());
+        snprintf(dataBuf, surfaceProp1Size, "%s", matlAsset->surface.c_str());
+        dataBuf += surfaceProp1Size;
+    }
+
+    if (surfaceProp2Size)
+    {
+        snprintf(dataBuf, surfaceProp2Size, "%s", matlAsset->surface2.c_str());
+        dataBuf += surfaceProp2Size;
     }
 
     // ===============================
@@ -604,16 +610,18 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
     pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, streamingTextureHandles)));
     currentDataBufOffset += textureRefSize;
 
+    if (surfaceProp1Size)
+    {
+        matlAsset->surfaceProp = dataChunk.GetPointer(currentDataBufOffset);
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, surfaceProp)));
+        currentDataBufOffset += surfaceProp1Size;
+    }
 
-    matlAsset->surfaceProp = dataChunk.GetPointer(currentDataBufOffset);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, surfaceProp)));
-    currentDataBufOffset += matlAsset->surface.length() + 1;
-
-    if (matlAsset->surface2.length() > 0)
+    if (surfaceProp2Size)
     {
         matlAsset->surfaceProp2 = dataChunk.GetPointer(currentDataBufOffset);
         pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, surfaceProp2)));
-        currentDataBufOffset += matlAsset->surface2.length() + 1;
+        currentDataBufOffset += surfaceProp2Size;
     }
 
     //bool bColpass = false; // is this colpass material? how do you determine this
@@ -726,8 +734,11 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     std::string fullAssetPath = "material/" + sAssetPath + "_" + matlAsset->materialTypeStr + ".rpak"; // Make full rpak asset path.
     matlAsset->guid = RTech::StringToGuid(fullAssetPath.c_str()); // Convert full rpak asset path to guid and set it in the material header.
 
+    const size_t surfaceProp1Size = !matlAsset->surface.empty() ? (matlAsset->surface.length() + 1) : 0;
+    const size_t surfaceProp2Size = !matlAsset->surface2.empty() ? (matlAsset->surface2.length() + 1) : 0;
+
     const size_t alignedPathSize = IALIGN4(sAssetPath.length() + 1);
-    const size_t dataBufSize = alignedPathSize + (textureRefSize * 2) + (matlAsset->surface.length() + 1) + (mapEntry.HasMember("surface2") ? matlAsset->surface2.length() + 1 : 0);
+    const size_t dataBufSize = alignedPathSize + (textureRefSize * 2) + surfaceProp1Size + surfaceProp2Size;
 
     // asset data
     CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
@@ -741,22 +752,10 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     std::vector<PakGuidRefHdr_t> guids{};
 
     if (mapEntry["textures"].IsArray())
+    if (hasTextures)
     {
-        int textureIdx = 0;
-        for (auto& it : mapEntry["textures"].GetArray())
-        {
-            const PakGuid_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
 
-            *(PakGuid_t*)dataBuf = textureGuid;
 
-            if (textureGuid != 0) // only deal with dependencies if the guid is not 0
-            {
-                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (textureIdx * sizeof(PakGuid_t)))); // register guid for this texture reference
-
-                PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
-
-                if (txtrAsset)
-                    pak->SetCurrentAssetAsDependentForAsset(txtrAsset);
                 else
                 {
                     externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
@@ -764,24 +763,10 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
                 }
             }
 
-            dataBuf += sizeof(PakGuid_t);
-            textureIdx++;
-        }
-    }
-    else if (mapEntry["textures"].IsObject())
-    {
         for (auto& it : mapEntry["textures"].GetObject())
-        {
-            uint32_t bindPoint = static_cast<uint32_t>(atoi(it.name.GetString()));
-
-            const PakGuid_t textureGuid = RTech::GetAssetGUIDFromString(it.value.GetString(), true); // get texture guid
-
-            reinterpret_cast<PakGuid_t*>(dataBuf)[bindPoint] = textureGuid;
 
             if (textureGuid != 0) // only deal with dependencies if the guid is not 0
             {
-                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (bindPoint * sizeof(PakGuid_t)))); // register guid for this texture reference
-
                 PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
 
                 if (txtrAsset)
@@ -802,14 +787,17 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
                                //         writing this out if we have streaming
                                //         textures and only up to the count thereof.
 
-    // write the surface name into the buffer
-    snprintf(dataBuf, matlAsset->surface.length() + 1, "%s", matlAsset->surface.c_str());
-
-    // write surface2 name into the buffer if used
-    if (matlAsset->surface2.length() > 0)
+    // write the surface names into the buffer
+    if (surfaceProp1Size)
     {
-        dataBuf += (matlAsset->surface.length() + 1);
-        snprintf(dataBuf, matlAsset->surface2.length() + 1, "%s", matlAsset->surface2.c_str());
+        snprintf(dataBuf, surfaceProp1Size, "%s", matlAsset->surface.c_str());
+        dataBuf += surfaceProp1Size;
+    }
+
+    if (surfaceProp2Size)
+    {
+        snprintf(dataBuf, surfaceProp2Size, "%s", matlAsset->surface2.c_str());
+        dataBuf += surfaceProp2Size;
     }
 
 
@@ -830,16 +818,18 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, streamingTextureHandles)));
     currentDataBufOffset += textureRefSize;
 
+    if (surfaceProp1Size)
+    {
+        matlAsset->surfaceProp = dataChunk.GetPointer(currentDataBufOffset);
+        pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, surfaceProp)));
+        currentDataBufOffset += surfaceProp1Size;
+    }
 
-    matlAsset->surfaceProp = dataChunk.GetPointer(currentDataBufOffset);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, surfaceProp)));
-    currentDataBufOffset += matlAsset->surface.length() + 1;
-
-    if (matlAsset->surface2.length() > 0)
+    if (surfaceProp2Size)
     {
         matlAsset->surfaceProp2 = dataChunk.GetPointer(currentDataBufOffset);
         pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, surfaceProp2)));
-        currentDataBufOffset += matlAsset->surface2.length() + 1;
+        currentDataBufOffset += surfaceProp2Size;
     }
 
     //bool bColpass = false; // is this colpass material? how do you determine this
