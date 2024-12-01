@@ -931,8 +931,9 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 	if (compressLevel > 0 && decompressedFileSize > GetHeaderSize())
 	{
-		// todo: add compress print
 		const int workerCount = JSON_GetValueOrDefault(doc, "compressWorkers", 0);
+
+		Log("Encoding pak file with compress level %i and %i workers\n", compressLevel, workerCount);
 		compressedFileSize = EncodeStreamAndSwap(out, compressLevel, workerCount);
 	}
 
