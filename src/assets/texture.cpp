@@ -28,7 +28,7 @@ void Assets::AddTextureAsset(CPakFile* const  pak, const PakGuid_t guid, const c
             Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());
         else
         {
-            Warning("Failed to find texture source file '%s'. Skipping automatic creation of this texture.\n");
+            Warning("Failed to find texture source file '%s'. Skipping automatic creation of this texture.\n", filePath.c_str());
             return;
         }
     }
