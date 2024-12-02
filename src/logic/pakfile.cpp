@@ -572,7 +572,7 @@ CPakDataChunk CPakFile::CreateDataChunk(size_t size, int flags, int alignment)
 PakAsset_t* CPakFile::GetAssetByGuid(const PakGuid_t guid, uint32_t* const idx /*= nullptr*/, const bool silent /*= false*/)
 {
 	uint32_t i = 0;
-	for (auto& it : m_Assets)
+	for (PakAsset_t& it : m_Assets)
 	{
 		if (it.guid == guid)
 		{
