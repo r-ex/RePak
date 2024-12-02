@@ -20,6 +20,8 @@ extern PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* c
 extern PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const char* const fallback);
 extern PakGuid_t Pak_ParseGuidRequired(const rapidjson::Value& val, const char* const member);
 
+extern PakGuid_t Pak_GetGuidOverridable(const rapidjson::Value& mapEntry, const char* const assetPath);
+
 using namespace std::chrono;
 
 class CScopeTimer

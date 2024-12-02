@@ -204,3 +204,23 @@ PakGuid_t Pak_ParseGuidRequired(const rapidjson::Value& val, const char* const m
 
     return guid;
 }
+
+//-----------------------------------------------------------------------------
+// purpose: check if we have an override guid, and return that, else compute it
+//          from the given asset path.
+// NOTE   : this should be the only function used to get guids for asset entries
+//-----------------------------------------------------------------------------
+PakGuid_t Pak_GetGuidOverridable(const rapidjson::Value& mapEntry, const char* const assetPath)
+{
+    PakGuid_t assetGuid;
+
+    if (JSON_ParseNumber(mapEntry, "$guid", assetGuid))
+    {
+        if (assetGuid == 0)
+            Error("%s: invalid GUID override provided for asset \"%s\".\n", __FUNCTION__, assetPath);
+
+        return assetGuid;
+    }
+
+    return RTech::StringToGuid(assetPath);
+}
