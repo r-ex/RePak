@@ -16,8 +16,7 @@ void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPa
 
 	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderSetAssetHeader_v8_t), SF_HEAD, 8);
 
-	// uhhhh uhhhmmm ummmm uhhhhh
-	const std::string assetPathWithoutExtension = fs::path(assetPath).replace_extension("").string();
+	const std::string assetPathWithoutExtension = Utils::ChangeExtension(assetPath, "");
 
 	CPakDataChunk nameChunk = pak->CreateDataChunk(assetPathWithoutExtension.length() + 1, SF_CPU | SF_DEV, 1);
 	strcpy_s(nameChunk.Data(), nameChunk.GetSize(), assetPathWithoutExtension.c_str());
@@ -30,18 +29,8 @@ void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPa
 
 	// dedup
 	// === Shader Inputs ===
-	const char* const vertexShaderInput = JSON_GetValueOrDefault(mapEntry, "vertexShader", "");
-	const PakGuid_t vertexShaderGuid = RTech::GetAssetGUIDFromString(vertexShaderInput, true);
-
-	if (vertexShaderGuid == 0)
-		Error("No vertexShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
-
-	const char* const pixelShaderInput = JSON_GetValueOrDefault(mapEntry, "pixelShader", "");
-	const PakGuid_t pixelShaderGuid = RTech::GetAssetGUIDFromString(pixelShaderInput, true);
-
-	if (pixelShaderGuid == 0)
-		Error("No pixelShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
-
+	const PakGuid_t vertexShaderGuid = Pak_ParseGuidRequired(mapEntry, "vertexShader");
+	const PakGuid_t pixelShaderGuid = Pak_ParseGuidRequired(mapEntry, "pixelShader");
 	// end dedup
 
 	hdr->vertexShader = vertexShaderGuid;
@@ -83,21 +72,21 @@ void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPa
 
 	if (JSON_GetValue(mapEntry, "$numVertexShaderTextures", numVertexShaderTextures))
 	{
-		Debug("Overriding field \"numVertexShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
+		Debug("Overriding field \"$numVertexShaderTextures\" for shader set '%s'.\n", assetPath);
 		hdr->textureInputCounts[0] = static_cast<uint16_t>(numVertexShaderTextures);
 	}
 	else if (!vertexShader && hdr->vertexShader != 0) // warn if there is an asset guid, but it's not present in the current pak
-		Warning("Creating shader set '%s' without a local vertex shader asset and without a \'numVertexShaderTextures\' field. Shader set will assume 0 vertex shader textures.\n", assetPath);
+		Warning("Creating shader set '%s' without a local vertex shader asset and without a \'$numVertexShaderTextures\' field. Shader set will assume 0 vertex shader textures.\n", assetPath);
 
 	uint32_t numPixelShaderTextures;
 
 	if (JSON_GetValue(mapEntry, "$numPixelShaderTextures", numPixelShaderTextures))
 	{
-		Debug("Overriding field \"numPixelShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
+		Debug("Overriding field \"$numPixelShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
 		hdr->textureInputCounts[1] = static_cast<uint16_t>(numPixelShaderTextures);
 	}
 	else if (!pixelShader && hdr->pixelShader != 0) // warn if there is an asset guid, but it's not present in the current pak
-		Warning("Creating shader set '%s' without a local pixel shader asset and without a \'numPixelShaderTextures\' field. Shader set will assume 0 pixel shader textures.\n", assetPath);
+		Warning("Creating shader set '%s' without a local pixel shader asset and without a \'$numPixelShaderTextures\' field. Shader set will assume 0 pixel shader textures.\n", assetPath);
 
 	// end dedup
 
@@ -116,6 +105,7 @@ void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPa
 
 	PakAsset_t asset;
 	asset.InitAsset(
+		assetPath,
 		assetGuid,
 		hdrChunk.GetPointer(), hdrChunk.GetSize(),
 		PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::SHDS);
@@ -141,8 +131,7 @@ void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const char* const assetP
 
 	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderSetAssetHeader_v11_t), SF_HEAD, 8);
 
-	// uhhhh uhhhmmm ummmm uhhhhh
-	const std::string assetPathWithoutExtension = fs::path(assetPath).replace_extension("").string();
+	const std::string assetPathWithoutExtension = Utils::ChangeExtension(assetPath, "");
 
 	CPakDataChunk nameChunk = pak->CreateDataChunk(assetPathWithoutExtension.length() + 1, SF_CPU | SF_DEV, 1);
 	strcpy_s(nameChunk.Data(), nameChunk.GetSize(), assetPathWithoutExtension.c_str());
@@ -155,18 +144,8 @@ void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const char* const assetP
 
 	// dedup
 	// === Shader Inputs ===
-	const char* const vertexShaderInput = JSON_GetValueOrDefault(mapEntry, "vertexShader", "");
-	const PakGuid_t vertexShaderGuid = RTech::GetAssetGUIDFromString(vertexShaderInput, true);
-
-	if (vertexShaderGuid == 0)
-		Error("No vertexShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
-
-	const char* const pixelShaderInput = JSON_GetValueOrDefault(mapEntry, "pixelShader", "");
-	const PakGuid_t pixelShaderGuid = RTech::GetAssetGUIDFromString(pixelShaderInput, true);
-
-	if (pixelShaderGuid == 0)
-		Error("No pixelShader field provided for shader set '%s'.\n", assetPathWithoutExtension.c_str());
-
+	const PakGuid_t vertexShaderGuid = Pak_ParseGuidRequired(mapEntry, "vertexShader");
+	const PakGuid_t pixelShaderGuid = Pak_ParseGuidRequired(mapEntry, "pixelShader");
 	// end dedup
 
 	hdr->vertexShader = vertexShaderGuid;
@@ -208,9 +187,9 @@ void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const char* const assetP
 
 	uint32_t numVertexShaderTextures;
 
-	if (JSON_GetValue(mapEntry, "numVertexShaderTextures", numVertexShaderTextures))
+	if (JSON_GetValue(mapEntry, "$numVertexShaderTextures", numVertexShaderTextures))
 	{
-		Debug("Overriding field \"numVertexShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
+		Debug("Overriding field \"$numVertexShaderTextures\" for shader set '%s'.\n", assetPath);
 		hdr->textureInputCounts[0] = static_cast<uint16_t>(numVertexShaderTextures);
 	}
 	else if (!vertexShader && hdr->vertexShader != 0) // warn if there is an asset guid, but it's not present in the current pak
@@ -218,9 +197,9 @@ void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const char* const assetP
 
 	uint32_t numPixelShaderTextures;
 
-	if (JSON_GetValue(mapEntry, "numPixelShaderTextures", numPixelShaderTextures))
+	if (JSON_GetValue(mapEntry, "$numPixelShaderTextures", numPixelShaderTextures))
 	{
-		Debug("Overriding field \"numPixelShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
+		Debug("Overriding field \"$numPixelShaderTextures\" for shader set '%s'.\n", assetPath);
 		hdr->textureInputCounts[1] = static_cast<uint16_t>(numPixelShaderTextures);
 	}
 	else if (!pixelShader && hdr->pixelShader != 0) // warn if there is an asset guid, but it's not present in the current pak

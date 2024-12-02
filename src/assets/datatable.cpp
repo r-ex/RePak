@@ -144,11 +144,13 @@ void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChu
 // VERSION 8
 void Assets::AddDataTableAsset(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    REQUIRE_FILE(pak->GetAssetPath() + assetPath + ".csv");
+    const std::string datatableFile = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".csv");
+    std::ifstream datatableStream(datatableFile);
 
-    rapidcsv::Document doc(pak->GetAssetPath() + assetPath + ".csv");
+    if (!datatableStream.is_open())
+        Error("Failed to open datatable asset '%s'\n", datatableFile.c_str());
 
-    std::string sAssetName = assetPath;
+    rapidcsv::Document doc(datatableStream);
 
     if (doc.GetColumnCount() < 0)
     {
@@ -207,7 +209,7 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const char* const assetPath,
     PakAsset_t asset;
 
     asset.InitAsset(
-        (sAssetName + ".rpak").c_str(),
+        assetPath,
         Pak_GetGuidOverridable(mapEntry, assetPath),
         hdrChunk.GetPointer(), hdrChunk.GetSize(),
         rowDataChunk.GetPointer(),

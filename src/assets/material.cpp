@@ -12,12 +12,13 @@ static void Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Va
     if (texture.GetStringLength() == 0)
         return;
 
-    const char* const texturePath = texture.GetString();
-
     // check if texture string is an asset guid (e.g., "0x5DCAT")
     // if it is then we don't add it here as its a reference.
-    if (RTech::ParseGUIDFromString(texturePath))
+    PakGuid_t textureGuid;
+    if (JSON_ParseNumber(texture, textureGuid))
         return;
+
+    const char* const texturePath = texture.GetString();
 
     Log("Auto-adding txtr asset \"%s\".\n", texturePath);
     Assets::AddTextureAsset(pak, 0, texturePath, disableStreaming, true);
