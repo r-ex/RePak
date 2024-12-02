@@ -4,39 +4,31 @@
 #include "public/texture.h"
 
 // materialGeneratedTexture - whether this texture's creation was invoked by material automatic texture generation
-void Assets::AddTextureAsset(CPakFile* const  pak, const PakGuid_t guid, const char* assetPath, const bool forceDisableStreaming, const bool materialGeneratedTexture)
+void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, const char* assetPath, const bool forceDisableStreaming, const bool errorOnFail)
 {
     Log("Adding txtr asset '%s'\n", assetPath);
 
-    PakAsset_t* const existingAsset = pak->GetAssetByGuid(RTech::GetAssetGUIDFromString(assetPath, false), nullptr, true);
+    const PakGuid_t assetGuid = guidOverride != 0
+        ? guidOverride
+        : RTech::StringToGuid(assetPath);
+
+    PakAsset_t* const existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
     if (existingAsset)
     {
-        // if the caller has requested that this warning is not emitted
+        // if the caller has requested that this error is not triggered
         // this should only really be from material textures or ui image atlases
-        // as those assets may unavoidably reuse a texture, causing an unresolvable warning here
-        if (!materialGeneratedTexture)
-            Warning("Tried to add texture asset '%s' twice. Skipping redefinition...\n", assetPath);
+        // as those assets may unavoidably reuse a texture
+        if (!errorOnFail)
+            Error("Tried to add texture asset \"%s\" twice.\n", assetPath);
 
         return;
     }
 
-    const std::string filePath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".dds");
-
-    if (!FILE_EXISTS(filePath))
-    {
-        if(!materialGeneratedTexture)
-            Error("Failed to find texture source file %s. Exiting...\n", filePath.c_str());
-        else
-        {
-            Warning("Failed to find texture source file '%s'. Skipping automatic creation of this texture.\n", filePath.c_str());
-            return;
-        }
-    }
-
+    const std::string textureFilePath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".dds");
     BinaryIO input;
 
-    if (!input.Open(filePath, BinaryIO::Mode_e::Read))
-        Error("Failed to open texture asset \"%s\"\n", filePath.c_str());
+    if (!input.Open(textureFilePath, BinaryIO::Mode_e::Read))
+        Error("Failed to open texture asset \"%s\"\n", textureFilePath.c_str());
 
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(TextureAssetHeader_t), SF_HEAD, 8);
     TextureAssetHeader_t* hdr = reinterpret_cast<TextureAssetHeader_t*>(hdrChunk.Data());
@@ -165,7 +157,7 @@ void Assets::AddTextureAsset(CPakFile* const  pak, const PakGuid_t guid, const c
         Log("-> total mipmaps permanent:streamed:streamed opt : %i:%i:%i\n", hdr->mipLevels, hdr->streamedMipLevels, hdr->optStreamedMipLevels);
     }
 
-    hdr->guid = RTech::StringToGuid(assetPath);
+    hdr->guid = assetGuid;
 
     if (pak->IsFlagSet(PF_KEEP_DEV))
     {
@@ -237,10 +229,6 @@ void Assets::AddTextureAsset(CPakFile* const  pak, const PakGuid_t guid, const c
         // do stuff
     }
 
-    const PakGuid_t assetGuid = guid != 0
-        ? guid
-        : RTech::StringToGuid(assetPath);
-
     asset.InitAsset(assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, UINT64_MAX, AssetType::TXTR);
     asset.SetHeaderPointer(hdrChunk.Data());
 
@@ -257,16 +245,6 @@ void Assets::AddTextureAsset(CPakFile* const  pak, const PakGuid_t guid, const c
 
 void Assets::AddTextureAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    // dedup
-    PakGuid_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
-
-    if (!assetGuid)
-        assetGuid = RTech::StringToGuid(assetPath);
-
-    if (assetGuid == 0)
-        Error("Invalid GUID provided for asset '%s'.\n", assetPath);
-
-    // end dedup
-
+    const PakGuid_t assetGuid = Pak_GetGuidOverridable(mapEntry, assetPath);
     AddTextureAsset(pak, assetGuid, assetPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), false);
 }

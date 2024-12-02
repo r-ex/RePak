@@ -184,7 +184,8 @@ void Assets::AddShaderAsset_v8(CPakFile* const pak, const char* const assetPath,
 
 	PakAsset_t asset;
 	asset.InitAsset(
-		pakFilePath.string() + ".rpak",
+		(pakFilePath.string() + ".rpak").c_str(),
+		Pak_GetGuidOverridable(mapEntry, assetPath),
 		hdrChunk.GetPointer(), hdrChunk.GetSize(),
 		dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::SHDR);
 	asset.SetHeaderPointer(hdrChunk.Data());
@@ -380,17 +381,7 @@ void Assets::AddShaderAsset_v12(CPakFile* const pak, const char* const assetPath
 
 	// =======================================
 
-	// dedup
-
-	PakGuid_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
-
-	if (!assetGuid)
-		assetGuid = RTech::StringToGuid((pakFilePath.string() + ".rpak").c_str());
-
-	if (assetGuid == 0)
-		Error("Invalid GUID provided for asset '%s'.\n", assetPath);
-
-	// end dedup
+	const PakGuid_t assetGuid = Pak_GetGuidOverridable(mapEntry, assetPath);
 
 	PakAsset_t asset;
 	asset.InitAsset(

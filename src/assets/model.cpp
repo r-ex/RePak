@@ -75,13 +75,12 @@ bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader
         if (it.GetStringLength() == 0)
             continue;
 
-        PakGuid_t guid = 0;
+        PakGuid_t guid;
 
-        if (!RTech::ParseGUIDFromString(it.GetString(), &guid))
+        if (!JSON_ParseNumber(it, guid))
         {
-            Assets::AddAnimSeqAsset(pak, it.GetString());
-
             guid = RTech::StringToGuid(it.GetString());
+            Assets::AddAnimSeqAsset(pak, guid, it.GetString());
         }
 
         sequenceGuids.emplace_back(guid);
@@ -104,12 +103,10 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
 {
     Log("Adding mdl_ asset '%s'\n", assetPath);
 
-    std::string sAssetName = assetPath;
-
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ModelAssetHeader_t), SF_HEAD, 16);
     ModelAssetHeader_t* pHdr = reinterpret_cast<ModelAssetHeader_t*>(hdrChunk.Data());
 
-    std::string rmdlFilePath = pak->GetAssetPath() + sAssetName;
+    std::string rmdlFilePath = pak->GetAssetPath() + assetPath;
 
     // VG is a "fake" file extension that's used to store model streaming data (name came from the magic '0tVG')
     // this data is a combined mutated version of the data from .vtx and .vvd in regular source models
@@ -224,13 +221,13 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
         extraDataSize = vgFileSize;
     }
 
-    size_t fileNameDataSize = sAssetName.length() + 1;
+    const size_t fileNameDataSize = strlen(assetPath) + 1;
 
     CPakDataChunk dataChunk = pak->CreateDataChunk(studiohdr->length + fileNameDataSize + extraDataSize, SF_CPU, 64);
     char* pDataBuf = dataChunk.Data();
 
     // write the model file path into the data buffer
-    snprintf(pDataBuf + studiohdr->length, fileNameDataSize, "%s", sAssetName.c_str());
+    snprintf(pDataBuf + studiohdr->length, fileNameDataSize, "%s", assetPath);
 
     // copy rmdl into rpak buffer and move studiohdr ptr
     memcpy_s(pDataBuf, studiohdr->length, rmdlBuf, studiohdr->length);
@@ -304,7 +301,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
                 if (matlHdr->materialType != studiohdr->materialType(i))
                 {
                     Warning("Setting material of unexpected type in material slot %i for model asset '%s'. Expected type '%s', found material with type '%s'.\n",
-                        i, sAssetName.c_str(), s_materialShaderTypeNames[studiohdr->materialType(i)], s_materialShaderTypeNames[matlHdr->materialType]);
+                        i, assetPath, s_materialShaderTypeNames[studiohdr->materialType(i)], s_materialShaderTypeNames[matlHdr->materialType]);
                 }
 
                 pak->SetCurrentAssetAsDependentForAsset(asset);
@@ -314,7 +311,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
 
     PakAsset_t asset;
 
-    asset.InitAsset(sAssetName, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.offset, UINT64_MAX, AssetType::RMDL);
+    asset.InitAsset(assetPath, Pak_GetGuidOverridable(mapEntry, assetPath), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.offset, UINT64_MAX, AssetType::RMDL);
     asset.SetHeaderPointer(hdrChunk.Data());
   
     asset.version = RMDL_VERSION;

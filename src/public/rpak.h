@@ -153,16 +153,17 @@ struct PakAsset_t
 {
 	PakAsset_t() = default;
 
-	void InitAsset(const std::string& assetName,
-		PagePtr_t pHeadPtr,
-		uint32_t nHeaderSize,
-		PagePtr_t pCpuPtr,
-		uint64_t nStarpakOffset,
-		uint64_t nOptStarpakOffset,
-		AssetType type)
+	void InitAsset(const char* const assetName,
+		const PakGuid_t nGuid,
+		const PagePtr_t pHeadPtr,
+		const uint32_t nHeaderSize,
+		const PagePtr_t pCpuPtr,
+		const uint64_t nStarpakOffset,
+		const uint64_t nOptStarpakOffset,
+		const AssetType type)
 	{
 		this->name = assetName;
-		this->guid = RTech::StringToGuid(assetName.c_str());
+		this->guid = nGuid;
 		this->headPtr = pHeadPtr;
 		this->cpuPtr = pCpuPtr;
 		this->starpakOffset = nStarpakOffset;

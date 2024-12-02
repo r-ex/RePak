@@ -2,11 +2,15 @@
 #include "assets.h"
 #include "public/studio.h"
 
-void Assets::AddAnimSeqAsset(CPakFile* const pak, const char* const assetPath)
+void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t guidOverride, const char* const assetPath)
 {
     Log("Adding aseq asset '%s'\n", assetPath);
 
-    const PakAsset_t* existingAsset = pak->GetAssetByGuid(RTech::GetAssetGUIDFromString(assetPath, true), nullptr, true);
+    const PakGuid_t assetGuid = guidOverride != 0
+        ? guidOverride
+        : RTech::StringToGuid(assetPath);
+
+    const PakAsset_t* existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
     if (existingAsset)
     {
         Warning("Tried to add animseq asset '%s' twice. Skipping redefinition...\n", assetPath);
@@ -75,7 +79,7 @@ void Assets::AddAnimSeqAsset(CPakFile* const pak, const char* const assetPath)
     }
 
     PakAsset_t asset;
-    asset.InitAsset(assetPath, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ASEQ);
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ASEQ);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = 7;
@@ -88,7 +92,8 @@ void Assets::AddAnimSeqAsset(CPakFile* const pak, const char* const assetPath)
     pak->PushAsset(asset);
 }
 
-void Assets::AddAnimSeqAsset_v7(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& /*mapEntry*/)
+void Assets::AddAnimSeqAsset_v7(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    AddAnimSeqAsset(pak, assetPath);
+    const PakGuid_t assetGuid = Pak_GetGuidOverridable(mapEntry, assetPath);
+    AddAnimSeqAsset(pak, assetGuid, assetPath);
 }

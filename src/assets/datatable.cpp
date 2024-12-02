@@ -142,7 +142,7 @@ void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChu
 }
 
 // VERSION 8
-void Assets::AddDataTableAsset(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& /*mapEntry*/)
+void Assets::AddDataTableAsset(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     Log("Adding dtbl asset '%s'\n", assetPath);
 
@@ -209,7 +209,8 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const char* const assetPath,
     PakAsset_t asset;
 
     asset.InitAsset(
-        sAssetName + ".rpak", 
+        (sAssetName + ".rpak").c_str(),
+        Pak_GetGuidOverridable(mapEntry, assetPath),
         hdrChunk.GetPointer(), hdrChunk.GetSize(),
         rowDataChunk.GetPointer(),
         UINT64_MAX, UINT64_MAX, AssetType::DTBL);

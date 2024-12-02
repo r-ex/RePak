@@ -58,9 +58,10 @@ void Assets::AddPatchAsset(CPakFile* pak, const char* assetPath, const rapidjson
     // create and init the asset entry
     PakAsset_t asset;
 
-    // hardcoded guid because it's the only Ptch asset guid
+    // NOTE: the only Ptch asset in the game has guid 0x6fc6fa5ad8f8bc9c
+    const PakGuid_t guid = Pak_GetGuidOverridable(mapEntry, assetPath);
 
-    asset.InitAsset(0x6fc6fa5ad8f8bc9c, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::PTCH);
+    asset.InitAsset(assetPath, guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::PTCH);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = 1;

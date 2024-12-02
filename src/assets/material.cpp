@@ -453,7 +453,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 
     MaterialAsset_t* matlAsset = new MaterialAsset_t{};
     matlAsset->assetVersion = 12; // set asset as a titanfall 2 material
-    matlAsset->materialAssetPath = assetPath;
+    matlAsset->materialAssetPath = JSON_GetValueRequired<const char*>(mapEntry, "name");
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
@@ -465,10 +465,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 
     // parse json inputs for matl header
     matlAsset->FromJSON(mapEntry);
-
-    // used only for string to guid
-    std::string fullAssetPath = "material/" + sAssetPath + "_" + matlAsset->materialTypeStr + ".rpak"; // Make full rpak asset path.
-    matlAsset->guid = RTech::StringToGuid(fullAssetPath.c_str()); // Convert full rpak asset path to guid and set it in the material header.
+    matlAsset->guid = Pak_GetGuidOverridable(mapEntry, assetPath);
     
     // !!!R2 SPECIFIC!!!
     {
@@ -683,7 +680,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
 
     MaterialAsset_t* matlAsset = new MaterialAsset_t{};
     matlAsset->assetVersion = 15;
-    matlAsset->materialAssetPath = assetPath;
+    matlAsset->materialAssetPath = JSON_GetValueRequired<const char*>(mapEntry, "name");
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
@@ -694,10 +691,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
 
     // parse json inputs for matl header
     matlAsset->FromJSON(mapEntry);
-
-    // used only for string to guid
-    std::string fullAssetPath = "material/" + sAssetPath + "_" + matlAsset->materialTypeStr + ".rpak"; // Make full rpak asset path.
-    matlAsset->guid = RTech::StringToGuid(fullAssetPath.c_str()); // Convert full rpak asset path to guid and set it in the material header.
+    matlAsset->guid = Pak_GetGuidOverridable(mapEntry, assetPath);
 
     const size_t surfaceProp1Size = !matlAsset->surface.empty() ? (matlAsset->surface.length() + 1) : 0;
     const size_t surfaceProp2Size = !matlAsset->surface2.empty() ? (matlAsset->surface2.length() + 1) : 0;

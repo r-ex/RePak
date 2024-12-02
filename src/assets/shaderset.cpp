@@ -114,17 +114,7 @@ void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPa
 	if (hdr->numResources != 0)
 		Warning("Shader set '%s' has requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n", assetPath);
 	
-	// dedup
-
-	PakGuid_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
-
-	if (!assetGuid)
-		assetGuid = RTech::StringToGuid((assetPathWithoutExtension + ".rpak").c_str());
-
-	if (assetGuid == 0)
-		Error("Invalid GUID provided for asset '%s'.\n", assetPath);
-
-	// end dedup
+	const PakGuid_t assetGuid = Pak_GetGuidOverridable(mapEntry, assetPath);
 
 	PakAsset_t asset;
 	asset.InitAsset(
@@ -253,17 +243,7 @@ void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const char* const assetP
 	if (hdr->numResources != 0)
 		Warning("Shader set '%s' has requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n", assetPath);
 
-	// dedup
-
-	PakGuid_t assetGuid = JSON_GetNumberOrDefault(mapEntry, "$guid", 0ull);
-
-	if (!assetGuid)
-		assetGuid = RTech::StringToGuid((assetPathWithoutExtension + ".rpak").c_str());
-
-	if (assetGuid == 0)
-		Error("Invalid GUID provided for asset '%s'.\n", assetPath);
-
-	// end dedup
+	const PakGuid_t assetGuid = Pak_GetGuidOverridable(mapEntry, assetPath);
 
 	PakAsset_t asset;
 	asset.InitAsset(

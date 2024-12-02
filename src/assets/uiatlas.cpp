@@ -56,7 +56,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
     const char* const atlasPath = JSON_GetValueRequired<const char*>(mapEntry, "atlas");
     AddTextureAsset(pak, 0, atlasPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), true);
 
-    const PakGuid_t atlasGuid = RTech::StringToGuid(atlasPath);
+    const PakGuid_t atlasGuid = Pak_GetGuidOverridable(mapEntry, assetPath);
     PakAsset_t* const atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 
     // this really shouldn't happen, since the texture is either automatically added above, or a fatal error is thrown
@@ -199,7 +199,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
     // create and init the asset entry
     PakAsset_t asset;
 
-    asset.InitAsset(assetPath, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
+    asset.InitAsset(assetPath, atlasGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = UIMG_VERSION;

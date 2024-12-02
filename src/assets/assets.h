@@ -12,7 +12,7 @@ namespace Assets
 {
 	void AddPatchAsset(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 
-	void AddTextureAsset(CPakFile* const pak, const PakGuid_t guid, const char* assetPath, const bool forceDisableStreaming, const bool materialGeneratedTexture);
+	void AddTextureAsset(CPakFile* const pak, const PakGuid_t guid, const char* assetPath, const bool forceDisableStreaming, const bool errorOnFail);
 	void AddTextureAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 
 	void AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
@@ -23,7 +23,7 @@ namespace Assets
 	void AddDataTableAsset(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 	void AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 
-	void AddAnimSeqAsset(CPakFile* const pak, const char* const assetPath);
+	void AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t guid, const char* const assetPath);
 	void AddAnimSeqAsset_v7(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 	void AddAnimRigAsset_v4(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry);
 

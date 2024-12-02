@@ -50,13 +50,12 @@ bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHe
         if (sequenceElem.GetStringLength() == 0)
             continue;
 
-        PakGuid_t guid = 0;
+        PakGuid_t guid;
 
-        if (!RTech::ParseGUIDFromString(sequenceElem.GetString(), &guid))
+        if (!JSON_ParseNumber(it, guid))
         {
-            Assets::AddAnimSeqAsset(pak, sequenceElem.GetString());
-
             guid = RTech::StringToGuid(sequenceElem.GetString());
+            Assets::AddAnimSeqAsset(pak, guid, sequenceElem.GetString());
         }
 
         sequenceGuids.emplace_back(guid);
@@ -118,7 +117,7 @@ void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const char* const assetPath
 
     PakAsset_t asset;
 
-    asset.InitAsset(assetPath, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ARIG);
+    asset.InitAsset(assetPath, Pak_GetGuidOverridable(mapEntry, assetPath), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ARIG);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = 4;
