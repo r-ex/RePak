@@ -81,7 +81,7 @@ void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPa
 
 	uint32_t numVertexShaderTextures;
 
-	if (JSON_GetValue(mapEntry, "numVertexShaderTextures", numVertexShaderTextures))
+	if (JSON_GetValue(mapEntry, "$numVertexShaderTextures", numVertexShaderTextures))
 	{
 		Debug("Overriding field \"numVertexShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
 		hdr->textureInputCounts[0] = static_cast<uint16_t>(numVertexShaderTextures);
@@ -91,7 +91,7 @@ void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPa
 
 	uint32_t numPixelShaderTextures;
 
-	if (JSON_GetValue(mapEntry, "numPixelShaderTextures", numPixelShaderTextures))
+	if (JSON_GetValue(mapEntry, "$numPixelShaderTextures", numPixelShaderTextures))
 	{
 		Debug("Overriding field \"numPixelShaderTextures\" for shader set '%s'.\n", assetPathWithoutExtension.c_str());
 		hdr->textureInputCounts[1] = static_cast<uint16_t>(numPixelShaderTextures);
