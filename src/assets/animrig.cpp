@@ -52,7 +52,7 @@ bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHe
 
         PakGuid_t guid;
 
-        if (!JSON_ParseNumber(it, guid))
+        if (!JSON_ParseNumber(sequenceElem, guid))
         {
             guid = RTech::StringToGuid(sequenceElem.GetString());
             Assets::AddAnimSeqAsset(pak, guid, sequenceElem.GetString());
