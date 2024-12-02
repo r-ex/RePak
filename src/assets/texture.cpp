@@ -227,7 +227,7 @@ void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
         // do stuff
     }
 
-    asset.InitAsset(assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, UINT64_MAX, AssetType::TXTR);
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, UINT64_MAX, AssetType::TXTR);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = TXTR_VERSION;

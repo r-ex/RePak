@@ -638,7 +638,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 
     PakAsset_t asset;
 
-    asset.InitAsset(matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
+    asset.InitAsset(assetPath, matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
     asset.version = 12;
 
     asset.pageEnd = pak->GetNumPages();
@@ -813,7 +813,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     PakAsset_t asset;
 
 
-    asset.InitAsset(matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
+    asset.InitAsset(assetPath, matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
     asset.SetHeaderPointer(hdrChunk.Data());
     asset.version = 15;
 

@@ -243,6 +243,7 @@ void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const char* const assetP
 
 	PakAsset_t asset;
 	asset.InitAsset(
+		assetPath,
 		assetGuid,
 		hdrChunk.GetPointer(), hdrChunk.GetSize(),
 		PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::SHDS);

@@ -182,7 +182,7 @@ void Assets::AddShaderAsset_v8(CPakFile* const pak, const char* const assetPath,
 
 	PakAsset_t asset;
 	asset.InitAsset(
-		(pakFilePath.string() + ".rpak").c_str(),
+		assetPath,
 		Pak_GetGuidOverridable(mapEntry, assetPath),
 		hdrChunk.GetPointer(), hdrChunk.GetSize(),
 		dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::SHDR);
@@ -383,6 +383,7 @@ void Assets::AddShaderAsset_v12(CPakFile* const pak, const char* const assetPath
 
 	PakAsset_t asset;
 	asset.InitAsset(
+		assetPath,
 		assetGuid,
 		hdrChunk.GetPointer(), hdrChunk.GetSize(),
 		dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::SHDR);

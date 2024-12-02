@@ -172,24 +172,6 @@ struct PakAsset_t
 		this->id = type;
 	}
 
-	void InitAsset(const PakGuid_t nGuid,
-		const PagePtr_t pHeadPtr,
-		const uint32_t nHeaderSize,
-		const PagePtr_t pCpuPtr,
-		const uint64_t nStarpakOffset,
-		const uint64_t nOptStarpakOffset,
-		const AssetType type)
-	{
-		this->name = "(null)";
-		this->guid = nGuid;
-		this->headPtr = pHeadPtr;
-		this->cpuPtr = pCpuPtr;
-		this->starpakOffset = nStarpakOffset;
-		this->optStarpakOffset = nOptStarpakOffset;
-		this->headDataSize = nHeaderSize;
-		this->id = type;
-	}
-
 	// hashed version of the asset path
 	// used for referencing the asset from elsewhere
 	//
