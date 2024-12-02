@@ -302,7 +302,7 @@ static void Material_SetupDXBufferFromJson(GenericShaderBuffer* shaderBuf, const
 static std::string Material_GetCpuPath(CPakFile* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry)
 {
     const char* path; // is user hasn't specified a cpu path, load the one from the material path.
-    const bool hasPath = JSON_GetValue(mapEntry, "cpu", path);
+    const bool hasPath = JSON_GetValue(mapEntry, "$cpu", path);
 
     return Utils::VFormat("%s%s.cpu_raw", pak->GetAssetPath().c_str(), hasPath ? path : matlAsset->materialAssetPath);
 }
@@ -518,7 +518,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 
     const char* presetValue;
 
-    if (JSON_GetValue(mapEntry, "preset", presetValue))
+    if (JSON_GetValue(mapEntry, "$preset", presetValue))
     {
         // get presets for dxstate, derived from existing r2 materials
         Material_SetTitanfall2Preset(matlAsset, presetValue);
@@ -674,7 +674,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
 
     rapidjson::Value::ConstMemberIterator texturesIt;
-    const bool hasTextures = JSON_GetIterator(mapEntry, "textures", JSONFieldType_e::kObject, texturesIt);
+    const bool hasTextures = JSON_GetIterator(mapEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
 
     const size_t textureCount = hasTextures
         ? Material_AddTextures(pak, mapEntry, texturesIt->value)
