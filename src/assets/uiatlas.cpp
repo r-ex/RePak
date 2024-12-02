@@ -52,6 +52,8 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
 
     // get the info for the ui atlas image
     const char* const atlasPath = JSON_GetValueRequired<const char*>(mapEntry, "atlas");
+
+    Log("Auto-adding txtr asset \"%s\".\n", atlasPath);
     AddTextureAsset(pak, 0, atlasPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), true);
 
     const PakGuid_t atlasGuid = Pak_GetGuidOverridable(mapEntry, assetPath);

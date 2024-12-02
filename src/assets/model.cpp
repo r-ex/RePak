@@ -79,8 +79,11 @@ bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader
 
         if (!JSON_ParseNumber(it, guid))
         {
-            guid = RTech::StringToGuid(it.GetString());
-            Assets::AddAnimSeqAsset(pak, guid, it.GetString());
+            const char* const sequencePath = it.GetString();
+            Log("Auto-adding aseq asset \"%s\".\n", sequencePath);
+
+            guid = RTech::StringToGuid(sequencePath);
+            Assets::AddAnimSeqAsset(pak, guid, sequencePath);
         }
 
         sequenceGuids.emplace_back(guid);

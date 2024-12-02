@@ -12,22 +12,15 @@ static void Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Va
     if (texture.GetStringLength() == 0)
         return;
 
+    const char* const texturePath = texture.GetString();
+
     // check if texture string is an asset guid (e.g., "0x5DCAT")
-    // 
-    // todo(amos): we probably need to get rid of this check and allow
-    // the user to specify textures by guid, because otherwise its impossible
-    // to deduplicate data that is either present in the pak we currently
-    // are building, or in one from which we are planning to share a streaming
-    // set with. streaming set sharing is planned so this needs to be reworked
-    // to eliminate duplicate assets that are in any other paks.
-    //
-    // ideally we just provide the guid into AddTextureAsset from here, and 
-    // slightly modify AddTextureAsset to use the provided guid for lookup
-    // rather than generating one from provided asset path.
-    if (RTech::ParseGUIDFromString(texture.GetString()))
+    // if it is then we don't add it here as its a reference.
+    if (RTech::ParseGUIDFromString(texturePath))
         return;
 
-    Assets::AddTextureAsset(pak, 0, texture.GetString(), disableStreaming, true);
+    Log("Auto-adding txtr asset \"%s\".\n", texturePath);
+    Assets::AddTextureAsset(pak, 0, texturePath, disableStreaming, true);
 }
 
 // we need to take better account of textures once asset caching becomes a thing
