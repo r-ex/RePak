@@ -67,7 +67,7 @@ void CPakFile::AddAsset(const rapidjson::Value& file)
 	HANDLE_ASSET_TYPE("Ptch", assetType, assetPath, file, Assets::AddPatchAsset, Assets::AddPatchAsset);
 	HANDLE_ASSET_TYPE("dtbl", assetType, assetPath, file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
 	HANDLE_ASSET_TYPE("matl", assetType, assetPath, file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
-	HANDLE_ASSET_TYPE("rmdl", assetType, assetPath, file, nullptr, Assets::AddModelAsset_v9);
+	HANDLE_ASSET_TYPE("mdl_", assetType, assetPath, file, nullptr, Assets::AddModelAsset_v9);
 	HANDLE_ASSET_TYPE("aseq", assetType, assetPath, file, nullptr, Assets::AddAnimSeqAsset_v7);
 	HANDLE_ASSET_TYPE("arig", assetType, assetPath, file, nullptr, Assets::AddAnimRigAsset_v4);
 
