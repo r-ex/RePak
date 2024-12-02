@@ -3,11 +3,11 @@
 #include "public/datatable.h"
 
 // fills a CPakDataChunk with column data from a provided csv
-void DataTable_SetupColumns(CPakFile* pak, CPakDataChunk& colChunk, datatable_asset_t* pHdrTemp, rapidcsv::Document& doc)
+static void DataTable_SetupColumns(CPakFile* const pak, CPakDataChunk& colChunk, datatable_asset_t* const pHdrTemp, rapidcsv::Document& doc)
 {
     size_t colNameBufSize = 0;
     // get required size to store all of the column names in a single buffer
-    for (auto& it : doc.GetColumnNames())
+    for (const std::string& it : doc.GetColumnNames())
     {
         colNameBufSize += it.length() + 1;
     }
@@ -23,13 +23,12 @@ void DataTable_SetupColumns(CPakFile* pak, CPakDataChunk& colChunk, datatable_as
 
     for (uint32_t i = 0; i < pHdrTemp->numColumns; ++i)
     {
-        std::string name = doc.GetColumnName(i);
+        const std::string name = doc.GetColumnName(i);
 
         // copy the column name into the namebuf
         snprintf(colNameBuf, name.length() + 1, "%s", name.c_str());
 
-        dtblcoltype_t type = DataTable_GetTypeFromString(typeRow[i]);
-
+        const dtblcoltype_t type = DataTable_GetTypeFromString(typeRow[i]);
         datacolumn_t& col = pHdrTemp->pDataColums[i];
 
         // get number of bytes that we've added in the name buf so far
@@ -59,15 +58,15 @@ void DataTable_SetupColumns(CPakFile* pak, CPakDataChunk& colChunk, datatable_as
 }
 
 // fills a CPakDataChunk with row data from a provided csv
-void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChunk& stringChunk, datatable_asset_t* pHdrTemp, rapidcsv::Document& doc)
+static void DataTable_SetupRows(CPakFile* const pak, CPakDataChunk& rowDataChunk, CPakDataChunk& stringChunk, datatable_asset_t* const pHdrTemp, rapidcsv::Document& doc)
 {
     char* pStringBuf = stringChunk.Data();
 
-    for (size_t rowIdx = 0; rowIdx < pHdrTemp->numRows; ++rowIdx)
+    for (uint32_t rowIdx = 0; rowIdx < pHdrTemp->numRows; ++rowIdx)
     {
-        for (size_t colIdx = 0; colIdx < pHdrTemp->numColumns; ++colIdx)
+        for (uint32_t colIdx = 0; colIdx < pHdrTemp->numColumns; ++colIdx)
         {
-            datacolumn_t& col = pHdrTemp->pDataColums[colIdx];
+            const datacolumn_t& col = pHdrTemp->pDataColums[colIdx];
 
             // get rmem instance for this cell's value buffer
             rmem valbuf(rowDataChunk.Data() + (pHdrTemp->rowStride * rowIdx) + col.rowOffset);
@@ -76,33 +75,32 @@ void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChu
             {
             case dtblcoltype_t::Bool:
             {
-                std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
+                const std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
 
                 if (!_stricmp(val.c_str(), "true") || val == "1")
                     valbuf.write<uint32_t>(true);
                 else if (!_stricmp(val.c_str(), "false") || val == "0")
                     valbuf.write<uint32_t>(false);
                 else
-                    Error("Invalid bool value at cell (%i, %i) in datatable %s\n", colIdx, rowIdx, pHdrTemp->assetPath);
+                    Error("Invalid bool value at cell (%u, %u) in datatable %s\n", colIdx, rowIdx, pHdrTemp->assetPath);
 
                 break;
             }
             case dtblcoltype_t::Int:
             {
-                uint32_t val = doc.GetCell<uint32_t>(colIdx, rowIdx);
+                const uint32_t val = doc.GetCell<uint32_t>(colIdx, rowIdx);
                 valbuf.write(val);
                 break;
             }
             case dtblcoltype_t::Float:
             {
-                float val = doc.GetCell<float>(colIdx, rowIdx);
+                const float val = doc.GetCell<float>(colIdx, rowIdx);
                 valbuf.write(val);
                 break;
             }
             case dtblcoltype_t::Vector:
             {
                 std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
-
                 std::smatch sm;
 
                 // get values from format "<x,y,z>"
@@ -114,10 +112,10 @@ void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChu
                 // 3 - z
                 if (sm.size() == 4)
                 {
-                    float x = static_cast<float>(atof(sm[1].str().c_str()));
-                    float y = static_cast<float>(atof(sm[2].str().c_str()));
-                    float z = static_cast<float>(atof(sm[3].str().c_str()));
-                    Vector3 vec(x, y, z);
+                    const Vector3 vec(
+                        static_cast<float>(atof(sm[1].str().c_str())),
+                        static_cast<float>(atof(sm[2].str().c_str())),
+                        static_cast<float>(atof(sm[3].str().c_str())));
 
                     valbuf.write(vec);
                 }
@@ -127,7 +125,7 @@ void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChu
             case dtblcoltype_t::Asset:
             case dtblcoltype_t::AssetNoPrecache:
             {
-                std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
+                const std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
                 snprintf(pStringBuf, val.length() + 1, "%s", val.c_str());
 
                 valbuf.write(stringChunk.GetPointer(pStringBuf - stringChunk.Data()));

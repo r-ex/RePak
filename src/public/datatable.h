@@ -12,7 +12,7 @@ enum class dtblcoltype_t : uint32_t
 	AssetNoPrecache
 };
 
-static const std::unordered_map<std::string, dtblcoltype_t> s_dataTableColumnTypeMap =
+static inline const std::unordered_map<std::string, dtblcoltype_t> s_dataTableColumnTypeMap =
 {
 	{ "bool",   dtblcoltype_t::Bool },
 	{ "int",    dtblcoltype_t::Int },
@@ -42,7 +42,7 @@ dtblcoltype_t DataTable_GetTypeFromString(std::string& sType)
 	return dtblcoltype_t::String;
 }
 
-inline bool DataTable_IsStringType(dtblcoltype_t type)
+inline bool DataTable_IsStringType(const dtblcoltype_t type)
 {
 	switch (type)
 	{
@@ -55,7 +55,7 @@ inline bool DataTable_IsStringType(dtblcoltype_t type)
 	}
 }
 
-inline uint8_t DataTable_GetValueSize(dtblcoltype_t type)
+inline uint8_t DataTable_GetValueSize(const dtblcoltype_t type)
 {
 	switch (type)
 	{
@@ -64,11 +64,11 @@ inline uint8_t DataTable_GetValueSize(dtblcoltype_t type)
 	case dtblcoltype_t::Float:
 		return sizeof(int32_t);
 	case dtblcoltype_t::Vector:
-		return 3 * sizeof(float); // sizeof(Vector3)
+		return sizeof(Vector3);
 	case dtblcoltype_t::String:
 	case dtblcoltype_t::Asset:
 	case dtblcoltype_t::AssetNoPrecache:
-		return 8; // sizeof(PagePtr_t)
+		return sizeof(PagePtr_t);
 	default:
 		return 0;
 	}
@@ -131,11 +131,11 @@ struct datatable_asset_t
 
 	datacolumn_t* pDataColums; // pointer to column data from data chunk
 
-	void WriteToBuffer(char* buf, int pakVersion)
+	void WriteToBuffer(char* const buf, const int pakVersion)
 	{
 		if (pakVersion <= 7)
 		{
-			datatable_v0_t* dtbl = reinterpret_cast<datatable_v0_t*>(buf);
+			datatable_v0_t* const dtbl = reinterpret_cast<datatable_v0_t*>(buf);
 			dtbl->numColumns = numColumns;
 			dtbl->numRows = numRows;
 			dtbl->pColumns = pColumns;
@@ -144,7 +144,7 @@ struct datatable_asset_t
 		}
 		else
 		{
-			datatable_v1_t* dtbl = reinterpret_cast<datatable_v1_t*>(buf);
+			datatable_v1_t* const dtbl = reinterpret_cast<datatable_v1_t*>(buf);
 			dtbl->numColumns = numColumns;
 			dtbl->numRows = numRows;
 			dtbl->pColumns = pColumns;
