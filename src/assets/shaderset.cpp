@@ -12,8 +12,6 @@
 
 void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-	Log("Adding shds asset '%s'\n", assetPath);
-
 	std::vector<PakGuidRefHdr_t> guids{};
 
 	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderSetAssetHeader_v8_t), SF_HEAD, 8);
@@ -139,8 +137,6 @@ void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPa
 
 void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-	Log("Adding shds asset '%s'\n", assetPath);
-
 	std::vector<PakGuidRefHdr_t> guids{};
 
 	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderSetAssetHeader_v11_t), SF_HEAD, 8);

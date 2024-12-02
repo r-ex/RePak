@@ -101,8 +101,6 @@ bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader
 
 void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    Log("Adding mdl_ asset '%s'\n", assetPath);
-
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ModelAssetHeader_t), SF_HEAD, 16);
     ModelAssetHeader_t* pHdr = reinterpret_cast<ModelAssetHeader_t*>(hdrChunk.Data());
 

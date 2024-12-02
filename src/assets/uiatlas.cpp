@@ -5,8 +5,6 @@
 
 void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    Log("Adding uimg asset '%s'\n", assetPath);
-
     ///////////////////////
     // JSON VALIDATION
     {

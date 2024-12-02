@@ -6,8 +6,6 @@
 // materialGeneratedTexture - whether this texture's creation was invoked by material automatic texture generation
 void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, const char* assetPath, const bool forceDisableStreaming, const bool errorOnFail)
 {
-    Log("Adding txtr asset '%s'\n", assetPath);
-
     const PakGuid_t assetGuid = guidOverride != 0
         ? guidOverride
         : RTech::StringToGuid(assetPath);

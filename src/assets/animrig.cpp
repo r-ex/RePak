@@ -76,8 +76,6 @@ bool AnimRig_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, AnimRigAssetHe
 
 void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    Log("Adding mdl_ asset '%s'\n", assetPath);
-
     // open and validate file to get buffer
     const char* const animRigFileBuffer = AnimRig_ReadRigFile(pak->GetAssetPath() + assetPath);
     const studiohdr_t* const studiohdr = reinterpret_cast<const studiohdr_t*>(animRigFileBuffer);

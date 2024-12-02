@@ -4,8 +4,6 @@
 
 void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t guidOverride, const char* const assetPath)
 {
-    Log("Adding aseq asset '%s'\n", assetPath);
-
     const PakGuid_t assetGuid = guidOverride != 0
         ? guidOverride
         : RTech::StringToGuid(assetPath);

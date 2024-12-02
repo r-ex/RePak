@@ -439,8 +439,6 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
 // VERSION 7
 void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    Log("Adding matl asset '%s'\n", assetPath);
-
     std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
 
     rapidjson::Value::ConstMemberIterator texturesIt;
@@ -666,8 +664,6 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 // VERSION 8
 void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    Log("Adding matl asset '%s'\n", assetPath);
-
     std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
 
     rapidjson::Value::ConstMemberIterator texturesIt;

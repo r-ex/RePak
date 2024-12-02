@@ -104,8 +104,6 @@ int ShaderV8_CreateFromMSW(CPakFile* pak, CPakDataChunk& hdrChunk, const fs::pat
 
 void Assets::AddShaderAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-	Log("Adding shdr asset '%s'\n", assetPath);
-
 	const fs::path inputFilePath = pak->GetAssetPath() / fs::path(assetPath).replace_extension("msw");
 
 	if (!fs::exists(inputFilePath))

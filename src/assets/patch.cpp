@@ -4,8 +4,6 @@
 // only tested for apex, should be identical on tf2
 void Assets::AddPatchAsset(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
 {
-    Log("Adding Ptch asset '%s'\n", assetPath);
-
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(PatchAssetHeader_t), SF_HEAD, 8);
 
     PatchAssetHeader_t* pHdr = reinterpret_cast<PatchAssetHeader_t*>(hdrChunk.Data());

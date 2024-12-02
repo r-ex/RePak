@@ -144,8 +144,6 @@ void DataTable_SetupRows(CPakFile* pak, CPakDataChunk& rowDataChunk, CPakDataChu
 // VERSION 8
 void Assets::AddDataTableAsset(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    Log("Adding dtbl asset '%s'\n", assetPath);
-
     REQUIRE_FILE(pak->GetAssetPath() + assetPath + ".csv");
 
     rapidcsv::Document doc(pak->GetAssetPath() + assetPath + ".csv");
