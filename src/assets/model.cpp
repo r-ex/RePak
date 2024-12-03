@@ -145,7 +145,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
 
         for (uint32_t j = 0; j < pHdr->animRigCount; ++j)
         {
-            guids.emplace_back(animRigsChunk.GetPointer(sizeof(uint64_t) * j));
+            guids.emplace_back(animRigsChunk.GetPointer(sizeof(PakGuid_t) * j));
         }
     }
 
@@ -153,12 +153,11 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
     if (AnimSeq_AddSequenceRefs(&sequencesChunk, pak, &pHdr->sequenceCount, mapEntry))
     {
         pHdr->pSequences = sequencesChunk.GetPointer();
-
         pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pSequences)));
 
         for (uint32_t i = 0; i < pHdr->sequenceCount; ++i)
         {
-            guids.emplace_back(sequencesChunk.GetPointer(8 * i));
+            guids.emplace_back(sequencesChunk.GetPointer(sizeof(PakGuid_t) * i));
         }
     }
 
