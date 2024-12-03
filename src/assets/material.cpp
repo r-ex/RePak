@@ -21,7 +21,7 @@ static void Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Va
     const char* const texturePath = texture.GetString();
 
     Log("Auto-adding txtr asset \"%s\".\n", texturePath);
-    Assets::AddTextureAsset(pak, 0, texturePath, disableStreaming, true);
+    Assets::AddTextureAsset(pak, 0, texturePath, disableStreaming, false);
 }
 
 // we need to take better account of textures once asset caching becomes a thing

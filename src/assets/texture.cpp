@@ -16,7 +16,7 @@ void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
         // if the caller has requested that this error is not triggered
         // this should only really be from material textures or ui image atlases
         // as those assets may unavoidably reuse a texture
-        if (!errorOnFail)
+        if (errorOnFail)
             Error("Tried to add texture asset \"%s\" twice.\n", assetPath);
 
         return;
