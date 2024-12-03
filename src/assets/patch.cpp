@@ -6,29 +6,38 @@ void Assets::AddPatchAsset(CPakFile* pak, const char* assetPath, const rapidjson
 {
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(PatchAssetHeader_t), SF_HEAD, 8);
 
-    PatchAssetHeader_t* pHdr = reinterpret_cast<PatchAssetHeader_t*>(hdrChunk.Data());
+    PatchAssetHeader_t* const pHdr = reinterpret_cast<PatchAssetHeader_t*>(hdrChunk.Data());
+
+    rapidjson::Value::ConstMemberIterator entryIt;
+    JSON_GetRequired(mapEntry, "entries", JSONFieldType_e::kArray, entryIt);
+
+    const rapidjson::Value::ConstArray entryArray = entryIt->value.GetArray();
 
     pHdr->unknown_1 = 0xFF;
-    pHdr->patchedPakCount = (uint32_t)mapEntry["entries"].GetArray().Size();
+    pHdr->patchedPakCount = (uint32_t)entryArray.Size();
 
-    std::vector<PtchEntry> patchEntries{};
+    std::vector<PtchEntry> patchEntries;
     uint32_t entryNamesSectionSize = 0;
 
-    for (auto& it : mapEntry["entries"].GetArray())
+    for (const rapidjson::Value& entry : entryArray)
     {
-        std::string name = it["name"].GetStdString();
-        uint8_t patchNum = static_cast<uint8_t>(it["version"].GetInt());
+        const char* const name = JSON_GetValueRequired<const char*>(entry, "name");
+        const uint8_t patchNum = (uint8_t)JSON_GetValueRequired<int>(entry, "version");
 
-        patchEntries.push_back({ name, patchNum, entryNamesSectionSize });
+        PtchEntry& patchEntry = patchEntries.emplace_back();
 
-        entryNamesSectionSize += static_cast<uint32_t>(name.length() + 1);
+        patchEntry.pakFileName = name;
+        patchEntry.highestPatchNum = patchNum;
+        patchEntry.pakFileNameOffset = entryNamesSectionSize;
+
+        entryNamesSectionSize += static_cast<uint32_t>(patchEntry.pakFileName.length() + 1);
     }
 
-    size_t dataPageSize = (sizeof(PagePtr_t) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + entryNamesSectionSize;
-
+    const size_t dataPageSize = (sizeof(PagePtr_t) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + entryNamesSectionSize;
     CPakDataChunk dataChunk = pak->CreateDataChunk(dataPageSize, SF_CPU, 8);
 
-    int patchNumbersOffset = sizeof(PagePtr_t) * pHdr->patchedPakCount;
+    const int patchNumbersOffset = sizeof(PagePtr_t) * pHdr->patchedPakCount;
+
     pHdr->pPakNames = dataChunk.GetPointer();
     pHdr->pPakPatchNums = dataChunk.GetPointer(patchNumbersOffset);
 
@@ -38,9 +47,9 @@ void Assets::AddPatchAsset(CPakFile* pak, const char* assetPath, const rapidjson
     rmem dataBuf(dataChunk.Data());
 
     uint32_t i = 0;
-    for (auto& it : patchEntries)
+    for (const PtchEntry& it : patchEntries)
     {
-        int fileNameOffset = (sizeof(PagePtr_t) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + it.pakFileNameOffset;
+        const int fileNameOffset = (sizeof(PagePtr_t) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + it.pakFileNameOffset;
 
         // write the ptr to the file name into the buffer
         dataBuf.write<PagePtr_t>(dataChunk.GetPointer(fileNameOffset), sizeof(PagePtr_t) * i);
