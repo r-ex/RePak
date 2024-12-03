@@ -15,20 +15,7 @@ void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
         return;
     }
 
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimSeqAssetHeader_t), SF_HEAD, 16);
-
     const std::string rseqFilePath = pak->GetAssetPath() + assetPath;
-
-    // require rseq file to exist
-    REQUIRE_FILE(rseqFilePath);
-
-    const size_t rseqNameLenAligned = IALIGN4(strlen(assetPath) + 1);
-    const size_t rseqFileSize = Utils::GetFileSize(rseqFilePath);
-
-    CPakDataChunk dataChunk = pak->CreateDataChunk(IALIGN4(rseqNameLenAligned + rseqFileSize), SF_CPU, 64);
-
-    // write the rseq file path into the data buffer
-    snprintf(dataChunk.Data(), rseqNameLenAligned, "%s", assetPath);
 
     // begin rseq input
     BinaryIO rseqInput;
@@ -38,6 +25,16 @@ void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
         Error("Failed to open animseq asset '%s'\n", assetPath);
         return;
     }
+
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimSeqAssetHeader_t), SF_HEAD, 16);
+
+    const size_t rseqNameLenAligned = IALIGN4(strlen(assetPath) + 1);
+    const size_t rseqFileSize = rseqInput.GetSize();
+
+    CPakDataChunk dataChunk = pak->CreateDataChunk(IALIGN4(rseqNameLenAligned + rseqFileSize), SF_CPU, 64);
+
+    // write the rseq file path into the data buffer
+    snprintf(dataChunk.Data(), rseqNameLenAligned, "%s", assetPath);
 
     // write the rseq data into the data buffer
     rseqInput.Read(dataChunk.Data() + rseqNameLenAligned, rseqFileSize);
@@ -53,7 +50,7 @@ void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSeqAssetHeader_t, szname)));
     pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSeqAssetHeader_t, data)));
 
-    std::vector<PakGuidRefHdr_t> guids{};
+    std::vector<PakGuidRefHdr_t> guids;
 
     rmem dataBuf(dataChunk.Data());
     dataBuf.seek(rseqNameLenAligned + seqdesc.autolayerindex, rseekdir::beg);
