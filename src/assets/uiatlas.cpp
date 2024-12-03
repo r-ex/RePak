@@ -9,17 +9,21 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
     const char* const atlasPath = JSON_GetValueRequired<const char*>(mapEntry, "atlas");
 
     Log("Auto-adding txtr asset \"%s\".\n", atlasPath);
-    AddTextureAsset(pak, 0, atlasPath, 
+
+    const PakGuid_t atlasGuid = RTech::StringToGuid(atlasPath);
+    AddTextureAsset(pak, atlasGuid, atlasPath,
         true/*streaming disabled as uimg can not be streamed*/,
         true/*error if already added because we cannot reliably check if streaming was disabled*/);
 
-    const PakGuid_t atlasGuid = RTech::StringToGuid(atlasPath);
     PakAsset_t* const atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 
-    // this really shouldn't happen, since the texture is either automatically added above, or a fatal error is thrown
+    // this really shouldn't be triggered, since the texture is either automatically added above, or a fatal error is thrown
     // there is no code path in AddTextureAsset in which the texture does not exist after the call and still continues execution
     if (!atlasAsset) [[ unlikely ]]
-        Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
+    {
+        assert(0);
+        Error("Atlas asset was not found when trying to add uimg asset \"%s\".\n", assetPath);
+    }
 
     // grab the dimensions of the atlas
     const std::string filePath = Utils::ChangeExtension(pak->GetAssetPath() + atlasPath, ".dds");
@@ -140,10 +144,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
     }
 
     // add the file relation from this uimg asset to the atlas txtr
-    if (atlasAsset)
-        pak->SetCurrentAssetAsDependentForAsset(atlasAsset);
-    else
-        Warning("unable to find texture asset locally for uimg asset. assuming it is external...\n");
+    pak->SetCurrentAssetAsDependentForAsset(atlasAsset);
 
     rmem uvBuf(dataChunk.Data());
 
