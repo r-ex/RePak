@@ -14,7 +14,7 @@ namespace Utils
 	void ParseMapDocument(js::Document& doc, const fs::path& path);
 };
 
-extern PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success);
+extern PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success = nullptr);
 extern PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, const char* const member, bool* const success = nullptr);
 extern PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const PakGuid_t fallback);
 extern PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const char* const fallback);
