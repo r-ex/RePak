@@ -80,7 +80,7 @@ void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
         Log("-> fmt: %s\n", pDxgiFormat);
         hdr->imgFormat = s_txtrFormatMap.at(dxgiFormat);
 
-        Log("-> dimensions: %ix%i\n", ddsh.dwWidth, ddsh.dwHeight);
+        Log("-> dimensions: %ux%u\n", ddsh.dwWidth, ddsh.dwHeight);
         hdr->width = static_cast<uint16_t>(ddsh.dwWidth);
         hdr->height = static_cast<uint16_t>(ddsh.dwHeight);
 
@@ -152,7 +152,7 @@ void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
             mips.push_back(mipMap);
         }
 
-        Log("-> total mipmaps permanent:streamed:streamed opt : %i:%i:%i\n", hdr->mipLevels, hdr->streamedMipLevels, hdr->optStreamedMipLevels);
+        Log("-> total mipmaps permanent:streamed:streamed opt : %hhu:%hhu:%hhu\n", hdr->mipLevels, hdr->streamedMipLevels, hdr->optStreamedMipLevels);
     }
 
     hdr->guid = assetGuid;
