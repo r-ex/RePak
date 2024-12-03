@@ -58,12 +58,6 @@ private:
 	out->Write(*it); \
 }
 
-#define FILE_EXISTS(path) std::filesystem::exists(path)
-
-#define REQUIRE_FILE(path) \
-	if(!FILE_EXISTS(path)) \
-		Error("Unable to find required file '%s'\n", std::string(path).c_str())
-
 #define IALIGN(a,b)  (((a) + ((b)-1)) & ~((b)-1))
 
 #define IALIGN2(a)   IALIGN(a,2)
