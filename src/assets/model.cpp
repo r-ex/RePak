@@ -117,9 +117,6 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
         const rapidjson::Value::ConstArray animrigs = it->value.GetArray();
         const uint32_t numAnimrigs = (uint32_t)animrigs.Size();
 
-        if (numAnimrigs != pHdr->animRigCount)
-            Warning("model expects %u animrigs, but only %u were provided; model may not work correctly\n", pHdr->animRigCount, numAnimrigs);
-
         pHdr->animRigCount = numAnimrigs;
 
         animRigsChunk = pak->CreateDataChunk(numAnimrigs * sizeof(PakGuid_t), SF_CPU, 64);
