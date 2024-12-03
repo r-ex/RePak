@@ -319,7 +319,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)\;$(ProjectDir)thirdparty\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalOptions>/D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -343,7 +343,7 @@
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalOptions>/D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
