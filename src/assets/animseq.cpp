@@ -13,8 +13,10 @@ bool AnimSeq_AddSequenceRefs(CPakDataChunk* const chunk, CPakFile* const pak, ui
     const rapidjson::Value::ConstArray sequencesArray = sequencesIt->value.GetArray();
     const size_t numSequences = sequencesArray.Size();
 
+    (*chunk) = pak->CreateDataChunk(sizeof(PakGuid_t) * numSequences, SF_CPU, 64);
     (*sequenceCount) = static_cast<uint32_t>(numSequences);
-    std::vector<PakGuid_t> sequenceGuids(numSequences);
+
+    PakGuid_t* const pGuids = reinterpret_cast<PakGuid_t*>(chunk->Data());
 
     int seqIndex = -1;
     for (const auto& sequence : sequencesArray)
@@ -39,23 +41,9 @@ bool AnimSeq_AddSequenceRefs(CPakDataChunk* const chunk, CPakFile* const pak, ui
             Assets::AddAnimSeqAsset(pak, guid, sequencePath);
         }
 
-        sequenceGuids[seqIndex] = guid;
-
-        // note(amos): initially this was incremented from whatever we had before
-        // however since we read and write up to the chunk size, it should be set
-        // to the total number of sequences we're going to add here.
-        //(*sequenceCount)++;
+        pGuids[seqIndex] = guid;
     }
 
-    CPakDataChunk guidsChunk = pak->CreateDataChunk(sizeof(PakGuid_t) * numSequences, SF_CPU, 64);
-    PakGuid_t* const pGuids = reinterpret_cast<PakGuid_t*>(guidsChunk.Data());
-
-    for (size_t i = 0; i < numSequences; ++i)
-    {
-        pGuids[i] = sequenceGuids[i];
-    }
-
-    *chunk = guidsChunk;
     return true;
 }
 
