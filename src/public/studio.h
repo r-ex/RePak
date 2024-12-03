@@ -345,13 +345,13 @@ struct ModelAssetHeader_t
 	uint32_t alignedStreamingSize = 0; // full size of the starpak entry, aligned to 4096.
 
 	uint64_t Padding6 = 0;
+	uint64_t Padding7 = 0;
+	uint64_t Padding8 = 0;
 
 	// number of anim sequences directly associated with this model
 	uint32_t sequenceCount = 0;
 	PagePtr_t pSequences;
 
-	uint64_t Padding7 = 0;
-	uint64_t Padding8 = 0;
 	uint64_t Padding9 = 0;
 };
 static_assert(sizeof(ModelAssetHeader_t) == 120);
