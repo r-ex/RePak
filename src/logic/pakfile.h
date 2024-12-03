@@ -86,10 +86,9 @@ private:
 	int pageIndex;
 	int pageOffset;
 	int size;
-
-	char* pData;
 	uint8_t alignment;
 	bool released;
+	char* pData;
 public:
 
 	inline PagePtr_t GetPointer(size_t offset=0) { return { pageIndex, static_cast<int>(pageOffset + offset) }; };
