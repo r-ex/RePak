@@ -13,7 +13,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
     const PakGuid_t atlasGuid = RTech::StringToGuid(atlasPath);
     AddTextureAsset(pak, atlasGuid, atlasPath,
         true/*streaming disabled as uimg can not be streamed*/,
-        true/*error if already added because we cannot reliably check if streaming was disabled*/);
+        true/*error if already added because if streaming was enabled, the atlas was written in a streaming set*/);
 
     PakAsset_t* const atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 
@@ -25,17 +25,8 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
         Error("Atlas asset was not found when trying to add uimg asset \"%s\".\n", assetPath);
     }
 
-    // grab the dimensions of the atlas
-    const std::string filePath = Utils::ChangeExtension(pak->GetAssetPath() + atlasPath, ".dds");
-    BinaryIO atlas;
-
-    if (!atlas.Open(filePath, BinaryIO::Mode_e::Read))
-        Error("Failed to open atlas asset '%s'\n", filePath.c_str());
-
-    atlas.SeekGet(4);
-    DDS_HEADER ddsh = atlas.Read<DDS_HEADER>();
-
-    atlas.Close();
+    // make sure referenced asset is a texture for sanity
+    atlasAsset->EnsureType(TYPE_TXTR);
 
     rapidjson::Value::ConstMemberIterator texturesIt;
     JSON_GetRequired(mapEntry, "textures", JSONFieldType_e::kArray, texturesIt);
@@ -45,12 +36,11 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
 
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(UIImageAtlasHeader_t), SF_HEAD | SF_CLIENT, 8);
 
-    UIImageAtlasHeader_t* pHdr = reinterpret_cast<UIImageAtlasHeader_t*>(hdrChunk.Data());
+    UIImageAtlasHeader_t* const  pHdr = reinterpret_cast<UIImageAtlasHeader_t*>(hdrChunk.Data());
+    const TextureAssetHeader_t* const atlasHdr = reinterpret_cast<const TextureAssetHeader_t*>(atlasAsset->header);
 
-    assert(ddsh.dwWidth <= UINT16_MAX);
-    assert(ddsh.dwHeight <= UINT16_MAX);
-    pHdr->width = static_cast<uint16_t>(ddsh.dwWidth);
-    pHdr->height = static_cast<uint16_t>(ddsh.dwHeight);
+    pHdr->width = atlasHdr->width;
+    pHdr->height = atlasHdr->height;
 
     pHdr->widthRatio = 1.f / pHdr->width;
     pHdr->heightRatio = 1.f / pHdr->height;
