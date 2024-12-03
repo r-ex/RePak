@@ -145,7 +145,7 @@ public:
 
 	void AddStarpakReference(const std::string& path);
 	void AddOptStarpakReference(const std::string& path);
-	StreamableDataEntry AddStarpakDataEntry(StreamableDataEntry block);
+	void AddStarpakDataEntry(StreamableDataEntry& block);
 
 	//----------------------------------------------------------------------------
 	// inlines

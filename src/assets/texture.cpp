@@ -218,7 +218,8 @@ void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
     if (isStreamable && hdr->streamedMipLevels > 0)
     {
         StreamableDataEntry de{ 0, mipSizes.streamedSize, (uint8_t*)streamedbuf };
-        de = pak->AddStarpakDataEntry(de);
+        pak->AddStarpakDataEntry(de);
+
         starpakOffset = de.offset;
     }
 

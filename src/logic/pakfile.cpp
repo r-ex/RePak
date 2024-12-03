@@ -134,7 +134,7 @@ void CPakFile::AddOptStarpakReference(const std::string& path)
 // purpose: adds new starpak data entry
 // returns: starpak data entry descriptor
 //-----------------------------------------------------------------------------
-StreamableDataEntry CPakFile::AddStarpakDataEntry(StreamableDataEntry block)
+void CPakFile::AddStarpakDataEntry(StreamableDataEntry& block)
 {
 	const std::string starpakPath = this->GetPrimaryStarpakPath();
 
@@ -151,10 +151,7 @@ StreamableDataEntry CPakFile::AddStarpakDataEntry(StreamableDataEntry block)
 	block.offset = m_NextStarpakOffset;
 
 	m_vStarpakDataBlocks.push_back(block);
-
 	m_NextStarpakOffset += block.dataSize;
-
-	return block;
 }
 
 //-----------------------------------------------------------------------------

@@ -210,7 +210,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
     // Starpak
     //
     StreamableDataEntry de{ 0, vgFileSize, (uint8_t*)vgBuf };
-    de = pak->AddStarpakDataEntry(de);
+    pak->AddStarpakDataEntry(de);
 
     assert(de.dataSize <= UINT32_MAX);
     pHdr->alignedStreamingSize = static_cast<uint32_t>(de.dataSize);
