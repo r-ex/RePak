@@ -2,6 +2,63 @@
 #include "assets.h"
 #include "public/studio.h"
 
+bool AnimSeq_AddSequenceRefs(CPakDataChunk* const chunk, CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
+{
+    rapidjson::Value::ConstMemberIterator sequencesIt;
+    const bool hasSequences = JSON_GetIterator(mapEntry, "$sequences", JSONFieldType_e::kArray, sequencesIt);
+
+    if (!hasSequences)
+        return false;
+
+    const rapidjson::Value::ConstArray sequencesArray = sequencesIt->value.GetArray();
+    const size_t numSequences = sequencesArray.Size();
+
+    (*sequenceCount) = static_cast<uint32_t>(numSequences);
+    std::vector<PakGuid_t> sequenceGuids(numSequences);
+
+    int seqIndex = -1;
+    for (const auto& sequence : sequencesArray)
+    {
+        seqIndex++;
+        PakGuid_t guid;
+
+        if (!JSON_ParseNumber(sequence, guid))
+        {
+            if (!sequence.IsString())
+                Error("Sequence #%i is of unsupported type; expected %s or %s, found %s.\n", seqIndex,
+                    JSON_TypeToString(JSONFieldType_e::kUint64), JSON_TypeToString(JSONFieldType_e::kString),
+                    JSON_TypeToString(JSON_ExtractType(sequence)));
+
+            if (sequence.GetStringLength() == 0)
+                Error("Sequence #%i was defined as an invalid empty string.\n", seqIndex);
+
+            const char* const sequencePath = sequence.GetString();
+            Log("Auto-adding aseq asset \"%s\".\n", sequencePath);
+
+            guid = RTech::StringToGuid(sequencePath);
+            Assets::AddAnimSeqAsset(pak, guid, sequencePath);
+        }
+
+        sequenceGuids[seqIndex] = guid;
+
+        // note(amos): initially this was incremented from whatever we had before
+        // however since we read and write up to the chunk size, it should be set
+        // to the total number of sequences we're going to add here.
+        //(*sequenceCount)++;
+    }
+
+    CPakDataChunk guidsChunk = pak->CreateDataChunk(sizeof(PakGuid_t) * numSequences, SF_CPU, 64);
+    PakGuid_t* const pGuids = reinterpret_cast<PakGuid_t*>(guidsChunk.Data());
+
+    for (size_t i = 0; i < numSequences; ++i)
+    {
+        pGuids[i] = sequenceGuids[i];
+    }
+
+    *chunk = guidsChunk;
+    return true;
+}
+
 void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t guidOverride, const char* const assetPath)
 {
     const PakGuid_t assetGuid = guidOverride != 0

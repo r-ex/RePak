@@ -60,63 +60,7 @@ char* Model_ReadVGFile(const std::string& path, size_t* const pFileSize)
     return buf;
 }
 
-static void Model_CheckAssetRef(const rapidjson::Value& val, const char* assetType, const int index)
-{
-    if (!val.IsNumber())
-    {
-        if (!val.IsString())
-            Error("%s #%i is of unsupported type; expected %s or %s, found %s\n", assetType, index,
-                JSON_TypeToString(JSONFieldType_e::kUint64), JSON_TypeToString(JSONFieldType_e::kString),
-                JSON_TypeToString(JSON_ExtractType(val)));
-
-        if (val.GetStringLength() == 0)
-            Error("%s #%i was defined as an invalid empty string\n", assetType, index);
-    }
-}
-
-bool Model_AddSequenceRefs(CPakDataChunk* chunk, CPakFile* pak, ModelAssetHeader_t* hdr, const rapidjson::Value& mapEntry)
-{
-    rapidjson::Value::ConstMemberIterator sequencesIt;
-    const bool hasSequences = JSON_GetIterator(mapEntry, "$sequences", JSONFieldType_e::kArray, sequencesIt);
-
-    if (!hasSequences)
-        return false;
-
-    const rapidjson::Value::ConstArray sequencesArray = sequencesIt->value.GetArray();
-    std::vector<PakGuid_t> sequenceGuids;
-
-    int seqIndex = -1;
-    for (const auto& sequence : sequencesArray)
-    {
-        seqIndex++;
-        Model_CheckAssetRef(sequence, "sequence", seqIndex);
-
-        PakGuid_t guid;
-
-        if (!JSON_ParseNumber(sequence, guid))
-        {
-            const char* const sequencePath = sequence.GetString();
-            Log("Auto-adding aseq asset \"%s\".\n", sequencePath);
-
-            guid = RTech::StringToGuid(sequencePath);
-            Assets::AddAnimSeqAsset(pak, guid, sequencePath);
-        }
-
-        sequenceGuids.emplace_back(guid);
-        hdr->sequenceCount++;
-    }
-
-    CPakDataChunk guidsChunk = pak->CreateDataChunk(sizeof(PakGuid_t) * sequenceGuids.size(), SF_CPU, 64);
-
-    PakGuid_t* pGuids = reinterpret_cast<PakGuid_t*>(guidsChunk.Data());
-    for (size_t i = 0; i < sequenceGuids.size(); ++i)
-    {
-        pGuids[i] = sequenceGuids[i];
-    }
-
-    *chunk = guidsChunk;
-    return true;
-}
+extern bool AnimSeq_AddSequenceRefs(CPakDataChunk* const chunk, CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
 
 void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
@@ -186,12 +130,10 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
         for (const auto& animrig : animrigs)
         {
             i++;
-            Model_CheckAssetRef(animrig, "animrig", i);
+            const PakGuid_t guid = Pak_ParseGuid(animrig);
 
-            PakGuid_t guid;
-
-            if (!JSON_ParseNumber(animrig, guid))
-                guid = RTech::StringToGuid(animrig.GetString());
+            if (!guid)
+                Error("Unable to parse animrig #%i\n", i);
 
             arigBuf.write<PakGuid_t>(guid);
 
@@ -211,7 +153,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
     }
 
     CPakDataChunk sequencesChunk;
-    if (Model_AddSequenceRefs(&sequencesChunk, pak, pHdr, mapEntry))
+    if (AnimSeq_AddSequenceRefs(&sequencesChunk, pak, &pHdr->sequenceCount, mapEntry))
     {
         pHdr->pSequences = sequencesChunk.GetPointer();
 
@@ -298,13 +240,10 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
 
             if (materialArray.Size() > i)
             {
-                const rapidjson::Value& matlEntry = materialArray[i];
-                Model_CheckAssetRef(matlEntry, "material", i);
+                const PakGuid_t guid = Pak_ParseGuid(materialArray[i]);
 
-                PakGuid_t guid;
-
-                if (!JSON_ParseNumber(matlEntry, guid))
-                    guid = RTech::StringToGuid(matlEntry.GetString());
+                if (!guid)
+                    Error("Unable to parse material #%i\n", i);
 
                 tex->guid = guid;
             }
@@ -312,10 +251,10 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
 
         if (tex->guid != 0)
         {
-            size_t pos = (char*)tex - pDataBuf;
-            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(static_cast<int>(pos) + offsetof(mstudiotexture_t, guid)));
+            const size_t pos = (char*)tex - pDataBuf;
+            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(pos + offsetof(mstudiotexture_t, guid)));
 
-            PakAsset_t* asset = pak->GetAssetByGuid(tex->guid);
+            PakAsset_t* const asset = pak->GetAssetByGuid(tex->guid);
 
             if (asset)
             {
@@ -327,8 +266,8 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
 
                 if (matlHdr->materialType != studiohdr->materialType(i))
                 {
-                    Warning("Setting material of unexpected type in material slot %i for model asset '%s'. Expected type '%s', found material with type '%s'.\n",
-                        i, assetPath, s_materialShaderTypeNames[studiohdr->materialType(i)], s_materialShaderTypeNames[matlHdr->materialType]);
+                    Error("Unexpected shader type for material in slot #%i, expected '%s', found '%s'.\n",
+                        i, s_materialShaderTypeNames[studiohdr->materialType(i)], s_materialShaderTypeNames[matlHdr->materialType]);
                 }
 
                 pak->SetCurrentAssetAsDependentForAsset(asset);
