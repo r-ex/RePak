@@ -245,5 +245,7 @@ void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
 void Assets::AddTextureAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     const PakGuid_t assetGuid = Pak_GetGuidOverridable(mapEntry, assetPath);
-    AddTextureAsset(pak, assetGuid, assetPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), false);
+    const bool disableStreaming = JSON_GetValueOrDefault(mapEntry, "$disableStreaming", false);
+
+    AddTextureAsset(pak, assetGuid, assetPath, disableStreaming, false);
 }
