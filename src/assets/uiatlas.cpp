@@ -5,56 +5,13 @@
 
 void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    ///////////////////////
-    // JSON VALIDATION
-    {
-        // atlas checks
-        if (!mapEntry.HasMember("atlas"))
-            Error("Required field 'atlas' not found for uimg asset '%s'. Exiting...\n", assetPath);
-        else if (!mapEntry["atlas"].IsString())
-            Error("'atlas' field is not of required type 'string' for uimg asset '%s'. Exiting...\n", assetPath);
-
-        // textures checks
-        if (!mapEntry.HasMember("textures"))
-            Error("Required field 'textures' not found for uimg asset '%s'. Exiting...\n", assetPath);
-        else if (!mapEntry["textures"].IsArray())
-            Error("'textures' field is not of required type 'array' for uimg asset '%s'. Exiting...\n", assetPath);
-
-        // validate fields for each texture
-        for (auto& it : mapEntry["textures"].GetArray())
-        {
-            if (!it.HasMember("path"))
-                Error("Required field 'path' not found for a texture in uimg asset '%s'. Exiting...\n", assetPath);
-            else if (!it["path"].IsString())
-                Error("'path' field is not of required type 'string' for a texture in uimg asset '%s'. Exiting...\n", assetPath);
-
-            if (!it.HasMember("width"))
-                Error("Required field 'width' not found for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
-            else if (!it["width"].IsNumber())
-                Error("'width' field is not of required type 'number' for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
-
-            if (!it.HasMember("height"))
-                Error("Required field 'height' not found for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
-            else if (!it["height"].IsNumber())
-                Error("'height' field is not of required type 'number' for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
-
-            if (!it.HasMember("posX"))
-                Error("Required field 'posX' not found for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
-            else if (!it["posX"].IsNumber())
-                Error("'posX' field is not of required type 'number' for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
-
-            if (!it.HasMember("posY"))
-                Error("Required field 'posY' not found for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
-            else if (!it["posY"].IsNumber())
-                Error("'posY' field is not of required type 'number' for texture '%s' in uimg asset '%s'. Exiting...\n", it["path"].GetString(), assetPath);
-        }
-    }
-
     // get the info for the ui atlas image
     const char* const atlasPath = JSON_GetValueRequired<const char*>(mapEntry, "atlas");
 
     Log("Auto-adding txtr asset \"%s\".\n", atlasPath);
-    AddTextureAsset(pak, 0, atlasPath, mapEntry.HasMember("disableStreaming") && mapEntry["disableStreaming"].GetBool(), true);
+    AddTextureAsset(pak, 0, atlasPath, 
+        true/*streaming disabled as uimg can not be streamed*/,
+        true/*error if already added because we cannot reliably check if streaming was disabled*/);
 
     const PakGuid_t atlasGuid = RTech::StringToGuid(atlasPath);
     PakAsset_t* const atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
@@ -63,8 +20,6 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
     // there is no code path in AddTextureAsset in which the texture does not exist after the call and still continues execution
     if (!atlasAsset) [[ unlikely ]]
         Error("Atlas asset was not found when trying to add uimg asset '%s'. Make sure that the txtr is above the uimg in your map file. Exiting...\n", assetPath);
-
-    uint16_t textureCount = static_cast<uint16_t>(mapEntry["textures"].GetArray().Size());
 
     // grab the dimensions of the atlas
     const std::string filePath = Utils::ChangeExtension(pak->GetAssetPath() + atlasPath, ".dds");
@@ -78,6 +33,11 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
 
     atlas.Close();
 
+    rapidjson::Value::ConstMemberIterator texturesIt;
+    JSON_GetRequired(mapEntry, "textures", JSONFieldType_e::kArray, texturesIt);
+
+    const rapidjson::Value::ConstArray& textureArray = texturesIt->value.GetArray();
+    const uint16_t textureCount = static_cast<uint16_t>(textureArray.Size());
 
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(UIImageAtlasHeader_t), SF_HEAD | SF_CLIENT, 8);
 
@@ -93,18 +53,16 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
 
     // legion uses this to get the texture count, so its probably set correctly
     pHdr->textureCount = textureCount;
-    // unused by legion? - might not be correct
-    //pHdr->textureCount = nTexturesCount <= 1 ? 0 : nTexturesCount - 1; // don't even ask
     pHdr->unkCount = 0;
     pHdr->atlasGUID = atlasGuid;
 
     // calculate data sizes so we can allocate a page and segment
-    int textureOffsetsDataSize = sizeof(UIImageOffset) * textureCount;
-    int textureDimensionsDataSize = sizeof(uint16_t) * 2 * textureCount;
-    int textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * textureCount;
+    const size_t textureOffsetsDataSize = sizeof(UIImageOffset) * textureCount;
+    const size_t textureDimensionsDataSize = sizeof(uint16_t) * 2 * textureCount;
+    const size_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * textureCount;
 
     // get total size
-    int textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
+    const size_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
 
     // ui image/texture info
     CPakDataChunk textureInfoChunk = pak->CreateDataChunk(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
@@ -124,7 +82,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
 
     ////////////////////
     // IMAGE OFFSETS
-    for (auto& it : mapEntry["textures"].GetArray())
+    for (const rapidjson::Value& it : textureArray)
     {
         UIImageOffset uiio{};
 
@@ -148,10 +106,13 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
     // set texture dimensions page index and offset
     pHdr->pTextureDimensions = textureInfoChunk.GetPointer(textureOffsetsDataSize);
 
-    for (auto& it : mapEntry["textures"].GetArray())
+    for (const rapidjson::Value& it : textureArray)
     {
-        tiBuf.write<uint16_t>((uint16_t)it["width"].GetInt());
-        tiBuf.write<uint16_t>((uint16_t)it["height"].GetInt());
+        const uint16_t width = (uint16_t)JSON_GetNumberRequired<int>(it, "width");
+        const uint16_t height = (uint16_t)JSON_GetNumberRequired<int>(it, "height");
+
+        tiBuf.write<uint16_t>(width);
+        tiBuf.write<uint16_t>(height);
     }
 
     // set texture hashes page index and offset
@@ -162,15 +123,20 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
 
     /////////////////////////
     // IMAGE HASHES/NAMES
-    for (auto& it : mapEntry["textures"].GetArray())
+    for (const rapidjson::Value& it : textureArray)
     {
-        uint32_t pathHash = RTech::StringToUIMGHash(it["path"].GetString());
+        rapidjson::Value::ConstMemberIterator pathIt;
+        JSON_GetRequired(it, "path", pathIt);
+
+        const char* const texturePath = pathIt->value.GetString();
+        const uint32_t pathHash = RTech::StringToUIMGHash(texturePath);
+
         tiBuf.write(pathHash);
 
         // offset into the path table for this texture - not really needed since we don't write the image names
-        tiBuf.write(0i32);
+        tiBuf.write(0ul);
 
-        //nextStringTableOffset += it["path"].GetStringLength();
+        //nextStringTableOffset += textIt->value.GetStringLength();
     }
 
     // add the file relation from this uimg asset to the atlas txtr
@@ -183,15 +149,20 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
 
     //////////////
     // IMAGE UVS
-    for (auto& it : mapEntry["textures"].GetArray())
+    for (const rapidjson::Value& it : textureArray)
     {
-        UIImageUV uiiu{};
-        float uv0x = it["posX"].GetFloat() / pHdr->width;
-        float uv1x = it["width"].GetFloat() / pHdr->width;
+        UIImageUV uiiu;
+
+        const float uv0x = JSON_GetNumberRequired<float>(it, "posX") / pHdr->width;
+        const float uv1x = JSON_GetNumberRequired<float>(it, "width") / pHdr->width;
+
         Log("X: %f -> %f\n", uv0x, uv0x + uv1x);
-        float uv0y = it["posY"].GetFloat() / pHdr->height;
-        float uv1y = it["height"].GetFloat() / pHdr->height;
+
+        const float uv0y = JSON_GetNumberRequired<float>(it, "posY") / pHdr->height;
+        const float uv1y = JSON_GetNumberRequired<float>(it, "height") / pHdr->height;
+
         Log("Y: %f -> %f\n", uv0y, uv0y + uv1y);
+
         uiiu.InitUIImageUV(uv0x, uv0y, uv1x, uv1y);
         uvBuf.write(uiiu);
     }
