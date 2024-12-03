@@ -20,6 +20,11 @@ static void DataTable_SetupColumns(CPakFile* const pak, CPakDataChunk& colChunk,
 
     // vectors
     std::vector<std::string> typeRow = doc.GetRow<std::string>(pHdrTemp->numRows);
+    const uint32_t numTypeNames = static_cast<uint32_t>(typeRow.size());
+
+    // typically happens when there's an empty line in the csv file.
+    if (numTypeNames != pHdrTemp->numColumns)
+        Error("Expected %u columns for type name row, found %u\n", pHdrTemp->numRows, numTypeNames);
 
     for (uint32_t i = 0; i < pHdrTemp->numColumns; ++i)
     {
