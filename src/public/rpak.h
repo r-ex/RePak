@@ -297,7 +297,7 @@ static_assert(sizeof(PatchAssetHeader_t) == 24);
 // internal data structure for storing patch_master entries before being written
 struct PtchEntry
 {
-	std::string pakFileName = "";
+	std::string pakFileName;
 	uint8_t highestPatchNum = 0;
 	uint32_t pakFileNameOffset = 0;
 };
