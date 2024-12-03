@@ -296,7 +296,7 @@ static std::string Material_GetCpuPath(CPakFile* const pak, MaterialAsset_t* con
     const char* path; // is user hasn't specified a cpu path, load the one from the material path.
     const bool hasPath = JSON_GetValue(mapEntry, "$cpu", path);
 
-    return Utils::VFormat("%s%s.cpu_raw", pak->GetAssetPath().c_str(), hasPath ? path : matlAsset->materialAssetPath);
+    return Utils::VFormat("%s%s.cpu_raw", pak->GetAssetPath().c_str(), hasPath ? path : matlAsset->path.c_str());
 }
 
 template <typename MaterialShaderBuffer_t>
@@ -351,6 +351,9 @@ void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
     this->flags = JSON_GetNumberRequired<uint32_t>(mapEntry, "glueFlags");
     this->flags2 = JSON_GetNumberRequired<uint32_t>(mapEntry, "glueFlags2");
 
+    // the partial name of the material, e.g. "debug/debugempty" (without material/ and _<shaderType>.rpak)
+    this->name = JSON_GetValueRequired<const char*>(mapEntry, "name");
+
     // surfaces are defined in scripts/surfaceproperties.txt or scripts/surfaceproperties.rson
     this->surface = JSON_GetValueRequired<const char*>(mapEntry, "surfaceProp");
 
@@ -404,7 +407,7 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
     }
     else
     {
-        Error("Unexpected preset name '%s' for material '%s'.\n", presetName.c_str(), material->materialAssetPath);
+        Error("Unexpected preset name \"%s\".\n", presetName.c_str());
         return;
     }
 
@@ -431,8 +434,6 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
 // VERSION 7
 void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
-
     rapidjson::Value::ConstMemberIterator texturesIt;
     const bool hasTextures = JSON_GetIterator(mapEntry, "textures", JSONFieldType_e::kObject, texturesIt);
 
@@ -443,7 +444,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 
     MaterialAsset_t* matlAsset = new MaterialAsset_t{};
     matlAsset->assetVersion = 12; // set asset as a titanfall 2 material
-    matlAsset->materialAssetPath = JSON_GetValueRequired<const char*>(mapEntry, "name");
+    matlAsset->path = Utils::ChangeExtension(assetPath, "");
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
@@ -459,9 +460,10 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
     
     // !!!R2 SPECIFIC!!!
     {
-        CPakDataChunk nameChunk = pak->CreateDataChunk(sAssetPath.size() + 1, SF_DEV | SF_CPU, 1);
+        const size_t nameBufLen = matlAsset->name.length() + 1;
+        CPakDataChunk nameChunk = pak->CreateDataChunk(nameBufLen, SF_DEV | SF_CPU, 1);
 
-        sprintf_s(nameChunk.Data(), sAssetPath.length() + 1, "%s", sAssetPath.c_str());
+        sprintf_s(nameChunk.Data(), nameBufLen, "%s", matlAsset->name.c_str());
 
         matlAsset->materialName = nameChunk.GetPointer();
 
@@ -656,8 +658,6 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 // VERSION 8
 void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
-
     rapidjson::Value::ConstMemberIterator texturesIt;
     const bool hasTextures = JSON_GetIterator(mapEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
 
@@ -668,7 +668,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
 
     MaterialAsset_t* matlAsset = new MaterialAsset_t{};
     matlAsset->assetVersion = 15;
-    matlAsset->materialAssetPath = JSON_GetValueRequired<const char*>(mapEntry, "name");
+    matlAsset->path = Utils::ChangeExtension(assetPath, "");
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
@@ -681,10 +681,12 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     matlAsset->FromJSON(mapEntry);
     matlAsset->guid = Pak_GetGuidOverridable(mapEntry, assetPath);
 
+    const size_t nameBufLen = matlAsset->name.length() + 1;
+
     const size_t surfaceProp1Size = !matlAsset->surface.empty() ? (matlAsset->surface.length() + 1) : 0;
     const size_t surfaceProp2Size = !matlAsset->surface2.empty() ? (matlAsset->surface2.length() + 1) : 0;
 
-    const size_t alignedPathSize = IALIGN4(sAssetPath.length() + 1);
+    const size_t alignedPathSize = IALIGN4(nameBufLen);
     const size_t dataBufSize = alignedPathSize + (textureRefSize * 2) + surfaceProp1Size + surfaceProp2Size;
 
     // asset data
@@ -693,7 +695,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     char* dataBuf = dataChunk.Data();
 
     // write asset name into the start of the buffer
-    snprintf(dataBuf, sAssetPath.length() + 1, "%s", assetPath);
+    snprintf(dataBuf, nameBufLen, "%s", matlAsset->name.c_str());
     dataBuf += alignedPathSize;
 
     std::vector<PakGuidRefHdr_t> guids;

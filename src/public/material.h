@@ -522,7 +522,6 @@ struct MaterialAsset_t
 
 	PakGuid_t guid; // guid of this material asset
 
-	const char* materialAssetPath;
 	PagePtr_t materialName; // pointer to partial asset path
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
@@ -557,9 +556,12 @@ struct MaterialAsset_t
 	std::string materialTypeStr;
 	MaterialShaderType_e materialType;
 
-	//std::string name;
+	std::string name;
 	std::string surface;
 	std::string surface2;
+
+	// the path to the material without the .rpak extension
+	std::string path;
 
 	void SetupDepthMaterials(const rapidjson::Value& mapEntry);
 	void FromJSON(const rapidjson::Value& mapEntry);
