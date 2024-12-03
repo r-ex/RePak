@@ -4,19 +4,16 @@
 
 #undef GetObject
 
-static void Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Value& texture, const bool disableStreaming)
+static void Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Value& texture, const int index, const bool disableStreaming)
 {
-    if (!texture.IsString())
-        return;
-
-    if (texture.GetStringLength() == 0)
-        return;
-
     // check if texture string is an asset guid (e.g., "0x5DCAT")
     // if it is then we don't add it here as its a reference.
     PakGuid_t textureGuid;
     if (JSON_ParseNumber(texture, textureGuid))
         return;
+
+    if (texture.GetStringLength() == 0)
+        Error("Texture defined in slot #%i was empty.\n", index);
 
     const char* const texturePath = texture.GetString();
 
@@ -27,18 +24,19 @@ static void Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Va
 // we need to take better account of textures once asset caching becomes a thing
 static void Material_CreateTextures(CPakFile* const pak, const rapidjson::Value& textures, const bool disableStreaming)
 {
+    int i = 0;
     for (const auto& texture : textures.GetObject())
-        Material_CheckAndAddTexture(pak, texture.value, disableStreaming);
+        Material_CheckAndAddTexture(pak, texture.value, i++, disableStreaming);
 }
 
 static size_t Material_GetHighestTextureBindPoint(const rapidjson::Value& textures)
 {
-    uint32_t max = 0;
+    size_t max = 0;
 
     for (const auto& it : textures.GetObject())
     {
         char* end;
-        const uint32_t index = strtoul(it.name.GetString(), &end, 0);
+        const size_t index = strtoull(it.name.GetString(), &end, 0);
 
         if (index > max)
             max = index;
@@ -70,7 +68,7 @@ static short Material_AddTextureRefs(CPakFile* const pak, CPakDataChunk& dataChu
     {
         const char* const start = it->name.GetString();
         char* end;
-        const uint32_t bindPoint = strtoul(start, &end, 0);
+        const size_t bindPoint = strtoull(start, &end, 0);
 
         const rapidjson::Value& val = it->value;
 
