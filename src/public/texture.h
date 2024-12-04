@@ -102,7 +102,6 @@ struct mipLevel_t
 	mipType_t mipType;
 };
 
-#pragma pack(push, 1)
 struct TextureAssetHeader_t
 {
 	PakGuid_t guid = 0;
@@ -197,7 +196,6 @@ struct UIImageOffset
 	float unkX = 1.f;
 	float unkY = 1.f;
 };
-#pragma pack(pop)
 
 // map of dxgi format to the corresponding txtr asset format value
 static const std::map<DXGI_FORMAT, uint16_t> s_txtrFormatMap{
