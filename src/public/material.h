@@ -160,8 +160,6 @@ struct __declspec(align(16)) MaterialDXState_v12_t
 static_assert(sizeof(MaterialDXState_v12_t) == 0x20);
 #pragma warning(pop)
 
-#pragma pack(push, 1)
-
 // bunch this up into a struct for ease of access and readability
 struct uvTransform_t
 {
@@ -510,11 +508,13 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 	MaterialShaderType_e materialType;
 	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
 
-	//char pad_00F4[0x4];
+	char pad_00F4[0x4];
 
 	PakGuid_t textureAnimation;
 };
 static_assert(sizeof(MaterialAssetHeader_v15_t) == 256);
+
+#pragma pack(push, 1)
 
 struct MaterialAsset_t
 {
