@@ -343,6 +343,14 @@ void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
     this->materialTypeStr = JSON_GetValueRequired<const char*>(mapEntry, "shaderType");
     this->materialType = Material_ShaderTypeFromString(this->materialTypeStr);
 
+    // this only seems to be in apex? heavily affects how the buffers are setup
+    // and which one is selected at Pak_LoadMaterialAsset(). Func sub_1403B4680
+    // also checks if this flag is '4' and materialType is 'PTCS'. The material
+    // "particle/smoke/smoke_charge02_close" (PTCU) for instance, has this set
+    // to 4, and 4 uses a different global buffer if this (flag & 253) != 0
+    if (this->assetVersion == 15)
+        this->uberBufferFlags = (uint8_t)JSON_GetNumberRequired<int>(mapEntry, "uberBufferFlags");
+
     // material max dimensions
     this->width = (short)JSON_GetNumberRequired<int>(mapEntry, "width"); // Set material width.
     this->height = (short)JSON_GetNumberRequired<int>(mapEntry, "height"); // Set material height.

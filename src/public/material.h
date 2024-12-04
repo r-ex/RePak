@@ -506,7 +506,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 
 	uint16_t numAnimationFrames; // used in CMaterialGlue::GetNumAnimationFrames (0x1403B4250), which is called from GetSpriteInfo @ 0x1402561FC
 	MaterialShaderType_e materialType;
-	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
+	uint8_t uberBufferFlags; // used for setting up buffers in Pak_UpdateMaterialAsset for the CMaterialGlue instance.
 
 	char pad_00F4[0x4];
 
@@ -553,8 +553,10 @@ struct MaterialAsset_t
 
 	MaterialDXState_v15_t dxStates[MAT_DX_STATE_COUNT]; // seems to be used for setting up some D3D states?
 
-	std::string materialTypeStr;
 	MaterialShaderType_e materialType;
+	uint8_t uberBufferFlags;
+
+	std::string materialTypeStr;
 
 	std::string name;
 	std::string surface;
@@ -641,6 +643,7 @@ struct MaterialAsset_t
 			matl->flags2 = this->flags2;
 
 			matl->materialType = this->materialType;
+			matl->uberBufferFlags = this->uberBufferFlags;
 
 			matl->textureAnimation = this->textureAnimation;
 			matl->numAnimationFrames = this->numAnimationFrames;
