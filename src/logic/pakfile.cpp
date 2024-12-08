@@ -606,7 +606,7 @@ static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const i
 
 	if (!cctx)
 	{
-		Warning("Failed to create encoder context\n", workerCount);
+		Warning("Failed to create encoder context\n");
 		return nullptr;
 	}
 
@@ -947,9 +947,11 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	SetDecompressedSize(decompressedFileSize);
 
 	out.SeekPut(0); // go back to the beginning to finally write the rpakHeader now
-	WriteHeader(out); out.Close();
+	WriteHeader(out);
 
-	Debug("written rpak file with size %zu\n", GetCompressedSize());
+	Log("Written pak file \"%s\" with %zu assets, totaling %zd bytes\n", 
+		m_Path.c_str(), GetAssetCount(), (ssize_t)out.GetSize());
+	out.Close();
 
 	// !TODO: we really should add support for multiple starpak files and share existing
 	// assets across rpaks. e.g. if the base 'pc_all.opt.starpak' already contains the
@@ -963,14 +965,13 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		fs::path path(GetStarpakPath(0));
 		std::string filename = path.filename().string();
 
-		Debug("writing starpak %s with %zu data entries\n", filename.c_str(), GetStreamingAssetCount());
 		BinaryIO srpkOut;
 
 		const std::string fullFilePath = outputPath + filename;
 
 		if (!srpkOut.Open(fullFilePath, BinaryIO::Mode_e::Write))
 		{
-			Error("Failed to open output streaming file '%s'\n", outPath.c_str());
+			Error("Failed to open output streaming file \"%s\"\n", fullFilePath.c_str());
 		}
 
 		StarpakFileHeader_t srpkHeader{ STARPAK_MAGIC , STARPAK_VERSION };
@@ -987,10 +988,11 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		WriteStarpakDataBlocks(srpkOut);
 		WriteStarpakSortsTable(srpkOut);
 
-		uint64_t entryCount = GetStreamingAssetCount();
+		const size_t entryCount = GetStreamingAssetCount();
 		srpkOut.Write(entryCount);
 
-		Debug("written starpak file with size %zu\n", srpkOut.TellPut());
+		Log("Written streaming file \"%s\" with %zu assets, totaling %zd bytes\n", 
+			fullFilePath.c_str(), entryCount, (ssize_t)srpkOut.GetSize());
 
 		FreeStarpakDataBlocks();
 		srpkOut.Close();
