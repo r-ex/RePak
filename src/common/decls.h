@@ -17,3 +17,6 @@ using std::unordered_map;
 
 namespace fs = std::filesystem;
 namespace js = rapidjson;
+
+// Signed size type
+typedef std::make_signed_t<std::size_t> ssize_t;
