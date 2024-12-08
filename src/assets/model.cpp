@@ -27,12 +27,12 @@ char* Model_ReadRMDLFile(const std::string& path)
         Error("Invalid model file \"%s\"; expected version %i, found %i\n", path.c_str(), 54, pHdr->version);
 
     if (pHdr->length > fileSize)
-        Error("Invalid model file \"%s\"; studiohdr->length(%i) > fileSize(%i)\n", path.c_str(), pHdr->length, fileSize);
+        Error("Invalid model file \"%s\"; studiohdr->length(%zu) > fileSize(%zu)\n", path.c_str(), (size_t)pHdr->length, fileSize);
 
     return buf;
 }
 
-char* Model_ReadVGFile(const std::string& path, size_t* const pFileSize)
+static char* Model_ReadVGFile(const std::string& path, size_t* const pFileSize)
 {
     BinaryIO vgFile;
 
@@ -69,7 +69,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
 
     std::vector<PakGuidRefHdr_t> guids;
 
-    std::string rmdlFilePath = pak->GetAssetPath() + assetPath;
+    const std::string rmdlFilePath = pak->GetAssetPath() + assetPath;
     char* rmdlBuf = Model_ReadRMDLFile(rmdlFilePath);
 
     studiohdr_t* studiohdr = reinterpret_cast<studiohdr_t*>(rmdlBuf);
@@ -78,7 +78,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
     // Add VG data
     // VG is a "fake" file extension that's used to store model streaming data (name came from the magic '0tVG')
     // this data is a combined mutated version of the data from .vtx and .vvd in regular source models
-    std::string vgFilePath = Utils::ChangeExtension(rmdlFilePath, "vg");
+    const std::string vgFilePath = Utils::ChangeExtension(rmdlFilePath, ".vg");
 
     size_t vgFileSize = 0;
     char* const vgBuf = Model_ReadVGFile(vgFilePath, &vgFileSize);
@@ -93,7 +93,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
     if (studiohdr->vphyindex)
     {
         BinaryIO phyInput;
-        const std::string physicsFile = Utils::ChangeExtension(rmdlFilePath, "phy");
+        const std::string physicsFile = Utils::ChangeExtension(rmdlFilePath, ".phy");
 
         if (!phyInput.Open(physicsFile, BinaryIO::Mode_e::Read))
             Error("Failed to open physics asset '%s'\n", physicsFile.c_str());
