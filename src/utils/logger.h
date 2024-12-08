@@ -1,10 +1,10 @@
 #pragma once
 
 // non-fatal errors/issues
-void Warning(const char* fmt, ...);
+void Warning(_Printf_format_string_ const char* fmt, ...);
 // fatal errors
-void Error(const char* fmt, ...);
+void Error(_Printf_format_string_ const char* fmt, ...);
 // general prints for Release
-void Log(const char* fmt, ...);
+void Log(_Printf_format_string_ const char* fmt, ...);
 // any prints that shouldn't be used in Release
-void Debug(const char* fmt, ...);
+void Debug(_Printf_format_string_ const char* fmt, ...);
