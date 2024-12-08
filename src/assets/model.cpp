@@ -90,7 +90,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
 
     CPakDataChunk phyChunk;
     
-    if (studiohdr->vphyindex)
+    if (studiohdr->vphysize)
     {
         BinaryIO phyInput;
         const std::string physicsFile = Utils::ChangeExtension(rmdlFilePath, ".phy");
