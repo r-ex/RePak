@@ -99,8 +99,11 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
             Error("Failed to open physics asset '%s'\n", physicsFile.c_str());
 
         phyFileSize = phyInput.GetSize();
-        phyChunk = pak->CreateDataChunk(phyFileSize, SF_CPU, 64);
 
+        if (studiohdr->vphysize != phyFileSize)
+            Error("Expected physics file size is %zu, found physics asset of size %zu\n", (size_t)studiohdr->vphysize, phyFileSize);
+
+        phyChunk = pak->CreateDataChunk(phyFileSize, SF_CPU, 64);
         phyInput.Read(phyChunk.Data(), phyFileSize);
     }
 
