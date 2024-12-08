@@ -183,9 +183,9 @@ struct studiohdr_t
 	int vvcindex; // VVC / IDCV 
 	int vphyindex; // VPHY / IVPS
 
-	int vtxsize;
-	int vvdsize;
-	int vvcsize;
+	int vtxsize; // mesh strip data size
+	int vvdsize; // vertex data data size
+	int vvcsize; // vertex color data size
 	int vphysize; // still used in models using vg
 
 	// unk2_v54[3] is the chunk after following unkindex2's chunk
@@ -199,13 +199,13 @@ struct studiohdr_t
 
 	int unk3_v54[3];
 
-	int unkindex4; // chunk before unkindex3 sometimes
+	int bvh4index; // chunk before unkindex3 sometimes
 
-	int unk4_v54[3]; // same as unk3_v54_v121
+	short unk4_v54[2]; // same as unk3_v54_v121
 
-	//int vgindex; // 0tVG
-	//int unksize; // might be offset
-	//int unksize1; // might be offset
+	// new in apex for verts that have more than three weights
+	int vvwindex; // vertex weight 
+	int vvwsize;
 };
 
 struct mstudioseqdesc_t
