@@ -443,7 +443,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v12_t
 	uint64_t unk_B0; // haven't observed anything here.
 
 	// seems to be 0xFBA63181 for loadscreens
-	uint32_t unk_B8; // no clue tbh, 0xFBA63181
+	uint32_t features; // no clue tbh, 0xFBA63181
 
 	uint32_t unk_BC; // this might actually be "Alignment"
 
@@ -453,7 +453,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v12_t
 	short width;
 	short height;
 
-	uint32_t unk_CC; // likely alignment
+	short depth;
 
 	/* flags
 	0x050300 for loadscreens, 0x1D0300 for normal materials.
@@ -495,8 +495,20 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 
 	uint32_t unk_7C;
 
-	uint32_t unk_80;// = 0x1F5A92BD; // REQUIRED but why?
+	// most materials have this set as '0x1F5A92BD', PTCS/PTCU
+	// materials have it set as 0x75C8DF6F typically, and in
+	// the V12 struct above, it was noted that load screens
+	// have it set to 0xFBA63181. possibly just some flags
+	// used internally to display features or something in
+	// their editor, as i haven't found a single use case of
+	// this var in the engine yet. but it might rely on a bunch
+	// of other flags so this remains unconfirmed for now.
+	uint32_t features;
 
+	// these are 2 shorts in the engine, seems to be some mask.
+	// these 2 shorts are initialized in the runtime, so we have
+	// to leave them empty in repak (they are also null on the
+	// original rpaks).
 	uint32_t unk_84;
 
 	uint32_t flags;
@@ -544,7 +556,8 @@ struct MaterialAsset_t
 	short height;
 	short depth;
 
-	uint32_t unk; // 0x1F5A92BD, REQUIRED but why?
+	uint32_t unk_7C;
+	uint32_t features; // 0x1F5A92BD, REQUIRED but why?
 
 	char samplers[4];
 
@@ -591,9 +604,9 @@ struct MaterialAsset_t
 
 			matl->width = this->width;
 			matl->height = this->height;
-			// matl->depth = this->depth;
+			matl->depth = this->depth;
 
-			matl->unk_B8 = this->unk;
+			matl->features = this->features;
 
 			memcpy(matl->samplers, this->samplers, sizeof(matl->samplers));
 			//matl->samplers = this->samplers;
@@ -634,9 +647,10 @@ struct MaterialAsset_t
 
 			matl->width = this->width;
 			matl->height = this->height;
-			// matl->depth = this->depth;
+			matl->depth = this->depth;
 
-			matl->unk_80 = this->unk;
+			matl->unk_7C = this->unk_7C;
+			matl->features = this->features;
 
 			memcpy(matl->samplers, this->samplers, sizeof(matl->samplers));
 			matl->flags = this->flags;
@@ -668,8 +682,8 @@ struct MaterialAsset_t
 // header struct for the material asset cpu data
 struct MaterialCPUHeader
 {
-	PagePtr_t  dataPtr; // points to the rest of the cpu data. shader buffer.
+	PagePtr_t dataPtr; // points to the rest of the cpu data. shader buffer.
 	uint32_t dataSize;
-	uint32_t unk_C; // every unknown is now either datasize, version, or flags. enum?
+	uint32_t version;
 };
 #pragma pack(pop)

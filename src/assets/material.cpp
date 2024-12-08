@@ -354,6 +354,7 @@ void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
     // material max dimensions
     this->width = (short)JSON_GetNumberRequired<int>(mapEntry, "width"); // Set material width.
     this->height = (short)JSON_GetNumberRequired<int>(mapEntry, "height"); // Set material height.
+    this->depth = (short)JSON_GetNumberRequired<int>(mapEntry, "depth");
 
     // base material glue flags. defaults are flags used on most materials.
     this->flags = JSON_GetNumberRequired<uint32_t>(mapEntry, "glueFlags");
@@ -368,9 +369,15 @@ void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
     // used for blend materials and the like
     this->surface2 = JSON_GetValueRequired<const char*>(mapEntry, "surfaceProp2");
 
+    // This seems to be set on all materials, i haven't it being used yet in
+    // the engine by hardware breakpointing it. but given that it was
+    // preinitialized in the pak file, and the possible fact that various
+    // other flags might dictate when and if this gets used, it must be
+    // provided by the user.
+    this->features = JSON_GetNumberRequired<uint32_t>(mapEntry, "features");
+
     // Set samplers properly. Responsible for texture stretching, tiling etc.
-    const uint32_t nSamplers = JSON_GetNumberRequired<uint32_t>(mapEntry, "samplers");
-    memcpy(this->samplers, &nSamplers, sizeof(nSamplers));
+    *(uint32_t*)this->samplers = JSON_GetNumberRequired<uint32_t>(mapEntry, "samplers");
 
     Material_SetDXStates(mapEntry, dxStates);
     this->SetupDepthMaterials(mapEntry);
@@ -480,8 +487,6 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 
     if (matlAsset->materialType != _TYPE_LEGACY)
         Error("Material type '%s' is not supported on version 12 (Titanfall 2) assets\n", matlAsset->materialTypeStr.c_str());
-
-    matlAsset->unk = matlAsset->materialTypeStr == "gen" ? 0xFBA63181 : 0x40D33E8F;
 
     if ((matlAsset->materialTypeStr == "fix" || matlAsset->materialTypeStr == "skn"))
     {
@@ -639,7 +644,8 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
     MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
     cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
     cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
-    cpuhdr->unk_C = 3; // unsure what this value actually is but it changes
+    cpuhdr->version = 3; // unsure what this value actually is but some cpu headers have
+                         // different values. the engine doesn't seem to use it however.
 
     pak->AddPointer(uberBufChunk.GetPointer(offsetof(MaterialCPUHeader, dataPtr)));
 
@@ -798,9 +804,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
             externalDependencyCount++;
     }
 
-    // todo(amos): override this too?
-    matlAsset->unk = 0x1F5A92BD; // set a quirky little guy
-
     // write header now that we are done setting it up
     matlAsset->WriteToBuffer(hdrChunk.Data());
 
@@ -814,6 +817,8 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
     cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
     cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
+    cpuhdr->version = 3; // unsure what this value actually is but some cpu headers have
+                         // different values. the engine doesn't seem to use it however.
 
     pak->AddPointer(uberBufChunk.GetPointer(offsetof(MaterialCPUHeader, dataPtr)));
 
