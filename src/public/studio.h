@@ -341,8 +341,8 @@ struct ModelAssetHeader_t
 	uint32_t animRigCount = 0;
 
 	// size of the data kept in starpak
-	uint32_t unkDataSize = 0;
-	uint32_t alignedStreamingSize = 0; // full size of the starpak entry, aligned to 4096.
+	uint32_t totalVertexDataSize = 0; // full size of the vtx, vvd, vvc and vvw combined.
+	uint32_t streamedVertexDataSize = 0; // full size of the starpak entry, aligned to 4096.
 
 	uint64_t Padding6 = 0;
 	uint64_t Padding7 = 0;

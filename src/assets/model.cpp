@@ -167,11 +167,13 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
     //
     // Starpak
     //
+    pHdr->totalVertexDataSize = studiohdr->vtxsize + studiohdr->vvdsize + studiohdr->vvcsize + studiohdr->vvwsize;
+
     StreamableDataEntry de{ 0, vgFileSize, (uint8_t*)vgBuf };
     pak->AddStarpakDataEntry(de);
 
     assert(de.dataSize <= UINT32_MAX);
-    pHdr->alignedStreamingSize = static_cast<uint32_t>(de.dataSize);
+    pHdr->streamedVertexDataSize = static_cast<uint32_t>(de.dataSize);
 
     size_t extraDataSize = 0;
 
@@ -201,7 +203,6 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
     }
 
     pHdr->pName = dataChunk.GetPointer(studiohdr->length);
-
     pHdr->pData = dataChunk.GetPointer();
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pData)));
