@@ -3,7 +3,7 @@
 #define MAX_PERM_MIP_SIZE	0x3FFF // "Any MIP below 64kiB is permanent."
 #define MAX_STREAM_MIP_SIZE	0x100000
 
-static const std::pair<uint8_t, uint8_t> s_pBytesPerPixel[] =
+static inline const std::pair<uint8_t, uint8_t> s_pBytesPerPixel[] =
 {
   { uint8_t(8u),  uint8_t(4u) },
   { uint8_t(8u),  uint8_t(4u) },
@@ -198,7 +198,7 @@ struct UIImageOffset
 };
 
 // map of dxgi format to the corresponding txtr asset format value
-static const std::map<DXGI_FORMAT, uint16_t> s_txtrFormatMap{
+static inline const std::map<DXGI_FORMAT, uint16_t> s_txtrFormatMap{
 	{ DXGI_FORMAT_BC1_UNORM,                  uint16_t(0) },
 	{ DXGI_FORMAT_BC1_UNORM_SRGB,             uint16_t(1) },
 	{ DXGI_FORMAT_BC2_UNORM,                  uint16_t(2) },
