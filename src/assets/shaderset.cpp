@@ -87,7 +87,7 @@ void ShaderSet_CreateSet(CPakFile* const pak, const char* const assetPath, const
 	if (assetVersion == 11)
 		hdr->textureInputCounts[1] += hdr->textureInputCounts[0];
 
-	hdr->numSamplers = static_cast<uint16_t>(JSON_GetNumberRequired(mapEntry, "numSamplers"));
+	hdr->numSamplers = static_cast<uint16_t>(JSON_GetNumberRequired<uint32_t>(mapEntry, "numSamplers"));
 
 	// only used for ui/ui_world shadersets in R5
 	// for now this will have to be manually set if used, because i cannot figure out a way to programmatically
