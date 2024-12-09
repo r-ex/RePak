@@ -115,8 +115,6 @@ void ShaderSet_CreateSet(CPakFile* const pak, const char* const assetPath, const
 
 	asset.AddGuids(&guids);
 	pak->PushAsset(asset);
-
-	printf("\n");
 }
 
 // TODO:

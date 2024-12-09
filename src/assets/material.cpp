@@ -664,8 +664,6 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 
     pak->PushAsset(asset);
 
-    Log("\n");
-
     delete matlAsset;
 }
 
@@ -840,8 +838,6 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     asset.AddGuids(&guids);
 
     pak->PushAsset(asset);
-
-    Log("\n");
 
     delete matlAsset;
 }

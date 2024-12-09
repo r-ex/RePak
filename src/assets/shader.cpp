@@ -226,8 +226,6 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 	asset.remainingDependencyCount = 1;
 
 	pak->PushAsset(asset);
-
-	printf("\n");
 }
 
 void Assets::AddShaderAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)

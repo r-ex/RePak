@@ -37,7 +37,13 @@ bool CPakFile::AddJSONAsset(const char* const targetType, const char* const asse
 	if (targetFunc)
 	{
 		Log("Adding %s asset \"%s\".\n", assetType, assetPath);
+
+		const steady_clock::time_point start = high_resolution_clock::now();
 		targetFunc(this, assetPath, file);
+		const steady_clock::time_point stop = high_resolution_clock::now();
+
+		const microseconds duration = duration_cast<microseconds>(stop - start);
+		Log("...done; took %lld ms.\n", duration.count());
 	}
 	else
 		Warning("Asset type '%.4s' is not supported on RPak version %hu.\n", assetType, fileVersion);

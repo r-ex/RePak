@@ -239,7 +239,6 @@ void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
     pak->PushAsset(asset);
 
     input.Close();
-    printf("\n");
 }
 
 void Assets::AddTextureAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
