@@ -87,13 +87,13 @@ void ShaderSet_CreateSet(CPakFile* const pak, const char* const assetPath, const
 	if (assetVersion == 11)
 		hdr->textureInputCounts[1] += hdr->textureInputCounts[0];
 
-	hdr->numSamplers = static_cast<uint16_t>(JSON_GetNumberOrDefault(mapEntry, "numSamplers", 0u)); // overridable
+	hdr->numSamplers = static_cast<uint16_t>(JSON_GetNumberRequired(mapEntry, "numSamplers"));
 
 	// only used for ui/ui_world shadersets in R5
 	// for now this will have to be manually set if used, because i cannot figure out a way to programmatically
 	// detect these resources without incorrectly identifying some, and i doubt that's a good thing
-	hdr->firstResourceBindPoint = static_cast<uint8_t>(JSON_GetNumberOrDefault(mapEntry, "firstResource", 0u)); // overridable
-	hdr->numResources = static_cast<uint8_t>(JSON_GetNumberOrDefault(mapEntry, "numResources", 0u)); // overridable
+	hdr->firstResourceBindPoint = static_cast<uint8_t>(JSON_GetNumberOrDefault(mapEntry, "$firstResource", 0u)); // overridable
+	hdr->numResources = static_cast<uint8_t>(JSON_GetNumberOrDefault(mapEntry, "$numResources", 0u)); // overridable
 
 	if (hdr->numResources != 0)
 		Warning("Shader set '%s' has requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n", assetPath);
