@@ -154,14 +154,17 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const char* const assetPath,
         Error("Failed to open datatable asset '%s'\n", datatableFile.c_str());
 
     rapidcsv::Document doc(datatableStream);
+    const size_t columnCount = doc.GetColumnCount();
 
-    if (doc.GetColumnCount() < 0)
+    if (columnCount == 0)
     {
         Warning("Attempted to add dtbl asset '%s' with no columns. Skipping asset...\n", assetPath);
         return;
     }
 
-    if (doc.GetRowCount() < 2)
+    const size_t rowCount = doc.GetRowCount();
+
+    if (rowCount < 2)
     {
         Warning("Attempted to add dtbl asset '%s' with invalid row count. Skipping asset...\nDTBL    - CSV must have a row of column types at the end of the table\n", assetPath);
         return;
