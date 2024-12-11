@@ -22,6 +22,7 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/prettywriter.h>
+#include <rapidjson/error/en.h>
 
 #include "common/decls.h"
 #include "common/const.h"

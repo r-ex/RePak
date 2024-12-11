@@ -446,14 +446,56 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
     material->dxStates[1] = material->dxStates[0];
 }
 
+static bool Material_OpenFile(CPakFile* const pak, const char* const assetPath, rapidjson::Document& document)
+{
+    const string fileName = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
+    BinaryIO materialStream;
+
+    // note(amos): once finished this must error on failure
+    if (!materialStream.Open(fileName, BinaryIO::Mode_e::Read))
+    {
+        //Error("Failed to open material asset \"%s\".\n", fileName.c_str());
+        return false;
+    }
+
+    const ssize_t fileSize = materialStream.GetSize();
+
+    if (!fileSize)
+        Error("Material asset was empty.\n");
+
+    std::unique_ptr<char[]> uniquebuf(new char[fileSize+1]);
+    char* const bufptr = uniquebuf.get();
+
+    materialStream.Read(bufptr, fileSize);
+    bufptr[fileSize] = '\0';
+
+    if (document.Parse(bufptr).HasParseError())
+    {
+        Error("Material asset parse error at position %zu: [%s].\n",
+            document.GetErrorOffset(), rapidjson::GetParseError_En(document.GetParseError()));
+    }
+
+    if (!document.IsObject())
+    {
+        Error("Material asset root was not an object.\n");
+    }
+
+    return true;
+}
+
 // VERSION 7
 void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
+    rapidjson::Document document;
+
+    const bool hasMaterialFile = Material_OpenFile(pak, assetPath, document);
+    const rapidjson::Value& matEntry = hasMaterialFile ? document : mapEntry;
+
     rapidjson::Value::ConstMemberIterator texturesIt;
-    const bool hasTextures = JSON_GetIterator(mapEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
+    const bool hasTextures = JSON_GetIterator(matEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
 
     const size_t textureCount = hasTextures
-        ? Material_AddTextures(pak, mapEntry, texturesIt->value)
+        ? Material_AddTextures(pak, matEntry, texturesIt->value)
         : 0; // note: no error as materials without textures do exist.
              // typically, these are prepass/vsm/etc materials.
 
@@ -470,8 +512,8 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
     size_t textureRefSize = textureCount * 8; // size of the texture guid section.
 
     // parse json inputs for matl header
-    matlAsset->FromJSON(mapEntry);
-    matlAsset->guid = Pak_GetGuidOverridable(mapEntry, assetPath);
+    matlAsset->FromJSON(matEntry);
+    matlAsset->guid = Pak_GetGuidOverridable(matEntry, assetPath);
     
     // !!!R2 SPECIFIC!!!
     {
@@ -520,7 +562,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 
     const char* presetValue;
 
-    if (JSON_GetValue(mapEntry, "$preset", presetValue))
+    if (JSON_GetValue(matEntry, "$preset", presetValue))
     {
         // get presets for dxstate, derived from existing r2 materials
         Material_SetTitanfall2Preset(matlAsset, presetValue);
@@ -639,7 +681,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
     size_t dxStaticBufSize = 0;
     CPakDataChunk uberBufChunk;
 
-    Material_AddCpuData<MaterialShaderBufferV12>(pak, matlAsset, mapEntry, uberBufChunk, dxStaticBufSize);
+    Material_AddCpuData<MaterialShaderBufferV12>(pak, matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
 
     MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
     cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
@@ -670,11 +712,16 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 // VERSION 8
 void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
+    rapidjson::Document document;
+
+    const bool hasMaterialFile = Material_OpenFile(pak, assetPath, document);
+    const rapidjson::Value& matEntry = hasMaterialFile ? document : mapEntry;
+
     rapidjson::Value::ConstMemberIterator texturesIt;
-    const bool hasTextures = JSON_GetIterator(mapEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
+    const bool hasTextures = JSON_GetIterator(matEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
 
     const size_t textureCount = hasTextures
-        ? Material_AddTextures(pak, mapEntry, texturesIt->value)
+        ? Material_AddTextures(pak, matEntry, texturesIt->value)
         : 0; // note: no error as materials without textures do exist.
              // typically, these are prepass/vsm/etc materials.
 
@@ -690,8 +737,8 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     size_t textureRefSize = textureCount * 8; // size of the texture guid section.
 
     // parse json inputs for matl header
-    matlAsset->FromJSON(mapEntry);
-    matlAsset->guid = Pak_GetGuidOverridable(mapEntry, assetPath);
+    matlAsset->FromJSON(matEntry);
+    matlAsset->guid = Pak_GetGuidOverridable(matEntry, assetPath);
 
     const size_t nameBufLen = matlAsset->name.length() + 1;
 
@@ -810,7 +857,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     size_t dxStaticBufSize = 0;
     CPakDataChunk uberBufChunk;
 
-    Material_AddCpuData<MaterialShaderBufferV15>(pak, matlAsset, mapEntry, uberBufChunk, dxStaticBufSize);
+    Material_AddCpuData<MaterialShaderBufferV15>(pak, matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
 
     MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
     cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
