@@ -450,7 +450,7 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
 void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     rapidjson::Value::ConstMemberIterator texturesIt;
-    const bool hasTextures = JSON_GetIterator(mapEntry, "textures", JSONFieldType_e::kObject, texturesIt);
+    const bool hasTextures = JSON_GetIterator(mapEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
 
     const size_t textureCount = hasTextures
         ? Material_AddTextures(pak, mapEntry, texturesIt->value)
