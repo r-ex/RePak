@@ -8,7 +8,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
     // get the info for the ui atlas image
     const char* const atlasPath = JSON_GetValueRequired<const char*>(mapEntry, "atlas");
 
-    Log("Auto-adding txtr asset \"%s\".\n", atlasPath);
+    Log("Auto-adding 'txtr' asset \"%s\".\n", atlasPath);
 
     const PakGuid_t atlasGuid = RTech::StringToGuid(atlasPath);
     AddTextureAsset(pak, atlasGuid, atlasPath,
@@ -22,7 +22,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
     if (!atlasAsset) [[ unlikely ]]
     {
         assert(0);
-        Error("Atlas asset was not found when trying to add uimg asset \"%s\".\n", assetPath);
+        Error("Atlas asset was not found when trying to add 'uimg' asset \"%s\".\n", assetPath);
     }
 
     // make sure referenced asset is a texture for sanity

@@ -24,7 +24,7 @@ static void ShaderSet_SetInputSlots(ShaderSetAssetHeader_t* const hdr, PakAsset_
 
 	if (JSON_GetValue(mapEntry, fieldName, numShaderTextures))
 	{
-		Log("Overriding number of %s shader textures to %u\n", shaderName, numShaderTextures);
+		Log("Overriding number of %s shader textures to %u.\n", shaderName, numShaderTextures);
 		*inputCount = static_cast<uint16_t>(numShaderTextures);
 	}
 	else if (shader)
@@ -96,7 +96,7 @@ void ShaderSet_CreateSet(CPakFile* const pak, const char* const assetPath, const
 	hdr->numResources = static_cast<uint8_t>(JSON_GetNumberOrDefault(mapEntry, "$numResources", 0u)); // overridable
 
 	if (hdr->numResources != 0)
-		Warning("Shader set '%s' has requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n", assetPath);
+		Warning("Requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n");
 
 	PakAsset_t asset;
 	asset.InitAsset(

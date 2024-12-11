@@ -275,7 +275,7 @@ public:
 			Utils::FourCCToString(expected, type);
 			Utils::FourCCToString(found, type);
 
-			Error("Unexpected asset type for \"%s\". Expected '%.4s', found '%.4s'\n", this->name.c_str(), expected, found);
+			Error("Unexpected asset type for \"%s\". Expected '%.4s', found '%.4s'.\n", this->name.c_str(), expected, found);
 		}
 	}
 };

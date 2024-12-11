@@ -257,7 +257,7 @@ inline bool JSON_GetRequired(const T& data, const char* const member, typename T
     if (JSON_GetIterator(data, member, out))
         return true;
 
-    g_jsonErrorCallback("%s: unable to find field \"%s\"\n", __FUNCTION__, member);
+    g_jsonErrorCallback("%s: unable to find field \"%s\".\n", __FUNCTION__, member);
     return false;
 }
 
@@ -275,7 +275,7 @@ inline bool JSON_GetRequired(const T& data, const char* const member,
             return true;
         }
 
-        g_jsonErrorCallback("%s: field \"%s\" is of type %s, but accessor expected type %s\n",
+        g_jsonErrorCallback("%s: field \"%s\" is of type %s, but accessor expected type %s.\n",
             __FUNCTION__, member, JSON_TypeToString(it->value), JSON_TypeToString(type));
         return false;
     }
@@ -438,7 +438,7 @@ inline bool JSON_ParseNumberRequired(const T& data, const char* const member, V&
             return true;
         }
 
-        g_jsonErrorCallback("%s: unable to parse field \"%s\"\n", __FUNCTION__, member);
+        g_jsonErrorCallback("%s: unable to parse field \"%s\".\n", __FUNCTION__, member);
         return false;
     }
 

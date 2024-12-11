@@ -36,7 +36,7 @@ bool CPakFile::AddJSONAsset(const char* const targetType, const char* const asse
 
 	if (targetFunc)
 	{
-		Log("Adding %s asset \"%s\".\n", assetType, assetPath);
+		Log("Adding '%s' asset \"%s\".\n", assetType, assetPath);
 
 		const steady_clock::time_point start = high_resolution_clock::now();
 		targetFunc(this, assetPath, file);
@@ -148,7 +148,7 @@ void CPakFile::AddStarpakDataEntry(StreamableDataEntry& block)
 	const std::string starpakPath = this->GetPrimaryStarpakPath();
 
 	if (starpakPath.length() == 0)
-		Error("attempted to create a streaming asset without a starpak assigned. add 'starpakPath' as a global rpak variable to fix\n");
+		Error("Attempted to create a streaming asset without a streaming file.\n");
 
 	// try to add starpak path. AddStarpakReference will handle duplicates so no need to do it here
 	this->AddStarpakReference(starpakPath);
@@ -287,7 +287,7 @@ void CPakFile::WritePageData(BinaryIO& out)
 				out.Write(chunk.Data(), chunk.GetSize());
 			else // if chunk is padding to realign the page
 			{
-				//printf("aligning by %i bytes at %zu\n", chunk.GetSize(), out.tell());
+				//printf("Aligning by %i bytes at %zu.\n", chunk.GetSize(), out.TellPut());
 
 				out.SeekPut(chunk.GetSize(), std::ios::cur);
 			}
@@ -547,7 +547,7 @@ void CPakPage::PadPageToChunkAlignment(uint8_t chunkAlignment)
 
 	if (alignAmount > 0)
 	{
-		//printf("Aligning by %i bytes...\n", alignAmount);
+		//printf("Aligning by %u bytes...\n", alignAmount);
 		this->dataSize += alignAmount;
 		this->pak->m_vVirtualSegments[this->segmentIndex].AddToDataSize(alignAmount);
 
@@ -596,7 +596,7 @@ PakAsset_t* CPakFile::GetAssetByGuid(const PakGuid_t guid, uint32_t* const idx /
 		i++;
 	}
 	if(!silent)
-		Debug("failed to find asset with guid %llX\n", guid);
+		Debug("Failed to find asset with guid %llX.\n", guid);
 	return nullptr;
 }
 
@@ -612,7 +612,7 @@ static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const i
 
 	if (!cctx)
 	{
-		Warning("Failed to create encoder context\n");
+		Warning("Failed to create encoder context.\n");
 		return nullptr;
 	}
 
@@ -620,7 +620,7 @@ static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const i
 
 	if (ZSTD_isError(result))
 	{
-		Warning("Failed to set pledged source size %zu: [%s]\n", uncompressedBlockSize, ZSTD_getErrorName(result));
+		Warning("Failed to set pledged source size %zu: [%s].\n", uncompressedBlockSize, ZSTD_getErrorName(result));
 		ZSTD_freeCCtx(cctx);
 
 		return nullptr;
@@ -630,7 +630,7 @@ static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const i
 
 	if (ZSTD_isError(result))
 	{
-		Warning("Failed to set compression level %i: [%s]\n", compressLevel, ZSTD_getErrorName(result));
+		Warning("Failed to set compression level %i: [%s].\n", compressLevel, ZSTD_getErrorName(result));
 		ZSTD_freeCCtx(cctx);
 
 		return nullptr;
@@ -640,7 +640,7 @@ static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const i
 
 	if (ZSTD_isError(result))
 	{
-		Warning("Failed to set worker count %i: [%s]\n", workerCount, ZSTD_getErrorName(result));
+		Warning("Failed to set worker count %i: [%s].\n", workerCount, ZSTD_getErrorName(result));
 		ZSTD_freeCCtx(cctx);
 
 		return nullptr;
@@ -670,7 +670,7 @@ bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, con
 
 	if (!buffInPtr)
 	{
-		Warning("Failed to allocate input stream buffer of size %zu\n", buffInSize);
+		Warning("Failed to allocate input stream buffer of size %zu.\n", buffInSize);
 		ZSTD_freeCCtx(cctx);
 
 		return false;
@@ -681,7 +681,7 @@ bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, con
 
 	if (!buffOutPtr)
 	{
-		Warning("Failed to allocate output stream buffer of size %zu\n", buffOutSize);
+		Warning("Failed to allocate output stream buffer of size %zu.\n", buffOutSize);
 		ZSTD_freeCCtx(cctx);
 
 		return false;
@@ -713,7 +713,7 @@ bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, con
 
 			if (ZSTD_isError(remaining))
 			{
-				Warning("Failed to compress frame at %zu to frame at %zu: [%s]\n",
+				Warning("Failed to compress frame at %zu to frame at %zu: [%s].\n",
 					inStream.TellGet(), outStream.TellPut(), ZSTD_getErrorName(remaining));
 
 				ZSTD_freeCCtx(cctx);
@@ -740,7 +740,7 @@ size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, cons
 
 	if (!outCompressed.Open(outCompressedPath, BinaryIO::Mode_e::Write))
 	{
-		Warning("Failed to open output pak file '%s' for compression\n", outCompressedPath.c_str());
+		Warning("Failed to open output pak file \"%s\" for compression.\n", outCompressedPath.c_str());
 		return 0;
 	}
 
@@ -757,11 +757,11 @@ size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, cons
 
 	if (!std::filesystem::remove(m_Path))
 	{
-		Warning("Failed to remove uncompressed pak file '%s' for swap\n", outCompressedPath.c_str());
+		Warning("Failed to remove uncompressed pak file \"%s\" for swap.\n", outCompressedPath.c_str());
 		
 		// reopen and continue uncompressed.
 		if (io.Open(m_Path, BinaryIO::Mode_e::ReadWrite))
-			Error("Failed to reopen pak file '%s'\n", m_Path.c_str());
+			Error("Failed to reopen pak file \"%s\".\n", m_Path.c_str());
 
 		return 0;
 	}
@@ -771,12 +771,12 @@ size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, cons
 	// either the rename failed or something holds an open handle to the
 	// newly renamed compressed file, irrecoverable.
 	if (!io.Open(m_Path, BinaryIO::Mode_e::ReadWrite))
-		Error("Failed to reopen pak file '%s'\n", m_Path.c_str());
+		Error("Failed to reopen pak file \"%s\".\n", m_Path.c_str());
 
 	const size_t reopenedPakSize = io.GetSize();
 
 	if (reopenedPakSize != compressedSize)
-		Error("Reopened pak file '%s' appears truncated or corrupt; compressed size: %zu expected: %zu\n",
+		Error("Reopened pak file \"%s\" appears truncated or corrupt; compressed size: %zu expected: %zu.\n",
 			m_Path.c_str(), reopenedPakSize, compressedSize);
 
 	// set the header flags indicating this pak is compressed.
@@ -803,7 +803,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 	if (!JSON_GetValue(doc, "assetsDir", assetDir))
 	{
-		Warning("No assetsDir field provided. Assuming that everything is relative to the working directory.\n");
+		Warning("No \"assetsDir\" field provided; assuming that everything is relative to the working directory.\n");
 		if (inputPath.has_parent_path())
 			m_AssetPath = inputPath.parent_path().string();
 		else
@@ -843,7 +843,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	const int pakVersion = JSON_GetValueOrDefault(doc, "version", -1);
 
 	if (pakVersion < 0)
-		Warning("No version field provided; assuming version 8 (r5)\n");
+		Warning("No \"version\" field provided; assuming version 8 (r5).\n");
 
 	this->SetVersion(JSON_GetValueOrDefault(doc, "version", 8));
 
@@ -889,7 +889,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	
 	if (!out.Open(outPath, BinaryIO::Mode_e::ReadWriteCreate))
 	{
-		Error("Failed to open output pak file '%s'\n", outPath.c_str());
+		Error("Failed to open output pak file \"%s\".\n", outPath.c_str());
 	}
 
 	// write a placeholder header so we can come back and complete it
@@ -945,7 +945,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	{
 		const int workerCount = JSON_GetValueOrDefault(doc, "compressWorkers", 0);
 
-		Log("Encoding pak file with compress level %i and %i workers\n", compressLevel, workerCount);
+		Log("Encoding pak file with compress level %i and %i workers.\n", compressLevel, workerCount);
 		compressedFileSize = EncodeStreamAndSwap(out, compressLevel, workerCount);
 	}
 
@@ -955,7 +955,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	out.SeekPut(0); // go back to the beginning to finally write the rpakHeader now
 	WriteHeader(out);
 
-	Log("Written pak file \"%s\" with %zu assets, totaling %zd bytes\n", 
+	Log("Written pak file \"%s\" with %zu assets, totaling %zd bytes.\n", 
 		m_Path.c_str(), GetAssetCount(), (ssize_t)out.GetSize());
 	out.Close();
 
@@ -977,7 +977,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 		if (!srpkOut.Open(fullFilePath, BinaryIO::Mode_e::Write))
 		{
-			Error("Failed to open output streaming file \"%s\"\n", fullFilePath.c_str());
+			Error("Failed to open output streaming file \"%s\".\n", fullFilePath.c_str());
 		}
 
 		StarpakFileHeader_t srpkHeader{ STARPAK_MAGIC , STARPAK_VERSION };
@@ -997,7 +997,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		const size_t entryCount = GetStreamingAssetCount();
 		srpkOut.Write(entryCount);
 
-		Log("Written streaming file \"%s\" with %zu assets, totaling %zd bytes\n", 
+		Log("Written streaming file \"%s\" with %zu assets, totaling %zd bytes.\n", 
 			fullFilePath.c_str(), entryCount, (ssize_t)srpkOut.GetSize());
 
 		FreeStarpakDataBlocks();

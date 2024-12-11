@@ -93,7 +93,7 @@ void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
     std::ifstream ifs(path);
 
     if (!ifs.is_open())
-        Error("couldn't open map file.\n");
+        Error("Couldn't open map file \"%s\".\n", path.string().c_str());
 
     // begin json parsing
     js::IStreamWrapper jsonStreamWrapper{ ifs };
@@ -132,7 +132,8 @@ void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
         }
 
         // this could probably be formatted nicer
-        Error("Failed to parse map file: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n",
+        Error("Failed to parse map file %s: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n",
+            path.string().c_str(),
             lineNum, columnNum,
             GetParseError_En(doc.GetParseError()),
             lastLine.c_str(), curLine.c_str(), (std::string(columnNum, ' ') += '^').c_str());

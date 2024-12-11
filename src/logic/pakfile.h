@@ -248,8 +248,8 @@ public:
 		PakAsset_t* match = GetAssetByGuid(asset.guid, &assetIdx, true);
 		if (match != nullptr)
 		{
-			Error("Attempted to create asset with a non-unique GUID."
-				"\nAssets at index %u (%s) and %u (%s) have the same GUID (%llx).\n",
+			Error("Attempted to create asset with a non-unique GUID.\n"
+				"Assets at index %u (%s) and %u (%s) have the same GUID (%llx).\n",
 				assetIdx, match->name.c_str(),
 				static_cast<uint32_t>(m_Assets.size()), asset.name.c_str(),
 				asset.guid

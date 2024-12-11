@@ -8,12 +8,12 @@ char* Model_ReadRMDLFile(const std::string& path)
     BinaryIO modelFile;
 
     if (!modelFile.Open(path, BinaryIO::Mode_e::Read))
-        Error("Failed to open model file \"%s\"\n", path.c_str());
+        Error("Failed to open model file \"%s\".\n", path.c_str());
 
     const size_t fileSize = modelFile.GetSize();
 
     if (fileSize < sizeof(studiohdr_t))
-        Error("Invalid model file \"%s\"; must be at least %zu bytes, found %zu\n", path.c_str(), sizeof(studiohdr_t), fileSize);
+        Error("Invalid model file \"%s\"; must be at least %zu bytes, found %zu.\n", path.c_str(), sizeof(studiohdr_t), fileSize);
 
     char* const buf = new char[fileSize];
     modelFile.Read(buf, fileSize);
@@ -21,13 +21,13 @@ char* Model_ReadRMDLFile(const std::string& path)
     studiohdr_t* const pHdr = reinterpret_cast<studiohdr_t*>(buf);
 
     if (pHdr->id != 'TSDI') // "IDST"
-        Error("Invalid model file \"%s\"; expected magic %x, found %x\n", path.c_str(), 'TSDI', pHdr->id);
+        Error("Invalid model file \"%s\"; expected magic %x, found %x.\n", path.c_str(), 'TSDI', pHdr->id);
 
     if (pHdr->version != 54)
-        Error("Invalid model file \"%s\"; expected version %i, found %i\n", path.c_str(), 54, pHdr->version);
+        Error("Invalid model file \"%s\"; expected version %i, found %i.\n", path.c_str(), 54, pHdr->version);
 
     if (pHdr->length > fileSize)
-        Error("Invalid model file \"%s\"; studiohdr->length(%zu) > fileSize(%zu)\n", path.c_str(), (size_t)pHdr->length, fileSize);
+        Error("Invalid model file \"%s\"; studiohdr->length(%zu) > fileSize(%zu).\n", path.c_str(), (size_t)pHdr->length, fileSize);
 
     return buf;
 }
@@ -37,12 +37,12 @@ static char* Model_ReadVGFile(const std::string& path, size_t* const pFileSize)
     BinaryIO vgFile;
 
     if (!vgFile.Open(path, BinaryIO::Mode_e::Read))
-        Error("Failed to open vertex group file \"%s\"\n", path.c_str());
+        Error("Failed to open vertex group file \"%s\".\n", path.c_str());
 
     const size_t fileSize = vgFile.GetSize();
 
     if (fileSize < sizeof(VertexGroupHeader_t))
-        Error("Invalid vertex group file \"%s\"; must be at least %zu bytes, found %zu\n", path.c_str(), sizeof(VertexGroupHeader_t), fileSize);
+        Error("Invalid vertex group file \"%s\"; must be at least %zu bytes, found %zu.\n", path.c_str(), sizeof(VertexGroupHeader_t), fileSize);
 
     char* const buf = new char[fileSize];
     vgFile.Read(buf, fileSize);
@@ -50,11 +50,11 @@ static char* Model_ReadVGFile(const std::string& path, size_t* const pFileSize)
     VertexGroupHeader_t* const pHdr = reinterpret_cast<VertexGroupHeader_t*>(buf);
 
     if (pHdr->id != 'GVt0') // "0tVG"
-        Error("Invalid vertex group file \"%s\"; expected magic %x, found %x\n", path.c_str(), 'GVt0', pHdr->id);
+        Error("Invalid vertex group file \"%s\"; expected magic %x, found %x.\n", path.c_str(), 'GVt0', pHdr->id);
 
     // not sure if this is actually version but i've also never seen it != 1
     if (pHdr->version != 1)
-        Error("Invalid vertex group file \"%s\"; expected version %i, found %i\n", path.c_str(), 1, pHdr->version);
+        Error("Invalid vertex group file \"%s\"; expected version %i, found %i.\n", path.c_str(), 1, pHdr->version);
 
     *pFileSize = fileSize;
     return buf;
@@ -96,12 +96,12 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
         const std::string physicsFile = Utils::ChangeExtension(rmdlFilePath, ".phy");
 
         if (!phyInput.Open(physicsFile, BinaryIO::Mode_e::Read))
-            Error("Failed to open physics asset '%s'\n", physicsFile.c_str());
+            Error("Failed to open physics asset \"%s\".\n", physicsFile.c_str());
 
         phyFileSize = phyInput.GetSize();
 
         if (studiohdr->vphysize != phyFileSize)
-            Error("Expected physics file size is %zu, found physics asset of size %zu\n", (size_t)studiohdr->vphysize, phyFileSize);
+            Error("Expected physics file size is %zu, found physics asset of size %zu.\n", (size_t)studiohdr->vphysize, phyFileSize);
 
         phyChunk = pak->CreateDataChunk(phyFileSize, SF_CPU, 64);
         phyInput.Read(phyChunk.Data(), phyFileSize);
@@ -133,7 +133,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
             const PakGuid_t guid = Pak_ParseGuid(animrig);
 
             if (!guid)
-                Error("Unable to parse animrig #%i\n", i);
+                Error("Unable to parse animrig #%i.\n", i);
 
             arigBuf.write<PakGuid_t>(guid);
 
@@ -243,7 +243,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
                 const PakGuid_t guid = Pak_ParseGuid(materialArray[i]);
 
                 if (!guid)
-                    Error("Unable to parse material #%i\n", i);
+                    Error("Unable to parse material #%i.\n", i);
 
                 tex->guid = guid;
             }

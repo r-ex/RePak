@@ -249,7 +249,7 @@ bool DXUtils::GetParsedShaderData(const char* bytecode, size_t /*bytecodeLen*/, 
 			outData->EnableFlag(SHDR_FOUND_RDEF);
 
 			const RDefBlobHeader_t* rdef = reinterpret_cast<const RDefBlobHeader_t*>(blob->GetBlobData());
-			Debug("Shader built by \"%s\"\n", rdef->compilerName());
+			Debug("Shader built by \"%s\".\n", rdef->compilerName());
 
 			switch (rdef->ShaderType)
 			{
@@ -272,14 +272,14 @@ bool DXUtils::GetParsedShaderData(const char* bytecode, size_t /*bytecodeLen*/, 
 				outData->pakShaderType = 5; // eShaderType::Compute
 				break;
 			default:
-				Error("Unknown shader type: %X\n", rdef->ShaderType);
+				Error("Unknown shader type: %X.\n", rdef->ShaderType);
 				break;
 			}
 
 			for (uint32_t j = 0; j < rdef->BoundResourceCount; ++j)
 			{
 				const RDefResourceBinding_t* resource = rdef->resource(j);
-				//printf("%s %s (%X)\n", resource->dimensionName(), resource->name(blob->GetBlobData()), resource->Flags);
+				//printf("%s %s (%X).\n", resource->dimensionName(), resource->name(blob->GetBlobData()), resource->Flags);
 
 				if (resource->Type == D3D_SHADER_INPUT_TYPE::D3D_SIT_TEXTURE)
 				{

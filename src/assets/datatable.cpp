@@ -24,7 +24,7 @@ static void DataTable_SetupColumns(CPakFile* const pak, CPakDataChunk& colChunk,
 
     // typically happens when there's an empty line in the csv file.
     if (numTypeNames != pHdrTemp->numColumns)
-        Error("Expected %u columns for type name row, found %u\n", pHdrTemp->numRows, numTypeNames);
+        Error("Expected %u columns for type name row, found %u.\n", pHdrTemp->numRows, numTypeNames);
 
     for (uint32_t i = 0; i < pHdrTemp->numColumns; ++i)
     {
@@ -87,7 +87,7 @@ static void DataTable_SetupRows(CPakFile* const pak, CPakDataChunk& rowDataChunk
                 else if (!_stricmp(val.c_str(), "false") || val == "0")
                     valbuf.write<uint32_t>(false);
                 else
-                    Error("Invalid bool value at cell (%u, %u) in datatable %s\n", colIdx, rowIdx, pHdrTemp->assetPath);
+                    Error("Invalid bool value at cell (%u, %u).\n", colIdx, rowIdx);
 
                 break;
             }
@@ -151,14 +151,14 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const char* const assetPath,
     std::ifstream datatableStream(datatableFile);
 
     if (!datatableStream.is_open())
-        Error("Failed to open datatable asset '%s'\n", datatableFile.c_str());
+        Error("Failed to open datatable asset \"%s\".\n", datatableFile.c_str());
 
     rapidcsv::Document doc(datatableStream);
     const size_t columnCount = doc.GetColumnCount();
 
     if (columnCount == 0)
     {
-        Warning("Attempted to add dtbl asset '%s' with no columns. Skipping asset...\n", assetPath);
+        Error("Attempted to add datatable with no columns.\n");
         return;
     }
 
@@ -166,7 +166,7 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const char* const assetPath,
 
     if (rowCount < 2)
     {
-        Warning("Attempted to add dtbl asset '%s' with invalid row count. Skipping asset...\nDTBL    - CSV must have a row of column types at the end of the table\n", assetPath);
+        Error("Attempted to add datatable with invalid row count %zu.\nDTBL    - CSV must have a row of column types at the end of the table.\n", rowCount);
         return;
     }
 

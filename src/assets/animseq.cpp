@@ -35,7 +35,7 @@ bool AnimSeq_AddSequenceRefs(CPakDataChunk* const chunk, CPakFile* const pak, ui
                 Error("Sequence #%i was defined as an invalid empty string.\n", seqIndex);
 
             const char* const sequencePath = sequence.GetString();
-            Log("Auto-adding aseq asset \"%s\".\n", sequencePath);
+            Log("Auto-adding 'aseq' asset \"%s\".\n", sequencePath);
 
             guid = RTech::StringToGuid(sequencePath);
             Assets::AddAnimSeqAsset(pak, guid, sequencePath);
@@ -56,7 +56,7 @@ void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
     const PakAsset_t* existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
     if (existingAsset)
     {
-        Warning("Tried to add animseq asset '%s' twice. Skipping redefinition...\n", assetPath);
+        Warning("Tried to add animseq asset \"%s\" twice, skipping...\n", assetPath);
         return;
     }
 
@@ -67,7 +67,7 @@ void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
 
     if (!rseqInput.Open(rseqFilePath, BinaryIO::Mode_e::Read))
     {
-        Error("Failed to open animseq asset '%s'\n", assetPath);
+        Error("Failed to open animseq asset \"%s\".\n", assetPath);
         return;
     }
 

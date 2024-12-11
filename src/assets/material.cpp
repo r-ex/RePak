@@ -17,7 +17,7 @@ static void Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Va
 
     const char* const texturePath = texture.GetString();
 
-    Log("Auto-adding txtr asset \"%s\".\n", texturePath);
+    Log("Auto-adding 'txtr' asset \"%s\".\n", texturePath);
     Assets::AddTextureAsset(pak, 0, texturePath, disableStreaming, false);
 }
 
@@ -73,13 +73,13 @@ static short Material_AddTextureRefs(CPakFile* const pak, CPakDataChunk& dataChu
         const rapidjson::Value& val = it->value;
 
         if (end != &start[it->name.GetStringLength()])
-            Error("Unable to determine bind point for texture #%zu\n", bindPoint);
+            Error("Unable to determine bind point for texture #%zu.\n", bindPoint);
 
         bool success;
         const PakGuid_t textureGuid = Pak_ParseGuid(val, &success);
 
         if (!success)
-            Error("Unable to parse texture #%zu\n", bindPoint);
+            Error("Unable to parse texture #%zu.\n", bindPoint);
 
         reinterpret_cast<PakGuid_t*>(dataBuf)[bindPoint] = textureGuid;
 
@@ -94,7 +94,7 @@ static short Material_AddTextureRefs(CPakFile* const pak, CPakDataChunk& dataChu
             else
             {
                 externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
-                Warning("Unable to find texture #%zu within the local assets\n", bindPoint);
+                Warning("Unable to find texture #%zu within the local assets.\n", bindPoint);
             }
         }
     }
@@ -121,7 +121,7 @@ static void Material_ParseBlendStateFlags(const rapidjson::Value& mapEntry, unsi
 
     if (!blendStateJson.IsArray())
     {
-        Error("Unsupported type for blend state flags (got %s, expected %s)\n",
+        Error("Unsupported type for blend state flags (expected %s, got %s).\n",
             JSON_InternalTypeToString(blendStateJson.GetType()), JSON_InternalTypeToString(rapidjson::kArrayType));
     }
 
@@ -130,7 +130,7 @@ static void Material_ParseBlendStateFlags(const rapidjson::Value& mapEntry, unsi
 
     if (numBlendStates != BLEND_STATE_COUNT)
     {
-        Error("Expected %zu blend state flags, found %zu\n", BLEND_STATE_COUNT, numBlendStates);
+        Error("Expected %zu blend state flags, found %zu.\n", BLEND_STATE_COUNT, numBlendStates);
     }
 
     for (size_t i = 0; i < numBlendStates; i++)
@@ -139,7 +139,7 @@ static void Material_ParseBlendStateFlags(const rapidjson::Value& mapEntry, unsi
         uint32_t blendState;
 
         if (!JSON_ParseNumber(obj, blendState))
-            Error("Failed parsing blend state flag #%zu\n", i);
+            Error("Failed parsing blend state flag #%zu.\n", i);
 
         blendStates[i] = blendState;
     }
@@ -230,7 +230,7 @@ static inline void CheckCountOrError(const rapidjson::Value::ConstArray& element
     const size_t elemCount = elements.Size();
 
     if (elemCount != expectedCount)
-        Error("Expected %zu element for field '%s', found %zu\n", expectedCount, fieldName, elemCount);
+        Error("Expected %zu elements for field \"%s\", found %zu.\n", expectedCount, fieldName, elemCount);
 }
 
 /*
@@ -315,13 +315,13 @@ static void Material_AddCpuData(CPakFile* const pak, MaterialAsset_t* const matl
     }
     else
     {
-        Error("Failed to open cpu asset '%s'\n", cpuPath.c_str());
+        Error("Failed to open cpu asset \"%s\".\n", cpuPath.c_str());
 
         // todo(amos): do we want this? without the cpu, the material will always look incorrect/dark
         // when we fall back here. disabled the code for now in favor of an error as this prevents a
         // ton of confusion and questions from users when the material ends up looking incorrect.
         // 
-        // Warning("Failed to open cpu asset '%s'; using generic buffer\n", cpuPath.c_str());
+        // Warning("Failed to open cpu asset \"%s\"; using generic buffer\n", cpuPath.c_str());
         // 
         //staticBufSize = sizeof(MaterialShaderBuffer_t);
         //uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + staticBufSize, SF_CPU | SF_TEMP, 8);
@@ -486,7 +486,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
     }
 
     if (matlAsset->materialType != _TYPE_LEGACY)
-        Error("Material type '%s' is not supported on version 12 (Titanfall 2) assets\n", matlAsset->materialTypeStr.c_str());
+        Error("Material type '%s' is not supported on version 12 (Titanfall 2) assets.\n", matlAsset->materialTypeStr.c_str());
 
     if ((matlAsset->materialTypeStr == "fix" || matlAsset->materialTypeStr == "skn"))
     {

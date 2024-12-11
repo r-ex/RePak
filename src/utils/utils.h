@@ -27,7 +27,7 @@ using namespace std::chrono;
 class CScopeTimer
 {
 public:
-	CScopeTimer(const std::string& name)
+	CScopeTimer(const char* const name)
 	{
 		m_name = name;
 		m_startTime = system_clock::now().time_since_epoch();
@@ -36,11 +36,11 @@ public:
 	~CScopeTimer()
 	{
 		system_clock::duration now = system_clock::now().time_since_epoch();
-		printf("%s: finished in %.3fms\n", m_name.c_str(), duration_cast<microseconds>(now - m_startTime).count() / 1000.f);
+		printf("%s: finished in %.3fms.\n", m_name, duration_cast<microseconds>(now - m_startTime).count() / 1000.f);
 	}
 
 private:
-	std::string m_name;
+	const char* m_name;
 	system_clock::duration m_startTime;
 };
 

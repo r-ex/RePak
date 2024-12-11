@@ -26,7 +26,7 @@ void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
     BinaryIO input;
 
     if (!input.Open(textureFilePath, BinaryIO::Mode_e::Read))
-        Error("Failed to open texture asset \"%s\"\n", textureFilePath.c_str());
+        Error("Failed to open texture asset \"%s\".\n", textureFilePath.c_str());
 
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(TextureAssetHeader_t), SF_HEAD, 8);
     TextureAssetHeader_t* hdr = reinterpret_cast<TextureAssetHeader_t*>(hdrChunk.Data());
@@ -50,10 +50,9 @@ void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
         input.Read(magic);
 
         if (magic != DDS_MAGIC) // b'DDS '
-            Error("Attempted to add txtr asset '%s' that was not a valid DDS file (invalid magic). Exiting...\n", assetPath);
+            Error("Attempted to add a texture asset that was not a valid DDS file (invalid magic), exiting...\n");
 
         DDS_HEADER ddsh = input.Read<DDS_HEADER>();
-
         DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN;
 
         // Go to the end of the DX10 header if it exists.
@@ -64,7 +63,7 @@ void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
             dxgiFormat = ddsh_dx10.dxgiFormat;
 
             if (s_txtrFormatMap.count(dxgiFormat) == 0)
-                Error("Attempted to add txtr asset '%s' using unsupported DDS type '%s'. Exiting...\n", assetPath, DXUtils::GetFormatAsString(dxgiFormat));
+                Error("Attempted to add a texture asset using unsupported DDS type \"%s\", exiting...\n", DXUtils::GetFormatAsString(dxgiFormat));
 
             isDX10 = true;
         }
@@ -72,7 +71,7 @@ void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
             dxgiFormat = DXUtils::GetFormatFromHeader(ddsh);
 
             if (dxgiFormat == DXGI_FORMAT_UNKNOWN)
-                Error("Attempted to add txtr asset '%s' that was not using a supported DDS type. Exiting...\n", assetPath);
+                Error("Attempted to add a texture asset that was not using a supported DDS type, exiting...\n");
         }
 
         const char* pDxgiFormat = DXUtils::GetFormatAsString(dxgiFormat);

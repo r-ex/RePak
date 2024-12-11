@@ -137,7 +137,7 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 	const fs::path inputFilePath = pak->GetAssetPath() / fs::path(assetPath).replace_extension("msw");
 
 	if (!fs::exists(inputFilePath))
-		Error("Failed to find compiled shader file for asset '%s' (%s).\n", assetPath, inputFilePath.string().c_str());
+		Error("Failed to find compiled shader file \"%s\".\n", inputFilePath.string().c_str());
 
 	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderAssetHeader_t), SF_HEAD, 8);
 
@@ -183,7 +183,7 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 	rapidjson::Value::ConstMemberIterator flagsIt;
 
 	if (!JSON_GetIterator(mapEntry, "inputFlags", JSONFieldType_e::kArray, flagsIt))
-		Error("Invalid \"inputFlags\" field for shader asset %s. Must be an array with the same number of elements as there are shader buffers in the MSW file (%i).\n", assetPath, numShaders);
+		Error("Failed to parse \"inputFlags\" field; must be an array with the same number of elements as there are shader buffers in the MSW file (%i).\n", numShaders);
 
 	uint64_t* const inputFlags = reinterpret_cast<uint64_t*>(shaderInfoChunk.Data() + reservedDataSize);
 
@@ -193,10 +193,10 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 		uint64_t flag = 0;
 
 		if (!JSON_ParseNumber(elem, flag))
-			Error("Found invalid input flag (idx %zu) for shader asset %s. Flag must be either an integer literal or a number as a string.\n", i, assetPath);
+			Error("Found invalid input flag at index #%zu; flag must be either an integer literal or a number as a string.\n", i);
 
 		if (flag == 0)
-			Warning("Found potentially invalid input flag (idx %zu) for shader asset %s. Flag value is zero.\n", i, assetPath);
+			Warning("Found potentially invalid input flag at index #%zu; flag value is zero.\n", i);
 
 		// vertex shaders seem to have data every 8 bytes, unlike (seemingly) every other shader that only uses 8 out of every 16 bytes
 
