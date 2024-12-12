@@ -413,13 +413,13 @@ public:
 			
 			entry.flags[0] = desc->inputFlags[0];
 			entry.flags[1] = desc->inputFlags[1];
-
-			// shader type isn't saved, so it has to be found from the shader bytecode separately
-			shader->shaderType = MultiShaderWrapperShaderType_e::INVALID;
-			memcpy(shader->features, &shdr, sizeof(shader->features));
 		}
 
 		delete[] descriptors;
+
+		// shader type isn't saved, so it has to be found from the shader bytecode separately
+		shader->shaderType = MultiShaderWrapperShaderType_e::INVALID;
+		memcpy(shader->features, &shdr, sizeof(shader->features));
 
 		if (shdr.nameLength > 0)
 		{
