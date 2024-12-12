@@ -159,9 +159,8 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 		strcpy_s(nameChunk.Data(), nameChunk.GetSize(), shader->name.c_str());
 
 		hdr->name = nameChunk.GetPointer();
+		pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_t, name)));
 	}
-
-	pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_t, name)));
 
 	CPakDataChunk dataChunk = {};
 	ParsedDXShaderData_t* const shaderData = new ParsedDXShaderData_t;
