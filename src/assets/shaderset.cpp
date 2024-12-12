@@ -4,9 +4,16 @@
 #include "utils/utils.h"
 #include "public/shaderset.h"
 #include "public/shader.h"
+#include "public/multishader.h"
+
+static void ShaderSet_LoadFromMSW(CPakFile* const pak, const char* const assetPath, CMultiShaderWrapperIO::ShaderCache_t& shaderCache)
+{
+	const fs::path inputFilePath = pak->GetAssetPath() / fs::path(assetPath).replace_extension("msw");
+	MSW_ParseFile(inputFilePath, shaderCache, MultiShaderWrapperFileType_e::SHADERSET);
+}
 
 template <typename ShaderSetAssetHeader_t>
-static void ShaderSet_SetInputSlots(ShaderSetAssetHeader_t* const hdr, PakAsset_t* const shader, const bool isVertexShader, const rapidjson::Value& mapEntry, const int assetVersion)
+static void ShaderSet_SetInputSlots(ShaderSetAssetHeader_t* const hdr, PakAsset_t* const shader, const bool isVertexShader, const CMultiShaderWrapperIO::ShaderSet_t* const shaderSet, const int assetVersion)
 {
 	uint16_t* inputCount;
 
@@ -17,37 +24,45 @@ static void ShaderSet_SetInputSlots(ShaderSetAssetHeader_t* const hdr, PakAsset_
 	else
 		inputCount = isVertexShader ? &hdr->textureInputCounts[1] : &hdr->textureInputCounts[0];
 
-	uint32_t numShaderTextures;
-
+	const uint8_t textureCount = isVertexShader ? (uint8_t)shaderSet->numVertexShaderTextures : (uint8_t)shaderSet->numPixelShaderTextures;
 	const char* const shaderName = isVertexShader ? "vertex" : "pixel";
-	const char* const fieldName = isVertexShader ? "$numVertexShaderTextures" : "$numPixelShaderTextures";
 
-	if (JSON_GetValue(mapEntry, fieldName, numShaderTextures))
-	{
-		Log("Overriding number of %s shader textures to %u.\n", shaderName, numShaderTextures);
-		*inputCount = static_cast<uint16_t>(numShaderTextures);
-	}
-	else if (shader)
+	// If we have the shader in this pak, perform this check to make sure the
+	// shader provided by the user isn't corrupt or otherwise incompatible.
+	if (shader)
 	{
 		const ParsedDXShaderData_t* const shaderData = reinterpret_cast<const ParsedDXShaderData_t*>(shader->PublicData());
 
 		// cannot be null at this point
 		assert(shaderData);
-		*inputCount = shaderData->mtlTexSlotCount;
-	}
-	else
-	{
-		const PakGuid_t shaderGuid = isVertexShader ? hdr->vertexShader : hdr->pixelShader;
 
-		// todo(amos): this should probably be an error?
-		if (shaderGuid != 0) // warn if there is an asset guid, but it's not present in the current pak
-			Warning("Creating shader set without a local %s shader asset and \"%s\" wasn't provided; assuming 0 shader textures.\n", shaderName, fieldName);
+		if (shaderData->mtlTexSlotCount != textureCount)
+			Error("Texture slot count mismatch between shader set and %s shader (expected %hhu, got %hhu).\n", shaderName, shaderData->mtlTexSlotCount, textureCount);
+	}
+
+	*inputCount = textureCount;
+}
+
+extern void Shader_AddShaderV8(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const bool errorOnDuplicate);
+extern void Shader_AddShaderV12(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const bool errorOnDuplicate);
+
+static void ShaderSet_AutoAddEmbeddedShader(CPakFile* const pak, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int assetVersion)
+{
+	if (shader)
+	{
+		const std::string assetPath = Utils::VFormat("embedded_0x%llX", shaderGuid);
+
+		const auto func = assetVersion == 8 ? Shader_AddShaderV8 : Shader_AddShaderV12;
+		func(pak, assetPath.c_str(), shader, shaderGuid, false);
 	}
 }
 
 template <typename ShaderSetAssetHeader_t>
-void ShaderSet_CreateSet(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry, const int assetVersion)
+void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::ShaderSet_t* const shaderSet, const PakGuid_t shaderSetGuid, const int assetVersion)
 {
+	ShaderSet_AutoAddEmbeddedShader(pak, shaderSet->vertexShader, shaderSet->vertexShaderGuid, assetVersion);
+	ShaderSet_AutoAddEmbeddedShader(pak, shaderSet->pixelShader, shaderSet->pixelShaderGuid, assetVersion);
+
 	std::vector<PakGuidRefHdr_t> guids{};
 
 	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderSetAssetHeader_t), SF_HEAD, 8);
@@ -64,11 +79,8 @@ void ShaderSet_CreateSet(CPakFile* const pak, const char* const assetPath, const
 	pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_t, name)));
 
 	// === Shader Inputs ===
-	const PakGuid_t vertexShaderGuid = Pak_ParseGuidRequired(mapEntry, "vertexShader");
-	const PakGuid_t pixelShaderGuid = Pak_ParseGuidRequired(mapEntry, "pixelShader");
-
-	hdr->vertexShader = vertexShaderGuid;
-	hdr->pixelShader = pixelShaderGuid;
+	hdr->vertexShader = shaderSet->vertexShaderGuid;
+	hdr->pixelShader = shaderSet->pixelShaderGuid;
 
 	// todo: can shader refs be null???
 	if (hdr->vertexShader != 0)
@@ -77,31 +89,28 @@ void ShaderSet_CreateSet(CPakFile* const pak, const char* const assetPath, const
 	if (hdr->pixelShader != 0)
 		pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_t, pixelShader)));
 
-	PakAsset_t* const vertexShader = vertexShaderGuid != 0 ? pak->GetAssetByGuid(vertexShaderGuid, nullptr, true) : nullptr;
-	ShaderSet_SetInputSlots(hdr, vertexShader, true, mapEntry, assetVersion);
+	PakAsset_t* const vertexShader = hdr->vertexShader != 0 ? pak->GetAssetByGuid(hdr->vertexShader, nullptr, true) : nullptr;
+	ShaderSet_SetInputSlots(hdr, vertexShader, true, shaderSet, assetVersion);
 
-	PakAsset_t* const pixelShader = pixelShaderGuid != 0 ? pak->GetAssetByGuid(pixelShaderGuid, nullptr, true) : nullptr;
-	ShaderSet_SetInputSlots(hdr, pixelShader, false, mapEntry, assetVersion);
+	PakAsset_t* const pixelShader = hdr->pixelShader != 0 ? pak->GetAssetByGuid(hdr->pixelShader, nullptr, true) : nullptr;
+	ShaderSet_SetInputSlots(hdr, pixelShader, false, shaderSet, assetVersion);
 
 	// On v11 shaders, the input count is added on top of the second one.
 	if (assetVersion == 11)
 		hdr->textureInputCounts[1] += hdr->textureInputCounts[0];
 
-	hdr->numSamplers = static_cast<uint16_t>(JSON_GetNumberRequired<uint32_t>(mapEntry, "numSamplers"));
+	hdr->numSamplers = shaderSet->numSamplers;
 
 	// only used for ui/ui_world shadersets in R5
 	// for now this will have to be manually set if used, because i cannot figure out a way to programmatically
 	// detect these resources without incorrectly identifying some, and i doubt that's a good thing
-	hdr->firstResourceBindPoint = static_cast<uint8_t>(JSON_GetNumberOrDefault(mapEntry, "$firstResource", 0u)); // overridable
-	hdr->numResources = static_cast<uint8_t>(JSON_GetNumberOrDefault(mapEntry, "$numResources", 0u)); // overridable
-
-	if (hdr->numResources != 0)
-		Warning("Requested a non-zero number of shader resources. This feature is only intended for use on UI shaders, and may result in unexpected crashes or errors when used with incompatible shader code.\n");
+	hdr->firstResourceBindPoint = shaderSet->firstResourceBindPoint;
+	hdr->numResources = shaderSet->numResources;
 
 	PakAsset_t asset;
 	asset.InitAsset(
 		assetPath,
-		Pak_GetGuidOverridable(mapEntry, assetPath),
+		shaderSetGuid,
 		hdrChunk.GetPointer(), hdrChunk.GetSize(),
 		PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::SHDS);
 	asset.SetHeaderPointer(hdrChunk.Data());
@@ -123,12 +132,21 @@ void ShaderSet_CreateSet(CPakFile* const pak, const char* const assetPath, const
 // Figure out the other count variable before texture input count
 // See if any of the other unknown variables are actually required
 
+template <typename ShaderSetAssetHeader_t>
+static void ShaderSet_AddFromMap(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry, const int assetVersion)
+{
+	CMultiShaderWrapperIO::ShaderCache_t cache = {};
+	ShaderSet_LoadFromMSW(pak, assetPath, cache);
+
+	ShaderSet_InternalCreateSet<ShaderSetAssetHeader_t>(pak, assetPath, &cache.shaderSet, Pak_GetGuidOverridable(mapEntry, assetPath), assetVersion);
+}
+
 void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-	ShaderSet_CreateSet<ShaderSetAssetHeader_v8_t>(pak, assetPath, mapEntry, 8);
+	ShaderSet_AddFromMap<ShaderSetAssetHeader_v8_t>(pak, assetPath, mapEntry, 8);
 }
 
 void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-	ShaderSet_CreateSet<ShaderSetAssetHeader_v11_t>(pak, assetPath, mapEntry, 11);
+	ShaderSet_AddFromMap<ShaderSetAssetHeader_v11_t>(pak, assetPath, mapEntry, 11);
 }
