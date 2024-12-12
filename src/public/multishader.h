@@ -130,10 +130,17 @@ class CMultiShaderWrapperIO
 public:
 	struct ShaderEntry_t
 	{
-		const char* buffer; // todo: free!
-		unsigned int size;
+		~ShaderEntry_t()
+		{
+			if (buffer && deleteBuffer)
+				delete[] buffer;
+		}
 
+		const char* buffer;
+		unsigned int size;
 		unsigned short refIndex; // if this shader entry is a reference. do not set "buffer" if this is used
+		bool deleteBuffer;
+
 		unsigned __int64 flags[2]; // the input flags
 	};
 
@@ -141,12 +148,6 @@ public:
 	{
 		Shader_t() : shaderType(MultiShaderWrapperShaderType_e::INVALID), features{} {};
 		Shader_t(MultiShaderWrapperShaderType_e type) : shaderType(type), features{} {};
-
-		//~Shader_t()
-		//{
-		//	for (auto& entry : entries)
-		//		if (entry.buffer && entry.size) delete[] entry.buffer;
-		//}
 
 		std::vector<ShaderEntry_t> entries;
 		std::string name;
@@ -156,8 +157,34 @@ public:
 
 	struct ShaderSet_t
 	{
-		Shader_t* pixelShader; // todo: free!
-		Shader_t* vertexShader; // todo: free!
+		ShaderSet_t()
+			: pixelShader(0)
+			, vertexShader(0)
+			, pixelShaderGuid(0)
+			, vertexShaderGuid(0)
+			, numPixelShaderTextures(0)
+			, numVertexShaderTextures(0)
+			, numSamplers(0)
+			, firstResourceBindPoint(0)
+			, numResources(0)
+			, deleteShaders(false)
+		{
+		}
+
+		~ShaderSet_t()
+		{
+			if (deleteShaders)
+			{
+				if (pixelShader)
+					delete pixelShader;
+
+				if (vertexShader)
+					delete vertexShader;
+			}
+		}
+
+		Shader_t* pixelShader;
+		Shader_t* vertexShader;
 
 		unsigned __int64 pixelShaderGuid;
 		unsigned __int64 vertexShaderGuid;
@@ -169,17 +196,28 @@ public:
 
 		unsigned char firstResourceBindPoint;
 		unsigned char numResources;
+
+		bool deleteShaders;
 	};
 
 	struct ShaderCache_t
 	{
-		MultiShaderWrapperFileType_e type;
+		ShaderCache_t()
+			: shader(0)
+			, type(MultiShaderWrapperFileType_e::SHADER)
+		{}
 
-		union
+		~ShaderCache_t()
 		{
-			Shader_t* shader;      // Used if type == SHADER // todo: free!
-			ShaderSet_t shaderSet; // Used if type == SHADERSET
-		};
+			if (shader && deleteShader)
+				delete shader;
+		}
+
+		Shader_t* shader;      // Used if type == SHADER
+		ShaderSet_t shaderSet; // Used if type == SHADERSET
+
+		MultiShaderWrapperFileType_e type;
+		bool deleteShader;
 	};
 public:
 	CMultiShaderWrapperIO() = default;
@@ -248,6 +286,8 @@ public:
 			if (fileHeader.fileType == MultiShaderWrapperFileType_e::SHADER)
 			{
 				outCache->shader = new Shader_t;
+				outCache->deleteShader = true;
+
 				ReadShader(f, outCache->shader);
 			}
 			else if (fileHeader.fileType == MultiShaderWrapperFileType_e::SHADERSET)
@@ -263,7 +303,7 @@ public:
 
 	void ReadShaderSet(FILE* const f, ShaderCache_t* const shaderCache)
 	{
-		MultiShaderWrapper_ShaderSet_t shds = {};
+		MultiShaderWrapper_ShaderSet_t shds;
 		fread(&shds, sizeof(shds), 1, f);
 
 		shaderCache->shaderSet.pixelShaderGuid = shds.pixelShaderGuid;
@@ -292,6 +332,8 @@ public:
 			shaderCache->shaderSet.vertexShader = new Shader_t;
 			ReadShader(f, shaderCache->shaderSet.vertexShader);
 		}
+
+		shaderCache->shaderSet.deleteShaders = true;
 	};
 
 	// Allocate a shader before calling this
@@ -313,7 +355,7 @@ public:
 			MultiShaderWrapper_ShaderDesc_t* desc = &descriptors[i];
 			fread(desc, sizeof(MultiShaderWrapper_ShaderDesc_t), 1, f);
 
-			ShaderEntry_t entry = {};
+			ShaderEntry_t& entry = shader->entries.emplace_back();
 
 			if (desc->u_ref.bufferIndex == UINT32_MAX && desc->u_ref._reserved == UINT32_MAX)
 			{
@@ -336,12 +378,11 @@ public:
 				entry.buffer = buffer;
 				entry.size = desc->u_standard.bufferLength;
 				entry.refIndex = UINT16_MAX;
+				entry.deleteBuffer = true;
 			}
 			
 			entry.flags[0] = desc->inputFlags[0];
 			entry.flags[1] = desc->inputFlags[1];
-
-			shader->entries.push_back(entry);
 
 			// shader type isn't saved, so it has to be found from the shader bytecode separately
 			shader->shaderType = MultiShaderWrapperShaderType_e::INVALID;
@@ -537,7 +578,7 @@ static inline const char* MSW_TypeToString(const MultiShaderWrapperFileType_e ex
 
 static inline bool MSW_ParseFile(const fs::path& inputPath, CMultiShaderWrapperIO::ShaderCache_t& shaderCache, const MultiShaderWrapperFileType_e expectType)
 {
-	CMultiShaderWrapperIO io = {};
+	CMultiShaderWrapperIO io;
 
 	if (!io.ReadFile(inputPath.string().c_str(), &shaderCache))
 	{
