@@ -109,6 +109,7 @@ static void Shader_CreateFromMSW(CPakFile* const pak, CPakDataChunk& cpuDataChun
 	uint64_t* const inputFlags = reinterpret_cast<uint64_t*>(shaderInfoChunk.Data() + reservedDataSize);
 	size_t i = 0;
 
+	// vertex shaders seem to have data every 8 bytes, unlike (seemingly) every other shader that only uses 8 out of every 16 bytes
 	for (auto& it : shader->entries)
 	{
 		inputFlags[i] = it.flags[0];
