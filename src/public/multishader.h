@@ -130,10 +130,33 @@ class CMultiShaderWrapperIO
 public:
 	struct ShaderEntry_t
 	{
+		ShaderEntry_t()
+		{
+			buffer = 0;
+			size = 0;
+			refIndex = 0;
+			deleteBuffer = false;
+			flags[0] = 0;
+			flags[1] = 0;
+		}
+
 		~ShaderEntry_t()
 		{
 			if (buffer && deleteBuffer)
 				delete[] buffer;
+		}
+
+		ShaderEntry_t(ShaderEntry_t&& o) noexcept
+			: buffer(o.buffer)
+			, size(o.size)
+			, refIndex(o.refIndex)
+			, deleteBuffer(o.deleteBuffer)
+		{
+			flags[0] = o.flags[0];
+			flags[1] = o.flags[1];
+
+			// prevent it from being destroyed.
+			o.buffer = nullptr;
 		}
 
 		const char* buffer;
