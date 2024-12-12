@@ -281,6 +281,13 @@ public:
 			MultiShaderWrapper_Header_t fileHeader = {};
 
 			fread(&fileHeader, sizeof(fileHeader), 1, f);
+
+			if (fileHeader.magic != MSW_FILE_MAGIC)
+				Error("Attempted to load an invalid MSW file (expected magic %x, got %x).\n", MSW_FILE_MAGIC, fileHeader.magic);
+
+			if (fileHeader.version != MSW_FILE_VER)
+				Error("Attempted to load an unsupported MSW file (expected version %u, got %u).\n", MSW_FILE_VER, fileHeader.version);
+
 			outCache->type = fileHeader.fileType;
 
 			if (fileHeader.fileType == MultiShaderWrapperFileType_e::SHADER)
