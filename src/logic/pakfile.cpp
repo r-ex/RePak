@@ -54,7 +54,7 @@ bool CPakFile::AddJSONAsset(const char* const targetType, const char* const asse
 		Log("...done; took %lld ms.\n", duration.count());
 	}
 	else
-		Warning("Asset type '%.4s' is not supported on RPak version %hu.\n", assetType, fileVersion);
+		Error("Asset type '%.4s' is not supported on pak version %hu.\n", assetType, fileVersion);
 
 	// Asset type has been handled.
 	return true;
