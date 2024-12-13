@@ -991,9 +991,9 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		StarpakFileHeader_t srpkHeader{ STARPAK_MAGIC , STARPAK_VERSION };
 		srpkOut.Write(srpkHeader);
 
-		int padSize = (STARPAK_DATABLOCK_ALIGNMENT - sizeof(StarpakFileHeader_t));
+		const int padSize = (STARPAK_DATABLOCK_ALIGNMENT - sizeof(StarpakFileHeader_t));
 
-		char* initialPad = new char[padSize];
+		char* const initialPad = new char[padSize];
 		memset(initialPad, STARPAK_DATABLOCK_ALIGNMENT_PADDING, padSize);
 
 		srpkOut.Write(initialPad, padSize);
