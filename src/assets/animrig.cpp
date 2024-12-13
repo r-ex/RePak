@@ -11,19 +11,20 @@ extern char* Model_ReadRMDLFile(const std::string& path);
 
 void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    // open and validate file to get buffer
-    const char* const animRigFileBuffer = Model_ReadRMDLFile(pak->GetAssetPath() + assetPath);
-    const studiohdr_t* const studiohdr = reinterpret_cast<const studiohdr_t*>(animRigFileBuffer);
-
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimRigAssetHeader_t), SF_HEAD, 16);
-
     const size_t assetNameLength = strlen(assetPath);
 
     CPakDataChunk nameChunk = pak->CreateDataChunk(assetNameLength + 1, SF_CPU, 1); // [rika]: only aligned to 1 byte in season 3 paks
     memcpy_s(nameChunk.Data(), assetNameLength, assetPath, assetNameLength);
 
+    // open and validate file to get buffer
+    const char* const animRigFileBuffer = Model_ReadRMDLFile(pak->GetAssetPath() + assetPath);
+    const studiohdr_t* const studiohdr = reinterpret_cast<const studiohdr_t*>(animRigFileBuffer);
+
     CPakDataChunk rigChunk = pak->CreateDataChunk(studiohdr->length, SF_CPU, 64);
     memcpy_s(rigChunk.Data(), studiohdr->length, animRigFileBuffer, studiohdr->length);
+
+    delete[] animRigFileBuffer;
 
     AnimRigAssetHeader_t* const pHdr = reinterpret_cast<AnimRigAssetHeader_t*>(hdrChunk.Data());
     pHdr->data = rigChunk.GetPointer();
@@ -45,8 +46,6 @@ void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, 
             guids.emplace_back(guidsChunk.GetPointer(8 * i));
         }
     }
-
-    delete[] animRigFileBuffer;
 
     PakAsset_t asset;
 
