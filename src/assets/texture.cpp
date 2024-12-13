@@ -75,8 +75,6 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
         if (isStreamable && pak->GetVersion() >= 8)
             isStreamableOpt = true;
 
-        isStreamableOpt = false; // force false until we have proper optional starpaks
-
         size_t mipOffset = isDX10 ? 0x94 : 0x80; // add header length
 
         for (unsigned int mipLevel = 0; mipLevel < ddsh.dwMipMapCount; mipLevel++)
@@ -153,8 +151,8 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
     }
 
     CPakDataChunk dataChunk = pak->CreateDataChunk(mipSizes.staticSize, SF_CPU | SF_TEMP, 16);
-    char* const streamedbuf = new char[mipSizes.streamedSize]; // todo: free?
-    char* const optstreamedbuf = new char[mipSizes.streamedOptSize]; // todo: free?
+    char* const streamedbuf = new char[mipSizes.streamedSize];
+    char* const optstreamedbuf = new char[mipSizes.streamedOptSize];
 
     char* pCurrentPosStatic = dataChunk.Data();
     char* pCurrentPosStreamed = streamedbuf;
@@ -195,23 +193,31 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
     // now time to add the higher level asset entry
     PakAsset_t asset;
 
-    // this should hopefully fix some crashing
-    uint64_t starpakOffset = UINT64_MAX;
+    uint64_t mandatoryStreamDataOffset = UINT64_MAX;
 
     if (isStreamable && hdr->streamedMipLevels > 0)
     {
-        StreamableDataEntry de{ 0, mipSizes.streamedSize, (uint8_t*)streamedbuf };
-        pak->AddStarpakDataEntry(de);
+        PakStreamSetEntry_s de{ 0, mipSizes.streamedSize };
+        pak->AddStreamingDataEntry(de, (uint8_t*)streamedbuf, STREAMING_SET_MANDATORY);
 
-        starpakOffset = de.offset;
+        mandatoryStreamDataOffset = de.offset;
     }
+
+    delete[] streamedbuf;
+
+    uint64_t optionalStreamDataOffset = UINT64_MAX;
 
     if (isStreamableOpt && hdr->optStreamedMipLevels > 0)
     {
-        // do stuff
+        PakStreamSetEntry_s de{ 0, mipSizes.streamedOptSize };
+        pak->AddStreamingDataEntry(de, (uint8_t*)optstreamedbuf, STREAMING_SET_OPTIONAL);
+
+        optionalStreamDataOffset = de.offset;
     }
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), starpakOffset, UINT64_MAX, AssetType::TXTR);
+    delete[] optstreamedbuf;
+
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), mandatoryStreamDataOffset, optionalStreamDataOffset, AssetType::TXTR);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = TXTR_VERSION;

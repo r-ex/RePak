@@ -6,7 +6,7 @@ namespace Utils
 	FILETIME GetSystemFileTime();
 	
 	size_t PadBuffer(char** buf, size_t size, size_t alignment);
-	size_t WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVector);
+	size_t WriteStringVector(BinaryIO& out, const std::vector<std::string>& dataVector);
 
 	void AppendSlash(std::string& in);
 	std::string ChangeExtension(const std::string& in, const std::string& ext);

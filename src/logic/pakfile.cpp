@@ -126,12 +126,12 @@ void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, const Page
 //-----------------------------------------------------------------------------
 void CPakFile::AddStarpakReference(const std::string& path)
 {
-	for (auto& it : m_vStarpakPaths)
+	for (auto& it : m_mandatoryStreamFilePaths)
 	{
 		if (it == path)
 			return;
 	}
-	m_vStarpakPaths.push_back(path);
+	m_mandatoryStreamFilePaths.push_back(path);
 }
 
 //-----------------------------------------------------------------------------
@@ -139,36 +139,44 @@ void CPakFile::AddStarpakReference(const std::string& path)
 //-----------------------------------------------------------------------------
 void CPakFile::AddOptStarpakReference(const std::string& path)
 {
-	for (auto& it : m_vOptStarpakPaths)
+	for (auto& it : m_optionalStreamFilePaths)
 	{
 		if (it == path)
 			return;
 	}
-	m_vOptStarpakPaths.push_back(path);
+	m_optionalStreamFilePaths.push_back(path);
 }
 
 //-----------------------------------------------------------------------------
 // purpose: adds new starpak data entry
-// returns: starpak data entry descriptor
 //-----------------------------------------------------------------------------
-void CPakFile::AddStarpakDataEntry(StreamableDataEntry& block)
+void CPakFile::AddStreamingDataEntry(PakStreamSetEntry_s& block, const uint8_t* const data, const PakStreamSet_e set)
 {
-	const std::string starpakPath = this->GetPrimaryStarpakPath();
+	const bool isMandatory = set == STREAMING_SET_MANDATORY;
+	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
 
-	if (starpakPath.length() == 0)
-		Error("Attempted to create a streaming asset without a streaming file.\n");
+	if (!out.IsWritable())
+		Error("Attempted to write a %s streaming asset without a stream file handle.\n", Pak_StreamSetToName(set));
 
-	// try to add starpak path. AddStarpakReference will handle duplicates so no need to do it here
-	this->AddStarpakReference(starpakPath);
+	out.Write(data, block.dataSize);
+	const size_t paddedSize = IALIGN(block.dataSize, STARPAK_DATABLOCK_ALIGNMENT);
 
-	// starpak data is aligned to 4096 bytes
-	const size_t ns = Utils::PadBuffer((char**)&block.pData, block.dataSize, 4096);
+	// starpak data is aligned to 4096 bytes, pad the remainder out for the next asset.
+	if (paddedSize > block.dataSize)
+	{
+		const size_t paddingRemainder = paddedSize - block.dataSize;
+		out.SeekPut(paddingRemainder, std::ios::cur);
+	}
 
-	block.dataSize = ns;
-	block.offset = m_NextStarpakOffset;
+	size_t& nextOffsetCounter = isMandatory ? m_nextMandatoryStarpakOffset : m_nextOptionalStarpakOffset;
 
-	m_vStarpakDataBlocks.push_back(block);
-	m_NextStarpakOffset += block.dataSize;
+	block.offset = nextOffsetCounter;
+	block.dataSize = paddedSize;
+
+	nextOffsetCounter += paddedSize;
+
+	auto& vecBlocks = isMandatory ? m_mandatoryStreamingDataBlocks : m_optionalStreamingDataBlocks;
+	vecBlocks.push_back(block);
 }
 
 //-----------------------------------------------------------------------------
@@ -309,9 +317,10 @@ void CPakFile::WritePageData(BinaryIO& out)
 // purpose: writes starpak paths to file stream
 // returns: total length of written path vector
 //-----------------------------------------------------------------------------
-size_t CPakFile::WriteStarpakPaths(BinaryIO& out, const bool optional)
+size_t CPakFile::WriteStarpakPaths(BinaryIO& out, const PakStreamSet_e set)
 {
-	return Utils::WriteStringVector(out, optional ? m_vOptStarpakPaths : m_vStarpakPaths);
+	const auto& vecPaths = set == STREAMING_SET_MANDATORY ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
+	return Utils::WriteStringVector(out, vecPaths);
 }
 
 //-----------------------------------------------------------------------------
@@ -347,44 +356,6 @@ void CPakFile::WritePakDescriptors(BinaryIO& out)
 	std::sort(m_vPakDescriptors.begin(), m_vPakDescriptors.end());
 
 	WRITE_VECTOR(out, m_vPakDescriptors);
-}
-
-//-----------------------------------------------------------------------------
-// purpose: writes starpak data blocks to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WriteStarpakDataBlocks(BinaryIO& out)
-{
-	for (auto& it : m_vStarpakDataBlocks)
-	{
-		out.Write((const char*)it.pData, it.dataSize);
-	}
-}
-
-//-----------------------------------------------------------------------------
-// purpose: writes starpak sorts table to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WriteStarpakSortsTable(BinaryIO& out)
-{
-	// starpaks have a table of sorts at the end of the file, containing the offsets and data sizes for every data block
-	for (auto& it : m_vStarpakDataBlocks)
-	{
-		SRPkFileEntry fe{};
-		fe.m_nOffset = it.offset;
-		fe.m_nSize = it.dataSize;
-
-		out.Write(fe);
-	}
-}
-
-//-----------------------------------------------------------------------------
-// purpose: frees the starpak data blocks memory
-//-----------------------------------------------------------------------------
-void CPakFile::FreeStarpakDataBlocks()
-{
-	for (auto& it : m_vStarpakDataBlocks)
-	{
-		delete[] it.pData;
-	}
 }
 
 //-----------------------------------------------------------------------------
@@ -744,7 +715,7 @@ bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, con
 size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount)
 {
 	BinaryIO outCompressed;
-	const std::string outCompressedPath = GetPath() + "_encoded";
+	const std::string outCompressedPath = m_Path + "_encoded";
 
 	if (!outCompressed.Open(outCompressedPath, BinaryIO::Mode_e::Write))
 	{
@@ -794,6 +765,67 @@ size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, cons
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: creates the stream file stream and sets the header up
+//-----------------------------------------------------------------------------
+void CPakFile::CreateStreamFileStream(const char* const streamFilePath, const PakStreamSet_e set)
+{
+	const bool isMandatory = set == STREAMING_SET_MANDATORY;
+	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
+
+	const char* streamFileName = strrchr(streamFilePath, '/');
+
+	if (!streamFileName)
+		streamFileName = streamFilePath;
+	else
+		streamFileName += 1; // advance from '/' to start of filename.
+
+	const std::string fullFilePath = m_OutputPath + streamFileName;
+
+	if (!out.Open(fullFilePath, BinaryIO::Mode_e::Write))
+		Error("Failed to open %s streaming file \"%s\".\n", Pak_StreamSetToName(set), fullFilePath.c_str());
+
+	// write out the header and pad it out for the first asset entry.
+	const PakStreamSetFileHeader_s srpkHeader{ STARPAK_MAGIC, STARPAK_VERSION };
+	out.Write(srpkHeader);
+
+	char initialPadding[STARPAK_DATABLOCK_ALIGNMENT - sizeof(PakStreamSetFileHeader_s)];
+	memset(initialPadding, STARPAK_DATABLOCK_ALIGNMENT_PADDING, sizeof(initialPadding));
+
+	out.Write(initialPadding, sizeof(initialPadding));
+
+	auto& vecName = isMandatory ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
+	vecName.push_back(streamFilePath);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: writes the sorts table and finishes the stream file stream
+//-----------------------------------------------------------------------------
+void CPakFile::FinishStreamFileStream(const PakStreamSet_e set)
+{
+	const bool isMandatory = set == STREAMING_SET_MANDATORY;
+	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
+
+	if (!out.IsWritable())
+		Error("Unable to finish %s streaming file without a stream file handle.\n", Pak_StreamSetToName(set));
+
+	// starpaks have a table of sorts at the end of the file, containing the offsets and data sizes for every data block
+	const auto& vecData = isMandatory ? m_mandatoryStreamingDataBlocks : m_optionalStreamingDataBlocks;
+
+	for (const PakStreamSetEntry_s& it : vecData)
+		out.Write(it);
+
+	const size_t entryCount = isMandatory ? GetMandatoryStreamingAssetCount() : GetOptionalStreamingAssetCount();
+	out.Write(entryCount);
+
+	const auto& vecName = isMandatory ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
+
+	Log("Written %s streaming file \"%s\" with %zu assets, totaling %zd bytes.\n",
+		Pak_StreamSetToName(set), vecName[0].c_str(), entryCount, (ssize_t)out.GetSize());
+
+	out.Close();
+}
+
+//-----------------------------------------------------------------------------
 // purpose: builds rpak and starpak from input map file
 //-----------------------------------------------------------------------------
 void CPakFile::BuildFromMap(const string& mapPath)
@@ -803,8 +835,6 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	js::Document doc{ };
 	fs::path inputPath(mapPath);
 	Utils::ParseMapDocument(doc, inputPath);
-
-	const string pakName = JSON_GetValueOrDefault(doc, "name", DEFAULT_RPAK_NAME);
 
 	// determine source asset directory from map file
 	const char* assetDir;
@@ -829,53 +859,56 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		Utils::AppendSlash(m_AssetPath);
 	}
 
-
 	// determine final build path from map file
-	std::string outputPath;
-
-	if (JSON_GetValue(doc, "outputDir", outputPath))
+	if (JSON_GetValue(doc, "outputDir", m_OutputPath))
 	{
 		fs::path outputDirPath(doc["outputDir"].GetString());
 
 		if (outputDirPath.is_relative() && inputPath.has_parent_path())
-			outputPath = fs::canonical(inputPath.parent_path() / outputDirPath).string();
+			m_OutputPath = fs::canonical(inputPath.parent_path() / outputDirPath).string();
 		else
-			outputPath = outputDirPath.string();
+			m_OutputPath = outputDirPath.string();
 
 		// ensure that the path has a slash at the end
-		Utils::AppendSlash(outputPath);
+		Utils::AppendSlash(m_OutputPath);
 	}
 	else
-		outputPath = DEFAULT_RPAK_PATH;
+		m_OutputPath = DEFAULT_RPAK_PATH;
+
+	// create output directory if it does not exist yet.
+	fs::create_directories(m_OutputPath);
 
 	const int pakVersion = JSON_GetValueOrDefault(doc, "version", -1);
 
 	if (pakVersion < 0)
-		Warning("No \"version\" field provided; assuming version 8 (r5).\n");
+		Error("No \"version\" field provided.\n");
 
-	this->SetVersion(JSON_GetValueOrDefault(doc, "version", 8));
+	this->SetVersion(pakVersion);
+	const char* const pakName = JSON_GetValueOrDefault(doc, "name", DEFAULT_RPAK_NAME);
 
 	// print parsed settings
 	Log("build settings:\n");
 	Log("version: %i\n", GetVersion());
-	Log("fileName: %s.rpak\n", pakName.c_str());
+	Log("fileName: %s.rpak\n", pakName);
 	Log("assetsDir: %s\n", m_AssetPath.c_str());
-	Log("outputDir: %s\n\n", outputPath.c_str());
-
-	// create output directory if it does not exist yet.
-	fs::create_directories(outputPath);
+	Log("outputDir: %s\n\n", m_OutputPath.c_str());
 
 	// set build path
-	SetPath(outputPath + pakName + ".rpak");
+	SetPath(m_OutputPath + pakName + ".rpak");
 
 	// should dev-only data be kept - e.g. texture asset names, uimg texture names
 	if (JSON_GetValueOrDefault(doc, "keepDevOnly", false))
 		AddFlags(PF_KEEP_DEV);
 
-	const char* starpakPath;
+	const char* streamFileMandatory = nullptr;
 
-	if (JSON_GetValue(doc, "starpakPath", starpakPath))
-		SetPrimaryStarpakPath(starpakPath);
+	if (JSON_GetValue(doc, "streamFileMandatory", streamFileMandatory))
+		CreateStreamFileStream(streamFileMandatory, STREAMING_SET_MANDATORY);
+
+	const char* streamFileOptional = nullptr;
+
+	if (pakVersion >= 8 && JSON_GetValue(doc, "streamFileOptional", streamFileOptional))
+		CreateStreamFileStream(streamFileOptional, STREAMING_SET_OPTIONAL);
 
 	// build asset data;
 	// loop through all assets defined in the map file
@@ -885,33 +918,26 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	if (JSON_GetIterator(doc, "files", JSONFieldType_e::kArray, filesIt))
 	{
 		for (const auto& file : filesIt->value.GetArray())
-		{
-			// todo: print asset name here?
 			AddAsset(file);
-		}
 	}
 
 	// create file stream from path created above
 	BinaryIO out;
-	const std::string outPath = GetPath();
-	
-	if (!out.Open(outPath, BinaryIO::Mode_e::ReadWriteCreate))
-	{
-		Error("Failed to open output pak file \"%s\".\n", outPath.c_str());
-	}
+	if (!out.Open(m_Path, BinaryIO::Mode_e::ReadWriteCreate))
+		Error("Failed to open output pak file \"%s\".\n", m_Path.c_str());
 
 	// write a placeholder header so we can come back and complete it
 	// when we have all the info
-	WriteHeader(out);
+	out.Seek(pakVersion >= 8 ? 0x80 : 0x58);
 
 	{
 		// write string vectors for starpak paths and get the total length of each vector
-		size_t starpakPathsLength = WriteStarpakPaths(out, false);
-		size_t optStarpakPathsLength = WriteStarpakPaths(out, true);
-		size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
+		size_t starpakPathsLength = WriteStarpakPaths(out, STREAMING_SET_MANDATORY);
+		size_t optStarpakPathsLength = WriteStarpakPaths(out, STREAMING_SET_OPTIONAL);
+		const size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
 
-		size_t aligned = IALIGN8(combinedPathsLength);
-		__int8 padBytes = static_cast<__int8>(aligned - combinedPathsLength);
+		const size_t aligned = IALIGN8(combinedPathsLength);
+		const int8_t padBytes = static_cast<int8_t>(aligned - combinedPathsLength);
 
 		// align starpak paths to 
 		if (optStarpakPathsLength != 0)
@@ -920,7 +946,6 @@ void CPakFile::BuildFromMap(const string& mapPath)
 			starpakPathsLength += padBytes;
 
 		out.Seek(padBytes, std::ios::end);
-
 		SetStarpakPathsSize(static_cast<uint16_t>(starpakPathsLength), static_cast<uint16_t>(optStarpakPathsLength));
 	}
 
@@ -969,46 +994,15 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 	// !TODO: we really should add support for multiple starpak files and share existing
 	// assets across rpaks. e.g. if the base 'pc_all.opt.starpak' already contains the
-	// highest mip level for 'ola_sewer_grate', don't copy it into 'sdk_all.opt.starpak'.
+	// highest mip level for 'ola_sewer_grate', don't copy it into 'pc_sdk.opt.starpak'.
 	// the sort table at the end of the file (see WriteStarpakSortsTable) contains offsets
 	// to the asset with their respective sizes. this could be used in combination of a
 	// static database (who's name is to be selected from a hint provided by the map file)
 	// to map assets among various rpaks avoiding extraneous copies of the same streamed data.
-	if (GetNumStarpakPaths() == 1)
-	{
-		fs::path path(GetStarpakPath(0));
-		std::string filename = path.filename().string();
 
-		BinaryIO srpkOut;
+	if (streamFileMandatory)
+		FinishStreamFileStream(STREAMING_SET_MANDATORY);
 
-		const std::string fullFilePath = outputPath + filename;
-
-		if (!srpkOut.Open(fullFilePath, BinaryIO::Mode_e::Write))
-		{
-			Error("Failed to open output streaming file \"%s\".\n", fullFilePath.c_str());
-		}
-
-		StarpakFileHeader_t srpkHeader{ STARPAK_MAGIC , STARPAK_VERSION };
-		srpkOut.Write(srpkHeader);
-
-		const int padSize = (STARPAK_DATABLOCK_ALIGNMENT - sizeof(StarpakFileHeader_t));
-
-		char* const initialPad = new char[padSize];
-		memset(initialPad, STARPAK_DATABLOCK_ALIGNMENT_PADDING, padSize);
-
-		srpkOut.Write(initialPad, padSize);
-		delete[] initialPad;
-
-		WriteStarpakDataBlocks(srpkOut);
-		WriteStarpakSortsTable(srpkOut);
-
-		const size_t entryCount = GetStreamingAssetCount();
-		srpkOut.Write(entryCount);
-
-		Log("Written streaming file \"%s\" with %zu assets, totaling %zd bytes.\n", 
-			fullFilePath.c_str(), entryCount, (ssize_t)srpkOut.GetSize());
-
-		FreeStarpakDataBlocks();
-		srpkOut.Close();
-	}
+	if (streamFileOptional)
+		FinishStreamFileStream(STREAMING_SET_OPTIONAL);
 }

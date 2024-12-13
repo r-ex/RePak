@@ -74,15 +74,6 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
 
     studiohdr_t* studiohdr = reinterpret_cast<studiohdr_t*>(rmdlBuf);
 
-    ///--------------------
-    // Add VG data
-    // VG is a "fake" file extension that's used to store model streaming data (name came from the magic '0tVG')
-    // this data is a combined mutated version of the data from .vtx and .vvd in regular source models
-    const std::string vgFilePath = Utils::ChangeExtension(rmdlFilePath, ".vg");
-
-    size_t vgFileSize = 0;
-    char* const vgBuf = Model_ReadVGFile(vgFilePath, &vgFileSize); // todo: free vg buf
-
     //
     // Physics
     //
@@ -169,8 +160,17 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
     //
     pHdr->totalVertexDataSize = studiohdr->vtxsize + studiohdr->vvdsize + studiohdr->vvcsize + studiohdr->vvwsize;
 
-    StreamableDataEntry de{ 0, vgFileSize, (uint8_t*)vgBuf };
-    pak->AddStarpakDataEntry(de);
+    ///--------------------
+    // Add VG data
+    // VG is a "fake" file extension that's used to store model streaming data (name came from the magic '0tVG')
+    // this data is a combined mutated version of the data from .vtx and .vvd in regular source models
+    const std::string vgFilePath = Utils::ChangeExtension(rmdlFilePath, ".vg");
+
+    size_t vgFileSize = 0;
+    char* const vgBuf = Model_ReadVGFile(vgFilePath, &vgFileSize);
+
+    PakStreamSetEntry_s de{ 0, vgFileSize };
+    pak->AddStreamingDataEntry(de, (uint8_t*)vgBuf, STREAMING_SET_MANDATORY);
 
     assert(de.dataSize <= UINT32_MAX);
     pHdr->streamedVertexDataSize = static_cast<uint32_t>(de.dataSize);
@@ -199,8 +199,10 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
     // copy static prop data into data buffer (if needed)
     if (studiohdr->IsStaticProp()) // STATIC_PROP
     {
-        memcpy_s(pDataBuf + fileNameDataSize + studiohdr->length, vgFileSize, de.pData, vgFileSize);
+        memcpy_s(pDataBuf + fileNameDataSize + studiohdr->length, vgFileSize, vgBuf, vgFileSize);
     }
+
+    delete[] vgBuf;
 
     pHdr->pName = dataChunk.GetPointer(studiohdr->length);
     pHdr->pData = dataChunk.GetPointer();

@@ -9,20 +9,11 @@
 #define MAKE_FOURCC(a,b,c,d) ((d<<24)+(c<<16)+(b<<8)+a)
 #endif
 
-#define RPAK_MAGIC	MAKE_FOURCC('R', 'P', 'a', 'k')
+#define RPAK_MAGIC (('k'<<24)+('a'<<16)+('P'<<8)+'R')
 #define RPAK_EXTENSION ".rpak"
 
 #define PAK_HEADER_FLAGS_COMPRESSED      (1<<8)
 #define PAK_HEADER_FLAGS_ZSTREAM_ENCODED (1<<9) // use the ZStd decoder instead of the RTech one
-
-#define STARPAK_MAGIC	MAKE_FOURCC('S', 'R', 'P', 'k')
-#define STARPAK_VERSION	1
-#define STARPAK_EXTENSION ".starpak"
-
-// data blocks in starpaks are all aligned to 4096 bytes, including
-// the header which gets filled with 0xCB after the magic and version
-#define STARPAK_DATABLOCK_ALIGNMENT 4096
-#define STARPAK_DATABLOCK_ALIGNMENT_PADDING 0xCB
 
 #define TYPE_TXTR	MAKE_FOURCC('t', 'x', 't', 'r') // txtr
 #define TYPE_RMDL	MAKE_FOURCC('m', 'd', 'l', '_') // mdl_

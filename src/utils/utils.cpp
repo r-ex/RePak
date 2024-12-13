@@ -43,7 +43,7 @@ size_t Utils::PadBuffer(char** buf, size_t size, size_t alignment)
 // purpose: write vector of strings to the specified BinaryIO instance
 // returns: length of data written
 //-----------------------------------------------------------------------------
-size_t Utils::WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVector)
+size_t Utils::WriteStringVector(BinaryIO& out, const std::vector<std::string>& dataVector)
 {
 	size_t lenTotal = 0;
 	for (auto it = dataVector.begin(); it != dataVector.end(); ++it)

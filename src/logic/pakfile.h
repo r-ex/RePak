@@ -144,7 +144,8 @@ public:
 
 	void AddStarpakReference(const std::string& path);
 	void AddOptStarpakReference(const std::string& path);
-	void AddStarpakDataEntry(StreamableDataEntry& block);
+
+	void AddStreamingDataEntry(PakStreamSetEntry_s& block, const uint8_t* const data, const PakStreamSet_e set);
 
 	//----------------------------------------------------------------------------
 	// inlines
@@ -152,7 +153,9 @@ public:
 	inline bool IsFlagSet(int flag) const { return m_Flags & flag; };
 
 	inline size_t GetAssetCount() const { return m_Assets.size(); };
-	inline size_t GetStreamingAssetCount() const { return m_vStarpakDataBlocks.size(); };
+	inline size_t GetMandatoryStreamingAssetCount() const { return m_mandatoryStreamingDataBlocks.size(); };
+	inline size_t GetOptionalStreamingAssetCount() const { return m_optionalStreamingDataBlocks.size(); };
+
 	inline size_t GetNumPages() const { return m_vPages.size(); };
 
 	inline uint32_t GetVersion() const { return m_Header.fileVersion; }
@@ -182,17 +185,7 @@ public:
 	inline std::string GetAssetPath() const { return m_AssetPath; }
 	inline void SetAssetPath(const std::string& assetPath) { m_AssetPath = assetPath; }
 
-	inline std::string GetStarpakPath(int i) const
-	{
-		if (i >= 0 && i < m_vStarpakPaths.size())
-			return m_vStarpakPaths[i];
-		else
-			return ""; // if invalid starpak is requested, return empty string
-	};
-
-	inline std::string GetPrimaryStarpakPath() const { return m_PrimaryStarpakPath; };
-	inline size_t GetNumStarpakPaths() const { return m_vStarpakPaths.size(); }
-	inline void SetPrimaryStarpakPath(const std::string& path) { m_PrimaryStarpakPath = path; }
+	inline size_t GetNumStarpakPaths() const { return m_mandatoryStreamFilePaths.size(); }
 
 	inline size_t GetCompressedSize() const { return m_Header.compressedSize; }
 	inline size_t GetDecompressedSize() const { return m_Header.decompressedSize; }
@@ -213,7 +206,7 @@ public:
 	void WriteAssets(BinaryIO& io);
 	void WritePageData(BinaryIO& out);
 
-	size_t WriteStarpakPaths(BinaryIO& out, const bool optional);
+	size_t WriteStarpakPaths(BinaryIO& out, const PakStreamSet_e set);
 
 	void WriteSegmentHeaders(BinaryIO& out);
 	void WriteMemPageHeaders(BinaryIO& out);
@@ -225,11 +218,6 @@ public:
 	//----------------------------------------------------------------------------
 	// starpak
 	//----------------------------------------------------------------------------
-	void WriteStarpakDataBlocks(BinaryIO& io);
-	void WriteStarpakSortsTable(BinaryIO& io);
-
-	void FreeStarpakDataBlocks();
-
 	// purpose: populates m_vFileRelations vector with combined asset relation data
 	void GenerateFileRelations();
 	void GenerateGuidData();
@@ -263,25 +251,22 @@ public:
 		m_Assets.push_back(asset);
 	};
 
+	void CreateStreamFileStream(const char* const path, const PakStreamSet_e set);
+	void FinishStreamFileStream(const PakStreamSet_e set);
+
 	void BuildFromMap(const string& mapPath);
 
 private:
 	friend class CPakPage;
 
-	// next available starpak data offset
-	uint64_t m_NextStarpakOffset = 0x1000;
 	int m_Flags = 0;
-
 	PakHdr_t m_Header;
 
 	std::string m_Path;
 	std::string m_AssetPath;
-	std::string m_PrimaryStarpakPath;
+	std::string m_OutputPath;
 
 	std::vector<PakAsset_t> m_Assets;
-
-	std::vector<std::string> m_vStarpakPaths;
-	std::vector<std::string> m_vOptStarpakPaths;
 
 	std::vector<CPakVSegment> m_vVirtualSegments;
 	std::vector<CPakPage> m_vPages;
@@ -289,5 +274,16 @@ private:
 	std::vector<PakGuidRefHdr_t> m_vGuidDescriptors;
 	std::vector<uint32_t> m_vFileRelations;
 
-	std::vector<StreamableDataEntry> m_vStarpakDataBlocks;
+	std::vector<std::string> m_mandatoryStreamFilePaths;
+	std::vector<std::string> m_optionalStreamFilePaths;
+
+	std::vector<PakStreamSetEntry_s> m_mandatoryStreamingDataBlocks;
+	std::vector<PakStreamSetEntry_s> m_optionalStreamingDataBlocks;
+
+	BinaryIO m_mandatoryStreamFile;
+	BinaryIO m_optionalStreamFile;
+
+	// next available starpak data offset
+	uint64_t m_nextMandatoryStarpakOffset = STARPAK_DATABLOCK_ALIGNMENT;
+	uint64_t m_nextOptionalStarpakOffset = STARPAK_DATABLOCK_ALIGNMENT;
 };
