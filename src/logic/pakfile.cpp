@@ -883,7 +883,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	if (pakVersion < 0)
 		Error("No \"version\" field provided.\n");
 
-	this->SetVersion(pakVersion);
+	this->SetVersion(static_cast<uint16_t>(pakVersion));
 	const char* const pakName = JSON_GetValueOrDefault(doc, "name", DEFAULT_RPAK_NAME);
 
 	// print parsed settings

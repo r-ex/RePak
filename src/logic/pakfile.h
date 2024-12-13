@@ -159,7 +159,15 @@ public:
 	inline size_t GetNumPages() const { return m_vPages.size(); };
 
 	inline uint32_t GetVersion() const { return m_Header.fileVersion; }
-	inline void SetVersion(int version) { m_Header.fileVersion = (short)version; }
+	inline void SetVersion(const uint16_t version)
+	{
+		if ((version != 7) && (version != 8))
+		{
+			Error("Unsupported pak file version %hu.\n", version);
+		}
+
+		m_Header.fileVersion = version;
+	}
 
 	inline size_t GetHeaderSize() const
 	{
