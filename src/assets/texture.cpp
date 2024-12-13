@@ -4,24 +4,8 @@
 #include "public/texture.h"
 
 // materialGeneratedTexture - whether this texture's creation was invoked by material automatic texture generation
-void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, const char* assetPath, const bool forceDisableStreaming, const bool errorOnFail)
+static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming)
 {
-    const PakGuid_t assetGuid = guidOverride != 0
-        ? guidOverride
-        : RTech::StringToGuid(assetPath);
-
-    PakAsset_t* const existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
-    if (existingAsset)
-    {
-        // if the caller has requested that this error is not triggered
-        // this should only really be from material textures or ui image atlases
-        // as those assets may unavoidably reuse a texture
-        if (errorOnFail)
-            Error("Tried to add texture asset \"%s\" twice.\n", assetPath);
-
-        return;
-    }
-
     const std::string textureFilePath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".dds");
     BinaryIO input;
 
@@ -240,10 +224,21 @@ void Assets::AddTextureAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
     input.Close();
 }
 
-void Assets::AddTextureAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
+bool Texture_AutoAddTexture(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming)
 {
-    const PakGuid_t assetGuid = Pak_GetGuidOverridable(mapEntry, assetPath);
-    const bool disableStreaming = JSON_GetValueOrDefault(mapEntry, "$disableStreaming", false);
+    PakAsset_t* const existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
 
-    AddTextureAsset(pak, assetGuid, assetPath, disableStreaming, false);
+    if (existingAsset)
+        return false; // already present in the pak.
+
+    Log("Auto-adding 'txtr' asset \"%s\".\n", assetPath);
+    Texture_InternalAddTexture(pak, assetGuid, assetPath, forceDisableStreaming);
+
+    return true;
+}
+
+void Assets::AddTextureAsset_v8(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+{
+    const bool disableStreaming = JSON_GetValueOrDefault(mapEntry, "$disableStreaming", false);
+    Texture_InternalAddTexture(pak, assetGuid, assetPath, disableStreaming);
 }

@@ -3,17 +3,17 @@
 #include "utils/dxutils.h"
 #include "public/texture.h"
 
-void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
+extern bool Texture_AutoAddTexture(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming);
+
+void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     // get the info for the ui atlas image
     const char* const atlasPath = JSON_GetValueRequired<const char*>(mapEntry, "atlas");
-
-    Log("Auto-adding 'txtr' asset \"%s\".\n", atlasPath);
-
     const PakGuid_t atlasGuid = RTech::StringToGuid(atlasPath);
-    AddTextureAsset(pak, atlasGuid, atlasPath,
-        true/*streaming disabled as uimg can not be streamed*/,
-        true/*error if already added because if streaming was enabled, the atlas was written in a streaming set*/);
+
+    // note: we error here as we can't check if it was added as a streamed texture, and uimg doesn't support texture streaming.
+    if (!Texture_AutoAddTexture(pak, atlasGuid, atlasPath, true/*streaming disabled as uimg can not be streamed*/))
+        Error("Atlas asset \"%s\" with GUID 0x%llX was already added as 'txtr' asset; it can only be added through an 'uimg' asset.\n", atlasPath, atlasGuid);
 
     PakAsset_t* const atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 
@@ -161,7 +161,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const char* const assetPat
     // create and init the asset entry
     PakAsset_t asset;
 
-    asset.InitAsset(assetPath, Pak_GetGuidOverridable(mapEntry, assetPath), hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = UIMG_VERSION;

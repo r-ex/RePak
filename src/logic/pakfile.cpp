@@ -39,7 +39,15 @@ bool CPakFile::AddJSONAsset(const char* const targetType, const char* const asse
 		Log("Adding '%s' asset \"%s\".\n", assetType, assetPath);
 
 		const steady_clock::time_point start = high_resolution_clock::now();
-		targetFunc(this, assetPath, file);
+		const PakGuid_t assetGuid = Pak_GetGuidOverridable(file, assetPath);
+
+		uint32_t slotIndex;
+		const PakAsset_t* const existingAsset = GetAssetByGuid(assetGuid, &slotIndex, true);
+
+		if (existingAsset)
+			Error("'%s' asset \"%s\" with GUID 0x%llX was already added in slot #%u.\n", assetType, assetPath, assetGuid, slotIndex);
+
+		targetFunc(this, assetGuid, assetPath, file);
 		const steady_clock::time_point stop = high_resolution_clock::now();
 
 		const microseconds duration = duration_cast<microseconds>(stop - start);

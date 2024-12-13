@@ -43,17 +43,16 @@ static void ShaderSet_SetInputSlots(ShaderSetAssetHeader_t* const hdr, PakAsset_
 	*inputCount = textureCount;
 }
 
-extern void Shader_AddShaderV8(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const bool errorOnDuplicate);
-extern void Shader_AddShaderV12(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const bool errorOnDuplicate);
+extern bool Shader_AutoAddShader(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int shaderAssetVersion);
 
 static void ShaderSet_AutoAddEmbeddedShader(CPakFile* const pak, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int assetVersion)
 {
 	if (shader)
 	{
-		const std::string assetPath = Utils::VFormat("embedded_0x%llX", shaderGuid);
+		const std::string assetPath = Utils::VFormat("embedded_%llx", shaderGuid);
 
-		const auto func = assetVersion == 8 ? Shader_AddShaderV8 : Shader_AddShaderV12;
-		func(pak, assetPath.c_str(), shader, shaderGuid, false);
+		// note: shaderset v8 is tied to shader v8, shaderset v11 is tied to shader v12.
+		Shader_AutoAddShader(pak, assetPath.c_str(), shader, shaderGuid, assetVersion == 8 ? 8 : 12);
 	}
 }
 
@@ -133,20 +132,22 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 // See if any of the other unknown variables are actually required
 
 template <typename ShaderSetAssetHeader_t>
-static void ShaderSet_AddFromMap(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry, const int assetVersion)
+static void ShaderSet_AddFromMap(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry, const int assetVersion)
 {
+	UNUSED(mapEntry);
+
 	CMultiShaderWrapperIO::ShaderCache_t cache = {};
 	ShaderSet_LoadFromMSW(pak, assetPath, cache);
 
-	ShaderSet_InternalCreateSet<ShaderSetAssetHeader_t>(pak, assetPath, &cache.shaderSet, Pak_GetGuidOverridable(mapEntry, assetPath), assetVersion);
+	ShaderSet_InternalCreateSet<ShaderSetAssetHeader_t>(pak, assetPath, &cache.shaderSet, assetGuid, assetVersion);
 }
 
-void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-	ShaderSet_AddFromMap<ShaderSetAssetHeader_v8_t>(pak, assetPath, mapEntry, 8);
+	ShaderSet_AddFromMap<ShaderSetAssetHeader_v8_t>(pak, assetGuid, assetPath, mapEntry, 8);
 }
 
-void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-	ShaderSet_AddFromMap<ShaderSetAssetHeader_v11_t>(pak, assetPath, mapEntry, 11);
+	ShaderSet_AddFromMap<ShaderSetAssetHeader_v11_t>(pak, assetGuid, assetPath, mapEntry, 11);
 }

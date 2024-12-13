@@ -38,7 +38,10 @@ bool AnimSeq_AddSequenceRefs(CPakDataChunk* const chunk, CPakFile* const pak, ui
             Log("Auto-adding 'aseq' asset \"%s\".\n", sequencePath);
 
             guid = RTech::StringToGuid(sequencePath);
-            Assets::AddAnimSeqAsset(pak, guid, sequencePath);
+            const PakAsset_t* const existingAsset = pak->GetAssetByGuid(guid, nullptr, true);
+
+            if (!existingAsset)
+                Assets::AddAnimSeqAsset(pak, guid, sequencePath);
         }
 
         pGuids[seqIndex] = guid;
@@ -47,19 +50,8 @@ bool AnimSeq_AddSequenceRefs(CPakDataChunk* const chunk, CPakFile* const pak, ui
     return true;
 }
 
-void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t guidOverride, const char* const assetPath)
+void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
-    const PakGuid_t assetGuid = guidOverride != 0
-        ? guidOverride
-        : RTech::StringToGuid(assetPath);
-
-    const PakAsset_t* existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
-    if (existingAsset)
-    {
-        Warning("Tried to add animseq asset \"%s\" twice, skipping...\n", assetPath);
-        return;
-    }
-
     const std::string rseqFilePath = pak->GetAssetPath() + assetPath;
 
     // begin rseq input
@@ -132,8 +124,8 @@ void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t guidOverride, 
     pak->PushAsset(asset);
 }
 
-void Assets::AddAnimSeqAsset_v7(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddAnimSeqAsset_v7(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    const PakGuid_t assetGuid = Pak_GetGuidOverridable(mapEntry, assetPath);
+    UNUSED(mapEntry);
     AddAnimSeqAsset(pak, assetGuid, assetPath);
 }

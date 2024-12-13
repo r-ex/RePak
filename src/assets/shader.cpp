@@ -135,17 +135,8 @@ static void Shader_SetupHeader(ShaderAssetHeader_v12_t* const hdr, const CMultiS
 
 template<typename ShaderAssetHeader_t>
 static void Shader_InternalAddShader(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, 
-									const PakGuid_t shaderGuid, const int assetVersion, const bool errorOnDuplicate)
+									const PakGuid_t shaderGuid, const int assetVersion)
 {
-	PakAsset_t* const existingAsset = pak->GetAssetByGuid(shaderGuid, nullptr, true);
-	if (existingAsset)
-	{
-		if (errorOnDuplicate)
-			Error("Tried to add shader asset \"%s\" twice.\n", assetPath);
-
-		return;
-	}
-
 	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderAssetHeader_t), SF_HEAD, 8);
 
 	ShaderAssetHeader_t* const hdr = reinterpret_cast<ShaderAssetHeader_t*>(hdrChunk.Data());
@@ -195,28 +186,45 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 	pak->PushAsset(asset);
 }
 
-void Shader_AddShaderV8(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const bool errorOnDuplicate)
+static void Shader_AddShaderV8(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid)
 {
-	Shader_InternalAddShader<ShaderAssetHeader_v8_t>(pak, assetPath, shader, shaderGuid, 8, errorOnDuplicate);
+	Shader_InternalAddShader<ShaderAssetHeader_v8_t>(pak, assetPath, shader, shaderGuid, 8);
 }
 
-void Shader_AddShaderV12(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const bool errorOnDuplicate)
+static void Shader_AddShaderV12(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid)
 {
-	Shader_InternalAddShader<ShaderAssetHeader_v12_t>(pak, assetPath, shader, shaderGuid, 12, errorOnDuplicate);
+	Shader_InternalAddShader<ShaderAssetHeader_v12_t>(pak, assetPath, shader, shaderGuid, 12);
 }
 
-void Assets::AddShaderAsset_v8(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
+bool Shader_AutoAddShader(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int shaderAssetVersion)
 {
+	PakAsset_t* const existingAsset = pak->GetAssetByGuid(shaderGuid, nullptr, true);
+
+	if (existingAsset)
+		return false;
+
+	Log("Auto-adding 'shdr' asset \"%s\".\n", assetPath);
+
+	const auto func = shaderAssetVersion == 8 ? Shader_AddShaderV8 : Shader_AddShaderV12;
+	func(pak, assetPath, shader, shaderGuid);
+
+	return true;
+}
+
+void Assets::AddShaderAsset_v8(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+{
+	UNUSED(mapEntry);
 	CMultiShaderWrapperIO::ShaderCache_t cache = {};
 
 	Shader_LoadFromMSW(pak, assetPath, cache);
-	Shader_AddShaderV8(pak, assetPath, cache.shader, Pak_GetGuidOverridable(mapEntry, assetPath), true);
+	Shader_AddShaderV8(pak, assetPath, cache.shader, assetGuid);
 }
 
-void Assets::AddShaderAsset_v12(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
+	UNUSED(mapEntry);
 	CMultiShaderWrapperIO::ShaderCache_t cache = {};
 
 	Shader_LoadFromMSW(pak, assetPath, cache);
-	Shader_AddShaderV12(pak, assetPath, cache.shader, Pak_GetGuidOverridable(mapEntry, assetPath), true);
+	Shader_AddShaderV12(pak, assetPath, cache.shader, assetGuid);
 }

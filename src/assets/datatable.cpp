@@ -145,8 +145,9 @@ static void DataTable_SetupRows(CPakFile* const pak, CPakDataChunk& rowDataChunk
 }
 
 // VERSION 8
-void Assets::AddDataTableAsset(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddDataTableAsset(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
+    UNUSED(mapEntry);
     const std::string datatableFile = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".csv");
     std::ifstream datatableStream(datatableFile);
 
@@ -216,7 +217,7 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const char* const assetPath,
 
     asset.InitAsset(
         assetPath,
-        Pak_GetGuidOverridable(mapEntry, assetPath),
+        assetGuid,
         hdrChunk.GetPointer(), hdrChunk.GetSize(),
         rowDataChunk.GetPointer(),
         UINT64_MAX, UINT64_MAX, AssetType::DTBL);

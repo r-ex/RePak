@@ -9,7 +9,7 @@ extern bool AnimSeq_AddSequenceRefs(CPakDataChunk* const chunk, CPakFile* const 
 // anim rigs are stored in rmdl's. use this to read it out.
 extern char* Model_ReadRMDLFile(const std::string& path);
 
-void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     // open and validate file to get buffer
     const char* const animRigFileBuffer = Model_ReadRMDLFile(pak->GetAssetPath() + assetPath);
@@ -50,7 +50,7 @@ void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const char* const assetPath
 
     PakAsset_t asset;
 
-    asset.InitAsset(assetPath, Pak_GetGuidOverridable(mapEntry, assetPath), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ARIG);
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ARIG);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = 4;

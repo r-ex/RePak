@@ -4,6 +4,8 @@
 
 #undef GetObject
 
+extern bool Texture_AutoAddTexture(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming);
+
 static void Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Value& texture, const int index, const bool disableStreaming)
 {
     // check if texture string is an asset guid (e.g., "0x5DCAT")
@@ -15,10 +17,7 @@ static void Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Va
     if (texture.GetStringLength() == 0)
         Error("Texture defined in slot #%i was empty.\n", index);
 
-    const char* const texturePath = texture.GetString();
-
-    Log("Auto-adding 'txtr' asset \"%s\".\n", texturePath);
-    Assets::AddTextureAsset(pak, 0, texturePath, disableStreaming, false);
+    Texture_AutoAddTexture(pak, 0, texture.GetString(), disableStreaming);
 }
 
 // we need to take better account of textures once asset caching becomes a thing
@@ -484,7 +483,7 @@ static bool Material_OpenFile(CPakFile* const pak, const char* const assetPath, 
 }
 
 // VERSION 7
-void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     rapidjson::Document document;
 
@@ -513,7 +512,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 
     // parse json inputs for matl header
     matlAsset->FromJSON(matEntry);
-    matlAsset->guid = Pak_GetGuidOverridable(matEntry, assetPath);
+    matlAsset->guid = assetGuid;
     
     // !!!R2 SPECIFIC!!!
     {
@@ -695,7 +694,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 
     PakAsset_t asset;
 
-    asset.InitAsset(assetPath, matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
     asset.version = 12;
 
     asset.pageEnd = pak->GetNumPages();
@@ -710,7 +709,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const char* const assetPa
 }
 
 // VERSION 8
-void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     rapidjson::Document document;
 
@@ -738,7 +737,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
 
     // parse json inputs for matl header
     matlAsset->FromJSON(matEntry);
-    matlAsset->guid = Pak_GetGuidOverridable(matEntry, assetPath);
+    matlAsset->guid = assetGuid;
 
     const size_t nameBufLen = matlAsset->name.length() + 1;
 
@@ -872,7 +871,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const char* const assetPa
     PakAsset_t asset;
 
 
-    asset.InitAsset(assetPath, matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
     asset.SetHeaderPointer(hdrChunk.Data());
     asset.version = 15;
 

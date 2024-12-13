@@ -2,7 +2,7 @@
 #include "assets.h"
 
 // only tested for apex, should be identical on tf2
-void Assets::AddPatchAsset(CPakFile* pak, const char* assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddPatchAsset(CPakFile* const pak, const PakGuid_t assetGuid, const char* assetPath, const rapidjson::Value& mapEntry)
 {
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(PatchAssetHeader_t), SF_HEAD, 8);
 
@@ -66,9 +66,7 @@ void Assets::AddPatchAsset(CPakFile* pak, const char* assetPath, const rapidjson
     PakAsset_t asset;
 
     // NOTE: the only Ptch asset in the game has guid 0x6fc6fa5ad8f8bc9c
-    const PakGuid_t guid = Pak_GetGuidOverridable(mapEntry, assetPath);
-
-    asset.InitAsset(assetPath, guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::PTCH);
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::PTCH);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = 1;

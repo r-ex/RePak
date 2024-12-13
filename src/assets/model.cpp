@@ -62,7 +62,7 @@ static char* Model_ReadVGFile(const std::string& path, size_t* const pFileSize)
 
 extern bool AnimSeq_AddSequenceRefs(CPakDataChunk* const chunk, CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
 
-void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ModelAssetHeader_t), SF_HEAD, 16);
     ModelAssetHeader_t* pHdr = reinterpret_cast<ModelAssetHeader_t*>(hdrChunk.Data());
@@ -277,7 +277,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const char* const assetPath, 
 
     PakAsset_t asset;
 
-    asset.InitAsset(assetPath, Pak_GetGuidOverridable(mapEntry, assetPath), hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.offset, UINT64_MAX, AssetType::RMDL);
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), de.offset, UINT64_MAX, AssetType::RMDL);
     asset.SetHeaderPointer(hdrChunk.Data());
   
     asset.version = RMDL_VERSION;

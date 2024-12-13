@@ -119,7 +119,7 @@ public:
 	// assets
 	//----------------------------------------------------------------------------
 
-	typedef void(*AssetTypeFunc_t)(CPakFile*, const char*, const rapidjson::Value&);
+	typedef void(*AssetTypeFunc_t)(CPakFile*, const PakGuid_t, const char*, const rapidjson::Value&);
 
 	bool AddJSONAsset(const char* const targetType, const char* const assetType, const char* const assetPath,
 					  const rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
