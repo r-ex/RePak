@@ -13,7 +13,7 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
         Error("Failed to open texture asset \"%s\".\n", textureFilePath.c_str());
 
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(TextureAssetHeader_t), SF_HEAD, 8);
-    TextureAssetHeader_t* hdr = reinterpret_cast<TextureAssetHeader_t*>(hdrChunk.Data());
+    TextureAssetHeader_t* const hdr = reinterpret_cast<TextureAssetHeader_t*>(hdrChunk.Data());
 
     // used for creating data buffers
     struct {
@@ -58,7 +58,7 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
                 Error("Attempted to add a texture asset that was not using a supported DDS type, exiting...\n");
         }
 
-        const char* pDxgiFormat = DXUtils::GetFormatAsString(dxgiFormat);
+        const char* const pDxgiFormat = DXUtils::GetFormatAsString(dxgiFormat);
 
         Log("-> fmt: %s\n", pDxgiFormat);
         hdr->imgFormat = s_txtrFormatMap.at(dxgiFormat);
@@ -90,13 +90,13 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
             if (hdr->height >> mipLevel > 1)
                 mipHeight = (hdr->height >> mipLevel) - 1;
             
-            uint8_t x = s_pBytesPerPixel[hdr->imgFormat].first;
-            uint8_t y = s_pBytesPerPixel[hdr->imgFormat].second;
+            const uint8_t x = s_pBytesPerPixel[hdr->imgFormat].first;
+            const uint8_t y = s_pBytesPerPixel[hdr->imgFormat].second;
 
-            uint32_t bppWidth = (y + mipWidth) >> (y >> 1);
-            uint32_t bppHeight = (y + mipHeight) >> (y >> 1);
+            const uint32_t bppWidth = (y + mipWidth) >> (y >> 1);
+            const uint32_t bppHeight = (y + mipHeight) >> (y >> 1);
             
-            size_t slicePitch = x * bppWidth * bppHeight;
+            const size_t slicePitch = x * bppWidth * bppHeight;
 
             mipLevel_t mipMap{ mipOffset, slicePitch, IALIGN16(slicePitch),
                 static_cast<uint16_t>(mipWidth + 1), static_cast<uint16_t>(mipHeight + 1), static_cast<uint8_t>(mipLevel + 1) };
@@ -153,8 +153,8 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
     }
 
     CPakDataChunk dataChunk = pak->CreateDataChunk(mipSizes.staticSize, SF_CPU | SF_TEMP, 16);
-    char* streamedbuf = new char[mipSizes.streamedSize];
-    char* optstreamedbuf = new char[mipSizes.streamedOptSize];
+    char* const streamedbuf = new char[mipSizes.streamedSize];
+    char* const optstreamedbuf = new char[mipSizes.streamedOptSize];
 
     char* pCurrentPosStatic = dataChunk.Data();
     char* pCurrentPosStreamed = streamedbuf;
