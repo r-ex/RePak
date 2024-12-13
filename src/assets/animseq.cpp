@@ -77,6 +77,7 @@ void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t assetGuid, con
     rseqInput.Read(dataChunk.Data() + rseqNameLenAligned, rseqFileSize);
     rseqInput.Close();
 
+    // todo: use reference/pointer instead of copy?
     mstudioseqdesc_t seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(dataChunk.Data() + rseqNameLenAligned);
     
     AnimSeqAssetHeader_t* const aseqHeader = reinterpret_cast<AnimSeqAssetHeader_t*>(hdrChunk.Data());

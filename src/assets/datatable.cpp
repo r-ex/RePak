@@ -177,6 +177,7 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const PakGuid_t assetGuid, c
     else
         hdrChunk = pak->CreateDataChunk(sizeof(datatable_v1_t), SF_HEAD, 16);
 
+    // todo: allocate on stack?
     datatable_asset_t* pHdr = new datatable_asset_t{}; // temp header that we store values in, this is for sharing funcs across versions
 
     pHdr->numColumns = static_cast<uint32_t>(doc.GetColumnCount());
