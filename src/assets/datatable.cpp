@@ -177,42 +177,41 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const PakGuid_t assetGuid, c
     else
         hdrChunk = pak->CreateDataChunk(sizeof(datatable_v1_t), SF_HEAD, 16);
 
-    // todo: allocate on stack?
-    datatable_asset_t* pHdr = new datatable_asset_t{}; // temp header that we store values in, this is for sharing funcs across versions
+    datatable_asset_t dtblHdr{}; // temp header that we store values in, this is for sharing funcs across versions
 
-    pHdr->numColumns = static_cast<uint32_t>(doc.GetColumnCount());
-    pHdr->numRows = static_cast<uint32_t>(doc.GetRowCount()-1); // -1 because last row isnt added (used for type info)
-    pHdr->assetPath = assetPath;
+    dtblHdr.numColumns = static_cast<uint32_t>(doc.GetColumnCount());
+    dtblHdr.numRows = static_cast<uint32_t>(doc.GetRowCount()-1); // -1 because last row isnt added (used for type info)
+    dtblHdr.assetPath = assetPath;
 
     // create column chunk
-    CPakDataChunk colChunk = pak->CreateDataChunk(sizeof(datacolumn_t) * pHdr->numColumns, SF_CPU, 8);
+    CPakDataChunk colChunk = pak->CreateDataChunk(sizeof(datacolumn_t) * dtblHdr.numColumns, SF_CPU, 8);
     
     // colums from data chunk
-    pHdr->pDataColums = reinterpret_cast<datacolumn_t*>(colChunk.Data());
+    dtblHdr.pDataColums = reinterpret_cast<datacolumn_t*>(colChunk.Data());
 
     // setup data in column data chunk
-    DataTable_SetupColumns(pak, colChunk, pHdr, doc);
+    DataTable_SetupColumns(pak, colChunk, &dtblHdr, doc);
 
     // setup column page ptr
-    pHdr->pColumns = colChunk.GetPointer();
+    dtblHdr.pColumns = colChunk.GetPointer();
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_asset_t, pColumns)));
 
     // page for Row Data
-    CPakDataChunk rowDataChunk = pak->CreateDataChunk(pHdr->rowDataPageSize, SF_CPU, 8);
+    CPakDataChunk rowDataChunk = pak->CreateDataChunk(dtblHdr.rowDataPageSize, SF_CPU, 8);
 
     // page for string entries
-    CPakDataChunk stringChunk = pak->CreateDataChunk(pHdr->stringEntriesSize, SF_CPU, 8);
+    CPakDataChunk stringChunk = pak->CreateDataChunk(dtblHdr.stringEntriesSize, SF_CPU, 8);
 
     // setup row data chunks
-    DataTable_SetupRows(pak, rowDataChunk, stringChunk, pHdr, doc);
+    DataTable_SetupRows(pak, rowDataChunk, stringChunk, &dtblHdr, doc);
 
     // setup row page ptr
-    pHdr->pRows = rowDataChunk.GetPointer();
+    dtblHdr.pRows = rowDataChunk.GetPointer();
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_asset_t, pRows)));
 
-    pHdr->WriteToBuffer(hdrChunk.Data(), pak->GetVersion());
+    dtblHdr.WriteToBuffer(hdrChunk.Data(), pak->GetVersion());
 
     PakAsset_t asset;
 
@@ -233,6 +232,4 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const PakGuid_t assetGuid, c
     asset.remainingDependencyCount = 1; // asset only depends on itself
 
     pak->PushAsset(asset);
-
-    delete pHdr;
 }

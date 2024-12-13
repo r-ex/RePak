@@ -498,9 +498,9 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
         : 0; // note: no error as materials without textures do exist.
              // typically, these are prepass/vsm/etc materials.
 
-    MaterialAsset_t* matlAsset = new MaterialAsset_t{};
-    matlAsset->assetVersion = 12; // set asset as a titanfall 2 material
-    matlAsset->path = Utils::ChangeExtension(assetPath, "");
+    MaterialAsset_t matlAsset{};
+    matlAsset.assetVersion = 12; // set asset as a titanfall 2 material
+    matlAsset.path = Utils::ChangeExtension(assetPath, "");
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
@@ -511,29 +511,29 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     size_t textureRefSize = textureCount * 8; // size of the texture guid section.
 
     // parse json inputs for matl header
-    matlAsset->FromJSON(matEntry);
-    matlAsset->guid = assetGuid;
+    matlAsset.FromJSON(matEntry);
+    matlAsset.guid = assetGuid;
     
     // !!!R2 SPECIFIC!!!
     {
-        const size_t nameBufLen = matlAsset->name.length() + 1;
+        const size_t nameBufLen = matlAsset.name.length() + 1;
         CPakDataChunk nameChunk = pak->CreateDataChunk(nameBufLen, SF_DEV | SF_CPU, 1);
 
-        sprintf_s(nameChunk.Data(), nameBufLen, "%s", matlAsset->name.c_str());
+        sprintf_s(nameChunk.Data(), nameBufLen, "%s", matlAsset.name.c_str());
 
-        matlAsset->materialName = nameChunk.GetPointer();
+        matlAsset.materialName = nameChunk.GetPointer();
 
         pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, materialName)));
     }
 
-    if (matlAsset->materialType != _TYPE_LEGACY)
-        Error("Material type '%s' is not supported on version 12 (Titanfall 2) assets.\n", matlAsset->materialTypeStr.c_str());
+    if (matlAsset.materialType != _TYPE_LEGACY)
+        Error("Material type '%s' is not supported on version 12 (Titanfall 2) assets.\n", matlAsset.materialTypeStr.c_str());
 
-    if ((matlAsset->materialTypeStr == "fix" || matlAsset->materialTypeStr == "skn"))
+    if ((matlAsset.materialTypeStr == "fix" || matlAsset.materialTypeStr == "skn"))
     {
         for (int i = 0; i < 2; ++i)
         {
-            MaterialDXState_v15_t& dxState = matlAsset->dxStates[i];
+            MaterialDXState_v15_t& dxState = matlAsset.dxStates[i];
 
             dxState.blendStates[0] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
             dxState.blendStates[1] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
@@ -545,7 +545,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     {
         for (int i = 0; i < 2; ++i)
         {
-            MaterialDXState_v15_t& dxState = matlAsset->dxStates[i];
+            MaterialDXState_v15_t& dxState = matlAsset.dxStates[i];
 
             dxState.blendStates[0] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
             dxState.blendStates[1] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
@@ -554,8 +554,8 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
         }
     }
 
-    const size_t surfaceProp1Size = !matlAsset->surface.empty() ? (matlAsset->surface.length() + 1) : 0;
-    const size_t surfaceProp2Size = !matlAsset->surface2.empty() ? (matlAsset->surface2.length() + 1) : 0;
+    const size_t surfaceProp1Size = !matlAsset.surface.empty() ? (matlAsset.surface.length() + 1) : 0;
+    const size_t surfaceProp2Size = !matlAsset.surface2.empty() ? (matlAsset.surface2.length() + 1) : 0;
 
     const size_t dataBufSize = (textureRefSize * 2) + surfaceProp1Size + surfaceProp2Size;
 
@@ -564,7 +564,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     if (JSON_GetValue(matEntry, "$preset", presetValue))
     {
         // get presets for dxstate, derived from existing r2 materials
-        Material_SetTitanfall2Preset(matlAsset, presetValue);
+        Material_SetTitanfall2Preset(&matlAsset, presetValue);
     }
 
     // asset data
@@ -589,13 +589,13 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     // write the surface names into the buffer
     if (surfaceProp1Size)
     {
-        snprintf(dataBuf, surfaceProp1Size, "%s", matlAsset->surface.c_str());
+        snprintf(dataBuf, surfaceProp1Size, "%s", matlAsset.surface.c_str());
         dataBuf += surfaceProp1Size;
     }
 
     if (surfaceProp2Size)
     {
-        snprintf(dataBuf, surfaceProp2Size, "%s", matlAsset->surface2.c_str());
+        snprintf(dataBuf, surfaceProp2Size, "%s", matlAsset.surface2.c_str());
         dataBuf += surfaceProp2Size;
     }
 
@@ -604,24 +604,24 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     
     size_t currentDataBufOffset = 0;
     
-    matlAsset->textureHandles = dataChunk.GetPointer(currentDataBufOffset);
+    matlAsset.textureHandles = dataChunk.GetPointer(currentDataBufOffset);
     pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, textureHandles)));
     currentDataBufOffset += textureRefSize;
 
-    matlAsset->streamingTextureHandles = dataChunk.GetPointer(currentDataBufOffset);
+    matlAsset.streamingTextureHandles = dataChunk.GetPointer(currentDataBufOffset);
     pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, streamingTextureHandles)));
     currentDataBufOffset += textureRefSize;
 
     if (surfaceProp1Size)
     {
-        matlAsset->surfaceProp = dataChunk.GetPointer(currentDataBufOffset);
+        matlAsset.surfaceProp = dataChunk.GetPointer(currentDataBufOffset);
         pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, surfaceProp)));
         currentDataBufOffset += surfaceProp1Size;
     }
 
     if (surfaceProp2Size)
     {
-        matlAsset->surfaceProp2 = dataChunk.GetPointer(currentDataBufOffset);
+        matlAsset.surfaceProp2 = dataChunk.GetPointer(currentDataBufOffset);
         pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, surfaceProp2)));
         currentDataBufOffset += surfaceProp2Size;
     }
@@ -631,7 +631,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     // loop thru referenced assets (depth materials, colpass material) note: shaderset isn't inline with these vars in r2, so we set it after
     for (int i = 0; i < 3; ++i)
     {
-        const PakGuid_t guid = *((PakGuid_t*)&matlAsset->depthShadowMaterial + i);
+        const PakGuid_t guid = *((PakGuid_t*)&matlAsset.depthShadowMaterial + i);
 
         if (guid != 0)
         {
@@ -647,11 +647,11 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     }
 
     // do colpass here because of how MaterialAsset_t is setup
-    if (matlAsset->colpassMaterial != 0)
+    if (matlAsset.colpassMaterial != 0)
     {
         pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, colpassMaterial)));
 
-        PakAsset_t* asset = pak->GetAssetByGuid(matlAsset->colpassMaterial, nullptr, true);
+        PakAsset_t* asset = pak->GetAssetByGuid(matlAsset.colpassMaterial, nullptr, true);
 
         if (asset)
             pak->SetCurrentAssetAsDependentForAsset(asset);
@@ -660,11 +660,11 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     }
 
     // shaderset, see note above
-    if (matlAsset->shaderSet != 0)
+    if (matlAsset.shaderSet != 0)
     {
         pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, shaderSet)));
 
-        PakAsset_t* asset = pak->GetAssetByGuid(matlAsset->shaderSet, nullptr, true);
+        PakAsset_t* asset = pak->GetAssetByGuid(matlAsset.shaderSet, nullptr, true);
 
         if (asset)
             pak->SetCurrentAssetAsDependentForAsset(asset);
@@ -673,14 +673,14 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     }
 
     // write header now that we are done setting it up
-    matlAsset->WriteToBuffer(hdrChunk.Data());
+    matlAsset.WriteToBuffer(hdrChunk.Data());
 
     //////////////////////////////////////////
     /// cpu
     size_t dxStaticBufSize = 0;
     CPakDataChunk uberBufChunk;
 
-    Material_AddCpuData<MaterialShaderBufferV12>(pak, matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
+    Material_AddCpuData<MaterialShaderBufferV12>(pak, &matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
 
     MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
     cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
@@ -704,8 +704,6 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     asset.AddGuids(&guids);
 
     pak->PushAsset(asset);
-
-    delete matlAsset;
 }
 
 // VERSION 8
@@ -724,9 +722,9 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
         : 0; // note: no error as materials without textures do exist.
              // typically, these are prepass/vsm/etc materials.
 
-    MaterialAsset_t* matlAsset = new MaterialAsset_t{};
-    matlAsset->assetVersion = 15;
-    matlAsset->path = Utils::ChangeExtension(assetPath, "");
+    MaterialAsset_t matlAsset{};
+    matlAsset.assetVersion = 15;
+    matlAsset.path = Utils::ChangeExtension(assetPath, "");
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
@@ -736,13 +734,13 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
     size_t textureRefSize = textureCount * 8; // size of the texture guid section.
 
     // parse json inputs for matl header
-    matlAsset->FromJSON(matEntry);
-    matlAsset->guid = assetGuid;
+    matlAsset.FromJSON(matEntry);
+    matlAsset.guid = assetGuid;
 
-    const size_t nameBufLen = matlAsset->name.length() + 1;
+    const size_t nameBufLen = matlAsset.name.length() + 1;
 
-    const size_t surfaceProp1Size = !matlAsset->surface.empty() ? (matlAsset->surface.length() + 1) : 0;
-    const size_t surfaceProp2Size = !matlAsset->surface2.empty() ? (matlAsset->surface2.length() + 1) : 0;
+    const size_t surfaceProp1Size = !matlAsset.surface.empty() ? (matlAsset.surface.length() + 1) : 0;
+    const size_t surfaceProp2Size = !matlAsset.surface2.empty() ? (matlAsset.surface2.length() + 1) : 0;
 
     const size_t alignedPathSize = IALIGN4(nameBufLen);
     const size_t dataBufSize = alignedPathSize + (textureRefSize * 2) + surfaceProp1Size + surfaceProp2Size;
@@ -753,7 +751,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
     char* dataBuf = dataChunk.Data();
 
     // write asset name into the start of the buffer
-    snprintf(dataBuf, nameBufLen, "%s", matlAsset->name.c_str());
+    snprintf(dataBuf, nameBufLen, "%s", matlAsset.name.c_str());
     dataBuf += alignedPathSize;
 
     std::vector<PakGuidRefHdr_t> guids;
@@ -773,13 +771,13 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
     // write the surface names into the buffer
     if (surfaceProp1Size)
     {
-        snprintf(dataBuf, surfaceProp1Size, "%s", matlAsset->surface.c_str());
+        snprintf(dataBuf, surfaceProp1Size, "%s", matlAsset.surface.c_str());
         dataBuf += surfaceProp1Size;
     }
 
     if (surfaceProp2Size)
     {
-        snprintf(dataBuf, surfaceProp2Size, "%s", matlAsset->surface2.c_str());
+        snprintf(dataBuf, surfaceProp2Size, "%s", matlAsset.surface2.c_str());
         dataBuf += surfaceProp2Size;
     }
 
@@ -789,28 +787,28 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
 
     size_t currentDataBufOffset = 0;
 
-    matlAsset->materialName = dataChunk.GetPointer();
+    matlAsset.materialName = dataChunk.GetPointer();
     pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, materialName)));
     currentDataBufOffset += alignedPathSize;
 
-    matlAsset->textureHandles = dataChunk.GetPointer(currentDataBufOffset);
+    matlAsset.textureHandles = dataChunk.GetPointer(currentDataBufOffset);
     pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, textureHandles)));
     currentDataBufOffset += textureRefSize;
 
-    matlAsset->streamingTextureHandles = dataChunk.GetPointer(currentDataBufOffset);
+    matlAsset.streamingTextureHandles = dataChunk.GetPointer(currentDataBufOffset);
     pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, streamingTextureHandles)));
     currentDataBufOffset += textureRefSize;
 
     if (surfaceProp1Size)
     {
-        matlAsset->surfaceProp = dataChunk.GetPointer(currentDataBufOffset);
+        matlAsset.surfaceProp = dataChunk.GetPointer(currentDataBufOffset);
         pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, surfaceProp)));
         currentDataBufOffset += surfaceProp1Size;
     }
 
     if (surfaceProp2Size)
     {
-        matlAsset->surfaceProp2 = dataChunk.GetPointer(currentDataBufOffset);
+        matlAsset.surfaceProp2 = dataChunk.GetPointer(currentDataBufOffset);
         pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, surfaceProp2)));
         currentDataBufOffset += surfaceProp2Size;
     }
@@ -820,7 +818,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
     // loop thru referenced assets (depth materials, colpass material) note: shaderset isn't inline with these vars in r2, so we set it after
     for (int i = 0; i < 6; ++i)
     {
-        const PakGuid_t guid = *((PakGuid_t*)&matlAsset->depthShadowMaterial + i);
+        const PakGuid_t guid = *((PakGuid_t*)&matlAsset.depthShadowMaterial + i);
 
         if (guid != 0)
         {
@@ -836,11 +834,11 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
     }
 
     // texan
-    if (matlAsset->textureAnimation != 0)
+    if (matlAsset.textureAnimation != 0)
     {
         pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, textureAnimation)));
 
-        PakAsset_t* asset = pak->GetAssetByGuid(matlAsset->colpassMaterial, nullptr, true);
+        PakAsset_t* asset = pak->GetAssetByGuid(matlAsset.colpassMaterial, nullptr, true);
 
         if (asset)
             pak->SetCurrentAssetAsDependentForAsset(asset);
@@ -849,14 +847,14 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
     }
 
     // write header now that we are done setting it up
-    matlAsset->WriteToBuffer(hdrChunk.Data());
+    matlAsset.WriteToBuffer(hdrChunk.Data());
 
     //////////////////////////////////////////
     /// cpu
     size_t dxStaticBufSize = 0;
     CPakDataChunk uberBufChunk;
 
-    Material_AddCpuData<MaterialShaderBufferV15>(pak, matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
+    Material_AddCpuData<MaterialShaderBufferV15>(pak, &matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
 
     MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
     cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
@@ -884,6 +882,4 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
     asset.AddGuids(&guids);
 
     pak->PushAsset(asset);
-
-    delete matlAsset;
 }

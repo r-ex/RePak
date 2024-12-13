@@ -29,8 +29,7 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
     rseqInput.Read(dataChunk.Data() + rseqNameLenAligned, rseqFileSize);
     rseqInput.Close();
 
-    // todo: use reference/pointer instead of copy?
-    mstudioseqdesc_t seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(dataChunk.Data() + rseqNameLenAligned);
+    const mstudioseqdesc_t& seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(dataChunk.Data() + rseqNameLenAligned);
     
     AnimSeqAssetHeader_t* const aseqHeader = reinterpret_cast<AnimSeqAssetHeader_t*>(hdrChunk.Data());
     aseqHeader->szname = dataChunk.GetPointer();
@@ -51,7 +50,7 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
     {
         dataBuf.seek(rseqNameLenAligned + seqdesc.autolayerindex + (i * sizeof(mstudioautolayer_t)), rseekdir::beg);
 
-        const mstudioautolayer_t* autolayer = dataBuf.get<const mstudioautolayer_t>();
+        const mstudioautolayer_t* const autolayer = dataBuf.get<const mstudioautolayer_t>();
 
         if (autolayer->guid != 0)
             pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid)));
