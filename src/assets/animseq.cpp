@@ -2,55 +2,7 @@
 #include "assets.h"
 #include "public/studio.h"
 
-bool AnimSeq_AddSequenceRefs(CPakDataChunk* const chunk, CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
-{
-    rapidjson::Value::ConstMemberIterator sequencesIt;
-    const bool hasSequences = JSON_GetIterator(mapEntry, "$sequences", JSONFieldType_e::kArray, sequencesIt);
-
-    if (!hasSequences)
-        return false;
-
-    const rapidjson::Value::ConstArray sequencesArray = sequencesIt->value.GetArray();
-    const size_t numSequences = sequencesArray.Size();
-
-    (*chunk) = pak->CreateDataChunk(sizeof(PakGuid_t) * numSequences, SF_CPU, 64);
-    (*sequenceCount) = static_cast<uint32_t>(numSequences);
-
-    PakGuid_t* const pGuids = reinterpret_cast<PakGuid_t*>(chunk->Data());
-
-    int seqIndex = -1;
-    for (const auto& sequence : sequencesArray)
-    {
-        seqIndex++;
-        PakGuid_t guid;
-
-        if (!JSON_ParseNumber(sequence, guid))
-        {
-            if (!sequence.IsString())
-                Error("Sequence #%i is of unsupported type; expected %s or %s, found %s.\n", seqIndex,
-                    JSON_TypeToString(JSONFieldType_e::kUint64), JSON_TypeToString(JSONFieldType_e::kString),
-                    JSON_TypeToString(JSON_ExtractType(sequence)));
-
-            if (sequence.GetStringLength() == 0)
-                Error("Sequence #%i was defined as an invalid empty string.\n", seqIndex);
-
-            const char* const sequencePath = sequence.GetString();
-            Log("Auto-adding 'aseq' asset \"%s\".\n", sequencePath);
-
-            guid = RTech::StringToGuid(sequencePath);
-            const PakAsset_t* const existingAsset = pak->GetAssetByGuid(guid, nullptr, true);
-
-            if (!existingAsset)
-                Assets::AddAnimSeqAsset(pak, guid, sequencePath);
-        }
-
-        pGuids[seqIndex] = guid;
-    }
-
-    return true;
-}
-
-void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath)
+static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
     const std::string rseqFilePath = pak->GetAssetPath() + assetPath;
 
@@ -125,8 +77,56 @@ void Assets::AddAnimSeqAsset(CPakFile* const pak, const PakGuid_t assetGuid, con
     pak->PushAsset(asset);
 }
 
+bool AnimSeq_AddSequenceRefs(CPakDataChunk* const chunk, CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
+{
+    rapidjson::Value::ConstMemberIterator sequencesIt;
+    const bool hasSequences = JSON_GetIterator(mapEntry, "$sequences", JSONFieldType_e::kArray, sequencesIt);
+
+    if (!hasSequences)
+        return false;
+
+    const rapidjson::Value::ConstArray sequencesArray = sequencesIt->value.GetArray();
+    const size_t numSequences = sequencesArray.Size();
+
+    (*chunk) = pak->CreateDataChunk(sizeof(PakGuid_t) * numSequences, SF_CPU, 64);
+    (*sequenceCount) = static_cast<uint32_t>(numSequences);
+
+    PakGuid_t* const pGuids = reinterpret_cast<PakGuid_t*>(chunk->Data());
+
+    int seqIndex = -1;
+    for (const auto& sequence : sequencesArray)
+    {
+        seqIndex++;
+        PakGuid_t guid;
+
+        if (!JSON_ParseNumber(sequence, guid))
+        {
+            if (!sequence.IsString())
+                Error("Sequence #%i is of unsupported type; expected %s or %s, found %s.\n", seqIndex,
+                    JSON_TypeToString(JSONFieldType_e::kUint64), JSON_TypeToString(JSONFieldType_e::kString),
+                    JSON_TypeToString(JSON_ExtractType(sequence)));
+
+            if (sequence.GetStringLength() == 0)
+                Error("Sequence #%i was defined as an invalid empty string.\n", seqIndex);
+
+            const char* const sequencePath = sequence.GetString();
+            Log("Auto-adding 'aseq' asset \"%s\".\n", sequencePath);
+
+            guid = RTech::StringToGuid(sequencePath);
+            const PakAsset_t* const existingAsset = pak->GetAssetByGuid(guid, nullptr, true);
+
+            if (!existingAsset)
+                AnimSeq_InternalAddAnimSeq(pak, guid, sequencePath);
+        }
+
+        pGuids[seqIndex] = guid;
+    }
+
+    return true;
+}
+
 void Assets::AddAnimSeqAsset_v7(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     UNUSED(mapEntry);
-    AddAnimSeqAsset(pak, assetGuid, assetPath);
+    AnimSeq_InternalAddAnimSeq(pak, assetGuid, assetPath);
 }
