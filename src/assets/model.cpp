@@ -70,7 +70,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
     std::vector<PakGuidRefHdr_t> guids;
 
     const std::string rmdlFilePath = pak->GetAssetPath() + assetPath;
-    char* rmdlBuf = Model_ReadRMDLFile(rmdlFilePath);
+    char* const rmdlBuf = Model_ReadRMDLFile(rmdlFilePath); // todo: free rmdl buf
 
     studiohdr_t* studiohdr = reinterpret_cast<studiohdr_t*>(rmdlBuf);
 
@@ -81,7 +81,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
     const std::string vgFilePath = Utils::ChangeExtension(rmdlFilePath, ".vg");
 
     size_t vgFileSize = 0;
-    char* const vgBuf = Model_ReadVGFile(vgFilePath, &vgFileSize);
+    char* const vgBuf = Model_ReadVGFile(vgFilePath, &vgFileSize); // todo: free vg buf
 
     //
     // Physics

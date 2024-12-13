@@ -153,8 +153,8 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
     }
 
     CPakDataChunk dataChunk = pak->CreateDataChunk(mipSizes.staticSize, SF_CPU | SF_TEMP, 16);
-    char* const streamedbuf = new char[mipSizes.streamedSize];
-    char* const optstreamedbuf = new char[mipSizes.streamedOptSize];
+    char* const streamedbuf = new char[mipSizes.streamedSize]; // todo: free?
+    char* const optstreamedbuf = new char[mipSizes.streamedOptSize]; // todo: free?
 
     char* pCurrentPosStatic = dataChunk.Data();
     char* pCurrentPosStreamed = streamedbuf;
