@@ -294,9 +294,7 @@ public:
 
 	bool ReadFile(const char* filePath, ShaderCache_t* outCache)
 	{
-		if (!outCache)
-			return false;
-
+		assert(outCache);
 		FILE* f = NULL;
 
 		if (fopen_s(&f, filePath, "rb") == 0)
