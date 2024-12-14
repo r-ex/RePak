@@ -836,10 +836,10 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
     {
         pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, textureAnimation)));
 
-        PakAsset_t* asset = pak->GetAssetByGuid(matlAsset.colpassMaterial, nullptr, true);
+        PakAsset_t* txanAsset = pak->GetAssetByGuid(matlAsset.colpassMaterial, nullptr, true);
 
-        if (asset)
-            pak->SetCurrentAssetAsDependentForAsset(asset);
+        if (txanAsset)
+            pak->SetCurrentAssetAsDependentForAsset(txanAsset);
         else
             externalDependencyCount++;
     }
