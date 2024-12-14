@@ -323,6 +323,7 @@ public:
 				ReadShaderSet(f, outCache);
 			}
 
+			fclose(f);
 			return true;
 		}
 		else
