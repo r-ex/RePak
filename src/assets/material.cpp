@@ -17,7 +17,8 @@ static void Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Va
     if (texture.GetStringLength() == 0)
         Error("Texture defined in slot #%i was empty.\n", index);
 
-    Texture_AutoAddTexture(pak, 0, texture.GetString(), disableStreaming);
+    const char* const texturePath = texture.GetString();
+    Texture_AutoAddTexture(pak, RTech::StringToGuid(texturePath), texturePath, disableStreaming);
 }
 
 // we need to take better account of textures once asset caching becomes a thing
