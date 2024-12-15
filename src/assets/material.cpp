@@ -506,10 +506,9 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
 
-
     // some var declaration
     short externalDependencyCount = 0; // number of dependencies ouside this pak
-    size_t textureRefSize = textureCount * 8; // size of the texture guid section.
+    size_t textureRefSize = textureCount * sizeof(PakGuid_t); // size of the texture guid section.
 
     // parse json inputs for matl header
     matlAsset.FromJSON(matEntry);
@@ -636,7 +635,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
 
         if (guid != 0)
         {
-            pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, depthShadowMaterial) + (i * 8)));
+            pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, depthShadowMaterial) + (i * sizeof(PakGuid_t))));
 
             PakAsset_t* asset = pak->GetAssetByGuid(guid, nullptr, true);
 
@@ -732,7 +731,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
 
     // some var declaration
     short externalDependencyCount = 0; // number of dependencies ouside this pak
-    size_t textureRefSize = textureCount * 8; // size of the texture guid section.
+    size_t textureRefSize = textureCount * sizeof(PakGuid_t); // size of the texture guid section.
 
     // parse json inputs for matl header
     matlAsset.FromJSON(matEntry);
@@ -821,7 +820,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
     {
         const PakGuid_t guid = *((PakGuid_t*)&matlAsset.depthShadowMaterial + i);
 
-        pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, depthShadowMaterial) + (i * 8)));
+        pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, depthShadowMaterial) + (i * sizeof(PakGuid_t))));
 
         PakAsset_t* asset = pak->GetAssetByGuid(guid, nullptr, true);
 
