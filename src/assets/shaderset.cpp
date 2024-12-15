@@ -13,7 +13,7 @@ static void ShaderSet_LoadFromMSW(CPakFile* const pak, const char* const assetPa
 }
 
 template <typename ShaderSetAssetHeader_t>
-static void ShaderSet_SetInputSlots(ShaderSetAssetHeader_t* const hdr, PakAsset_t* const shader, const bool isVertexShader, const CMultiShaderWrapperIO::ShaderSet_t* const shaderSet, const int assetVersion)
+static void ShaderSet_SetInputSlots(ShaderSetAssetHeader_t* const hdr, PakAsset_t* const /*shader*/, const bool isVertexShader, const CMultiShaderWrapperIO::ShaderSet_t* const shaderSet, const int assetVersion)
 {
 	uint16_t* inputCount;
 
@@ -25,20 +25,20 @@ static void ShaderSet_SetInputSlots(ShaderSetAssetHeader_t* const hdr, PakAsset_
 		inputCount = isVertexShader ? &hdr->textureInputCounts[1] : &hdr->textureInputCounts[0];
 
 	const uint8_t textureCount = isVertexShader ? (uint8_t)shaderSet->numVertexShaderTextures : (uint8_t)shaderSet->numPixelShaderTextures;
-	const char* const shaderName = isVertexShader ? "vertex" : "pixel";
+	//const char* const shaderName = isVertexShader ? "vertex" : "pixel";
 
 	// If we have the shader in this pak, perform this check to make sure the
 	// shader provided by the user isn't corrupt or otherwise incompatible.
-	if (shader)
-	{
-		const ParsedDXShaderData_t* const shaderData = reinterpret_cast<const ParsedDXShaderData_t*>(shader->PublicData());
+	//if (shader)
+	//{
+	//	const ParsedDXShaderData_t* const shaderData = reinterpret_cast<const ParsedDXShaderData_t*>(shader->PublicData());
 
-		// cannot be null at this point
-		assert(shaderData);
+	//	// cannot be null at this point
+	//	assert(shaderData);
 
-		if (shaderData->mtlTexSlotCount != textureCount)
-			Error("Texture slot count mismatch between shader set and %s shader (expected %hhu, got %hhu).\n", shaderName, shaderData->mtlTexSlotCount, textureCount);
-	}
+	//	if (shaderData->mtlTexSlotCount != textureCount)
+	//		Error("Texture slot count mismatch between shader set and %s shader (expected %hhu, got %hhu).\n", shaderName, shaderData->mtlTexSlotCount, textureCount);
+	//}
 
 	*inputCount = textureCount;
 }
