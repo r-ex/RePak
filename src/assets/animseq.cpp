@@ -15,7 +15,7 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
         return;
     }
 
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimSeqAssetHeader_t), SF_HEAD, 16);
+    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimSeqAssetHeader_t), SF_HEAD, 8);
 
     const size_t rseqNameLenAligned = IALIGN4(strlen(assetPath) + 1);
     const size_t rseqFileSize = rseqInput.GetSize();
