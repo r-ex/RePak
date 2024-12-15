@@ -112,24 +112,32 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
             hdr->dataSize += static_cast<uint32_t>(alignedSize); // all mips are aligned to 16 bytes within rpak/starpak
             mipOffset += slicePitch; // add size for the next mip's offset
 
-            // if opt streamable textures are enabled, check if this mip is supposed to be opt streamed
-            if (isStreamableOpt && mipMap.mipSizeAligned > MAX_STREAM_MIP_SIZE)
+            const bool smallestMip = mipLevel == (ddsh.dwMipMapCount - 1);
+
+            // there must always be at least 1 permanent mip, regardless of its size.
+            // make sure the last mip level is marked static (not streamed!). else
+            // the runtime will fail on ID3D11Device::CreateTexture2D for this texture.
+            if (!smallestMip)
             {
-                mipSizes.streamedOptSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
-                hdr->optStreamedMipLevels++; // add a streamed mip level
+                // if opt streamable textures are enabled, check if this mip is supposed to be opt streamed
+                if (isStreamableOpt && mipMap.mipSizeAligned > MAX_STREAM_MIP_SIZE)
+                {
+                    mipSizes.streamedOptSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
+                    hdr->optStreamedMipLevels++; // add a streamed mip level
 
-                mipMap.mipType = STREAMED_OPT;
-                continue;
-            }
+                    mipMap.mipType = STREAMED_OPT;
+                    continue;
+                }
 
-            // if streamable textures are enabled, check if this mip is supposed to be streamed
-            if (isStreamable && mipMap.mipSizeAligned > MAX_PERM_MIP_SIZE)
-            {
-                mipSizes.streamedSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
-                hdr->streamedMipLevels++; // add a streamed mip level
+                // if streamable textures are enabled, check if this mip is supposed to be streamed
+                if (isStreamable && mipMap.mipSizeAligned > MAX_PERM_MIP_SIZE)
+                {
+                    mipSizes.streamedSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
+                    hdr->streamedMipLevels++; // add a streamed mip level
 
-                mipMap.mipType = STREAMED;
-                continue;
+                    mipMap.mipType = STREAMED;
+                    continue;
+                }
             }
 
             mipSizes.staticSize += mipMap.mipSizeAligned;
