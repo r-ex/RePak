@@ -75,6 +75,7 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
         if (isStreamable && pak->GetVersion() >= 8)
             isStreamableOpt = true;
 
+        mips.resize(ddsh.dwMipMapCount);
         size_t mipOffset = isDX10 ? 0x94 : 0x80; // add header length
 
         for (unsigned int mipLevel = 0; mipLevel < ddsh.dwMipMapCount; mipLevel++)
@@ -87,30 +88,37 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
             uint16_t mipHeight = 0;
             if (hdr->height >> mipLevel > 1)
                 mipHeight = (hdr->height >> mipLevel) - 1;
-            
-            const uint8_t x = s_pBytesPerPixel[hdr->imgFormat].first;
-            const uint8_t y = s_pBytesPerPixel[hdr->imgFormat].second;
+
+            const auto& bytesPerPixel = s_pBytesPerPixel[hdr->imgFormat];
+
+            const uint8_t x = bytesPerPixel.first;
+            const uint8_t y = bytesPerPixel.second;
 
             const uint32_t bppWidth = (y + mipWidth) >> (y >> 1);
             const uint32_t bppHeight = (y + mipHeight) >> (y >> 1);
             
             const size_t slicePitch = x * bppWidth * bppHeight;
+            const size_t alignedSize = IALIGN16(slicePitch);
 
-            mipLevel_t mipMap{ mipOffset, slicePitch, IALIGN16(slicePitch),
-                static_cast<uint16_t>(mipWidth + 1), static_cast<uint16_t>(mipHeight + 1), static_cast<uint8_t>(mipLevel + 1) };
+            mipLevel_t& mipMap = mips[mipLevel];
 
-            hdr->dataSize += IALIGN16(slicePitch); // all mips are aligned to 16 bytes within rpak/starpak
+            mipMap.mipOffset = mipOffset;
+            mipMap.mipSize = slicePitch;
+            mipMap.mipSizeAligned = alignedSize;
+            mipMap.mipWidth = static_cast<uint16_t>(mipWidth + 1);
+            mipMap.mipHeight = static_cast<uint16_t>(mipHeight + 1);
+            mipMap.mipLevel = static_cast<uint8_t>(mipLevel + 1);
+
+            hdr->dataSize += static_cast<uint32_t>(alignedSize); // all mips are aligned to 16 bytes within rpak/starpak
             mipOffset += slicePitch; // add size for the next mip's offset
 
             // if opt streamable textures are enabled, check if this mip is supposed to be opt streamed
-            if (isStreamableOpt && mipMap.mipSizeAligned >= MAX_STREAM_MIP_SIZE)
+            if (isStreamableOpt && mipMap.mipSizeAligned > MAX_STREAM_MIP_SIZE)
             {
                 mipSizes.streamedOptSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
                 hdr->optStreamedMipLevels++; // add a streamed mip level
 
                 mipMap.mipType = STREAMED_OPT;
-                mips.push_back(mipMap);
-
                 continue;
             }
 
@@ -121,8 +129,6 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
                 hdr->streamedMipLevels++; // add a streamed mip level
 
                 mipMap.mipType = STREAMED;
-                mips.push_back(mipMap);
-
                 continue;
             }
 
@@ -130,24 +136,25 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
             hdr->mipLevels++;
 
             mipMap.mipType = STATIC;
-            mips.push_back(mipMap);
         }
 
-        Log("-> total mipmaps permanent:streamed:streamed opt : %hhu:%hhu:%hhu\n", hdr->mipLevels, hdr->streamedMipLevels, hdr->optStreamedMipLevels);
+        Log("-> total mipmaps permanent:mandatory:optional : %hhu:%hhu:%hhu\n", hdr->mipLevels, hdr->streamedMipLevels, hdr->optStreamedMipLevels);
     }
 
     hdr->guid = assetGuid;
 
     if (pak->IsFlagSet(PF_KEEP_DEV))
     {
-        const size_t nameBufLen = strlen(assetPath) + 1;
-        CPakDataChunk nameChunk = pak->CreateDataChunk(nameBufLen, SF_DEV | SF_CPU, 1);
+        const size_t nameBufLen = strlen(assetPath);
 
-        sprintf_s(nameChunk.Data(), nameBufLen, "%s", assetPath);
+        if (nameBufLen > 0)
+        {
+            CPakDataChunk nameChunk = pak->CreateDataChunk(nameBufLen + 1, SF_DEV | SF_CPU, 1);
+            memcpy(nameChunk.Data(), assetPath, nameBufLen + 1);
 
-        hdr->pName = nameChunk.GetPointer();
-
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(TextureAssetHeader_t, pName)));
+            hdr->pName = nameChunk.GetPointer();
+            pak->AddPointer(hdrChunk.GetPointer(offsetof(TextureAssetHeader_t, pName)));
+        }
     }
 
     CPakDataChunk dataChunk = pak->CreateDataChunk(mipSizes.staticSize, SF_CPU | SF_TEMP, 16);
