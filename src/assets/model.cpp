@@ -175,36 +175,36 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
     assert(de.dataSize <= UINT32_MAX);
     pHdr->streamedVertexDataSize = static_cast<uint32_t>(de.dataSize);
 
-    size_t extraDataSize = 0;
+    const size_t alignedModelDataSize = IALIGN64(studiohdr->length);
 
-    if (studiohdr->IsStaticProp())
-    {
-        extraDataSize = vgFileSize;
-    }
+    const size_t staticVtxDataSize = studiohdr->IsStaticProp() ? vgFileSize : 0;
+    const size_t staticVtxDataOffset = alignedModelDataSize; // get a named version of it to make this code easier to understand
 
-    const size_t fileNameDataSize = strlen(assetPath) + 1;
+    // Create a chunk that contains the null-terminated asset path.
+    CPakDataChunk nameChunk = pak->CreateDataChunk(strlen(assetPath) + 1, SF_CPU, 1);
 
-    CPakDataChunk dataChunk = pak->CreateDataChunk(studiohdr->length + fileNameDataSize + extraDataSize, SF_CPU, 64);
-    char* pDataBuf = dataChunk.Data();
+    // Create a chunk that contains the main model file and vtx data for static props.
+    const size_t totalDataChunkSize = alignedModelDataSize + staticVtxDataSize;
+    CPakDataChunk dataChunk = pak->CreateDataChunk(totalDataChunkSize, SF_CPU, 64);
 
     // write the model file path into the data buffer
-    snprintf(pDataBuf + studiohdr->length, fileNameDataSize, "%s", assetPath);
+    snprintf(nameChunk.Data(), nameChunk.GetSize(), "%s", assetPath);
 
     // copy rmdl into rpak buffer and move studiohdr ptr
-    memcpy_s(pDataBuf, studiohdr->length, rmdlBuf, studiohdr->length);
-    studiohdr = reinterpret_cast<studiohdr_t*>(pDataBuf);
+    memcpy_s(dataChunk.Data(), studiohdr->length, rmdlBuf, studiohdr->length);
+    studiohdr = reinterpret_cast<studiohdr_t*>(dataChunk.Data());
 
     delete[] rmdlBuf;
 
     // copy static prop data into data buffer (if needed)
     if (studiohdr->IsStaticProp()) // STATIC_PROP
     {
-        memcpy_s(pDataBuf + fileNameDataSize + studiohdr->length, vgFileSize, vgBuf, vgFileSize);
+        memcpy_s(dataChunk.Data() + alignedModelDataSize, vgFileSize, vgBuf, vgFileSize);
     }
 
     delete[] vgBuf;
 
-    pHdr->pName = dataChunk.GetPointer(studiohdr->length);
+    pHdr->pName = nameChunk.GetPointer();
     pHdr->pData = dataChunk.GetPointer();
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pData)));
@@ -212,7 +212,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
 
     if (studiohdr->IsStaticProp()) // STATIC_PROP
     {
-        pHdr->pStaticPropVtxCache = dataChunk.GetPointer(fileNameDataSize + studiohdr->length);
+        pHdr->pStaticPropVtxCache = dataChunk.GetPointer(staticVtxDataOffset);
         pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pStaticPropVtxCache)));
     }
 
@@ -222,6 +222,8 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
         pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pPhyData)));
     }
 
+
+    // Material Handling
     rapidjson::Value::ConstMemberIterator materialsIt;
 
     // todo(amos): de we even want material overrides? shouldn't these need to
@@ -253,7 +255,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
 
         if (tex->guid != 0)
         {
-            const size_t pos = (char*)tex - pDataBuf;
+            const size_t pos = (char*)tex - dataChunk.Data();
             pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(pos + offsetof(mstudiotexture_t, guid)));
 
             PakAsset_t* const asset = pak->GetAssetByGuid(tex->guid);
