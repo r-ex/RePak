@@ -36,13 +36,16 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
         if (magic != DDS_MAGIC) // b'DDS '
             Error("Attempted to add a texture asset that was not a valid DDS file (invalid magic), exiting...\n");
 
-        DDS_HEADER ddsh = input.Read<DDS_HEADER>();
+        DDS_HEADER ddsh;
+        input.Read(ddsh);
+
         DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN;
 
         // Go to the end of the DX10 header if it exists.
         if (ddsh.ddspf.dwFourCC == '01XD')
         {
-            DDS_HEADER_DXT10 ddsh_dx10 = input.Read<DDS_HEADER_DXT10>();
+            DDS_HEADER_DXT10 ddsh_dx10;
+            input.Read(ddsh_dx10);
 
             dxgiFormat = ddsh_dx10.dxgiFormat;
 
@@ -206,8 +209,6 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
     }
 
     // now time to add the higher level asset entry
-    PakAsset_t asset;
-
     uint64_t mandatoryStreamDataOffset = UINT64_MAX;
 
     if (isStreamable && hdr->streamedMipLevels > 0)
@@ -232,6 +233,7 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
 
     delete[] optstreamedbuf;
 
+    PakAsset_t asset;
     asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), mandatoryStreamDataOffset, optionalStreamDataOffset, AssetType::TXTR);
     asset.SetHeaderPointer(hdrChunk.Data());
 
