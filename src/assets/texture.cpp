@@ -81,6 +81,8 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
         mips.resize(ddsh.dwMipMapCount);
         size_t mipOffset = isDX10 ? 0x94 : 0x80; // add header length
 
+        unsigned int streamedMipCount = 0;
+
         for (unsigned int mipLevel = 0; mipLevel < ddsh.dwMipMapCount; mipLevel++)
         {
             // subtracts 1 so skip mips w/h at 1, gets added back when setting in mipLevel_t
@@ -111,16 +113,21 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
             mipMap.mipWidth = static_cast<uint16_t>(mipWidth + 1);
             mipMap.mipHeight = static_cast<uint16_t>(mipHeight + 1);
             mipMap.mipLevel = static_cast<uint8_t>(mipLevel + 1);
+            mipMap.mipType = mipType_e::INVALID;
 
             hdr->dataSize += static_cast<uint32_t>(alignedSize); // all mips are aligned to 16 bytes within rpak/starpak
             mipOffset += slicePitch; // add size for the next mip's offset
 
-            const bool smallestMip = mipLevel == (ddsh.dwMipMapCount - 1);
-
-            // there must always be at least 1 permanent mip, regardless of its size.
-            // make sure the last mip level is marked static (not streamed!). else
-            // the runtime will fail on ID3D11Device::CreateTexture2D for this texture.
-            if (!smallestMip)
+            // important:
+            // - we cannot have more than 4 streamed mip levels; the engine can
+            //   only store up to 4 streamable mip handles per texture, anything
+            //   else must be stored as a permanent mip!
+            //
+            // - there must always be at least 1 permanent mip level, regardless
+            //   of its size. not adhering to this rule will result in a failure
+            //   in ID3D11Device::CreateTexture2D during the runtime. we make
+            //   sure that the smallest mip is always permanent (static) here.
+            if ((streamedMipCount < MAX_STREAMED_TEXTURE_MIPS) && (mipLevel != (ddsh.dwMipMapCount - 1)))
             {
                 // if opt streamable textures are enabled, check if this mip is supposed to be opt streamed
                 if (isStreamableOpt && mipMap.mipSizeAligned > MAX_STREAM_MIP_SIZE)
@@ -128,25 +135,29 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
                     mipSizes.streamedOptSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
                     hdr->optStreamedMipLevels++; // add a streamed mip level
 
-                    mipMap.mipType = STREAMED_OPT;
-                    continue;
+                    mipMap.mipType = mipType_e::STREAMED_OPT;
                 }
 
                 // if streamable textures are enabled, check if this mip is supposed to be streamed
-                if (isStreamable && mipMap.mipSizeAligned > MAX_PERM_MIP_SIZE)
+                else if (isStreamable && mipMap.mipSizeAligned > MAX_PERM_MIP_SIZE)
                 {
                     mipSizes.streamedSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
                     hdr->streamedMipLevels++; // add a streamed mip level
 
-                    mipMap.mipType = STREAMED;
-                    continue;
+                    mipMap.mipType = mipType_e::STREAMED;
                 }
+
+                streamedMipCount++;
             }
 
-            mipSizes.staticSize += mipMap.mipSizeAligned;
-            hdr->mipLevels++;
+            // texture was not streamed, make it permanent.
+            if (mipMap.mipType == mipType_e::INVALID)
+            {
+                mipSizes.staticSize += mipMap.mipSizeAligned;
+                hdr->mipLevels++;
 
-            mipMap.mipType = STATIC;
+                mipMap.mipType = mipType_e::STATIC;
+            }
         }
 
         Log("-> total mipmaps permanent:mandatory:optional : %hhu:%hhu:%hhu\n", hdr->mipLevels, hdr->streamedMipLevels, hdr->optStreamedMipLevels);
@@ -180,23 +191,22 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
 
     while (mipLevel > 0)
     {
-        mipLevel_t& mipMap = mips.at(mipLevel - 1);
-
+        const mipLevel_t& mipMap = mips.at(mipLevel - 1);
         input.SeekGet(mipMap.mipOffset);
 
         switch (mipMap.mipType)
         {
-        case STATIC:
+        case mipType_e::STATIC:
             input.Read(pCurrentPosStatic, mipMap.mipSize);
             pCurrentPosStatic += mipMap.mipSizeAligned; // move ptr
 
             break;
-        case STREAMED:
+        case mipType_e::STREAMED:
             input.Read(pCurrentPosStreamed, mipMap.mipSize);
             pCurrentPosStreamed += mipMap.mipSizeAligned; // move ptr
 
             break;
-        case STREAMED_OPT:
+        case mipType_e::STREAMED_OPT:
             input.Read(pCurrentPosStreamedOpt, mipMap.mipSize);
             pCurrentPosStreamedOpt += mipMap.mipSizeAligned; // move ptr
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#define MAX_STREAMED_TEXTURE_MIPS 4
+
 #define MAX_PERM_MIP_SIZE	0x3FFF // "Any MIP below 64kiB is permanent."
 #define MAX_STREAM_MIP_SIZE	0xFFFFF
 
@@ -83,8 +85,9 @@ static inline const std::pair<uint8_t, uint8_t> s_pBytesPerPixel[] =
   { uint8_t(0u),  uint8_t(0u) }
 };
 
-enum mipType_t : unsigned char
+enum class mipType_e : char
 {
+	INVALID = -1,
 	STATIC = 0,
 	STREAMED,
 	STREAMED_OPT,
@@ -99,7 +102,7 @@ struct mipLevel_t
 	unsigned short mipWidth;
 	unsigned short mipHeight;
 	unsigned char mipLevel;
-	mipType_t mipType;
+	mipType_e mipType;
 };
 
 struct TextureAssetHeader_t
