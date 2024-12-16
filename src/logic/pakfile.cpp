@@ -409,7 +409,6 @@ void CPakFile::GenerateGuidData()
 //-----------------------------------------------------------------------------
 CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
 {
-	int i = 0;
 	for (auto& it : m_vVirtualSegments)
 	{
 		if (it.GetFlags() == flags)
@@ -422,12 +421,11 @@ CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
 
 			return it;
 		}
-		i++;
 	}
 
 	CPakVSegment& newSegment = m_vVirtualSegments.emplace_back();
 
-	newSegment.index = i;
+	newSegment.index = static_cast<int>(m_vVirtualSegments.size()-1);
 	newSegment.flags = flags;
 	newSegment.alignment = alignment;
 	newSegment.dataSize = 0;
@@ -438,9 +436,9 @@ CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
 // find the last page that matches the required flags and check if there is room for new data to be added
 CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSize)
 {
-	for (size_t i = m_vPages.size(); i > 0; --i)
+	for (size_t i = m_vPages.size(); i-- > 0;)
 	{
-		CPakPage& page = m_vPages[i-1];
+		CPakPage& page = m_vPages[i];
 
 		if (page.GetFlags() != flags)
 			continue;
