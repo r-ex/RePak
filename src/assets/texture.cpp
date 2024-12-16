@@ -171,7 +171,7 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
 
         if (nameBufLen > 0)
         {
-            CPakDataChunk nameChunk = pak->CreateDataChunk(nameBufLen + 1, SF_DEV | SF_CPU, 1);
+            CPakDataChunk nameChunk = pak->CreateDataChunk(nameBufLen + 1, SF_CPU | SF_DEV, 1);
             memcpy(nameChunk.Data(), assetPath, nameBufLen + 1);
 
             hdr->pName = nameChunk.GetPointer();

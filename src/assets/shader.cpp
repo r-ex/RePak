@@ -142,15 +142,18 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 	ShaderAssetHeader_t* const hdr = reinterpret_cast<ShaderAssetHeader_t*>(hdrChunk.Data());
 	Shader_SetupHeader(hdr, shader);
 
-	const size_t nameLen = shader->name.length();
-
-	if (nameLen > 0)
+	if (if (pak->IsFlagSet(PF_KEEP_DEV)))
 	{
-		CPakDataChunk nameChunk = pak->CreateDataChunk(nameLen + 1, SF_CPU | SF_DEV, 1);
-		strcpy_s(nameChunk.Data(), nameChunk.GetSize(), shader->name.c_str());
+		const size_t nameLen = shader->name.length();
 
-		hdr->name = nameChunk.GetPointer();
-		pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_t, name)));
+		if (nameLen > 0)
+		{
+			CPakDataChunk nameChunk = pak->CreateDataChunk(nameLen + 1, SF_CPU | SF_DEV, 1);
+			strcpy_s(nameChunk.Data(), nameChunk.GetSize(), shader->name.c_str());
+
+			hdr->name = nameChunk.GetPointer();
+			pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_t, name)));
+		}
 	}
 
 	CPakDataChunk dataChunk = {};

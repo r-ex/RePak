@@ -65,17 +65,24 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 	std::vector<PakGuidRefHdr_t> guids{};
 
 	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderSetAssetHeader_t), SF_HEAD, 8);
-
-	const std::string assetPathWithoutExtension = Utils::ChangeExtension(assetPath, "");
-
-	CPakDataChunk nameChunk = pak->CreateDataChunk(assetPathWithoutExtension.length() + 1, SF_CPU | SF_DEV, 1);
-	strcpy_s(nameChunk.Data(), nameChunk.GetSize(), assetPathWithoutExtension.c_str());
-
 	ShaderSetAssetHeader_t* const hdr = reinterpret_cast<ShaderSetAssetHeader_t*>(hdrChunk.Data());
 
-	hdr->name = nameChunk.GetPointer();
+	CPakDataChunk nameChunk;
 
-	pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_t, name)));
+	if (pak->IsFlagSet(PF_KEEP_DEV))
+	{
+		const std::string assetPathWithoutExtension = Utils::ChangeExtension(assetPath, "");
+		const size_t devNameLen = assetPathWithoutExtension.length();
+
+		if (devNameLen > 0)
+		{
+			nameChunk = pak->CreateDataChunk(assetPathWithoutExtension.length() + 1, SF_CPU | SF_DEV, 1);
+			strcpy_s(nameChunk.Data(), nameChunk.GetSize(), assetPathWithoutExtension.c_str());
+
+			hdr->name = nameChunk.GetPointer();
+			pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_t, name)));
+		}
+	}
 
 	// === Shader Inputs ===
 	hdr->vertexShader = shaderSet->vertexShaderGuid;

@@ -517,7 +517,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     // !!!R2 SPECIFIC!!!
     {
         const size_t nameBufLen = matlAsset.name.length() + 1;
-        CPakDataChunk nameChunk = pak->CreateDataChunk(nameBufLen, SF_DEV | SF_CPU, 1);
+        CPakDataChunk nameChunk = pak->CreateDataChunk(nameBufLen, SF_CPU | SF_DEV, 1);
 
         sprintf_s(nameChunk.Data(), nameBufLen, "%s", matlAsset.name.c_str());
 
