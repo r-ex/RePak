@@ -100,7 +100,9 @@ void CPakFile::AddAsset(const rapidjson::Value& file)
 //-----------------------------------------------------------------------------
 void CPakFile::AddPointer(int pageIdx, int pageOffset)
 {
-	m_vPakDescriptors.push_back({ pageIdx, pageOffset });
+	PakGuidRefHdr_t& refHdr = m_vPakDescriptors.emplace_back();
+	refHdr.index = pageIdx;
+	refHdr.offset = pageOffset;
 }
 
 void CPakFile::AddPointer(PagePtr_t ptr)
@@ -503,7 +505,6 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSiz
 	CPakVSegment& segment = FindOrCreateSegment(flags, alignment);
 	CPakPage& page = m_vPages.emplace_back();
 
-	page.pak = this;
 	page.segmentIndex = segment.GetIndex();
 	page.pageIndex = static_cast<int>(m_vPages.size()-1); // note: (index-1) because we just emplace'd this instance.
 	page.flags = flags;
@@ -513,35 +514,29 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSiz
 	return page;
 }
 
-void CPakPage::AddDataChunk(CPakDataChunk& chunk)
+CPakDataChunk CPakFile::CreateDataChunk(const size_t size, const int flags, const int alignment)
 {
-	assert(this->alignment > 0 && this->alignment < UINT8_MAX);
-	this->PadPageToChunkAlignment(static_cast<uint8_t>(this->alignment));
+	// this assert is replicated in r5sdk
+	assert(alignment != 0 && alignment < UINT8_MAX);
 
-	chunk.pageIndex = this->GetIndex();
-	chunk.pageOffset = this->GetSize();
+	CPakPage& page = FindOrCreatePage(flags, alignment, size);
 
-	this->dataSize += chunk.size;
-	this->pak->m_vVirtualSegments[this->segmentIndex].AddToDataSize(chunk.size);
+	char* const buf = new char[size];
+	memset(buf, 0, size);
 
-	this->chunks.emplace_back(chunk);
-}
+	const uint32_t alignAmount = IALIGN(page.dataSize, static_cast<uint32_t>(alignment)) - page.dataSize;
 
-
-void CPakPage::PadPageToChunkAlignment(uint8_t chunkAlignment)
-{
-	uint32_t alignAmount = IALIGN(this->dataSize, static_cast<uint32_t>(chunkAlignment)) - this->dataSize;
-
+	// pad page to chunk alignment
 	if (alignAmount > 0)
 	{
 		//printf("Aligning by %u bytes...\n", alignAmount);
-		this->dataSize += alignAmount;
-		this->pak->m_vVirtualSegments[this->segmentIndex].AddToDataSize(alignAmount);
+		page.dataSize += alignAmount;
+		m_vVirtualSegments[page.segmentIndex].AddToDataSize(alignAmount);
 
 		// create null chunk with size of the alignment amount
 		// these chunks are handled specially when writing to file,
 		// writing only null bytes for the size of the chunk when no data ptr is present
-		CPakDataChunk& chunk = this->chunks.emplace_back();
+		CPakDataChunk& chunk = page.chunks.emplace_back();
 
 		chunk.pageIndex = 0;
 		chunk.pageOffset = 0;
@@ -549,20 +544,18 @@ void CPakPage::PadPageToChunkAlignment(uint8_t chunkAlignment)
 		chunk.alignment = 0;
 		chunk.pData = nullptr;
 	}
-}
 
-CPakDataChunk CPakFile::CreateDataChunk(size_t size, int flags, int alignment)
-{
-	// this assert is replicated in r5sdk
-	assert(alignment != 0 && alignment < UINT8_MAX);
+	CPakDataChunk& chunk = page.chunks.emplace_back();
 
-	CPakPage& page = FindOrCreatePage(flags, alignment, size);
+	chunk.pData = buf;
+	chunk.pageIndex = page.GetIndex();
+	chunk.pageOffset = page.GetSize();
+	chunk.size = static_cast<int>(size);
+	chunk.alignment = static_cast<uint8_t>(alignment);
+	chunk.released = false;
 
-	char* buf = new char[size];
-	memset(buf, 0, size);
-
-	CPakDataChunk chunk{ size, static_cast<uint8_t>(alignment), buf };
-	page.AddDataChunk(chunk);
+	page.dataSize += static_cast<int>(size);
+	m_vVirtualSegments[page.segmentIndex].AddToDataSize(size);
 
 	return chunk;
 }

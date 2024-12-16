@@ -1,13 +1,15 @@
 #pragma once
 #include "public/rpak.h"
 
+#define MAX_PAK_PAGE_SIZE 0xffff
+
+class CPakFile;
+
 struct _vseginfo_t
 {
 	int index = -1;
 	int size = 0;
 };
-
-#define MAX_PAK_PAGE_SIZE 0xffff
 
 class CPakVSegment
 {
@@ -44,12 +46,10 @@ class CPakPage
 
 public:
 	CPakPage() = default;
-	CPakPage(CPakFile* pak, int segIdx, int pageIdx, int flags, int align) :
-		pak(pak), segmentIndex(segIdx), pageIndex(pageIdx), flags(flags), alignment(align), dataSize(0) {};
+	CPakPage(int segIdx, int pageIdx, int flags, int align)
+		: segmentIndex(segIdx), pageIndex(pageIdx), flags(flags), alignment(align), dataSize(0) {};
 
 private:
-	CPakFile* pak;
-
 	int segmentIndex; // index of the virtual data segment that this page is part of
 	int pageIndex; // index of this page in all of the pak's pages
 
@@ -61,19 +61,17 @@ private:
 	int dataSize;
 
 public:
-	inline int GetIndex() { return pageIndex; };
-	inline int GetFlags() { return flags; };
-	inline int GetAlignment() { return alignment; };
+	inline int GetIndex() const { return pageIndex; };
+	inline int GetFlags() const { return flags; };
+	inline int GetAlignment() const { return alignment; };
 
-	PakPageHdr_t GetHeader() { return { segmentIndex, alignment, dataSize }; };
-	int GetSize() { return dataSize; };
-
-	void AddDataChunk(CPakDataChunk& chunk);
-	void PadPageToChunkAlignment(uint8_t alignment);
+	PakPageHdr_t GetHeader() const { return { segmentIndex, alignment, dataSize }; };
+	int GetSize() const { return dataSize; };
 };
 
 class CPakDataChunk
 {
+	friend class CPakFile;
 	friend class CPakPage;
 
 public:
@@ -83,12 +81,12 @@ public:
 	CPakDataChunk(int pageIndex, int pageOffset, size_t size, uint8_t alignment, char* data) : pageIndex(pageIndex), pageOffset(pageOffset), size((int)size), alignment(alignment), pData(data), released(false) {};
 
 private:
+	char* pData;
 	int pageIndex;
 	int pageOffset;
 	int size;
 	uint8_t alignment;
 	bool released;
-	char* pData;
 public:
 
 	inline PagePtr_t GetPointer(size_t offset=0) { return { pageIndex, static_cast<int>(pageOffset + offset) }; };
@@ -217,9 +215,9 @@ public:
 	void GenerateFileRelations();
 	void GenerateGuidData();
 
-	CPakPage& FindOrCreatePage(int flags, int alignment, size_t newDataSize);
+	CPakPage& FindOrCreatePage(const int flags, const int alignment, const size_t newDataSize);
 
-	CPakDataChunk CreateDataChunk(size_t size, int flags, int alignment);
+	CPakDataChunk CreateDataChunk(const size_t size, const int flags, const int alignment);
 	//_vseginfo_t CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
 	CPakVSegment& FindOrCreateSegment(int flags, int alignment);
 
