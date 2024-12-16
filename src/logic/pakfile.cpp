@@ -288,23 +288,23 @@ void CPakFile::WriteAssets(BinaryIO& io)
 //-----------------------------------------------------------------------------
 void CPakFile::WritePageData(BinaryIO& out)
 {
-	for (auto& page : m_vPages)
+	for (size_t i = 0; i < m_vPages.size(); i++)
 	{
-		for (auto& chunk : page.chunks)
+		CPakPage& page = m_vPages[i];
+
+		for (size_t j = 0; j < page.chunks.size(); j++)
 		{
+			CPakDataChunk& chunk = page.chunks[j];
+
 			// should never happen
 			if (chunk.IsReleased()) [[unlikely]]
-			{
-				assert(0);
-				continue;
-			}
+				Error("Chunk #%zu in page #%zu was released; cannot write.\n", j, i);
 
-			if(chunk.Data())
+			if (chunk.Data())
 				out.Write(chunk.Data(), chunk.GetSize());
 			else // if chunk is padding to realign the page
 			{
 				//printf("Aligning by %i bytes at %zu.\n", chunk.GetSize(), out.TellPut());
-
 				out.SeekPut(chunk.GetSize(), std::ios::cur);
 			}
 
@@ -425,9 +425,14 @@ CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
 		i++;
 	}
 
-	CPakVSegment newSegment{ i, flags, alignment, 0 };
+	CPakVSegment& newSegment = m_vVirtualSegments.emplace_back();
 
-	return m_vVirtualSegments.emplace_back(newSegment);
+	newSegment.index = i;
+	newSegment.flags = flags;
+	newSegment.alignment = alignment;
+	newSegment.dataSize = 0;
+
+	return newSegment;
 }
 
 // find the last page that matches the required flags and check if there is room for new data to be added
@@ -498,10 +503,16 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSiz
 	}
 
 	CPakVSegment& segment = FindOrCreateSegment(flags, alignment);
+	CPakPage& page = m_vPages.emplace_back();
 
-	CPakPage p{ this, segment.GetIndex(), static_cast<int>(m_vPages.size()), flags, alignment };
+	page.pak = this;
+	page.segmentIndex = segment.GetIndex();
+	page.pageIndex = static_cast<int>(m_vPages.size()-1); // note: (index-1) because we just emplace'd this instance.
+	page.flags = flags;
+	page.alignment = alignment;
+	page.dataSize = 0;
 
-	return m_vPages.emplace_back(p);
+	return page;
 }
 
 void CPakPage::AddDataChunk(CPakDataChunk& chunk)
@@ -513,7 +524,6 @@ void CPakPage::AddDataChunk(CPakDataChunk& chunk)
 	chunk.pageOffset = this->GetSize();
 
 	this->dataSize += chunk.size;
-
 	this->pak->m_vVirtualSegments[this->segmentIndex].AddToDataSize(chunk.size);
 
 	this->chunks.emplace_back(chunk);
@@ -533,10 +543,14 @@ void CPakPage::PadPageToChunkAlignment(uint8_t chunkAlignment)
 		// create null chunk with size of the alignment amount
 		// these chunks are handled specially when writing to file,
 		// writing only null bytes for the size of the chunk when no data ptr is present
-		CPakDataChunk chunk{ 0, 0, alignAmount, 0, nullptr };
+		CPakDataChunk& chunk = this->chunks.emplace_back();
 
-		this->chunks.emplace_back(chunk);
-	}	
+		chunk.pageIndex = 0;
+		chunk.pageOffset = 0;
+		chunk.size = alignAmount;
+		chunk.alignment = 0;
+		chunk.pData = nullptr;
+	}
 }
 
 CPakDataChunk CPakFile::CreateDataChunk(size_t size, int flags, int alignment)
@@ -547,7 +561,6 @@ CPakDataChunk CPakFile::CreateDataChunk(size_t size, int flags, int alignment)
 	CPakPage& page = FindOrCreatePage(flags, alignment, size);
 
 	char* buf = new char[size];
-
 	memset(buf, 0, size);
 
 	CPakDataChunk chunk{ size, static_cast<uint8_t>(alignment), buf };
@@ -900,6 +913,15 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	if (JSON_GetValueOrDefault(doc, "keepDevOnly", false))
 		AddFlags(PF_KEEP_DEV);
 
+	// create file stream from path created above
+	BinaryIO out;
+	if (!out.Open(m_Path, BinaryIO::Mode_e::ReadWriteCreate))
+		Error("Failed to open output pak file \"%s\".\n", m_Path.c_str());
+
+	// write a placeholder header so we can come back and complete it
+	// when we have all the info
+	out.Seek(pakVersion >= 8 ? 0x80 : 0x58);
+
 	const char* streamFileMandatory = nullptr;
 
 	if (JSON_GetValue(doc, "streamFileMandatory", streamFileMandatory))
@@ -920,15 +942,6 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		for (const auto& file : filesIt->value.GetArray())
 			AddAsset(file);
 	}
-
-	// create file stream from path created above
-	BinaryIO out;
-	if (!out.Open(m_Path, BinaryIO::Mode_e::ReadWriteCreate))
-		Error("Failed to open output pak file \"%s\".\n", m_Path.c_str());
-
-	// write a placeholder header so we can come back and complete it
-	// when we have all the info
-	out.Seek(pakVersion >= 8 ? 0x80 : 0x58);
 
 	{
 		// write string vectors for starpak paths and get the total length of each vector
@@ -965,9 +978,6 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	// now the actual paged data
 	WritePageData(out);
 
-	// set header descriptors
-	SetFileTime(Utils::GetSystemFileTime());
-
 	// We are done building the data of the pack, this is the actual size.
 	const size_t decompressedFileSize = out.GetSize();
 	size_t compressedFileSize = 0;
@@ -985,13 +995,6 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	SetCompressedSize(compressedFileSize == 0 ? decompressedFileSize : compressedFileSize);
 	SetDecompressedSize(decompressedFileSize);
 
-	out.SeekPut(0); // go back to the beginning to finally write the rpakHeader now
-	WriteHeader(out);
-
-	Log("Written pak file \"%s\" with %zu assets, totaling %zd bytes.\n", 
-		m_Path.c_str(), GetAssetCount(), (ssize_t)out.GetSize());
-	out.Close();
-
 	// !TODO: we really should add support for multiple starpak files and share existing
 	// assets across rpaks. e.g. if the base 'pc_all.opt.starpak' already contains the
 	// highest mip level for 'ola_sewer_grate', don't copy it into 'pc_sdk.opt.starpak'.
@@ -1005,4 +1008,14 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 	if (streamFileOptional)
 		FinishStreamFileStream(STREAMING_SET_OPTIONAL);
+
+	// set header descriptors
+	SetFileTime(Utils::GetSystemFileTime());
+
+	out.SeekPut(0); // go back to the beginning to finally write the rpakHeader now
+	WriteHeader(out);
+
+	Log("Written pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
+		m_Path.c_str(), GetAssetCount(), (ssize_t)out.GetSize());
+	out.Close();
 }
