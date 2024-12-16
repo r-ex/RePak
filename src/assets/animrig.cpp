@@ -38,12 +38,11 @@ void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, 
     if (AnimSeq_AddSequenceRefs(&guidsChunk, pak, &pHdr->sequenceCount, mapEntry))
     {
         pHdr->pSequences = guidsChunk.GetPointer();
-
         pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, pSequences)));
 
         for (uint32_t i = 0; i < pHdr->sequenceCount; ++i)
         {
-            guids.emplace_back(guidsChunk.GetPointer(8 * i));
+            guids.emplace_back(guidsChunk.GetPointer(i * sizeof(PakGuid_t)));
         }
     }
 
