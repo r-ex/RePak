@@ -204,6 +204,9 @@
     <ClCompile Include="thirdparty\zstd\dictBuilder\divsufsort.c">
       <Filter>thirdparty\zstandard\dictbuilder</Filter>
     </ClCompile>
+    <ClCompile Include="utils\binaryio.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
