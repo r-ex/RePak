@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="application\cachebuilder.cpp" />
     <ClCompile Include="application\repak.cpp" />
     <ClCompile Include="assets\animrig.cpp" />
     <ClCompile Include="assets\animseq.cpp" />
@@ -148,10 +149,15 @@
     <ClCompile Include="utils\dxutils.cpp" />
     <ClCompile Include="utils\jsonutils.cpp" />
     <ClCompile Include="utils\logger.cpp" />
+    <ClCompile Include="utils\MurmurHash3.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="utils\strutils.cpp" />
     <ClCompile Include="utils\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="application\cachebuilder.h" />
     <ClInclude Include="assets\assets.h" />
     <ClInclude Include="common\const.h" />
     <ClInclude Include="common\decls.h" />
@@ -254,6 +260,7 @@
     <ClInclude Include="utils\dxutils.h" />
     <ClInclude Include="utils\jsonutils.h" />
     <ClInclude Include="utils\logger.h" />
+    <ClInclude Include="utils\MurmurHash3.h" />
     <ClInclude Include="utils\strutils.h" />
     <ClInclude Include="utils\utils.h" />
   </ItemGroup>
