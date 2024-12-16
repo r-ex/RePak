@@ -169,18 +169,6 @@ public:
 		m_Header.fileVersion = version;
 	}
 
-	inline size_t GetHeaderSize() const
-	{
-		switch (m_Header.fileVersion)
-		{
-		// todo(amos): we probably should import headers for both
-		// versions and do a sizeof here.
-		case 7: return 0x58;
-		case 8: return 0x80;
-		default: assert(0); return 0;
-		}
-	}
-
 	inline void SetStarpakPathsSize(uint16_t len, uint16_t optLen)
 	{
 		m_Header.starpakPathsSize = len;
@@ -220,7 +208,6 @@ public:
 	void WriteMemPageHeaders(BinaryIO& out);
 	void WritePakDescriptors(BinaryIO& out);
 
-	bool StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, const int compressLevel, const int workerCount);
 	size_t EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount);
 
 	//----------------------------------------------------------------------------

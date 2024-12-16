@@ -591,12 +591,27 @@ PakAsset_t* CPakFile::GetAssetByGuid(const PakGuid_t guid, uint32_t* const idx /
 }
 
 //-----------------------------------------------------------------------------
+// purpose: gets the pak file header size based on pak version
+//-----------------------------------------------------------------------------
+static inline size_t Pak_GetHeaderSize(const uint16_t version)
+{
+	switch (version)
+	{
+		// todo(amos): we probably should import headers for both
+		// versions and do a sizeof here.
+	case 7: return 0x58;
+	case 8: return 0x80;
+	default: assert(0); return 0;
+	};
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: initialize pak encoder context
 // 
 // note(amos): unlike the pak file header, the zstd frame header needs to know
 // the uncompressed size without the file header.
 //-----------------------------------------------------------------------------
-static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const int compressLevel, const int workerCount)
+static ZSTD_CCtx* Pak_InitEncoderContext(const size_t uncompressedBlockSize, const int compressLevel, const int workerCount)
 {
 	ZSTD_CCtx* const cctx = ZSTD_createCCtx();
 
@@ -642,13 +657,12 @@ static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const i
 //-----------------------------------------------------------------------------
 // Purpose: stream encode pak file with given level and worker count
 //-----------------------------------------------------------------------------
-bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, const int compressLevel, const int workerCount)
+static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, const size_t headerSize, const int compressLevel, const int workerCount)
 {
 	// only the data past the main header gets compressed.
-	const size_t headerSize = GetHeaderSize();
 	const size_t decodedFrameSize = (static_cast<size_t>(inStream.GetSize()) - headerSize);
 
-	ZSTD_CCtx* const cctx = InitEncoderContext(decodedFrameSize, compressLevel, workerCount);
+	ZSTD_CCtx* const cctx = Pak_InitEncoderContext(decodedFrameSize, compressLevel, workerCount);
 
 	if (!cctx)
 	{
@@ -734,7 +748,7 @@ size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, cons
 		return 0;
 	}
 
-	if (!StreamToStreamEncode(io, outCompressed, compressLevel, workerCount))
+	if (!Pak_StreamToStreamEncode(io, outCompressed, Pak_GetHeaderSize(m_Header.fileVersion), compressLevel, workerCount))
 		return 0;
 
 	const size_t compressedSize = outCompressed.TellPut();
@@ -982,7 +996,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 
 	const int compressLevel = JSON_GetValueOrDefault(doc, "compressLevel", 0);
 
-	if (compressLevel > 0 && decompressedFileSize > GetHeaderSize())
+	if (compressLevel > 0 && decompressedFileSize > Pak_GetHeaderSize(m_Header.fileVersion))
 	{
 		const int workerCount = JSON_GetValueOrDefault(doc, "compressWorkers", 0);
 
