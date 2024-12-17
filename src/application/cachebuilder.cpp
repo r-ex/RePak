@@ -96,7 +96,7 @@ bool BuildCacheFileFromGamePaksDirectory(const fs::path& directoryPath)
 
 	if (!cacheFileStream.IsWritable())
 	{
-		Warning("CacheBuilder: Failed to open cache file '%s' for writing.\n", (directoryPath / "starpak.rpcache").u8string().c_str());
+		Warning("CacheBuilder: Failed to open cache file '%s' for writing.\n", (directoryPath / "repak_starpak_cache.bin").u8string().c_str());
 		return false;
 	}
 
