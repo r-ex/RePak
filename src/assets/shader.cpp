@@ -142,7 +142,7 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 	ShaderAssetHeader_t* const hdr = reinterpret_cast<ShaderAssetHeader_t*>(hdrChunk.Data());
 	Shader_SetupHeader(hdr, shader);
 
-	if (if (pak->IsFlagSet(PF_KEEP_DEV)))
+	if (pak->IsFlagSet(PF_KEEP_DEV))
 	{
 		const size_t nameLen = shader->name.length();
 
