@@ -60,24 +60,20 @@ static char* Model_ReadVGFile(const std::string& path, size_t* const pFileSize)
     return buf;
 }
 
-static bool Model_AddAnimRigRefs(CPakFile* const pak, CPakDataChunk* const chunk, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
+static PakGuid_t* Model_AddAnimRigRefs(CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
 {
     rapidjson::Value::ConstMemberIterator it;
 
     if (!JSON_GetIterator(mapEntry, "$animrigs", JSONFieldType_e::kArray, it))
-        return false;
+        return nullptr;
 
     const rapidjson::Value::ConstArray animrigs = it->value.GetArray();
 
     if (animrigs.Empty())
-        return false;
+        return nullptr;
 
-    const uint32_t numAnimrigs = (uint32_t)animrigs.Size();
-
-    (*chunk) = pak->CreateDataChunk(numAnimrigs * sizeof(PakGuid_t), SF_CPU, 8);
-    (*sequenceCount) = static_cast<uint32_t>(animrigs.Size());
-
-    rmem arigBuf(chunk->Data());
+    const size_t numAnimrigs = animrigs.Size();
+    PakGuid_t* const guidBuf = new PakGuid_t[numAnimrigs];
 
     int i = -1;
     for (const auto& animrig : animrigs)
@@ -88,7 +84,7 @@ static bool Model_AddAnimRigRefs(CPakFile* const pak, CPakDataChunk* const chunk
         if (!guid)
             Error("Unable to parse animrig #%i.\n", i);
 
-        arigBuf.write<PakGuid_t>(guid);
+        guidBuf[i] = guid;
 
         // check if anim rig is a local asset so that the relation can be added
         PakAsset_t* const animRigAsset = pak->GetAssetByGuid(guid);
@@ -96,7 +92,72 @@ static bool Model_AddAnimRigRefs(CPakFile* const pak, CPakDataChunk* const chunk
         pak->SetCurrentAssetAsDependentForAsset(animRigAsset);
     }
 
-    return true;
+    (*sequenceCount) = static_cast<uint32_t>(animrigs.Size());
+    return guidBuf;
+}
+
+static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChunk& hdrChunk, ModelAssetHeader_t* const pHdr, 
+    PakGuid_t* const animrigRefs, const uint32_t animrigCount, PakGuid_t* const sequenceRefs, const uint32_t sequenceCount, 
+    std::vector<PakGuidRefHdr_t>& guids, const char* const assetPath)
+{
+    // the model name is aligned to 1 byte, but the guid ref block is aligned
+    // to 8, we have to pad the name buffer to align the guid ref block. if
+    // we have no guid ref blocks, the entire chunk will be aligned to 1 byte.
+    const size_t modelNameBufLen = strlen(assetPath) + 1;
+    const size_t alignedNameBufLen = IALIGN8(modelNameBufLen);
+
+    const size_t animRigRefsBufLen = animrigCount * sizeof(PakGuid_t);
+    const size_t sequenceRefsBufLen = sequenceCount * sizeof(PakGuid_t);
+
+    const bool hasGuidRefs = animrigRefs || sequenceRefs;
+
+    CPakDataChunk intermediateChunk = pak->CreateDataChunk(alignedNameBufLen + animRigRefsBufLen + sequenceRefsBufLen, SF_CPU, hasGuidRefs ? 8 : 1);
+    memcpy(intermediateChunk.Data(), assetPath, modelNameBufLen); // Write the null-terminated asset path to the chunk buffer.
+
+    pHdr->pName = intermediateChunk.GetPointer();
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pName)));
+
+    if (hasGuidRefs)
+    {
+        guids.resize(animrigCount + sequenceCount);
+        uint64_t curIndex = 0;
+
+        if (animrigRefs)
+        {
+            const size_t base = alignedNameBufLen;
+
+            memcpy(&intermediateChunk.Data()[base], animrigRefs, animRigRefsBufLen);
+            delete[] animrigRefs;
+
+            pHdr->animRigCount = animrigCount;
+            pHdr->pAnimRigs = intermediateChunk.GetPointer(base);
+
+            pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pAnimRigs)));
+
+            for (uint32_t i = 0; i < animrigCount; ++i)
+            {
+                guids[curIndex++] = intermediateChunk.GetPointer(base + (sizeof(PakGuid_t) * i));
+            }
+        }
+
+        if (sequenceRefs)
+        {
+            const size_t base = alignedNameBufLen + (curIndex * sizeof(PakGuid_t));
+
+            memcpy(&intermediateChunk.Data()[base], sequenceRefs, sequenceRefsBufLen);
+            delete[] sequenceRefs;
+
+            pHdr->sequenceCount = sequenceCount;
+            pHdr->pSequences = intermediateChunk.GetPointer(base);
+
+            pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pSequences)));
+
+            for (uint32_t i = 0; i < sequenceCount; ++i)
+            {
+                guids[curIndex++] = intermediateChunk.GetPointer(base + (sizeof(PakGuid_t) * i));
+            }
+        }
+    }
 }
 
 static uint64_t Model_InternalAddVertexGroupData(CPakFile* const pak, CPakDataChunk* const hdrChunk, ModelAssetHeader_t* const modelHdr, studiohdr_t* const studiohdr, const std::string& rmdlFilePath)
@@ -132,74 +193,34 @@ static uint64_t Model_InternalAddVertexGroupData(CPakFile* const pak, CPakDataCh
     return de.offset;
 }
 
-extern bool AnimSeq_AddSequenceRefs(CPakFile* const pak, CPakDataChunk* const chunk, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
+extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
 
-// chunk creation order:
+// page chunk structure and order:
 // - header        HEAD        (align=8)
-// - name          CPU         (align=1)
-// - animrig guid  CPU         (align=8)  // typically merged into name chunk
+// - intermediate  CPU         (align=1?8) name, animrig refs then animseqs refs. aligned to 1 if we don't have any refs.
 // - vphysics      TEMP        (align=1)
 // - vertex groups TEMP_CLIENT (align=1)
-// - rmdl          CPU         (align=64)
+// - rmdl          CPU         (align=64) 64 bit aligned because collision data is loaded with aligned SIMD instructions.
 void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    // deal with dependencies first; auto-add all animation sequences and animation rigs.
-    CPakDataChunk sequenceRefChunk; uint32_t sequenceCount = 0;
-    const bool hasSequenceRefs = AnimSeq_AddSequenceRefs(pak, &sequenceRefChunk, &sequenceCount, mapEntry);
+    // deal with dependencies first; auto-add all animation sequences.
+    uint32_t sequenceCount = 0;
+    PakGuid_t* const sequenceRefs = AnimSeq_AutoAddSequenceRefs(pak, &sequenceCount, mapEntry);
 
-    CPakDataChunk animrigRefChunk; uint32_t animrigCount = 0;
-    const bool hasAnimrigRefs = Model_AddAnimRigRefs(pak, &animrigRefChunk, &animrigCount, mapEntry);
+    // this function only creates the arig guid refs, it does not auto-add.
+    uint32_t animrigCount = 0;
+    PakGuid_t* const animrigRefs = Model_AddAnimRigRefs(pak, &animrigCount, mapEntry);
 
     // from here we start with creating chunks for the target model asset.
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ModelAssetHeader_t), SF_HEAD, 8);
     ModelAssetHeader_t* const pHdr = reinterpret_cast<ModelAssetHeader_t*>(hdrChunk.Data());
 
-    // the name chunk comes directly after the header in bakery files.
-    const size_t modelNameBufLen = strlen(assetPath) + 1;
-
-    CPakDataChunk nameChunk = pak->CreateDataChunk(modelNameBufLen, SF_CPU, 8);
-    memcpy(nameChunk.Data(), assetPath, modelNameBufLen); // Write the null-terminated asset path to the name chunk.
-
-    pHdr->pName = nameChunk.GetPointer();
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pName)));
-
     std::vector<PakGuidRefHdr_t> guids;
 
     //
-    // Animseqs / Anim Rigs
+    // Name, Anim Rigs and Animseqs, these all share 1 data chunk.
     //
-    if (hasSequenceRefs || hasAnimrigRefs)
-    {
-        guids.resize(sequenceCount + animrigCount);
-
-        uint64_t curIndex = 0;
-
-        if (hasSequenceRefs)
-        {
-            pHdr->sequenceCount = sequenceCount;
-            pHdr->pSequences = sequenceRefChunk.GetPointer();
-
-            pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pSequences)));
-
-            for (uint32_t i = 0; i < sequenceCount; ++i)
-            {
-                guids[curIndex++] = sequenceRefChunk.GetPointer(sizeof(PakGuid_t) * i);
-            }
-        }
-
-        if (hasAnimrigRefs)
-        {
-            pHdr->animRigCount = animrigCount;
-            pHdr->pAnimRigs = animrigRefChunk.GetPointer();
-
-            pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pAnimRigs)));
-
-            for (uint32_t j = 0; j < pHdr->animRigCount; ++j)
-            {
-                guids[curIndex++] = animrigRefChunk.GetPointer(sizeof(PakGuid_t) * j);
-            }
-        }
-    }
+    Model_AllocateIntermediateDataChunk(pak, hdrChunk, pHdr, animrigRefs, animrigCount, sequenceRefs, sequenceCount, guids, assetPath);
 
     const std::string rmdlFilePath = pak->GetAssetPath() + assetPath;
 

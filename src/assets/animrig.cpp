@@ -4,51 +4,68 @@
 #include "public/material.h"
 #include <public/animrig.h>
 
-extern bool AnimSeq_AddSequenceRefs(CPakFile* const pak, CPakDataChunk* const chunk, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
+extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
 
 // anim rigs are stored in rmdl's. use this to read it out.
 extern char* Model_ReadRMDLFile(const std::string& path, const uint64_t alignment);
 
+// page chunk structure and order:
+// - header HEAD        (align=8)
+// - data   CPU         (align=8) name, rmdl then refs. name and rmdl are aligned to 1 byte, refs are 8 (padded from rmdl buffer)
 void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     // deal with dependencies first; auto-add all animation sequences.
-    CPakDataChunk sequenceRefChunk; uint32_t sequenceCount;
-    const bool hasAnimSeqRefs = AnimSeq_AddSequenceRefs(pak, &sequenceRefChunk, &sequenceCount, mapEntry);
+    uint32_t sequenceCount = 0;
+    PakGuid_t* const sequenceRefs = AnimSeq_AutoAddSequenceRefs(pak, &sequenceCount, mapEntry);
 
     // from here we start with creating chunks for the target animrig asset.
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimRigAssetHeader_t), SF_HEAD, 8);
-    const size_t assetNameLength = strlen(assetPath);
-
-    CPakDataChunk nameChunk = pak->CreateDataChunk(assetNameLength + 1, SF_CPU, 1); // [rika]: only aligned to 1 byte in season 3 paks
-    memcpy_s(nameChunk.Data(), assetNameLength, assetPath, assetNameLength);
+    AnimRigAssetHeader_t* const pHdr = reinterpret_cast<AnimRigAssetHeader_t*>(hdrChunk.Data());
 
     // open and validate file to get buffer
     char* const animRigFileBuffer = Model_ReadRMDLFile(pak->GetAssetPath() + assetPath, 8);
     const studiohdr_t* const studiohdr = reinterpret_cast<const studiohdr_t*>(animRigFileBuffer);
 
-    CPakDataChunk rigChunk = pak->CreateDataChunk(studiohdr->length, SF_CPU, 8, animRigFileBuffer);
+    // note: both of these are aligned to 1 byte, but we pad the rmdl buffer as
+    // the guid ref block needs to be aligned to 8 bytes.
+    const size_t assetNameBufLen = strlen(assetPath) + 1;
+    const size_t rmdlBufLen = IALIGN8(studiohdr->length);
 
-    AnimRigAssetHeader_t* const pHdr = reinterpret_cast<AnimRigAssetHeader_t*>(hdrChunk.Data());
-    pHdr->data = rigChunk.GetPointer();
-    pHdr->name = nameChunk.GetPointer();
+    const size_t sequenceRefBufLen = sequenceCount * sizeof(PakGuid_t);
 
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, data)));
+    CPakDataChunk rigChunk = pak->CreateDataChunk(assetNameBufLen + rmdlBufLen + sequenceRefBufLen, SF_CPU, 8);
+    char* const nameBuf = rigChunk.Data();
+
+    memcpy(nameBuf, assetPath, assetNameBufLen);
+    pHdr->name = rigChunk.GetPointer();
     pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, name)));
 
+    studiohdr_t* const studioBuf = reinterpret_cast<studiohdr_t*>(&rigChunk.Data()[assetNameBufLen]);
+
+    memcpy(studioBuf, animRigFileBuffer, studiohdr->length);
+    pHdr->data = rigChunk.GetPointer(assetNameBufLen);
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, data)));
+
+    delete[] animRigFileBuffer;
     std::vector<PakGuidRefHdr_t> guids;
 
-    if (hasAnimSeqRefs)
+    if (sequenceRefs)
     {
-        guids.resize(sequenceCount);
+        const size_t base = assetNameBufLen + rmdlBufLen;
+        PakGuid_t* const sequenceRefBuf = reinterpret_cast<PakGuid_t*>(&rigChunk.Data()[base]);
+
+        memcpy(sequenceRefBuf, sequenceRefs, sequenceRefBufLen);
 
         pHdr->sequenceCount = sequenceCount;
-        pHdr->pSequences = sequenceRefChunk.GetPointer();
+        pHdr->pSequences = rigChunk.GetPointer(base);
 
         pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, pSequences)));
 
+        guids.resize(sequenceCount);
+
         for (uint32_t i = 0; i < sequenceCount; ++i)
         {
-            guids[i] = sequenceRefChunk.GetPointer(i * sizeof(PakGuid_t));
+            guids[i] = rigChunk.GetPointer(base + (i * sizeof(PakGuid_t)));
         }
     }
 

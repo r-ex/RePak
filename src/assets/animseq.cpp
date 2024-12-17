@@ -2,6 +2,9 @@
 #include "assets.h"
 #include "public/studio.h"
 
+// page chunk structure and order:
+// - header HEAD        (align=8)
+// - data   CPU         (align=1) name, then rmdl. unlike models, this is aligned to 1 since we don't have BVH4 collision data here.
 static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
     const std::string rseqFilePath = pak->GetAssetPath() + assetPath;
@@ -17,24 +20,23 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
 
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimSeqAssetHeader_t), SF_HEAD, 8);
 
-    const size_t rseqNameLenAligned = IALIGN4(strlen(assetPath) + 1);
+    const size_t rseqNameBufLen = strlen(assetPath) + 1;
     const size_t rseqFileSize = rseqInput.GetSize();
 
-    CPakDataChunk dataChunk = pak->CreateDataChunk(IALIGN4(rseqNameLenAligned + rseqFileSize), SF_CPU, 64);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(rseqNameBufLen + rseqFileSize, SF_CPU, 1);
 
     // write the rseq file path into the data buffer
-    snprintf(dataChunk.Data(), rseqNameLenAligned, "%s", assetPath);
+    memcpy(dataChunk.Data(), assetPath, rseqNameBufLen);
 
     // write the rseq data into the data buffer
-    rseqInput.Read(dataChunk.Data() + rseqNameLenAligned, rseqFileSize);
+    rseqInput.Read(dataChunk.Data() + rseqNameBufLen, rseqFileSize);
     rseqInput.Close();
 
-    const mstudioseqdesc_t& seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(dataChunk.Data() + rseqNameLenAligned);
-    
+    const mstudioseqdesc_t& seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(dataChunk.Data() + rseqNameBufLen);
     AnimSeqAssetHeader_t* const aseqHeader = reinterpret_cast<AnimSeqAssetHeader_t*>(hdrChunk.Data());
-    aseqHeader->szname = dataChunk.GetPointer();
 
-    aseqHeader->data = dataChunk.GetPointer(rseqNameLenAligned);
+    aseqHeader->szname = dataChunk.GetPointer();
+    aseqHeader->data = dataChunk.GetPointer(rseqNameBufLen);
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSeqAssetHeader_t, szname)));
     pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSeqAssetHeader_t, data)));
@@ -42,13 +44,13 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
     std::vector<PakGuidRefHdr_t> guids;
 
     rmem dataBuf(dataChunk.Data());
-    dataBuf.seek(rseqNameLenAligned + seqdesc.autolayerindex, rseekdir::beg);
+    dataBuf.seek(rseqNameBufLen + seqdesc.autolayerindex, rseekdir::beg);
 
     // Iterate over each of the sequence's autolayers to register each of the autolayer GUIDs
     // This is required as otherwise the game will crash while trying to dereference a non-converted GUID.
     for (int i = 0; i < seqdesc.numautolayers; ++i)
     {
-        dataBuf.seek(rseqNameLenAligned + seqdesc.autolayerindex + (i * sizeof(mstudioautolayer_t)), rseekdir::beg);
+        dataBuf.seek(rseqNameBufLen + seqdesc.autolayerindex + (i * sizeof(mstudioautolayer_t)), rseekdir::beg);
 
         const mstudioautolayer_t* const autolayer = dataBuf.get<const mstudioautolayer_t>();
 
@@ -76,24 +78,20 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
     pak->PushAsset(asset);
 }
 
-bool AnimSeq_AddSequenceRefs(CPakFile* const pak, CPakDataChunk* const chunk, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
+PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
 {
     rapidjson::Value::ConstMemberIterator sequencesIt;
 
     if (!JSON_GetIterator(mapEntry, "$sequences", JSONFieldType_e::kArray, sequencesIt))
-        return false;
+        return nullptr;
 
     const rapidjson::Value::ConstArray sequencesArray = sequencesIt->value.GetArray();
 
     if (sequencesArray.Empty())
-        return false;
+        return nullptr;
 
     const size_t numSequences = sequencesArray.Size();
-
-    (*chunk) = pak->CreateDataChunk(sizeof(PakGuid_t) * numSequences, SF_CPU, 8);
-    (*sequenceCount) = static_cast<uint32_t>(numSequences);
-
-    PakGuid_t* const pGuids = reinterpret_cast<PakGuid_t*>(chunk->Data());
+    PakGuid_t* const guidBuf = new PakGuid_t[numSequences];
 
     int seqIndex = -1;
     for (const auto& sequence : sequencesArray)
@@ -121,10 +119,11 @@ bool AnimSeq_AddSequenceRefs(CPakFile* const pak, CPakDataChunk* const chunk, ui
                 AnimSeq_InternalAddAnimSeq(pak, guid, sequencePath);
         }
 
-        pGuids[seqIndex] = guid;
+        guidBuf[seqIndex] = guid;
     }
 
-    return true;
+    (*sequenceCount) = static_cast<uint32_t>(numSequences);
+    return guidBuf;
 }
 
 void Assets::AddAnimSeqAsset_v7(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
