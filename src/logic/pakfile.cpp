@@ -76,18 +76,21 @@ void CPakFile::AddAsset(const rapidjson::Value& file)
 	if (!assetPath)
 		Error("No path provided for an asset of type '%.4s'.\n", assetType);
 
-	HANDLE_ASSET_TYPE("txtr", assetType, assetPath, file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
-	HANDLE_ASSET_TYPE("uimg", assetType, assetPath, file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
-	HANDLE_ASSET_TYPE("matl", assetType, assetPath, file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
+	//if (IsFlagSet(PF_KEEP_CLIENT))
+	{
+		HANDLE_ASSET_TYPE("txtr", assetType, assetPath, file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
+		HANDLE_ASSET_TYPE("uimg", assetType, assetPath, file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
+		HANDLE_ASSET_TYPE("matl", assetType, assetPath, file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
+
+		HANDLE_ASSET_TYPE("shds", assetType, assetPath, file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
+		HANDLE_ASSET_TYPE("shdr", assetType, assetPath, file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
+	}
 
 	HANDLE_ASSET_TYPE("dtbl", assetType, assetPath, file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
 
 	HANDLE_ASSET_TYPE("mdl_", assetType, assetPath, file, nullptr, Assets::AddModelAsset_v9);
 	HANDLE_ASSET_TYPE("aseq", assetType, assetPath, file, nullptr, Assets::AddAnimSeqAsset_v7);
 	HANDLE_ASSET_TYPE("arig", assetType, assetPath, file, nullptr, Assets::AddAnimRigAsset_v4);
-
-	HANDLE_ASSET_TYPE("shds", assetType, assetPath, file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
-	HANDLE_ASSET_TYPE("shdr", assetType, assetPath, file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
 
 	HANDLE_ASSET_TYPE("Ptch", assetType, assetPath, file, Assets::AddPatchAsset, Assets::AddPatchAsset);
 
@@ -917,6 +920,12 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	// should dev-only data be kept - e.g. texture asset names, uimg texture names
 	if (JSON_GetValueOrDefault(doc, "keepDevOnly", false))
 		AddFlags(PF_KEEP_DEV);
+
+	if (JSON_GetValueOrDefault(doc, "keepServerOnly", true))
+		AddFlags(PF_KEEP_SERVER);
+
+	if (JSON_GetValueOrDefault(doc, "keepClientOnly", true))
+		AddFlags(PF_KEEP_CLIENT);
 
 	// create file stream from path created above
 	BinaryIO out;
