@@ -75,7 +75,14 @@ class CPakDataChunk
 	friend class CPakPage;
 
 public:
-	CPakDataChunk() = default;
+	CPakDataChunk()
+		: pageIndex(0)
+		, pageOffset(0)
+		, size(0)
+		, alignment(0)
+		, released(false)
+		, pData(nullptr)
+	{}
 
 	CPakDataChunk(size_t size, uint8_t alignment, char* data) : pageIndex(0), pageOffset(0), size((int)size), alignment(alignment), pData(data), released(false) {};
 	CPakDataChunk(int pageIndex, int pageOffset, size_t size, uint8_t alignment, char* data) : pageIndex(pageIndex), pageOffset(pageOffset), size((int)size), alignment(alignment), pData(data), released(false) {};
