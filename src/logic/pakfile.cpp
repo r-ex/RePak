@@ -517,7 +517,7 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSiz
 	return page;
 }
 
-CPakDataChunk CPakFile::CreateDataChunk(const size_t size, const int flags, const int alignment, char* const buf)
+CPakDataChunk CPakFile::CreateDataChunk(const size_t size, const int flags, const int alignment, void* const buf)
 {
 	// this assert is replicated in r5sdk
 	assert(alignment != 0 && alignment < UINT8_MAX);
@@ -531,7 +531,7 @@ CPakDataChunk CPakFile::CreateDataChunk(const size_t size, const int flags, cons
 		memset(targetBuf, 0, size);
 	}
 	else
-		targetBuf = buf;
+		targetBuf = reinterpret_cast<char*>(buf);
 
 	const uint32_t alignAmount = IALIGN(page.dataSize, static_cast<uint32_t>(alignment)) - page.dataSize;
 
