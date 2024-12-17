@@ -204,6 +204,15 @@
     <ClCompile Include="thirdparty\zstd\dictBuilder\divsufsort.c">
       <Filter>thirdparty\zstandard\dictbuilder</Filter>
     </ClCompile>
+    <ClCompile Include="utils\MurmurHash3.cpp">
+      <Filter>application</Filter>
+    </ClCompile>
+    <ClCompile Include="application\cachebuilder.cpp">
+      <Filter>application</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\binaryio.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -517,6 +526,12 @@
     </ClInclude>
     <ClInclude Include="thirdparty\zstd\zdict.h">
       <Filter>thirdparty\zstandard</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\MurmurHash3.h">
+      <Filter>application</Filter>
+    </ClInclude>
+    <ClInclude Include="application\cachebuilder.h">
+      <Filter>application</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
