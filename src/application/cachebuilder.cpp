@@ -103,14 +103,21 @@ bool BuildCacheFileFromGamePaksDirectory(const fs::path& directoryPath)
 	const std::unique_ptr<CCacheFile> cacheFile = std::make_unique<CCacheFile>();
 	const std::vector<fs::path> foundStarpakPaths = GetStarpakFilesFromDirectory(directoryPath);
 
+	Log("CacheBuilder: Found %lld streaming files to cache in directory \"%s\".\n", foundStarpakPaths.size(), directoryPath.string().c_str());
+
+	// Start a timer for the cache builder process so that the user is notified when the tool finishes.
+	TIME_SCOPE("CacheBuilder");
+
 	size_t starpakIndex = 0;
 	for (const fs::path& starpakPath : foundStarpakPaths)
 	{
 #if _DEBUG
-		printf("\n");
+		//printf("\n");
 		//TIME_SCOPE(starpakPath.u8string().c_str());
-		Debug("CacheBuilder: Opening StarPak file '%s' (%lld/%lld) for reading.\n", starpakPath.u8string().c_str(), starpakIndex, foundStarpakPaths.size());
+		//Debug("CacheBuilder: Opening StarPak file '%s' (%lld/%lld) for reading.\n", starpakPath.u8string().c_str(), starpakIndex+1, foundStarpakPaths.size());
 #endif
+
+		Log("CacheBuilder: (%03lld/%lld) Adding streaming file \"%s\" to the cache.\n", starpakIndex+1, foundStarpakPaths.size(), starpakPath.string().c_str());
 
 		const std::string relativeStarpakPath = ("paks/Win64/" / starpakPath.stem()).string();
 		const size_t starpakPathOffset = cacheFile->AddStarpakPathToCache(relativeStarpakPath);
