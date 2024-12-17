@@ -76,18 +76,21 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
     pak->PushAsset(asset);
 }
 
-bool AnimSeq_AddSequenceRefs(CPakDataChunk* const chunk, CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
+bool AnimSeq_AddSequenceRefs(CPakFile* const pak, CPakDataChunk* const chunk, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
 {
     rapidjson::Value::ConstMemberIterator sequencesIt;
-    const bool hasSequences = JSON_GetIterator(mapEntry, "$sequences", JSONFieldType_e::kArray, sequencesIt);
 
-    if (!hasSequences)
+    if (!JSON_GetIterator(mapEntry, "$sequences", JSONFieldType_e::kArray, sequencesIt))
         return false;
 
     const rapidjson::Value::ConstArray sequencesArray = sequencesIt->value.GetArray();
+
+    if (sequencesArray.Empty())
+        return false;
+
     const size_t numSequences = sequencesArray.Size();
 
-    (*chunk) = pak->CreateDataChunk(sizeof(PakGuid_t) * numSequences, SF_CPU, 64);
+    (*chunk) = pak->CreateDataChunk(sizeof(PakGuid_t) * numSequences, SF_CPU, 8);
     (*sequenceCount) = static_cast<uint32_t>(numSequences);
 
     PakGuid_t* const pGuids = reinterpret_cast<PakGuid_t*>(chunk->Data());

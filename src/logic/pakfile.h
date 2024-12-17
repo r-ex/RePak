@@ -217,7 +217,7 @@ public:
 
 	CPakPage& FindOrCreatePage(const int flags, const int alignment, const size_t newDataSize);
 
-	CPakDataChunk CreateDataChunk(const size_t size, const int flags, const int alignment);
+	CPakDataChunk CreateDataChunk(const size_t size, const int flags, const int alignment, char* const buf = nullptr);
 	//_vseginfo_t CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
 	CPakVSegment& FindOrCreateSegment(int flags, int alignment);
 
