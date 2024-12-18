@@ -287,3 +287,24 @@ private:
 	uint64_t m_nextMandatoryStarpakOffset = STARPAK_DATABLOCK_ALIGNMENT;
 	uint64_t m_nextOptionalStarpakOffset = STARPAK_DATABLOCK_ALIGNMENT;
 };
+
+// if the asset already existed, the function will return true.
+inline bool Pak_RegisterGuidRefAtOffset(CPakFile* const pak, const PakGuid_t guid, const size_t offset, CPakDataChunk& chunk, std::vector<PakGuidRefHdr_t>& guids, short& internalDependencyCount)
+{
+	// NULL guids should never be added. we check it here because otherwise we
+	// have to do a check at call site, and if we miss one we will end up with
+	// a hard to track bug.
+	if (guid == 0)
+		return false;
+
+	guids.push_back(chunk.GetPointer(offset));
+	PakAsset_t* const asset = pak->GetAssetByGuid(guid, nullptr, true);
+
+	if (!asset)
+		return false;
+
+	pak->SetCurrentAssetAsDependentForAsset(asset);
+	internalDependencyCount++;
+
+	return true;
+}
