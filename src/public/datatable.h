@@ -9,7 +9,9 @@ enum class dtblcoltype_t : uint32_t
 	Vector,
 	String,
 	Asset,
-	AssetNoPrecache
+	AssetNoPrecache,
+
+	INVALID = 0xffffffff
 };
 
 static inline const std::unordered_map<std::string, dtblcoltype_t> s_dataTableColumnTypeMap =
@@ -34,7 +36,22 @@ dtblcoltype_t DataTable_GetTypeFromString(const std::string& sType)
 			return value;
 	}
 
-	return dtblcoltype_t::String;
+	return dtblcoltype_t::INVALID;
+}
+
+inline const char* DataTable_GetStringFromType(const dtblcoltype_t type)
+{
+	switch (type)
+	{
+	case dtblcoltype_t::Bool: return "bool";
+	case dtblcoltype_t::Int: return "int";
+	case dtblcoltype_t::Float: return "float";
+	case dtblcoltype_t::Vector: return "vector";
+	case dtblcoltype_t::String: return "string";
+	case dtblcoltype_t::Asset: return "asset";
+	case dtblcoltype_t::AssetNoPrecache: return "asset_noprecache";
+	default: return "type_invalid";
+	}
 }
 
 inline bool DataTable_IsStringType(const dtblcoltype_t type)

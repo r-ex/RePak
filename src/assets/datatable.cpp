@@ -74,6 +74,11 @@ static void DataTable_SetupColumns(CPakFile* const pak, CPakDataChunk& dataChunk
     }
 }
 
+static void DataTable_ReportInvalidValueError(const dtblcoltype_t type, const uint32_t colIdx, const uint32_t rowIdx)
+{
+    Error("Invalid %s value at cell (%u, %u).\n", DataTable_GetStringFromType(type), colIdx, rowIdx);
+}
+
 // fills a CPakDataChunk with row data from a provided csv
 static void DataTable_SetupValues(CPakFile* const pak, CPakDataChunk& dataChunk, const size_t podValueBase, const size_t stringValueBase, datatable_asset_t* const pHdrTemp, rapidcsv::Document& doc)
 {
@@ -103,7 +108,7 @@ static void DataTable_SetupValues(CPakFile* const pak, CPakDataChunk& dataChunk,
                 else if (!_stricmp(val.c_str(), "false") || val == "0")
                     valbuf.write<uint32_t>(false);
                 else
-                    Error("Invalid bool value at cell (%u, %u).\n", colIdx, rowIdx);
+                    DataTable_ReportInvalidValueError(col.type, colIdx, rowIdx);
 
                 break;
             }
@@ -140,6 +145,8 @@ static void DataTable_SetupValues(CPakFile* const pak, CPakDataChunk& dataChunk,
 
                     valbuf.write(vec);
                 }
+                else
+                    DataTable_ReportInvalidValueError(col.type, colIdx, rowIdx);
                 break;
             }
             case dtblcoltype_t::String:
