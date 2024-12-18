@@ -225,3 +225,28 @@ PakGuid_t Pak_GetGuidOverridable(const rapidjson::Value& mapEntry, const char* c
 
     return RTech::StringToGuid(assetPath);
 }
+
+size_t Pak_ExtractAssetStem(const char* const assetPath, char* const outBuf, const size_t outBufLen)
+{
+    // skip 'texture/'
+    const char* bufPos = strchr(assetPath, '/');
+
+    if (!bufPos)
+        bufPos = assetPath;
+    else
+        bufPos += 1; // skip the '/'.
+
+    // copy until '.rpak' or '\0'
+    size_t i = 0;
+    while (*bufPos != '\0' && *bufPos != '.')
+    {
+        if (i == outBufLen)
+            Error("%s: ran out of space on %s.\n", __FUNCTION__, assetPath);
+
+        outBuf[i++] = *bufPos;
+        bufPos++;
+    }
+
+    outBuf[i] = '\0';
+    return i;
+}
