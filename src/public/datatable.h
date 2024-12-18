@@ -20,7 +20,7 @@ static inline const std::unordered_map<std::string, dtblcoltype_t> s_dataTableCo
 	{ "vector", dtblcoltype_t::Vector },
 	{ "string", dtblcoltype_t::String },
 	{ "asset",  dtblcoltype_t::Asset },
-	{ "assetnoprecache", dtblcoltype_t::AssetNoPrecache }
+	{ "asset_noprecache", dtblcoltype_t::AssetNoPrecache }
 };
 
 // gets enum value from type string
