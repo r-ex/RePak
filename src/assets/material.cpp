@@ -746,7 +746,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
     const size_t dataBufSize = alignedPathSize + (textureRefSize * 2) + surfaceProp1Size + surfaceProp2Size;
 
     // asset data
-    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU, 8);
 
     char* dataBuf = dataChunk.Data();
 
