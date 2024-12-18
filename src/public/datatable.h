@@ -26,13 +26,8 @@ static inline const std::unordered_map<std::string, dtblcoltype_t> s_dataTableCo
 // gets enum value from type string
 // e.g. "string" to dtblcoltype::StringT
 
-static char char_tolower(const char ch) {
-	return static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
-}
-dtblcoltype_t DataTable_GetTypeFromString(std::string& sType)
+dtblcoltype_t DataTable_GetTypeFromString(const std::string& sType)
 {
-	std::transform(sType.begin(), sType.end(), sType.begin(), char_tolower);
-
 	for (const auto& [key, value] : s_dataTableColumnTypeMap) // get each element in the type map
 	{
 		if (sType.compare(key) == 0) // are they equal?
@@ -126,8 +121,8 @@ struct datatable_asset_t
 	const char* assetPath; // assets path on disk
 
 	// previously func vars
-	size_t stringEntriesSize;
-	size_t rowDataPageSize;
+	size_t rowPodValueBufSize;
+	size_t rowStringValueBufSize;
 
 	datacolumn_t* pDataColums; // pointer to column data from data chunk
 
