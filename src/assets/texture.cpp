@@ -167,13 +167,13 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
 
     if (pak->IsFlagSet(PF_KEEP_DEV))
     {
-        char partialName[256];
-        const size_t stemLen = Pak_ExtractAssetStem(assetPath, partialName, sizeof(partialName));
+        char pathStem[256];
+        const size_t stemLen = Pak_ExtractAssetStem(assetPath, pathStem, sizeof(pathStem));
 
         if (stemLen > 0)
         {
             CPakDataChunk nameChunk = pak->CreateDataChunk(stemLen + 1, SF_CPU | SF_DEV, 1);
-            memcpy(nameChunk.Data(), partialName, stemLen + 1);
+            memcpy(nameChunk.Data(), pathStem, stemLen + 1);
 
             hdr->pName = nameChunk.GetPointer();
             pak->AddPointer(hdrChunk.GetPointer(offsetof(TextureAssetHeader_t, pName)));

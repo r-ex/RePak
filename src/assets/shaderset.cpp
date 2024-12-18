@@ -67,17 +67,15 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderSetAssetHeader_t), SF_HEAD, 8);
 	ShaderSetAssetHeader_t* const hdr = reinterpret_cast<ShaderSetAssetHeader_t*>(hdrChunk.Data());
 
-	CPakDataChunk nameChunk;
-
 	if (pak->IsFlagSet(PF_KEEP_DEV))
 	{
-		const std::string assetPathWithoutExtension = Utils::ChangeExtension(assetPath, "");
-		const size_t devNameLen = assetPathWithoutExtension.length();
+		char pathStem[256];
+		const size_t stemLen = Pak_ExtractAssetStem(assetPath, pathStem, sizeof(pathStem));
 
-		if (devNameLen > 0)
+		if (stemLen > 0)
 		{
-			nameChunk = pak->CreateDataChunk(assetPathWithoutExtension.length() + 1, SF_CPU | SF_DEV, 1);
-			strcpy_s(nameChunk.Data(), nameChunk.GetSize(), assetPathWithoutExtension.c_str());
+			CPakDataChunk nameChunk = pak->CreateDataChunk(stemLen + 1, SF_CPU | SF_DEV, 1);
+			memcpy(nameChunk.Data(), pathStem, stemLen + 1);
 
 			hdr->name = nameChunk.GetPointer();
 			pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_t, name)));
