@@ -503,21 +503,10 @@ static bool Material_OpenFile(CPakFile* const pak, const char* const assetPath, 
     return true;
 }
 
-static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& matEntry)
+static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath,
+    MaterialAsset_t& matlAsset, const rapidjson::Value& matEntry, const rapidjson::Value::ConstMemberIterator texturesIt, const size_t textureCount)
 {
     short internalDependencyCount = 0; // number of dependencies inside this pak
-
-    rapidjson::Value::ConstMemberIterator texturesIt;
-    const bool hasTextures = JSON_GetIterator(matEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
-
-    const size_t textureCount = hasTextures
-        ? Material_AddTextures(pak, matEntry, texturesIt->value)
-        : 0; // note: no error as materials without textures do exist.
-    // typically, these are prepass/vsm/etc materials.
-
-    MaterialAsset_t matlAsset{};
-    matlAsset.assetVersion = 12; // set asset as a titanfall 2 material
-    matlAsset.path = Utils::ChangeExtension(assetPath, "");
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
@@ -525,17 +514,12 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
     // some var declaration
     size_t textureRefSize = textureCount * sizeof(PakGuid_t); // size of the texture guid section.
 
-    // parse json inputs for matl header
-    matlAsset.FromJSON(matEntry);
-    matlAsset.guid = assetGuid;
-
     // !!!R2 SPECIFIC!!!
     {
         const size_t nameBufLen = matlAsset.name.length() + 1;
         CPakDataChunk nameChunk = pak->CreateDataChunk(nameBufLen, SF_CPU | SF_DEV, 1);
 
-        sprintf_s(nameChunk.Data(), nameBufLen, "%s", matlAsset.name.c_str());
-
+        memcpy(nameChunk.Data(), matlAsset.name.c_str(), nameBufLen);
         matlAsset.materialName = nameChunk.GetPointer();
 
         pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, materialName)));
@@ -589,7 +573,7 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
 
     std::vector<PakGuidRefHdr_t> guids;
 
-    if (hasTextures)
+    if (textureCount)
     {
         internalDependencyCount += Material_AddTextureRefs(pak, dataChunk, dataBuf, guids, texturesIt->value, 0);
         dataBuf += textureRefSize;
@@ -601,16 +585,16 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
     //         writing this out if we have streaming
     //         textures and only up to the count thereof.
 
-// write the surface names into the buffer
+    // write the surface names into the buffer
     if (surfaceProp1Size)
     {
-        snprintf(dataBuf, surfaceProp1Size, "%s", matlAsset.surface.c_str());
+        memcpy(dataBuf, matlAsset.surface.c_str(), surfaceProp1Size);
         dataBuf += surfaceProp1Size;
     }
 
     if (surfaceProp2Size)
     {
-        snprintf(dataBuf, surfaceProp2Size, "%s", matlAsset.surface2.c_str());
+        memcpy(dataBuf, matlAsset.surface2.c_str(), surfaceProp2Size);
         dataBuf += surfaceProp2Size;
     }
 
@@ -682,27 +666,10 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
     pak->PushAsset(asset);
 }
 
-static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& matEntry)
+static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, 
+    MaterialAsset_t& matlAsset, const rapidjson::Value& matEntry, const rapidjson::Value::ConstMemberIterator texturesIt, const size_t textureCount)
 {
-    // deal with dependencies first before creating chunks for this material asset.
     short internalDependencyCount = 0; // number of dependencies inside this pak
-
-    rapidjson::Value::ConstMemberIterator texturesIt;
-    const bool hasTextures = JSON_GetIterator(matEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
-
-    const size_t textureCount = hasTextures
-        ? Material_AddTextures(pak, matEntry, texturesIt->value)
-        : 0; // note: no error as materials without textures do exist.
-             // typically, these are prepass/vsm/etc materials.
-
-    MaterialAsset_t matlAsset{};
-    matlAsset.FromJSON(matEntry); // parse json inputs for matl header
-
-    matlAsset.assetVersion = 15;
-    matlAsset.path = Utils::ChangeExtension(assetPath, ""); // todo: use Pak_ExtractAssetStem
-    matlAsset.guid = assetGuid;
-
-    matlAsset.SetupDepthMaterials(pak, matEntry);
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
@@ -715,21 +682,20 @@ static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t
     const size_t surfaceProp1Size = !matlAsset.surface.empty() ? (matlAsset.surface.length() + 1) : 0;
     const size_t surfaceProp2Size = !matlAsset.surface2.empty() ? (matlAsset.surface2.length() + 1) : 0;
 
-    const size_t alignedPathSize = IALIGN4(nameBufLen);
+    const size_t alignedPathSize = IALIGN8(nameBufLen);
     const size_t dataBufSize = alignedPathSize + (textureRefSize * 2) + surfaceProp1Size + surfaceProp2Size;
 
     // asset data
     CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU, 8);
-
     char* dataBuf = dataChunk.Data();
 
     // write asset name into the start of the buffer
-    snprintf(dataBuf, nameBufLen, "%s", matlAsset.name.c_str());
+    memcpy(dataBuf, matlAsset.name.c_str(), nameBufLen);
     dataBuf += alignedPathSize;
 
     std::vector<PakGuidRefHdr_t> guids;
 
-    if (hasTextures)
+    if (textureCount)
     {
         internalDependencyCount += Material_AddTextureRefs(pak, dataChunk, dataBuf, guids, texturesIt->value, alignedPathSize);
         dataBuf += textureRefSize;
@@ -744,13 +710,13 @@ static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t
     // write the surface names into the buffer
     if (surfaceProp1Size)
     {
-        snprintf(dataBuf, surfaceProp1Size, "%s", matlAsset.surface.c_str());
+        memcpy(dataBuf, matlAsset.surface.c_str(), surfaceProp1Size);
         dataBuf += surfaceProp1Size;
     }
 
     if (surfaceProp2Size)
     {
-        snprintf(dataBuf, surfaceProp2Size, "%s", matlAsset.surface2.c_str());
+        memcpy(dataBuf, matlAsset.surface2.c_str(), surfaceProp2Size);
         dataBuf += surfaceProp2Size;
     }
 
@@ -820,7 +786,6 @@ static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t
 
     PakAsset_t asset;
 
-
     asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
     asset.SetHeaderPointer(hdrChunk.Data());
     asset.version = 15;
@@ -850,10 +815,27 @@ static bool Material_InternalAddMaterial(CPakFile* const pak, const PakGuid_t as
         matEntry = mapEntry;
     }
 
+    rapidjson::Value::ConstMemberIterator texturesIt;
+    const bool hasTextures = JSON_GetIterator(*matEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
+
+    const size_t textureCount = hasTextures
+        ? Material_AddTextures(pak, *matEntry, texturesIt->value)
+        : 0; // note: no error as materials without textures do exist.
+             // typically, these are prepass/vsm/etc materials.
+
+    MaterialAsset_t matlAsset{};
+    matlAsset.FromJSON(*matEntry); // parse json inputs for matl header
+
+    matlAsset.assetVersion = assetVersion;
+    matlAsset.guid = assetGuid;
+    matlAsset.path = Utils::ChangeExtension(assetPath, ""); // todo: should this be the stem? if yes, use Pak_ExtractAssetStem
+
+    matlAsset.SetupDepthMaterials(pak, *matEntry);
+
     if (assetVersion == 12)
-        Material_InternalAddMaterialV12(pak, assetGuid, assetPath, *matEntry);
+        Material_InternalAddMaterialV12(pak, assetGuid, assetPath, matlAsset, *matEntry, texturesIt, textureCount);
     else
-        Material_InternalAddMaterialV15(pak, assetGuid, assetPath, *matEntry);
+        Material_InternalAddMaterialV15(pak, assetGuid, assetPath, matlAsset, *matEntry, texturesIt, textureCount);
 
     return true;
 }
