@@ -6,27 +6,34 @@
 
 extern bool Texture_AutoAddTexture(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming);
 
-static void Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Value& texture, const int index, const bool disableStreaming)
+// returns true if a texture was added to the pak, false if we just use a guid ref
+static bool Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Value& texture, const int index, const bool disableStreaming)
 {
     // check if texture string is an asset guid (e.g., "0x5DCAT")
     // if it is then we don't add it here as its a reference.
     PakGuid_t textureGuid;
     if (JSON_ParseNumber(texture, textureGuid))
-        return;
+        return false;
 
     if (texture.GetStringLength() == 0)
         Error("Texture defined in slot #%i was empty.\n", index);
 
     const char* const texturePath = texture.GetString();
-    Texture_AutoAddTexture(pak, RTech::StringToGuid(texturePath), texturePath, disableStreaming);
+    return Texture_AutoAddTexture(pak, RTech::StringToGuid(texturePath), texturePath, disableStreaming);
 }
 
-// we need to take better account of textures once asset caching becomes a thing
-static void Material_CreateTextures(CPakFile* const pak, const rapidjson::Value& textures, const bool disableStreaming)
+static short Material_CreateTextures(CPakFile* const pak, const rapidjson::Value& textures, const bool disableStreaming)
 {
+    short numTexturesAdded = 0;
     int i = 0;
+
     for (const auto& texture : textures.GetObject())
-        Material_CheckAndAddTexture(pak, texture.value, i++, disableStreaming);
+    {
+        if (Material_CheckAndAddTexture(pak, texture.value, i++, disableStreaming))
+            numTexturesAdded++;
+    }
+
+    return numTexturesAdded;
 }
 
 static size_t Material_GetHighestTextureBindPoint(const rapidjson::Value& textures)
@@ -61,7 +68,7 @@ static size_t Material_AddTextures(CPakFile* const pak, const rapidjson::Value& 
 static short Material_AddTextureRefs(CPakFile* const pak, CPakDataChunk& dataChunk, char* const dataBuf, std::vector<PakGuidRefHdr_t>& guids,
                                      const rapidjson::Value& textures, const size_t alignedPathSize)
 {
-    short externalDependencyCount = 0;
+    short internalDependencyCount = 0;
     size_t curIndex = 0;
 
     for (auto it = textures.MemberBegin(); it != textures.MemberEnd(); it++, curIndex++)
@@ -82,24 +89,13 @@ static short Material_AddTextureRefs(CPakFile* const pak, CPakDataChunk& dataChu
             Error("Unable to parse texture #%zu.\n", bindPoint);
 
         reinterpret_cast<PakGuid_t*>(dataBuf)[bindPoint] = textureGuid;
+        const size_t offset = alignedPathSize + (bindPoint * sizeof(PakGuid_t));
 
-        if (textureGuid != 0) // only deal with dependencies if the guid is not 0
-        {
-            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (bindPoint * sizeof(PakGuid_t)))); // register guid for this texture reference
-
-            PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
-
-            if (txtrAsset)
-                pak->SetCurrentAssetAsDependentForAsset(txtrAsset);
-            else
-            {
-                externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
-                Warning("Unable to find texture #%zu within the local assets.\n", bindPoint);
-            }
-        }
+        if (!Pak_RegisterGuidRefAtOffset(pak, textureGuid, offset, dataChunk, guids, internalDependencyCount))
+            Warning("Unable to find texture #%zu within the local assets.\n", bindPoint);
     }
 
-    return externalDependencyCount;
+    return internalDependencyCount;
 }
 
 static bool Material_ParseDXStateFlags(const rapidjson::Value& mapEntry, int& blendStateMask, int& depthStencilFlags, int& rasterizerFlags)
@@ -172,28 +168,35 @@ static void Material_SetDXStates(const rapidjson::Value& mapEntry, MaterialDXSta
     }
 }
 
-enum MaterialDepthType_e
+static const char* const Material_GetPassMaterialKeyForType(const RenderPassMaterial_e type)
 {
-    Shadow,
-    Prepass,
-    VSM,
-    ShadowTight,
-};
+    switch (type)
+    {
+    case DEPTH_SHADOW:       return "$depthShadowMaterial";
+    case DEPTH_PREPASS:      return "$depthPrepassMaterial";
+    case DEPTH_VSM:          return "$depthVSMMaterial";
+    case DEPTH_SHADOW_TIGHT: return "$depthShadowTightMaterial";
+    case COL_PASS:           return "$colpassMaterial";
+    default: assert(0); return nullptr;
+    }
+}
 
-static PakGuid_t Material_DetermineDefaultDepthMaterial(const MaterialDepthType_e depthType, const MaterialShaderType_e shaderType, const int rasterizerFlags)
+static PakGuid_t Material_DetermineDefaultDepthMaterial(const RenderPassMaterial_e depthType, const MaterialShaderType_e shaderType, const int rasterizerFlags)
 {
     switch (depthType)
     {
-    case Shadow:
+    case DEPTH_SHADOW:
         return RTech::StringToGuid(Utils::VFormat("material/code_private/depth_shadow%s_%s.rpak", 
             ((rasterizerFlags & 0x4) && !(rasterizerFlags & 0x2)) ? "_frontculled" : "", s_materialShaderTypeNames[shaderType]).c_str());
-    case Prepass:
+    case DEPTH_PREPASS:
         return RTech::StringToGuid(Utils::VFormat("material/code_private/depth_prepass%s_%s.rpak", 
             ((rasterizerFlags & 0x2) && !(rasterizerFlags & 0x4)) ? "_twosided" : "", s_materialShaderTypeNames[shaderType]).c_str());
-    case VSM:
+    case DEPTH_VSM:
         return RTech::StringToGuid(Utils::VFormat("material/code_private/depth_vsm_%s.rpak", s_materialShaderTypeNames[shaderType]).c_str());
-    case ShadowTight:
+    case DEPTH_SHADOW_TIGHT:
         return RTech::StringToGuid(Utils::VFormat("material/code_private/depth_shadow_tight_%s.rpak", s_materialShaderTypeNames[shaderType]).c_str());
+    case COL_PASS:
+        return 0; // the default for colpass is 0.
     default:
         // code bug
         assert(0);
@@ -201,28 +204,49 @@ static PakGuid_t Material_DetermineDefaultDepthMaterial(const MaterialDepthType_
     }
 }
 
-void MaterialAsset_t::SetupDepthMaterials(const rapidjson::Value& mapEntry)
+bool Material_AutoAddMaterial(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion);
+
+void MaterialAsset_t::SetupDepthMaterials(CPakFile* const pak, const rapidjson::Value& mapEntry)
 {
     if (this->materialTypeStr == "wld")
         Warning("WLD materials do not have generic depth materials, make sure that you have set them to 0 or have created your own.\n");
 
-    bool success;
+    // titanfall 2 (v12) doesn't have depth_tight, so it has 1 less depth material.
+    const int depthMatCount = this->assetVersion > 12 ? RENDER_PASS_MAT_COUNT : (RENDER_PASS_MAT_COUNT - 1);
 
-    depthShadowMaterial = Pak_ParseGuid(mapEntry, "$depthShadowMaterial", &success);
-    if (!success)
-        depthShadowMaterial = Material_DetermineDefaultDepthMaterial(MaterialDepthType_e::Shadow, materialType, dxStates[0].rasterizerFlags);
+    for (int i = 0; i < depthMatCount; i++)
+    {
+        const RenderPassMaterial_e depthMatType = (RenderPassMaterial_e)i;
+        PakGuid_t& passMaterial = passMaterials[i];
 
-    depthPrepassMaterial = Pak_ParseGuid(mapEntry, "$depthPrepassMaterial", &success);
-    if (!success)
-        depthPrepassMaterial = Material_DetermineDefaultDepthMaterial(MaterialDepthType_e::Prepass, materialType, dxStates[0].rasterizerFlags);
+        const char* const fieldName = Material_GetPassMaterialKeyForType(depthMatType);
+        rapidjson::Value::ConstMemberIterator it;
 
-    depthVSMMaterial = Pak_ParseGuid(mapEntry, "$depthVSMMaterial", &success);
-    if (!success)
-        depthVSMMaterial = Material_DetermineDefaultDepthMaterial(MaterialDepthType_e::VSM, materialType, dxStates[0].rasterizerFlags);
+        if (!JSON_GetIterator(mapEntry, fieldName, it))
+        {
+            // Use code_private depth materials if user didn't explicitly defined or nulled the field.
+            passMaterial = Material_DetermineDefaultDepthMaterial(depthMatType, materialType, dxStates[0].rasterizerFlags);
+            continue;
+        }
 
-    depthShadowTightMaterial = Pak_ParseGuid(mapEntry, "$depthShadowTightMaterial", &success);
-    if (!success)
-        depthShadowTightMaterial = Material_DetermineDefaultDepthMaterial(MaterialDepthType_e::ShadowTight, materialType, dxStates[0].rasterizerFlags);
+        const rapidjson::Value& val = it->value;
+
+        if (JSON_ParseNumber(val, passMaterial))
+            continue;
+
+        if (!val.IsString())
+            Error("%s #%i is of unsupported type; expected %s or %s, found %s.\n", fieldName, i,
+                JSON_TypeToString(JSONFieldType_e::kUint64), JSON_TypeToString(JSONFieldType_e::kString),
+                JSON_TypeToString(JSON_ExtractType(val)));
+
+        if (val.GetStringLength() == 0)
+            Error("%s #%i was defined as an invalid empty string.\n", fieldName, i);
+
+        const char* const materialPath = val.GetString();
+        passMaterial = RTech::StringToGuid(materialPath);
+
+        Material_AutoAddMaterial(pak, passMaterial, materialPath, this->assetVersion);
+    }
 }
 
 static inline void CheckCountOrError(const rapidjson::Value::ConstArray& elements, const size_t expectedCount, const char* const fieldName)
@@ -380,10 +404,6 @@ void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
     *(uint32_t*)this->samplers = JSON_GetNumberRequired<uint32_t>(mapEntry, "samplers");
 
     Material_SetDXStates(mapEntry, dxStates);
-    this->SetupDepthMaterials(mapEntry);
-
-    // get referenced colpass material, can be 0 as many materials don't have them
-    this->colpassMaterial = Pak_ParseGuid(mapEntry, "$colpassMaterial");
 
     this->shaderSet = Pak_ParseGuidRequired(mapEntry, "shaderSet");
     this->textureAnimation = Pak_ParseGuid(mapEntry, "$textureAnimation");
@@ -483,13 +503,9 @@ static bool Material_OpenFile(CPakFile* const pak, const char* const assetPath, 
     return true;
 }
 
-// VERSION 7
-void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& matEntry)
 {
-    rapidjson::Document document;
-
-    const bool hasMaterialFile = Material_OpenFile(pak, assetPath, document);
-    const rapidjson::Value& matEntry = hasMaterialFile ? document : mapEntry;
+    short internalDependencyCount = 0; // number of dependencies inside this pak
 
     rapidjson::Value::ConstMemberIterator texturesIt;
     const bool hasTextures = JSON_GetIterator(matEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
@@ -497,7 +513,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     const size_t textureCount = hasTextures
         ? Material_AddTextures(pak, matEntry, texturesIt->value)
         : 0; // note: no error as materials without textures do exist.
-             // typically, these are prepass/vsm/etc materials.
+    // typically, these are prepass/vsm/etc materials.
 
     MaterialAsset_t matlAsset{};
     matlAsset.assetVersion = 12; // set asset as a titanfall 2 material
@@ -507,13 +523,12 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
 
     // some var declaration
-    short externalDependencyCount = 0; // number of dependencies ouside this pak
     size_t textureRefSize = textureCount * sizeof(PakGuid_t); // size of the texture guid section.
 
     // parse json inputs for matl header
     matlAsset.FromJSON(matEntry);
     matlAsset.guid = assetGuid;
-    
+
     // !!!R2 SPECIFIC!!!
     {
         const size_t nameBufLen = matlAsset.name.length() + 1;
@@ -568,7 +583,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     }
 
     // asset data
-    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
+    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU, 8);
 
     char* dataBuf = dataChunk.Data();
 
@@ -576,17 +591,17 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
 
     if (hasTextures)
     {
-        externalDependencyCount += Material_AddTextureRefs(pak, dataChunk, dataBuf, guids, texturesIt->value, 0);
+        internalDependencyCount += Material_AddTextureRefs(pak, dataChunk, dataBuf, guids, texturesIt->value, 0);
         dataBuf += textureRefSize;
     }
 
     dataBuf += textureRefSize; // [rika]: already calculated, no need to do it again.
-                               // [amos]: this offset is necessary for the streaming
-                               //         texture handles. we should look into only
-                               //         writing this out if we have streaming
-                               //         textures and only up to the count thereof.
+    // [amos]: this offset is necessary for the streaming
+    //         texture handles. we should look into only
+    //         writing this out if we have streaming
+    //         textures and only up to the count thereof.
 
-    // write the surface names into the buffer
+// write the surface names into the buffer
     if (surfaceProp1Size)
     {
         snprintf(dataBuf, surfaceProp1Size, "%s", matlAsset.surface.c_str());
@@ -601,9 +616,9 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
 
     // ===============================
     // fill out the rest of the header
-    
+
     size_t currentDataBufOffset = 0;
-    
+
     matlAsset.textureHandles = dataChunk.GetPointer(currentDataBufOffset);
     pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, textureHandles)));
     currentDataBufOffset += textureRefSize;
@@ -626,51 +641,14 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
         currentDataBufOffset += surfaceProp2Size;
     }
 
-    //bool bColpass = false; // is this colpass material? how do you determine this
+    // register referenced assets (depth materials, colpass material, shader sets)
 
-    // loop thru referenced assets (depth materials, colpass material) note: shaderset isn't inline with these vars in r2, so we set it after
-    for (int i = 0; i < 3; ++i)
-    {
-        const PakGuid_t guid = *((PakGuid_t*)&matlAsset.depthShadowMaterial + i);
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[0], offsetof(MaterialAssetHeader_v12_t, passMaterials[0]), hdrChunk, guids, internalDependencyCount);
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[1], offsetof(MaterialAssetHeader_v12_t, passMaterials[1]), hdrChunk, guids, internalDependencyCount);
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[2], offsetof(MaterialAssetHeader_v12_t, passMaterials[2]), hdrChunk, guids, internalDependencyCount);
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[3], offsetof(MaterialAssetHeader_v12_t, passMaterials[3]), hdrChunk, guids, internalDependencyCount);
 
-        if (guid != 0)
-        {
-            pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, depthShadowMaterial) + (i * sizeof(PakGuid_t))));
-
-            PakAsset_t* asset = pak->GetAssetByGuid(guid, nullptr, true);
-
-            if (asset)
-                pak->SetCurrentAssetAsDependentForAsset(asset);
-            else
-                externalDependencyCount++;
-        }
-    }
-
-    // do colpass here because of how MaterialAsset_t is setup
-    if (matlAsset.colpassMaterial != 0)
-    {
-        pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, colpassMaterial)));
-
-        PakAsset_t* asset = pak->GetAssetByGuid(matlAsset.colpassMaterial, nullptr, true);
-
-        if (asset)
-            pak->SetCurrentAssetAsDependentForAsset(asset);
-        else
-            externalDependencyCount++;
-    }
-
-    // shaderset, see note above
-    if (matlAsset.shaderSet != 0)
-    {
-        pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, shaderSet)));
-
-        PakAsset_t* asset = pak->GetAssetByGuid(matlAsset.shaderSet, nullptr, true);
-
-        if (asset)
-            pak->SetCurrentAssetAsDependentForAsset(asset);
-        else
-            externalDependencyCount++;
-    }
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.shaderSet, offsetof(MaterialAssetHeader_v12_t, shaderSet), hdrChunk, guids, internalDependencyCount);
 
     // write header now that we are done setting it up
     matlAsset.WriteToBuffer(hdrChunk.Data());
@@ -686,7 +664,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
     cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
     cpuhdr->version = 3; // unsure what this value actually is but some cpu headers have
-                         // different values. the engine doesn't seem to use it however.
+    // different values. the engine doesn't seem to use it however.
 
     pak->AddPointer(uberBufChunk.GetPointer(offsetof(MaterialCPUHeader, dataPtr)));
 
@@ -698,21 +676,16 @@ void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid
     asset.version = 12;
 
     asset.pageEnd = pak->GetNumPages();
+    asset.remainingDependencyCount = internalDependencyCount + 1; // plus one for the asset itself
 
-    asset.remainingDependencyCount = static_cast<short>((guids.size() - externalDependencyCount) + 1); // plus one for the asset itself (I think)
-  
     asset.AddGuids(&guids);
-
     pak->PushAsset(asset);
 }
 
-// VERSION 8
-void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& matEntry)
 {
-    rapidjson::Document document;
-
-    const bool hasMaterialFile = Material_OpenFile(pak, assetPath, document);
-    const rapidjson::Value& matEntry = hasMaterialFile ? document : mapEntry;
+    // deal with dependencies first before creating chunks for this material asset.
+    short internalDependencyCount = 0; // number of dependencies inside this pak
 
     rapidjson::Value::ConstMemberIterator texturesIt;
     const bool hasTextures = JSON_GetIterator(matEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
@@ -723,19 +696,19 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
              // typically, these are prepass/vsm/etc materials.
 
     MaterialAsset_t matlAsset{};
+    matlAsset.FromJSON(matEntry); // parse json inputs for matl header
+
     matlAsset.assetVersion = 15;
-    matlAsset.path = Utils::ChangeExtension(assetPath, "");
+    matlAsset.path = Utils::ChangeExtension(assetPath, ""); // todo: use Pak_ExtractAssetStem
+    matlAsset.guid = assetGuid;
+
+    matlAsset.SetupDepthMaterials(pak, matEntry);
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
 
     // some var declaration
-    short externalDependencyCount = 0; // number of dependencies ouside this pak
     size_t textureRefSize = textureCount * sizeof(PakGuid_t); // size of the texture guid section.
-
-    // parse json inputs for matl header
-    matlAsset.FromJSON(matEntry);
-    matlAsset.guid = assetGuid;
 
     const size_t nameBufLen = matlAsset.name.length() + 1;
 
@@ -758,7 +731,7 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
 
     if (hasTextures)
     {
-        externalDependencyCount += Material_AddTextureRefs(pak, dataChunk, dataBuf, guids, texturesIt->value, alignedPathSize);
+        internalDependencyCount += Material_AddTextureRefs(pak, dataChunk, dataBuf, guids, texturesIt->value, alignedPathSize);
         dataBuf += textureRefSize;
     }
 
@@ -813,38 +786,17 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
         currentDataBufOffset += surfaceProp2Size;
     }
 
-    //bool bColpass = false; // is this colpass material? how do you determine this
-
-    // loop thru referenced assets (depth materials, colpass material) note: shaderset isn't inline with these vars in r2, so we set it after
-    for (int i = 0; i < 6; ++i)
+    // loop thru referenced assets (depth materials, colpass material)
+    for (int i = 0; i < RENDER_PASS_MAT_COUNT; ++i)
     {
-        const PakGuid_t guid = *((PakGuid_t*)&matlAsset.depthShadowMaterial + i);
+        const PakGuid_t guid = matlAsset.passMaterials[i];
+        const size_t offset = offsetof(MaterialAssetHeader_v15_t, passMaterials[i]);
 
-        if (guid != 0)
-        {
-            pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, depthShadowMaterial) + (i * sizeof(PakGuid_t))));
-
-            PakAsset_t* asset = pak->GetAssetByGuid(guid, nullptr, true);
-
-            if (asset)
-                pak->SetCurrentAssetAsDependentForAsset(asset);
-            else
-                externalDependencyCount++;
-        }
+        Pak_RegisterGuidRefAtOffset(pak, guid, offset, hdrChunk, guids, internalDependencyCount);
     }
 
-    // texan
-    if (matlAsset.textureAnimation != 0)
-    {
-        pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, textureAnimation)));
-
-        PakAsset_t* txanAsset = pak->GetAssetByGuid(matlAsset.textureAnimation, nullptr, true);
-
-        if (txanAsset)
-            pak->SetCurrentAssetAsDependentForAsset(txanAsset);
-        else
-            externalDependencyCount++;
-    }
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.shaderSet, offsetof(MaterialAssetHeader_v15_t, shaderSet), hdrChunk, guids, internalDependencyCount);
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.textureAnimation, offsetof(MaterialAssetHeader_v15_t, textureAnimation), hdrChunk, guids, internalDependencyCount);
 
     // write header now that we are done setting it up
     matlAsset.WriteToBuffer(hdrChunk.Data());
@@ -874,12 +826,57 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
     asset.version = 15;
 
     asset.pageEnd = pak->GetNumPages();
-    //asset.remainingDependencyCount = static_cast<short>((guids.size() - externalDependencyCount) + 1); // plus one for the asset itself (I think)
-
-    // HACKHACK: i don't really understand what the value of this needs to be, so i have set this back to a (very) incorrect value that at least doesn't crash
-    asset.remainingDependencyCount = static_cast<short>((0i16 - externalDependencyCount) + 1);
+    asset.remainingDependencyCount = internalDependencyCount + 1; // plus one for the asset itself
 
     asset.AddGuids(&guids);
-
     pak->PushAsset(asset);
+}
+
+static bool Material_InternalAddMaterial(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value* const mapEntry, const int assetVersion)
+{
+    rapidjson::Document document;
+    const rapidjson::Value* matEntry;
+
+    if (Material_OpenFile(pak, assetPath, document))
+        matEntry = &document;
+    else
+    {
+        if (!mapEntry)
+        {
+            Warning("Unable to open material file \"%s\".\n", assetPath);
+            return false;
+        }
+
+        matEntry = mapEntry;
+    }
+
+    if (assetVersion == 12)
+        Material_InternalAddMaterialV12(pak, assetGuid, assetPath, *matEntry);
+    else
+        Material_InternalAddMaterialV15(pak, assetGuid, assetPath, *matEntry);
+
+    return true;
+}
+
+bool Material_AutoAddMaterial(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion)
+{
+    PakAsset_t* const existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
+
+    if (existingAsset)
+        return false; // already present in the pak; not added.
+
+    Log("Auto-adding 'matl' asset \"%s\".\n", assetPath);
+    return Material_InternalAddMaterial(pak, assetGuid, assetPath, nullptr, assetVersion);
+}
+
+// VERSION 7
+void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+{
+    Material_InternalAddMaterial(pak, assetGuid, assetPath, &mapEntry, 12);
+}
+
+// VERSION 8
+void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+{
+    Material_InternalAddMaterial(pak, assetGuid, assetPath, &mapEntry, 15);
 }

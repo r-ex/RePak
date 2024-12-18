@@ -412,6 +412,17 @@ struct GenericShaderBuffer
 #pragma warning(push)
 #pragma warning(disable : 4324)
 
+enum RenderPassMaterial_e
+{
+	DEPTH_SHADOW,
+	DEPTH_PREPASS,
+	DEPTH_VSM,
+	DEPTH_SHADOW_TIGHT,
+	COL_PASS,
+
+	RENDER_PASS_MAT_COUNT,
+};
+
 struct __declspec(align(16)) MaterialAssetHeader_v12_t
 {
 	uint64_t vftableReserved; // Gets set to CMaterialGlue vtbl ptr
@@ -422,10 +433,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v12_t
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
 
-	PakGuid_t depthShadowMaterial;
-	PakGuid_t depthPrepassMaterial;
-	PakGuid_t depthVSMMaterial;
-	PakGuid_t colpassMaterial;
+	PakGuid_t passMaterials[RENDER_PASS_MAT_COUNT-1]; // -1 because v12 does not have shadow_tight.
 
 	// these blocks dont seem to change often but are the same?
 	// these blocks relate to different render filters and flags. still not well understood.
@@ -473,11 +481,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
 
-	PakGuid_t depthShadowMaterial;
-	PakGuid_t depthPrepassMaterial;
-	PakGuid_t depthVSMMaterial;
-	PakGuid_t depthShadowTightMaterial;
-	PakGuid_t colpassMaterial;
+	PakGuid_t passMaterials[RENDER_PASS_MAT_COUNT];
 
 	PakGuid_t shaderSet; // guid of the shaderset asset that this material uses
 
@@ -538,11 +542,7 @@ struct MaterialAsset_t
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
 
-	PakGuid_t depthShadowMaterial;
-	PakGuid_t depthPrepassMaterial;
-	PakGuid_t depthVSMMaterial;
-	PakGuid_t depthShadowTightMaterial;
-	PakGuid_t colpassMaterial;
+	PakGuid_t passMaterials[RENDER_PASS_MAT_COUNT];
 
 	PakGuid_t shaderSet = 0; // guid of the shaderset asset that this material uses
 
@@ -578,7 +578,7 @@ struct MaterialAsset_t
 	// the path to the material without the .rpak extension
 	std::string path;
 
-	void SetupDepthMaterials(const rapidjson::Value& mapEntry);
+	void SetupDepthMaterials(CPakFile* const pak, const rapidjson::Value& mapEntry);
 	void FromJSON(const rapidjson::Value& mapEntry);
 
 	void WriteToBuffer(char* buf)
@@ -593,10 +593,14 @@ struct MaterialAsset_t
 			matl->surfaceProp = this->surfaceProp;
 			matl->surfaceProp2 = this->surfaceProp2;
 
-			matl->depthShadowMaterial = this->depthShadowMaterial;
-			matl->depthPrepassMaterial = this->depthPrepassMaterial;
-			matl->depthVSMMaterial = this->depthVSMMaterial;
-			matl->colpassMaterial = this->colpassMaterial;
+			matl->passMaterials[DEPTH_SHADOW] = this->passMaterials[DEPTH_SHADOW];
+			matl->passMaterials[DEPTH_PREPASS] = this->passMaterials[DEPTH_PREPASS];
+			matl->passMaterials[DEPTH_VSM] = this->passMaterials[DEPTH_VSM];
+
+			// note: DEPTH_SHADOW_TIGHT is mapped to COL_PASS because unlike v15, v12 
+			// doesn't have shadow_tight, colpass uses its space instead.
+			matl->passMaterials[DEPTH_SHADOW_TIGHT] = this->passMaterials[COL_PASS];
+
 			matl->shaderSet = this->shaderSet;
 
 			matl->textureHandles = this->textureHandles;
@@ -635,11 +639,12 @@ struct MaterialAsset_t
 			matl->surfaceProp = this->surfaceProp;
 			matl->surfaceProp2 = this->surfaceProp2;
 
-			matl->depthShadowMaterial = this->depthShadowMaterial;
-			matl->depthPrepassMaterial = this->depthPrepassMaterial;
-			matl->depthVSMMaterial = this->depthVSMMaterial;
-			matl->depthShadowTightMaterial = this->depthShadowTightMaterial;
-			matl->colpassMaterial = this->colpassMaterial;
+			matl->passMaterials[DEPTH_SHADOW] = this->passMaterials[DEPTH_SHADOW];
+			matl->passMaterials[DEPTH_PREPASS] = this->passMaterials[DEPTH_PREPASS];
+			matl->passMaterials[DEPTH_VSM] = this->passMaterials[DEPTH_VSM];
+			matl->passMaterials[DEPTH_SHADOW_TIGHT] = this->passMaterials[DEPTH_SHADOW_TIGHT];
+			matl->passMaterials[COL_PASS] = this->passMaterials[COL_PASS];
+
 			matl->shaderSet = this->shaderSet;
 
 			matl->textureHandles = this->textureHandles;
