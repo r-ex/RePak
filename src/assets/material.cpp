@@ -820,14 +820,17 @@ void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid
     {
         const PakGuid_t guid = *((PakGuid_t*)&matlAsset.depthShadowMaterial + i);
 
-        pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, depthShadowMaterial) + (i * sizeof(PakGuid_t))));
+        if (guid != 0)
+        {
+            pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, depthShadowMaterial) + (i * sizeof(PakGuid_t))));
 
-        PakAsset_t* asset = pak->GetAssetByGuid(guid, nullptr, true);
+            PakAsset_t* asset = pak->GetAssetByGuid(guid, nullptr, true);
 
-        if (asset)
-            pak->SetCurrentAssetAsDependentForAsset(asset);
-        else
-            externalDependencyCount++;
+            if (asset)
+                pak->SetCurrentAssetAsDependentForAsset(asset);
+            else
+                externalDependencyCount++;
+        }
     }
 
     // texan
