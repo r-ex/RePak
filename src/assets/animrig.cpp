@@ -14,6 +14,8 @@ extern char* Model_ReadRMDLFile(const std::string& path, const uint64_t alignmen
 // - data   CPU         (align=8) name, rmdl then refs. name and rmdl are aligned to 1 byte, refs are 8 (padded from rmdl buffer)
 void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
+    short internalDependencyCount = 0; // number of dependencies inside this pak
+
     // deal with dependencies first; auto-add all animation sequences.
     uint32_t sequenceCount = 0;
     PakGuid_t* const sequenceRefs = AnimSeq_AutoAddSequenceRefs(pak, &sequenceCount, mapEntry);
@@ -60,12 +62,17 @@ void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, 
         pHdr->pSequences = rigChunk.GetPointer(base);
 
         pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, pSequences)));
-
         guids.resize(sequenceCount);
 
         for (uint32_t i = 0; i < sequenceCount; ++i)
         {
-            guids[i] = rigChunk.GetPointer(base + (i * sizeof(PakGuid_t)));
+            const size_t offset = base + (i * sizeof(PakGuid_t));
+            const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&rigChunk.Data()[offset]);
+
+            if (pak->GetAssetByGuid(guid))
+                internalDependencyCount++;
+
+            guids[i] = rigChunk.GetPointer(offset);
         }
     }
 
@@ -77,7 +84,7 @@ void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, 
     asset.version = 4;
 
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = 2;
+    asset.remainingDependencyCount = internalDependencyCount + 1;
 
     asset.AddGuids(&guids);
 

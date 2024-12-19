@@ -7,6 +7,7 @@
 // - data   CPU         (align=1) name, then rmdl. unlike models, this is aligned to 1 since we don't have BVH4 collision data here.
 static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
+    short internalDependencyCount = 0; // number of dependencies inside this pak
     const std::string rseqFilePath = pak->GetAssetPath() + assetPath;
 
     // begin rseq input
@@ -43,6 +44,9 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
 
     std::vector<PakGuidRefHdr_t> guids;
 
+    if (seqdesc.numautolayers > 0)
+        guids.reserve(seqdesc.numautolayers);
+
     rmem dataBuf(dataChunk.Data());
     dataBuf.seek(rseqNameBufLen + seqdesc.autolayerindex, rseekdir::beg);
 
@@ -51,17 +55,10 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
     for (int i = 0; i < seqdesc.numautolayers; ++i)
     {
         dataBuf.seek(rseqNameBufLen + seqdesc.autolayerindex + (i * sizeof(mstudioautolayer_t)), rseekdir::beg);
-
         const mstudioautolayer_t* const autolayer = dataBuf.get<const mstudioautolayer_t>();
 
-        if (autolayer->guid != 0)
-            pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid)));
-
-        PakAsset_t* asset = pak->GetAssetByGuid(autolayer->guid);
-
-        // If the autolayer's guid is present in the same RPak, add this ASEQ asset to the referenced asset's dependents.
-        if (asset)
-            pak->SetCurrentAssetAsDependentForAsset(asset);
+        const size_t offset = dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid);
+        Pak_RegisterGuidRefAtOffset(pak, autolayer->guid, offset, dataChunk, guids, internalDependencyCount);
     }
 
     PakAsset_t asset;
@@ -71,7 +68,7 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
     asset.version = 7;
 
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = 2;
+    asset.remainingDependencyCount = internalDependencyCount + 1; // plus one for the asset itself
 
     asset.AddGuids(&guids);
 

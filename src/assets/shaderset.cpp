@@ -86,17 +86,19 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 	hdr->vertexShader = shaderSet->vertexShaderGuid;
 	hdr->pixelShader = shaderSet->pixelShaderGuid;
 
+	short internalDependencyCount = 0;
+
+	PakAsset_t* vertexShader = nullptr;
+	PakAsset_t* pixelShader = nullptr;
+
 	// todo: can shader refs be null???
 	if (hdr->vertexShader != 0)
-		pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_t, vertexShader)));
+		vertexShader = Pak_RegisterGuidRefAtOffset(pak, hdr->vertexShader, offsetof(ShaderSetAssetHeader_t, vertexShader), hdrChunk, guids, internalDependencyCount);
 
 	if (hdr->pixelShader != 0)
-		pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_t, pixelShader)));
+		pixelShader = Pak_RegisterGuidRefAtOffset(pak, hdr->pixelShader, offsetof(ShaderSetAssetHeader_t, pixelShader), hdrChunk, guids, internalDependencyCount);
 
-	PakAsset_t* const vertexShader = hdr->vertexShader != 0 ? pak->GetAssetByGuid(hdr->vertexShader, nullptr, true) : nullptr;
 	ShaderSet_SetInputSlots(hdr, vertexShader, true, shaderSet, assetVersion);
-
-	PakAsset_t* const pixelShader = hdr->pixelShader != 0 ? pak->GetAssetByGuid(hdr->pixelShader, nullptr, true) : nullptr;
 	ShaderSet_SetInputSlots(hdr, pixelShader, false, shaderSet, assetVersion);
 
 	// On v11 shaders, the input count is added on top of the second one.
@@ -122,9 +124,7 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 	asset.version = assetVersion;
 	asset.pageEnd = pak->GetNumPages();
 
-	// this doesnt account for external dependencies atm
-	// todo: can shader sets have external dependencies?
-	asset.remainingDependencyCount = static_cast<short>(guids.size() + 1);
+	asset.remainingDependencyCount = internalDependencyCount + 1; // plus one for the asset itself
 
 	asset.AddGuids(&guids);
 	pak->PushAsset(asset);

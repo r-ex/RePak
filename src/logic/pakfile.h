@@ -131,8 +131,6 @@ public:
 	void AddAsset(const rapidjson::Value& file);
 	void AddPointer(PagePtr_t ptr);
 	void AddPointer(int pageIdx, int pageOffset);
-	void AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, const PagePtr_t& ptr);
-	void AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, int idx, int offset);
 
 	FORCEINLINE void AddDependentToAsset(PakAsset_t* const dependency, const size_t dependentAssetIndex)
 	{
@@ -289,22 +287,28 @@ private:
 };
 
 // if the asset already existed, the function will return true.
-inline bool Pak_RegisterGuidRefAtOffset(CPakFile* const pak, const PakGuid_t guid, const size_t offset, CPakDataChunk& chunk, std::vector<PakGuidRefHdr_t>& guids, short& internalDependencyCount)
+inline PakAsset_t* Pak_RegisterGuidRefAtOffset(CPakFile* const pak, const PakGuid_t guid, const size_t offset, 
+	CPakDataChunk& chunk, std::vector<PakGuidRefHdr_t>& guids, short& internalDependencyCount, PakAsset_t* asset = nullptr)
 {
 	// NULL guids should never be added. we check it here because otherwise we
 	// have to do a check at call site, and if we miss one we will end up with
-	// a hard to track bug.
+	// a hard to track bug. so always call this function, even if your guid
+	// might be NULL.
 	if (guid == 0)
-		return false;
+		return nullptr;
 
 	guids.push_back(chunk.GetPointer(offset));
-	PakAsset_t* const asset = pak->GetAssetByGuid(guid, nullptr, true);
 
 	if (!asset)
-		return false;
+	{
+		asset = pak->GetAssetByGuid(guid, nullptr, true);
+
+		if (!asset)
+			return nullptr;
+	}
 
 	pak->SetCurrentAssetAsDependentForAsset(asset);
 	internalDependencyCount++;
 
-	return true;
+	return asset;
 }

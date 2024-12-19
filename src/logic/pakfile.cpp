@@ -114,19 +114,6 @@ void CPakFile::AddPointer(PagePtr_t ptr)
 }
 
 //-----------------------------------------------------------------------------
-// purpose: adds guid descriptor
-//-----------------------------------------------------------------------------
-void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, int idx, int offset)
-{
-	guids->push_back({ idx, offset });
-}
-
-void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, const PagePtr_t& ptr)
-{
-	guids->push_back(ptr);
-}
-
-//-----------------------------------------------------------------------------
 // purpose: adds new starpak file path to be used by the rpak
 //-----------------------------------------------------------------------------
 void CPakFile::AddStarpakReference(const std::string& path)

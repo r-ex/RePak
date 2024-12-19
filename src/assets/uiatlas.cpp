@@ -7,6 +7,8 @@ extern bool Texture_AutoAddTexture(CPakFile* const pak, const PakGuid_t assetGui
 
 void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
+    short internalDependencyCount = 0; // number of dependencies inside this pak
+
     // get the info for the ui atlas image
     const char* const atlasPath = JSON_GetValueRequired<const char*>(mapEntry, "atlas");
     const PakGuid_t atlasGuid = RTech::StringToGuid(atlasPath);
@@ -49,6 +51,9 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid,
     pHdr->textureCount = textureCount;
     pHdr->unkCount = 0;
     pHdr->atlasGUID = atlasGuid;
+
+    std::vector<PakGuidRefHdr_t> guids;
+    Pak_RegisterGuidRefAtOffset(pak, atlasGuid, offsetof(UIImageAtlasHeader_t, atlasGUID), hdrChunk, guids, internalDependencyCount, atlasAsset);
 
     // calculate data sizes so we can allocate a page and segment
     const size_t textureOffsetsDataSize = sizeof(UIImageOffset) * textureCount;
@@ -167,10 +172,10 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid,
     asset.version = UIMG_VERSION;
 
     asset.pageEnd = pak->GetNumPages(); // number of the highest page that the asset references pageidx + 1
-    asset.remainingDependencyCount = 2;
+    asset.remainingDependencyCount = internalDependencyCount + 1; // asset depends on the atlas texture and on itself
 
-    // this asset only has one guid reference so im just gonna do it here
-    asset.AddGuid(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, atlasGUID)));
+    // this asset only has one guid reference
+    asset.AddGuids(&guids);
 
     // add the asset entry
     pak->PushAsset(asset);
