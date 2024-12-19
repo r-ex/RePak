@@ -107,13 +107,15 @@ PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFile* const pak, uint32_t* const sequ
                 Error("Sequence #%i was defined as an invalid empty string.\n", seqIndex);
 
             const char* const sequencePath = sequence.GetString();
-            Log("Auto-adding 'aseq' asset \"%s\".\n", sequencePath);
-
             guid = RTech::StringToGuid(sequencePath);
+
             const PakAsset_t* const existingAsset = pak->GetAssetByGuid(guid, nullptr, true);
 
             if (!existingAsset)
+            {
+                Log("Auto-adding 'aseq' asset \"%s\".\n", sequencePath);
                 AnimSeq_InternalAddAnimSeq(pak, guid, sequencePath);
+            }
         }
 
         guidBuf[seqIndex] = guid;
