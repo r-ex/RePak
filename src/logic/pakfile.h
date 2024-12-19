@@ -1,7 +1,7 @@
 #pragma once
 #include "public/rpak.h"
 
-#define MAX_PAK_PAGE_SIZE 0xffff
+#define PAK_MAX_PAGE_MERGE_SIZE 0xffff
 
 class CPakFile;
 

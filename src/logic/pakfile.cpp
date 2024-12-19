@@ -435,7 +435,7 @@ CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSiz
 		if (page.GetFlags() != flags)
 			continue;
 
-		if (page.GetSize() + newDataSize > MAX_PAK_PAGE_SIZE)
+		if (page.GetSize() + newDataSize > PAK_MAX_PAGE_MERGE_SIZE)
 			continue;
 
 		if (page.GetAlignment() >= alignment)
