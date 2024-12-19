@@ -65,6 +65,9 @@ static size_t Material_AddTextures(CPakFile* const pak, const rapidjson::Value& 
     return max(textureCount, Material_GetHighestTextureBindPoint(textures) + 1);
 }
 
+// there are 2 texture guid blocks, one for permanent and one for streaming.
+// we only set the permanent guid refs here, the streaming block is reserved
+// for the runtime, which gets initialized at Pak_UpdateMaterialAsset.
 static short Material_AddTextureRefs(CPakFile* const pak, CPakDataChunk& dataChunk, char* const dataBuf, std::vector<PakGuidRefHdr_t>& guids,
                                      const rapidjson::Value& textures, const size_t alignedPathSize)
 {
@@ -576,14 +579,8 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
     if (textureCount)
     {
         internalDependencyCount += Material_AddTextureRefs(pak, dataChunk, dataBuf, guids, texturesIt->value, 0);
-        dataBuf += textureRefSize;
+        dataBuf += (textureRefSize * 2);
     }
-
-    dataBuf += textureRefSize; // [rika]: already calculated, no need to do it again.
-    // [amos]: this offset is necessary for the streaming
-    //         texture handles. we should look into only
-    //         writing this out if we have streaming
-    //         textures and only up to the count thereof.
 
     // write the surface names into the buffer
     if (surfaceProp1Size)
@@ -698,14 +695,8 @@ static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t
     if (textureCount)
     {
         internalDependencyCount += Material_AddTextureRefs(pak, dataChunk, dataBuf, guids, texturesIt->value, alignedPathSize);
-        dataBuf += textureRefSize;
+        dataBuf += (textureRefSize * 2);
     }
-
-    dataBuf += textureRefSize; // [rika]: already calculated, no need to do it again.
-                               // [amos]: this offset is necessary for the streaming
-                               //         texture handles. we should look into only
-                               //         writing this out if we have streaming
-                               //         textures and only up to the count thereof.
 
     // write the surface names into the buffer
     if (surfaceProp1Size)
