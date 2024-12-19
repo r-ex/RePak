@@ -181,10 +181,6 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 	asset.SetPublicData(shaderData);
 
 	asset.pageEnd = pak->GetNumPages();
-
-	// this doesnt account for external dependencies atm
-	// note(amos): do shaders even depend on external dependencies?
-	//             remove the comments if its confirmed to not depend on external dependencies.
 	asset.remainingDependencyCount = 1;
 
 	pak->PushAsset(asset);
