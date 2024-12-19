@@ -57,6 +57,7 @@ void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, 
         PakGuid_t* const sequenceRefBuf = reinterpret_cast<PakGuid_t*>(&rigChunk.Data()[base]);
 
         memcpy(sequenceRefBuf, sequenceRefs, sequenceRefBufLen);
+        delete[] sequenceRefs;
 
         pHdr->sequenceCount = sequenceCount;
         pHdr->pSequences = rigChunk.GetPointer(base);
