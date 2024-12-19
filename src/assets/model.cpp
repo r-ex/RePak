@@ -119,7 +119,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChu
 
     if (hasGuidRefs)
     {
-        guids.resize(animrigCount + sequenceCount);
+        guids.reserve(guids.size() + animrigCount + sequenceCount);
         uint64_t curIndex = 0;
 
         if (animrigRefs)
@@ -139,10 +139,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChu
                 const size_t offset = base + (sizeof(PakGuid_t) * i);
                 const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.Data()[offset]);
 
-                if (pak->GetAssetByGuid(guid))
-                    internalDependencyCount++;
-
-                guids[curIndex++] = intermediateChunk.GetPointer(base);
+                Pak_RegisterGuidRefAtOffset(pak, guid, offset, intermediateChunk, guids, internalDependencyCount);
             }
         }
 
@@ -163,10 +160,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChu
                 const size_t offset = base + (sizeof(PakGuid_t) * i);
                 const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.Data()[offset]);
 
-                if (pak->GetAssetByGuid(guid))
-                    internalDependencyCount++;
-
-                guids[curIndex++] = intermediateChunk.GetPointer(offset);
+                Pak_RegisterGuidRefAtOffset(pak, guid, offset, intermediateChunk, guids, internalDependencyCount);
             }
         }
     }
@@ -314,8 +308,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
         const size_t pos = (char*)tex - dataChunk.Data();
         const size_t offset = pos + offsetof(mstudiotexture_t, guid);
 
-        const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&dataChunk.Data()[offset]);
-        PakAsset_t* const asset = Pak_RegisterGuidRefAtOffset(pak, guid, offset, dataChunk, guids, internalDependencyCount);
+        PakAsset_t* const asset = Pak_RegisterGuidRefAtOffset(pak, tex->guid, offset, dataChunk, guids, internalDependencyCount);
 
         if (asset)
         {

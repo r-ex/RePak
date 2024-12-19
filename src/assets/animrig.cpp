@@ -63,17 +63,14 @@ void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, 
         pHdr->pSequences = rigChunk.GetPointer(base);
 
         pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, pSequences)));
-        guids.resize(sequenceCount);
+        guids.reserve(sequenceCount);
 
         for (uint32_t i = 0; i < sequenceCount; ++i)
         {
             const size_t offset = base + (i * sizeof(PakGuid_t));
             const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&rigChunk.Data()[offset]);
 
-            if (pak->GetAssetByGuid(guid))
-                internalDependencyCount++;
-
-            guids[i] = rigChunk.GetPointer(offset);
+            Pak_RegisterGuidRefAtOffset(pak, guid, offset, rigChunk, guids, internalDependencyCount);
         }
     }
 
