@@ -60,7 +60,7 @@ static char* Model_ReadVGFile(const std::string& path, size_t* const pFileSize)
     return buf;
 }
 
-static PakGuid_t* Model_AddAnimRigRefs(CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
+static PakGuid_t* Model_AddAnimRigRefs(uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
 {
     rapidjson::Value::ConstMemberIterator it;
 
@@ -85,11 +85,6 @@ static PakGuid_t* Model_AddAnimRigRefs(CPakFile* const pak, uint32_t* const sequ
             Error("Unable to parse animrig #%i.\n", i);
 
         guidBuf[i] = guid;
-
-        // check if anim rig is a local asset so that the relation can be added
-        PakAsset_t* const animRigAsset = pak->GetAssetByGuid(guid);
-
-        pak->SetCurrentAssetAsDependentForAsset(animRigAsset);
     }
 
     (*sequenceCount) = static_cast<uint32_t>(animrigs.Size());
@@ -217,7 +212,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
 
     // this function only creates the arig guid refs, it does not auto-add.
     uint32_t animrigCount = 0;
-    PakGuid_t* const animrigRefs = Model_AddAnimRigRefs(pak, &animrigCount, mapEntry);
+    PakGuid_t* const animrigRefs = Model_AddAnimRigRefs(&animrigCount, mapEntry);
 
     // from here we start with creating chunks for the target model asset.
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ModelAssetHeader_t), SF_HEAD, 8);
