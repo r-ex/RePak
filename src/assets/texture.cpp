@@ -249,9 +249,7 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = TXTR_VERSION;
-
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = 1;
 
     pak->PushAsset(asset);
 

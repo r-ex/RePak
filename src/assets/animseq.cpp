@@ -7,7 +7,7 @@
 // - data   CPU         (align=1) name, then rmdl. unlike models, this is aligned to 1 since we don't have BVH4 collision data here.
 static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
-    short internalDependencyCount = 0; // number of dependencies inside this pak
+    PakAsset_t asset;
     const std::string rseqFilePath = pak->GetAssetPath() + assetPath;
 
     // begin rseq input
@@ -42,10 +42,8 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
     pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSeqAssetHeader_t, szname)));
     pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSeqAssetHeader_t, data)));
 
-    std::vector<PakGuidRefHdr_t> guids;
-
     if (seqdesc.numautolayers > 0)
-        guids.reserve(seqdesc.numautolayers);
+        asset.ExpandGuidBuf(seqdesc.numautolayers);
 
     rmem dataBuf(dataChunk.Data());
     dataBuf.seek(rseqNameBufLen + seqdesc.autolayerindex, rseekdir::beg);
@@ -58,19 +56,14 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
         const mstudioautolayer_t* const autolayer = dataBuf.get<const mstudioautolayer_t>();
 
         const size_t offset = dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid);
-        Pak_RegisterGuidRefAtOffset(pak, autolayer->guid, offset, dataChunk, guids, internalDependencyCount);
+        Pak_RegisterGuidRefAtOffset(pak, autolayer->guid, offset, dataChunk, asset);
     }
 
-    PakAsset_t asset;
     asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ASEQ);
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = 7;
-
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = internalDependencyCount + 1; // plus one for the asset itself
-
-    asset.AddGuids(&guids);
 
     pak->PushAsset(asset);
 }

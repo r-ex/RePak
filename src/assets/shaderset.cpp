@@ -62,7 +62,7 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 	ShaderSet_AutoAddEmbeddedShader(pak, shaderSet->vertexShader, shaderSet->vertexShaderGuid, assetVersion);
 	ShaderSet_AutoAddEmbeddedShader(pak, shaderSet->pixelShader, shaderSet->pixelShaderGuid, assetVersion);
 
-	std::vector<PakGuidRefHdr_t> guids{};
+	PakAsset_t asset;
 
 	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderSetAssetHeader_t), SF_HEAD, 8);
 	ShaderSetAssetHeader_t* const hdr = reinterpret_cast<ShaderSetAssetHeader_t*>(hdrChunk.Data());
@@ -86,17 +86,15 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 	hdr->vertexShader = shaderSet->vertexShaderGuid;
 	hdr->pixelShader = shaderSet->pixelShaderGuid;
 
-	short internalDependencyCount = 0;
-
 	PakAsset_t* vertexShader = nullptr;
 	PakAsset_t* pixelShader = nullptr;
 
 	// todo: can shader refs be null???
 	if (hdr->vertexShader != 0)
-		vertexShader = Pak_RegisterGuidRefAtOffset(pak, hdr->vertexShader, offsetof(ShaderSetAssetHeader_t, vertexShader), hdrChunk, guids, internalDependencyCount);
+		vertexShader = Pak_RegisterGuidRefAtOffset(pak, hdr->vertexShader, offsetof(ShaderSetAssetHeader_t, vertexShader), hdrChunk, asset);
 
 	if (hdr->pixelShader != 0)
-		pixelShader = Pak_RegisterGuidRefAtOffset(pak, hdr->pixelShader, offsetof(ShaderSetAssetHeader_t, pixelShader), hdrChunk, guids, internalDependencyCount);
+		pixelShader = Pak_RegisterGuidRefAtOffset(pak, hdr->pixelShader, offsetof(ShaderSetAssetHeader_t, pixelShader), hdrChunk, asset);
 
 	ShaderSet_SetInputSlots(hdr, vertexShader, true, shaderSet, assetVersion);
 	ShaderSet_SetInputSlots(hdr, pixelShader, false, shaderSet, assetVersion);
@@ -113,7 +111,6 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 	hdr->firstResourceBindPoint = shaderSet->firstResourceBindPoint;
 	hdr->numResources = shaderSet->numResources;
 
-	PakAsset_t asset;
 	asset.InitAsset(
 		assetPath,
 		shaderSetGuid,
@@ -124,9 +121,6 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 	asset.version = assetVersion;
 	asset.pageEnd = pak->GetNumPages();
 
-	asset.remainingDependencyCount = internalDependencyCount + 1; // plus one for the asset itself
-
-	asset.AddGuids(&guids);
 	pak->PushAsset(asset);
 }
 

@@ -175,6 +175,8 @@ static void DataTable_SetupValues(CPakFile* const pak, CPakDataChunk& dataChunk,
 void Assets::AddDataTableAsset(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     UNUSED(mapEntry);
+    PakAsset_t asset;
+
     const std::string datatableFile = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".csv");
     std::ifstream datatableStream(datatableFile);
 
@@ -243,8 +245,6 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const PakGuid_t assetGuid, c
 
     dtblHdr.WriteToBuffer(hdrChunk.Data(), pak->GetVersion());
 
-    PakAsset_t asset;
-
     asset.InitAsset(
         assetPath,
         assetGuid,
@@ -257,9 +257,7 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const PakGuid_t assetGuid, c
     // rpak v7: v0
     // rpak v8: v1
     asset.version = pak->GetVersion() <= 7 ? 0 : 1;
-
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = 1; // asset only depends on itself
 
     pak->PushAsset(asset);
 }

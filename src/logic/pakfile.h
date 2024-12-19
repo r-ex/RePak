@@ -288,7 +288,7 @@ private:
 
 // if the asset already existed, the function will return true.
 inline PakAsset_t* Pak_RegisterGuidRefAtOffset(CPakFile* const pak, const PakGuid_t guid, const size_t offset, 
-	CPakDataChunk& chunk, std::vector<PakGuidRefHdr_t>& guids, short& internalDependencyCount, PakAsset_t* asset = nullptr)
+	CPakDataChunk& chunk, PakAsset_t& asset, PakAsset_t* targetAsset = nullptr)
 {
 	// NULL guids should never be added. we check it here because otherwise we
 	// have to do a check at call site, and if we miss one we will end up with
@@ -297,18 +297,18 @@ inline PakAsset_t* Pak_RegisterGuidRefAtOffset(CPakFile* const pak, const PakGui
 	if (guid == 0)
 		return nullptr;
 
-	guids.push_back(chunk.GetPointer(offset));
+	asset.AddGuid(chunk.GetPointer(offset));
 
-	if (!asset)
+	if (!targetAsset)
 	{
-		asset = pak->GetAssetByGuid(guid, nullptr, true);
+		targetAsset = pak->GetAssetByGuid(guid, nullptr, true);
 
-		if (!asset)
+		if (!targetAsset)
 			return nullptr;
 	}
 
-	pak->SetCurrentAssetAsDependentForAsset(asset);
-	internalDependencyCount++;
+	pak->SetCurrentAssetAsDependentForAsset(targetAsset);
+	asset.AddInternalGuid(guid);
 
-	return asset;
+	return targetAsset;
 }

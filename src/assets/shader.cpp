@@ -181,7 +181,6 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 	asset.SetPublicData(shaderData);
 
 	asset.pageEnd = pak->GetNumPages();
-	asset.remainingDependencyCount = 1;
 
 	pak->PushAsset(asset);
 }

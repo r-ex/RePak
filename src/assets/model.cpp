@@ -98,7 +98,7 @@ static PakGuid_t* Model_AddAnimRigRefs(CPakFile* const pak, uint32_t* const sequ
 
 static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChunk& hdrChunk, ModelAssetHeader_t* const pHdr, 
     PakGuid_t* const animrigRefs, const uint32_t animrigCount, PakGuid_t* const sequenceRefs, const uint32_t sequenceCount, 
-    std::vector<PakGuidRefHdr_t>& guids, const char* const assetPath, short& internalDependencyCount)
+    const char* const assetPath, PakAsset_t& asset)
 {
     // the model name is aligned to 1 byte, but the guid ref block is aligned
     // to 8, we have to pad the name buffer to align the guid ref block. if
@@ -119,7 +119,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChu
 
     if (hasGuidRefs)
     {
-        guids.reserve(guids.size() + animrigCount + sequenceCount);
+        asset.ExpandGuidBuf(animrigCount + sequenceCount);
         uint64_t curIndex = 0;
 
         if (animrigRefs)
@@ -139,7 +139,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChu
                 const size_t offset = base + (sizeof(PakGuid_t) * i);
                 const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.Data()[offset]);
 
-                Pak_RegisterGuidRefAtOffset(pak, guid, offset, intermediateChunk, guids, internalDependencyCount);
+                Pak_RegisterGuidRefAtOffset(pak, guid, offset, intermediateChunk, asset);
             }
         }
 
@@ -160,7 +160,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChu
                 const size_t offset = base + (sizeof(PakGuid_t) * i);
                 const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.Data()[offset]);
 
-                Pak_RegisterGuidRefAtOffset(pak, guid, offset, intermediateChunk, guids, internalDependencyCount);
+                Pak_RegisterGuidRefAtOffset(pak, guid, offset, intermediateChunk, asset);
             }
         }
     }
@@ -209,7 +209,7 @@ extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFile* const pak, uint32_t* con
 // - rmdl          CPU         (align=64) 64 bit aligned because collision data is loaded with aligned SIMD instructions.
 void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    short internalDependencyCount = 0; // number of dependencies inside this pak
+    PakAsset_t asset;
 
     // deal with dependencies first; auto-add all animation sequences.
     uint32_t sequenceCount = 0;
@@ -228,7 +228,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
     //
     // Name, Anim Rigs and Animseqs, these all share 1 data chunk.
     //
-    Model_AllocateIntermediateDataChunk(pak, hdrChunk, pHdr, animrigRefs, animrigCount, sequenceRefs, sequenceCount, guids, assetPath, internalDependencyCount);
+    Model_AllocateIntermediateDataChunk(pak, hdrChunk, pHdr, animrigRefs, animrigCount, sequenceRefs, sequenceCount, assetPath, asset);
 
     const std::string rmdlFilePath = pak->GetAssetPath() + assetPath;
 
@@ -308,15 +308,15 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
         const size_t pos = (char*)tex - dataChunk.Data();
         const size_t offset = pos + offsetof(mstudiotexture_t, guid);
 
-        PakAsset_t* const asset = Pak_RegisterGuidRefAtOffset(pak, tex->guid, offset, dataChunk, guids, internalDependencyCount);
+        PakAsset_t* const internalAsset = Pak_RegisterGuidRefAtOffset(pak, tex->guid, offset, dataChunk, asset);
 
-        if (asset)
+        if (internalAsset)
         {
             // make sure referenced asset is a material for sanity
-            asset->EnsureType(TYPE_MATL);
+            internalAsset->EnsureType(TYPE_MATL);
 
             // model assets don't exist on r2 so we can be sure that this is a v8 pak (and therefore has v15 materials)
-            MaterialAssetHeader_v15_t* matlHdr = reinterpret_cast<MaterialAssetHeader_v15_t*>(asset->header);
+            MaterialAssetHeader_v15_t* matlHdr = reinterpret_cast<MaterialAssetHeader_v15_t*>(internalAsset->header);
 
             if (matlHdr->materialType != studiohdr->materialType(i))
             {
@@ -326,17 +326,11 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
         }
     }
 
-    PakAsset_t asset;
-
     asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), streamedVgOffset, UINT64_MAX, AssetType::RMDL);
     asset.SetHeaderPointer(hdrChunk.Data());
   
     asset.version = RMDL_VERSION;
-
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = internalDependencyCount + 1; // plus one for the asset itself
-
-    asset.AddGuids(&guids);
 
     pak->PushAsset(asset);
 }

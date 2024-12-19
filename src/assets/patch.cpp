@@ -70,9 +70,7 @@ void Assets::AddPatchAsset(CPakFile* const pak, const PakGuid_t assetGuid, const
     asset.SetHeaderPointer(hdrChunk.Data());
 
     asset.version = 1;
-
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = 1;
 
     pak->PushAsset(asset);
 }

@@ -68,10 +68,9 @@ static size_t Material_AddTextures(CPakFile* const pak, const rapidjson::Value& 
 // there are 2 texture guid blocks, one for permanent and one for streaming.
 // we only set the permanent guid refs here, the streaming block is reserved
 // for the runtime, which gets initialized at Pak_UpdateMaterialAsset.
-static short Material_AddTextureRefs(CPakFile* const pak, CPakDataChunk& dataChunk, char* const dataBuf, std::vector<PakGuidRefHdr_t>& guids,
+static void Material_AddTextureRefs(CPakFile* const pak, CPakDataChunk& dataChunk, char* const dataBuf, PakAsset_t& asset,
                                      const rapidjson::Value& textures, const size_t alignedPathSize)
 {
-    short internalDependencyCount = 0;
     size_t curIndex = 0;
 
     for (auto it = textures.MemberBegin(); it != textures.MemberEnd(); it++, curIndex++)
@@ -94,11 +93,9 @@ static short Material_AddTextureRefs(CPakFile* const pak, CPakDataChunk& dataChu
         reinterpret_cast<PakGuid_t*>(dataBuf)[bindPoint] = textureGuid;
         const size_t offset = alignedPathSize + (bindPoint * sizeof(PakGuid_t));
 
-        if (!Pak_RegisterGuidRefAtOffset(pak, textureGuid, offset, dataChunk, guids, internalDependencyCount))
+        if (!Pak_RegisterGuidRefAtOffset(pak, textureGuid, offset, dataChunk, asset))
             Warning("Unable to find texture #%zu within the local assets.\n", bindPoint);
     }
-
-    return internalDependencyCount;
 }
 
 static bool Material_ParseDXStateFlags(const rapidjson::Value& mapEntry, int& blendStateMask, int& depthStencilFlags, int& rasterizerFlags)
@@ -509,7 +506,7 @@ static bool Material_OpenFile(CPakFile* const pak, const char* const assetPath, 
 static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath,
     MaterialAsset_t& matlAsset, const rapidjson::Value& matEntry, const rapidjson::Value::ConstMemberIterator texturesIt, const size_t textureCount)
 {
-    short internalDependencyCount = 0; // number of dependencies inside this pak
+    PakAsset_t asset;
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
@@ -574,11 +571,9 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
 
     char* dataBuf = dataChunk.Data();
 
-    std::vector<PakGuidRefHdr_t> guids;
-
     if (textureCount)
     {
-        internalDependencyCount += Material_AddTextureRefs(pak, dataChunk, dataBuf, guids, texturesIt->value, 0);
+        Material_AddTextureRefs(pak, dataChunk, dataBuf, asset, texturesIt->value, 0);
         dataBuf += (textureRefSize * 2);
     }
 
@@ -624,12 +619,12 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
 
     // register referenced assets (depth materials, colpass material, shader sets)
 
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[0], offsetof(MaterialAssetHeader_v12_t, passMaterials[0]), hdrChunk, guids, internalDependencyCount);
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[1], offsetof(MaterialAssetHeader_v12_t, passMaterials[1]), hdrChunk, guids, internalDependencyCount);
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[2], offsetof(MaterialAssetHeader_v12_t, passMaterials[2]), hdrChunk, guids, internalDependencyCount);
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[3], offsetof(MaterialAssetHeader_v12_t, passMaterials[3]), hdrChunk, guids, internalDependencyCount);
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[0], offsetof(MaterialAssetHeader_v12_t, passMaterials[0]), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[1], offsetof(MaterialAssetHeader_v12_t, passMaterials[1]), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[2], offsetof(MaterialAssetHeader_v12_t, passMaterials[2]), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[3], offsetof(MaterialAssetHeader_v12_t, passMaterials[3]), hdrChunk, asset);
 
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.shaderSet, offsetof(MaterialAssetHeader_v12_t, shaderSet), hdrChunk, guids, internalDependencyCount);
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.shaderSet, offsetof(MaterialAssetHeader_v12_t, shaderSet), hdrChunk, asset);
 
     // write header now that we are done setting it up
     matlAsset.WriteToBuffer(hdrChunk.Data());
@@ -651,22 +646,18 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
 
     //////////////////////////////////////////
 
-    PakAsset_t asset;
-
     asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
+
     asset.version = 12;
-
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = internalDependencyCount + 1; // plus one for the asset itself
 
-    asset.AddGuids(&guids);
     pak->PushAsset(asset);
 }
 
 static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, 
     MaterialAsset_t& matlAsset, const rapidjson::Value& matEntry, const rapidjson::Value::ConstMemberIterator texturesIt, const size_t textureCount)
 {
-    short internalDependencyCount = 0; // number of dependencies inside this pak
+    PakAsset_t asset;
 
     // header data chunk and generic struct
     CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
@@ -690,11 +681,9 @@ static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t
     memcpy(dataBuf, matlAsset.name.c_str(), nameBufLen);
     dataBuf += alignedPathSize;
 
-    std::vector<PakGuidRefHdr_t> guids;
-
     if (textureCount)
     {
-        internalDependencyCount += Material_AddTextureRefs(pak, dataChunk, dataBuf, guids, texturesIt->value, alignedPathSize);
+        Material_AddTextureRefs(pak, dataChunk, dataBuf, asset, texturesIt->value, alignedPathSize);
         dataBuf += (textureRefSize * 2);
     }
 
@@ -749,11 +738,11 @@ static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t
         const PakGuid_t guid = matlAsset.passMaterials[i];
         const size_t offset = offsetof(MaterialAssetHeader_v15_t, passMaterials[i]);
 
-        Pak_RegisterGuidRefAtOffset(pak, guid, offset, hdrChunk, guids, internalDependencyCount);
+        Pak_RegisterGuidRefAtOffset(pak, guid, offset, hdrChunk, asset);
     }
 
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.shaderSet, offsetof(MaterialAssetHeader_v15_t, shaderSet), hdrChunk, guids, internalDependencyCount);
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.textureAnimation, offsetof(MaterialAssetHeader_v15_t, textureAnimation), hdrChunk, guids, internalDependencyCount);
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.shaderSet, offsetof(MaterialAssetHeader_v15_t, shaderSet), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(pak, matlAsset.textureAnimation, offsetof(MaterialAssetHeader_v15_t, textureAnimation), hdrChunk, asset);
 
     // write header now that we are done setting it up
     matlAsset.WriteToBuffer(hdrChunk.Data());
@@ -775,16 +764,12 @@ static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t
 
     //////////////////////////////////////////
 
-    PakAsset_t asset;
-
     asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
     asset.SetHeaderPointer(hdrChunk.Data());
+
     asset.version = 15;
-
     asset.pageEnd = pak->GetNumPages();
-    asset.remainingDependencyCount = internalDependencyCount + 1; // plus one for the asset itself
 
-    asset.AddGuids(&guids);
     pak->PushAsset(asset);
 }
 

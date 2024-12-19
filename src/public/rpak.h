@@ -205,7 +205,7 @@ struct PakAsset_t
 	uint32_t dependenciesCount = 0; // number of local assets that are used by this asset
 
 	// size of the asset header
-	int headDataSize = 0;
+	uint32_t headDataSize = 0;
 
 	// this isn't always changed when the asset gets changed
 	// but respawn calls it a version so i will as well
@@ -219,7 +219,7 @@ public:
 	int _assetidx;
 	std::string name;
 
-	void* header;
+	void* header = nullptr;
 
 	// Extra information about the asset that is made available to other assets when being created.
 	std::shared_ptr<void> _publicData;
@@ -227,7 +227,13 @@ public:
 	// vector of indexes for local assets that use this asset
 	std::vector<unsigned int> _relations{};
 
+	// guid reference pointers
 	std::vector<PakGuidRefHdr_t> _guids{};
+
+	// set containing unique dependency guids for asset that reside in our pak file. the reason we
+	// use a set instead of a vector is because the engine only resolves internal dependencies
+	// once, and therefore only decrements the counter once.
+	std::set<PakGuid_t> _internalGuids;
 
 	FORCEINLINE void SetHeaderPointer(void* pHeader) { this->header = pHeader; };
 
@@ -244,12 +250,10 @@ public:
 	FORCEINLINE void AddRelation(const size_t idx) { _relations.push_back({ static_cast<unsigned int>(idx) }); };
 
 	FORCEINLINE void AddGuid(PakGuidRefHdr_t desc) { _guids.push_back(desc); };
+	FORCEINLINE void ExpandGuidBuf(const size_t amount) { _guids.reserve(_guids.size() + amount); }
 
-	FORCEINLINE void AddGuids(std::vector<PakGuidRefHdr_t>* descs)
-	{
-		for (auto& it : *descs)
-			_guids.push_back(it);
-	};
+	FORCEINLINE bool AddInternalGuid(const PakGuid_t dependency) { return _internalGuids.insert(dependency).second; }
+	FORCEINLINE int16_t GetInternalDependencyCount() const { return static_cast<int16_t>(_internalGuids.size() + 1); } // + 1 because of our asset itself
 
 	FORCEINLINE bool IsType(uint32_t type)
 	{

@@ -258,7 +258,7 @@ void CPakFile::WriteAssets(BinaryIO& io)
 		uint16_t pageEnd = static_cast<uint16_t>(it.pageEnd);
 		io.Write(pageEnd);
 
-		io.Write(it.remainingDependencyCount);
+		io.Write(it.GetInternalDependencyCount());
 		io.Write(it.dependentsIndex);
 		io.Write(it.dependenciesIndex);
 		io.Write(it.dependentsCount);
