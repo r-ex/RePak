@@ -32,7 +32,7 @@ dtblcoltype_t DataTable_GetTypeFromString(const std::string& sType)
 {
 	for (const auto& [key, value] : s_dataTableColumnTypeMap) // get each element in the type map
 	{
-		if (sType.compare(key) == 0) // are they equal?
+		if (_stricmp(sType.c_str(), key.c_str()) == 0) // are they equal?
 			return value;
 	}
 
