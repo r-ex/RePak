@@ -241,7 +241,7 @@ void CPakFile::WriteHeader(BinaryIO& io)
 //-----------------------------------------------------------------------------
 void CPakFile::WriteAssets(BinaryIO& io)
 {
-	for (auto& it : m_Assets)
+	for (PakAsset_t& it : m_Assets)
 	{
 		io.Write(it.guid);
 		io.Write(it.unk0);
@@ -258,7 +258,7 @@ void CPakFile::WriteAssets(BinaryIO& io)
 		uint16_t pageEnd = static_cast<uint16_t>(it.pageEnd);
 		io.Write(pageEnd);
 
-		io.Write(it.GetInternalDependencyCount());
+		io.Write(it.internalDependencyCount);
 		io.Write(it.dependentsIndex);
 		io.Write(it.dependenciesIndex);
 		io.Write(it.dependentsCount);
@@ -351,6 +351,35 @@ void CPakFile::WritePakDescriptors(BinaryIO& out)
 }
 
 //-----------------------------------------------------------------------------
+// purpose: counts the number of internal dependencies for each asset and sets
+// them dependent from another. internal dependencies reside in the same pak!
+//-----------------------------------------------------------------------------
+void CPakFile::GenerateInternalDependencies()
+{
+	for (size_t i = 0; i < m_Assets.size(); i++)
+	{
+		PakAsset_t& it = m_Assets[i];
+		std::set<PakGuid_t> processed;
+
+		for (const PakGuidRef_s& ref : it._guids)
+		{
+			// an asset can use a dependency more than once, but we should only
+			// increment the dependency counter once per unique dependency!
+			if (!processed.insert(ref.guid).second)
+				continue;
+
+			PakAsset_t* const dependency = GetAssetByGuid(ref.guid, nullptr, true);
+
+			if (dependency)
+			{
+				dependency->AddRelation(i);
+				it.internalDependencyCount++;
+			}
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
 // purpose: populates file relations vector with combined asset relation data
 //-----------------------------------------------------------------------------
 void CPakFile::GenerateFileRelations()
@@ -380,14 +409,14 @@ void CPakFile::GenerateGuidData()
 	for (auto& it : m_Assets)
 	{
 		assert(it._guids.size() <= UINT32_MAX);
-		it.dependenciesCount = static_cast<uint32_t>(it._guids.size());
 
+		it.dependenciesCount = static_cast<uint32_t>(it._guids.size());
 		it.dependenciesIndex = it.dependenciesCount == 0 ? 0 : static_cast<uint32_t>(m_vGuidDescriptors.size());
 
 		std::sort(it._guids.begin(), it._guids.end());
 
 		for (int i = 0; i < it._guids.size(); ++i)
-			m_vGuidDescriptors.push_back({ it._guids[i] });
+			m_vGuidDescriptors.push_back({ it._guids[i].ptr });
 	}
 
 	assert(m_vGuidDescriptors.size() <= UINT32_MAX);
@@ -968,6 +997,8 @@ void CPakFile::BuildFromMap(const string& mapPath)
 		out.Seek(padBytes, std::ios::end);
 		SetStarpakPathsSize(static_cast<uint16_t>(starpakPathsLength), static_cast<uint16_t>(optStarpakPathsLength));
 	}
+
+	GenerateInternalDependencies();
 
 	// generate file relation vector to be written
 	GenerateFileRelations();

@@ -139,10 +139,28 @@ typedef PagePtr_t PakPointerHdr_t;
 // guid references to other assets are within mem pages
 typedef PakPointerHdr_t PakGuidRefHdr_t;
 
+struct PakGuidRef_s
+{
+	inline bool operator<(const PakGuidRef_s& b) const
+	{
+		return (ptr < b.ptr);
+	}
+
+	PakGuidRefHdr_t ptr;
+
+	// this field is only used by repak.
+	PakGuid_t guid;
+};
+
 // defines a bunch of values for registering/using an asset from the rpak
 struct PakAsset_t
 {
-	PakAsset_t() = default;
+	PakAsset_t()
+	{
+		// the asset always depends on itself, and therefore this value
+		// should always be at least 1 if the asset is added.
+		internalDependencyCount = 1;
+	};
 
 	void InitAsset(const char* const assetName,
 		const PakGuid_t nGuid,
@@ -194,8 +212,13 @@ struct PakAsset_t
 	// this is actually uint16 in file. we store it as size_t here to avoid casts in every asset function
 	size_t pageEnd = 0; // highest mem page used by this asset
 
-	// value is decremented every time a dependency finishes processing its own dependencies
-	short remainingDependencyCount = 0;
+	// internal asset dependency count, which counts the total number of assets
+	// that are in the same pak as this asset, and are needed for this asset
+	// to work. the dependency count also includes the asset itself; the asset
+	// depends on itself. the runtime decrements this value atomically when
+	// processing the internal dependencies until it reaches 1, and then starts
+	// loading this asset.
+	short internalDependencyCount;
 
 	// start index for this asset's dependents/dependencies in respective arrays
 	uint32_t dependentsIndex = 0;
@@ -225,15 +248,10 @@ public:
 	std::shared_ptr<void> _publicData;
 
 	// vector of indexes for local assets that use this asset
-	std::vector<unsigned int> _relations{};
+	std::vector<unsigned int> _relations;
 
 	// guid reference pointers
-	std::vector<PakGuidRefHdr_t> _guids{};
-
-	// set containing unique dependency guids for asset that reside in our pak file. the reason we
-	// use a set instead of a vector is because the engine only resolves internal dependencies
-	// once, and therefore only decrements the counter once.
-	std::set<PakGuid_t> _internalGuids;
+	std::vector<PakGuidRef_s> _guids;
 
 	FORCEINLINE void SetHeaderPointer(void* pHeader) { this->header = pHeader; };
 
@@ -249,11 +267,8 @@ public:
 	FORCEINLINE void AddRelation(const unsigned int idx) { _relations.push_back({ idx }); };
 	FORCEINLINE void AddRelation(const size_t idx) { _relations.push_back({ static_cast<unsigned int>(idx) }); };
 
-	FORCEINLINE void AddGuid(PakGuidRefHdr_t desc) { _guids.push_back(desc); };
+	FORCEINLINE void AddGuid(const PakGuidRefHdr_t desc, const PakGuid_t assetGuid) { _guids.push_back({ desc, assetGuid }); };
 	FORCEINLINE void ExpandGuidBuf(const size_t amount) { _guids.reserve(_guids.size() + amount); }
-
-	FORCEINLINE bool AddInternalGuid(const PakGuid_t dependency) { return _internalGuids.insert(dependency).second; }
-	FORCEINLINE int16_t GetInternalDependencyCount() const { return static_cast<int16_t>(_internalGuids.size() + 1); } // + 1 because of our asset itself
 
 	FORCEINLINE bool IsType(uint32_t type)
 	{

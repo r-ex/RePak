@@ -135,19 +135,6 @@ public:
 	void AddPointer(PagePtr_t ptr);
 	void AddPointer(int pageIdx, int pageOffset);
 
-	FORCEINLINE void AddDependentToAsset(PakAsset_t* const dependency, const size_t dependentAssetIndex)
-	{
-		if(dependency)
-			dependency->AddRelation(dependentAssetIndex);
-	}
-
-	// Assumes that the function is being called for the currently processing asset
-	// Records the currently processing asset as a dependent asset for the provided dependency asset
-	FORCEINLINE void SetCurrentAssetAsDependentForAsset(PakAsset_t* dependency)
-	{
-		AddDependentToAsset(dependency, m_Assets.size());
-	}
-
 	void AddStarpakReference(const std::string& path);
 	void AddOptStarpakReference(const std::string& path);
 
@@ -216,10 +203,7 @@ public:
 
 	size_t EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount);
 
-	//----------------------------------------------------------------------------
-	// starpak
-	//----------------------------------------------------------------------------
-	// purpose: populates m_vFileRelations vector with combined asset relation data
+	void GenerateInternalDependencies();
 	void GenerateFileRelations();
 	void GenerateGuidData();
 
@@ -300,7 +284,7 @@ inline PakAsset_t* Pak_RegisterGuidRefAtOffset(CPakFile* const pak, const PakGui
 	if (guid == 0)
 		return nullptr;
 
-	asset.AddGuid(chunk.GetPointer(offset));
+	asset.AddGuid(chunk.GetPointer(offset), guid);
 
 	if (!targetAsset)
 	{
@@ -309,9 +293,6 @@ inline PakAsset_t* Pak_RegisterGuidRefAtOffset(CPakFile* const pak, const PakGui
 		if (!targetAsset)
 			return nullptr;
 	}
-
-	pak->SetCurrentAssetAsDependentForAsset(targetAsset);
-	asset.AddInternalGuid(guid);
 
 	return targetAsset;
 }
