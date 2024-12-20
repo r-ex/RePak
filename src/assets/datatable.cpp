@@ -15,6 +15,11 @@ static inline size_t DataTable_CalcColumnNameBufSize(const rapidcsv::Document& d
     return colNameBufSize;
 }
 
+static void DataTable_ReportInvalidDataTypeError(const char* const type, const uint32_t colIdx, const uint32_t rowIdx)
+{
+    Error("Invalid data type \"%s\" at cell (%u, %u).\n", type, colIdx, rowIdx);
+}
+
 static void DataTable_SetupRows(const rapidcsv::Document& doc, datatable_asset_t* const pHdrTemp, std::vector<std::string>& outTypeRow)
 {
     // cache it so we don't have to make another deep copy.
@@ -27,7 +32,11 @@ static void DataTable_SetupRows(const rapidcsv::Document& doc, datatable_asset_t
 
     for (uint32_t i = 0; i < pHdrTemp->numColumns; ++i)
     {
-        const dtblcoltype_t type = DataTable_GetTypeFromString(outTypeRow[i]);
+        const std::string& typeString = outTypeRow[i];
+        const dtblcoltype_t type = DataTable_GetTypeFromString(typeString);
+
+        if (type == dtblcoltype_t::INVALID)
+            DataTable_ReportInvalidDataTypeError(typeString.c_str(), i, pHdrTemp->numRows);
 
         if (DataTable_IsStringType(type))
         {
@@ -65,7 +74,11 @@ static void DataTable_SetupColumns(CPakFile* const pak, CPakDataChunk& dataChunk
         pak->AddPointer(dataChunk.GetPointer(((sizeof(datacolumn_t) * i) + offsetof(datacolumn_t, pName))));
         colNameBuf += nameBufLen;
 
-        const dtblcoltype_t type = DataTable_GetTypeFromString(typeRow[i]);
+        const std::string& typeString = typeRow[i];
+        const dtblcoltype_t type = DataTable_GetTypeFromString(typeString);
+
+        if (type == dtblcoltype_t::INVALID)
+            DataTable_ReportInvalidDataTypeError(typeString.c_str(), i, pHdrTemp->numRows);
 
         col.rowOffset = pHdrTemp->rowStride;
         col.type = type;
