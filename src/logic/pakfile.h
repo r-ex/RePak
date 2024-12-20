@@ -105,9 +105,12 @@ public:
 
 	inline void Release()
 	{
-		delete[] pData;
-		
-		this->pData = nullptr;
+		if (pData)
+		{
+			delete[] pData;
+			this->pData = nullptr;
+		}
+
 		this->released = true;
 	}
 };
