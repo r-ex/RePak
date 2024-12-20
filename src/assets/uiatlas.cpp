@@ -137,9 +137,6 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid,
         //nextStringTableOffset += textIt->value.GetStringLength();
     }
 
-    // add the file relation from this uimg asset to the atlas txtr
-    pak->SetCurrentAssetAsDependentForAsset(atlasAsset);
-
     rmem uvBuf(dataChunk.Data());
 
     //////////////
