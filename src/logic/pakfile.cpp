@@ -176,20 +176,17 @@ void CPakFile::AddStreamingDataEntry(PakStreamSetEntry_s& block, const uint8_t* 
 //-----------------------------------------------------------------------------
 void CPakFile::WriteHeader(BinaryIO& io)
 {
-	assert(m_vVirtualSegments.size() <= UINT16_MAX);
-	m_Header.virtualSegmentCount = static_cast<uint16_t>(m_vVirtualSegments.size());
-
-	assert(m_vPages.size() <= UINT16_MAX);
-	m_Header.pageCount = static_cast<uint16_t>(m_vPages.size());
+	m_Header.memSlabCount = m_pageBuilder.GetSlabCount();
+	m_Header.memPageCount = m_pageBuilder.GetPageCount();
 
 	assert(m_vPakDescriptors.size() <= UINT32_MAX);
-	m_Header.descriptorCount = static_cast<uint32_t>(m_vPakDescriptors.size());
+	m_Header.pointerCount = static_cast<uint32_t>(m_vPakDescriptors.size());
 
 	assert(m_vGuidDescriptors.size() <= UINT32_MAX);
-	m_Header.guidDescriptorCount = static_cast<uint32_t>(m_vGuidDescriptors.size());
+	m_Header.usesCount = static_cast<uint32_t>(m_vGuidDescriptors.size());
 
 	assert(m_vFileRelations.size() <= UINT32_MAX);
-	m_Header.relationCount = static_cast<uint32_t>(m_vFileRelations.size());
+	m_Header.dependentsCount = static_cast<uint32_t>(m_vFileRelations.size());
 
 	const uint16_t version = m_Header.fileVersion;
 
@@ -215,17 +212,17 @@ void CPakFile::WriteHeader(BinaryIO& io)
 	if (version == 8)
 		io.Write(m_Header.optStarpakPathsSize);
 
-	io.Write(m_Header.virtualSegmentCount);
-	io.Write(m_Header.pageCount);
+	io.Write(m_Header.memSlabCount);
+	io.Write(m_Header.memPageCount);
 	io.Write(m_Header.patchIndex);
 
 	if (version == 8)
 		io.Write(m_Header.alignment);
 
-	io.Write(m_Header.descriptorCount);
+	io.Write(m_Header.pointerCount);
 	io.Write(m_Header.assetCount);
-	io.Write(m_Header.guidDescriptorCount);
-	io.Write(m_Header.relationCount);
+	io.Write(m_Header.usesCount);
+	io.Write(m_Header.dependentsCount);
 
 	if (version == 7)
 	{
@@ -260,9 +257,9 @@ void CPakFile::WriteAssets(BinaryIO& io)
 
 		io.Write(it.internalDependencyCount);
 		io.Write(it.dependentsIndex);
-		io.Write(it.dependenciesIndex);
+		io.Write(it.usesIndex);
 		io.Write(it.dependentsCount);
-		io.Write(it.dependenciesCount);
+		io.Write(it.usesCount);
 		io.Write(it.headDataSize);
 		io.Write(it.version);
 		io.Write(it.id);
@@ -276,36 +273,6 @@ void CPakFile::WriteAssets(BinaryIO& io)
 }
 
 //-----------------------------------------------------------------------------
-// purpose: writes raw data blocks to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WritePageData(BinaryIO& out)
-{
-	for (size_t i = 0; i < m_vPages.size(); i++)
-	{
-		CPakPage& page = m_vPages[i];
-
-		for (size_t j = 0; j < page.chunks.size(); j++)
-		{
-			CPakDataChunk& chunk = page.chunks[j];
-
-			// should never happen
-			if (chunk.IsReleased()) [[unlikely]]
-				Error("Chunk #%zu in page #%zu was released; cannot write.\n", j, i);
-
-			if (chunk.Data())
-				out.Write(chunk.Data(), chunk.GetSize());
-			else // if chunk is padding to realign the page
-			{
-				//printf("Aligning by %i bytes at %zu.\n", chunk.GetSize(), out.TellPut());
-				out.SeekPut(chunk.GetSize(), std::ios::cur);
-			}
-
-			chunk.Release();
-		}
-	}
-}
-
-//-----------------------------------------------------------------------------
 // purpose: writes starpak paths to file stream
 // returns: total length of written path vector
 //-----------------------------------------------------------------------------
@@ -313,30 +280,6 @@ size_t CPakFile::WriteStarpakPaths(BinaryIO& out, const PakStreamSet_e set)
 {
 	const auto& vecPaths = set == STREAMING_SET_MANDATORY ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
 	return Utils::WriteStringVector(out, vecPaths);
-}
-
-//-----------------------------------------------------------------------------
-// purpose: writes virtual segments to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WriteSegmentHeaders(BinaryIO& out)
-{
-	for (auto& segment : m_vVirtualSegments)
-	{
-		PakSegmentHdr_t segmentHdr = segment.GetHeader();
-		out.Write(segmentHdr);
-	}
-}
-
-//-----------------------------------------------------------------------------
-// purpose: writes page headers to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WriteMemPageHeaders(BinaryIO& out)
-{
-	for (auto& page : m_vPages)
-	{
-		PakPageHdr_t pageHdr = page.GetHeader();
-		out.Write(pageHdr);
-	}
 }
 
 //-----------------------------------------------------------------------------
@@ -398,7 +341,7 @@ void CPakFile::GenerateFileRelations()
 
 	assert(m_vFileRelations.size() <= UINT32_MAX);
 
-	m_Header.relationCount = static_cast<uint32_t>(m_vFileRelations.size());
+	m_Header.dependentsCount = static_cast<uint32_t>(m_vFileRelations.size());
 }
 
 //-----------------------------------------------------------------------------
@@ -410,8 +353,8 @@ void CPakFile::GenerateGuidData()
 	{
 		assert(it._guids.size() <= UINT32_MAX);
 
-		it.dependenciesCount = static_cast<uint32_t>(it._guids.size());
-		it.dependenciesIndex = it.dependenciesCount == 0 ? 0 : static_cast<uint32_t>(m_vGuidDescriptors.size());
+		it.usesCount = static_cast<uint32_t>(it._guids.size());
+		it.usesIndex = it.usesCount == 0 ? 0 : static_cast<uint32_t>(m_vGuidDescriptors.size());
 
 		std::sort(it._guids.begin(), it._guids.end());
 
@@ -421,168 +364,12 @@ void CPakFile::GenerateGuidData()
 
 	assert(m_vGuidDescriptors.size() <= UINT32_MAX);
 
-	m_Header.guidDescriptorCount = static_cast<uint32_t>(m_vGuidDescriptors.size());
+	m_Header.usesCount = static_cast<uint32_t>(m_vGuidDescriptors.size());
 }
 
-//-----------------------------------------------------------------------------
-// purpose: creates page and segment with the specified parameters
-// returns: 
-//-----------------------------------------------------------------------------
-CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
+PakPageLump_s CPakFile::CreatePageLump(const size_t size, const int flags, const int alignment, void* const buf)
 {
-	for (auto& it : m_vVirtualSegments)
-	{
-		if (it.GetFlags() == flags)
-		{
-			// if the segment's alignment is less than our requested alignment, we can increase it
-			// as increasing the alignment will still allow the previous data to be aligned to the same boundary
-			// (all alignments are powers of two)
-			if (it.GetAlignment() < alignment)
-				it.alignment = alignment;
-
-			return it;
-		}
-	}
-
-	CPakVSegment& newSegment = m_vVirtualSegments.emplace_back();
-
-	newSegment.index = static_cast<int>(m_vVirtualSegments.size()-1);
-	newSegment.flags = flags;
-	newSegment.alignment = alignment;
-	newSegment.dataSize = 0;
-
-	return newSegment;
-}
-
-// find the last page that matches the required flags and check if there is room for new data to be added
-CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSize)
-{
-	for (size_t i = m_vPages.size(); i-- > 0;)
-	{
-		CPakPage& page = m_vPages[i];
-
-		if (page.GetFlags() != flags)
-			continue;
-
-		if (page.GetSize() + newDataSize > PAK_MAX_PAGE_MERGE_SIZE)
-			continue;
-
-		if (page.GetAlignment() >= alignment)
-			return page;
-
-		page.alignment = alignment;
-
-		// we have to check this because otherwise we can end up with vsegs with lower alignment than their pages
-		// and that's probably not supposed to happen
-		CPakVSegment& seg = m_vVirtualSegments[page.segmentIndex];
-
-		if (seg.alignment >= alignment)
-			return page;
-
-		int j = 0;
-		bool updated = false;
-
-		for (auto& it : m_vVirtualSegments)
-		{
-			if (it.GetFlags() == seg.flags && it.GetAlignment() == alignment)
-			{
-				//it.dataSize += seg.dataSize;
-
-				//int oldSegIdx = page.segmentIndex;
-
-				//for (auto& pg : m_vPages)
-				//{
-				//	if (pg.segmentIndex == oldSegIdx)
-				//		pg.segmentIndex = j;
-
-				//	// we are about to remove the old segment so anything referencing a higher segment
-				//	// needs to be adjusted
-				//	if (pg.segmentIndex > oldSegIdx)
-				//		pg.segmentIndex--;
-				//}
-
-				//m_vVirtualSegments.erase(m_vVirtualSegments.begin() + oldSegIdx);
-
-				seg.dataSize -= page.dataSize;
-				it.dataSize += page.dataSize;
-
-				page.segmentIndex = j;
-
-				updated = true;
-				break;
-			}
-
-			j++;
-		}
-
-		if (!updated) // if a segment has not been found matching the new alignment, update the page's existing segment
-			seg.alignment = alignment;
-
-		return page;
-	}
-
-	CPakVSegment& segment = FindOrCreateSegment(flags, alignment);
-	CPakPage& page = m_vPages.emplace_back();
-
-	page.segmentIndex = segment.GetIndex();
-	page.pageIndex = static_cast<int>(m_vPages.size()-1); // note: (index-1) because we just emplace'd this instance.
-	page.flags = flags;
-	page.alignment = alignment;
-	page.dataSize = 0;
-
-	return page;
-}
-
-CPakDataChunk CPakFile::CreateDataChunk(const size_t size, const int flags, const int alignment, void* const buf)
-{
-	// this assert is replicated in r5sdk
-	assert(alignment != 0 && alignment < UINT8_MAX);
-
-	CPakPage& page = FindOrCreatePage(flags, alignment, size);
-	char* targetBuf;
-
-	if (!buf)
-	{
-		targetBuf = new char[size];
-		memset(targetBuf, 0, size);
-	}
-	else
-		targetBuf = reinterpret_cast<char*>(buf);
-
-	const uint32_t alignAmount = IALIGN(page.dataSize, static_cast<uint32_t>(alignment)) - page.dataSize;
-
-	// pad page to chunk alignment
-	if (alignAmount > 0)
-	{
-		//printf("Aligning by %u bytes...\n", alignAmount);
-		page.dataSize += alignAmount;
-		m_vVirtualSegments[page.segmentIndex].AddToDataSize(alignAmount);
-
-		// create null chunk with size of the alignment amount
-		// these chunks are handled specially when writing to file,
-		// writing only null bytes for the size of the chunk when no data ptr is present
-		CPakDataChunk& chunk = page.chunks.emplace_back();
-
-		chunk.pageIndex = 0;
-		chunk.pageOffset = 0;
-		chunk.size = alignAmount;
-		chunk.alignment = 0;
-		chunk.pData = nullptr;
-	}
-
-	CPakDataChunk& chunk = page.chunks.emplace_back();
-
-	chunk.pData = targetBuf;
-	chunk.pageIndex = page.GetIndex();
-	chunk.pageOffset = page.GetSize();
-	chunk.size = static_cast<int>(size);
-	chunk.alignment = static_cast<uint8_t>(alignment);
-	chunk.released = false;
-
-	page.dataSize += static_cast<int>(size);
-	m_vVirtualSegments[page.segmentIndex].AddToDataSize(size);
-
-	return chunk;
+	return m_pageBuilder.CreatePageLump(size, flags, alignment, buf);
 }
 
 //-----------------------------------------------------------------------------
@@ -1004,9 +791,11 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	GenerateFileRelations();
 	GenerateGuidData();
 
+	m_pageBuilder.PadSlabsAndPages();
+
 	// write the non-paged data to the file first
-	WriteSegmentHeaders(out);
-	WriteMemPageHeaders(out);
+	m_pageBuilder.WriteSlabHeaders(out);
+	m_pageBuilder.WritePageHeaders(out);
 	WritePakDescriptors(out);
 	WriteAssets(out);
 
@@ -1014,7 +803,7 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	WRITE_VECTOR(out, m_vFileRelations);
 
 	// now the actual paged data
-	WritePageData(out);
+	m_pageBuilder.WritePageData(out);
 
 	// We are done building the data of the pack, this is the actual size.
 	const size_t decompressedFileSize = out.GetSize();
@@ -1053,7 +842,15 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	out.SeekPut(0); // go back to the beginning to finally write the rpakHeader now
 	WriteHeader(out);
 
+	const ssize_t totalPakSize = out.GetSize();
+
 	Log("Written pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
-		m_Path.c_str(), GetAssetCount(), (ssize_t)out.GetSize());
+		m_Path.c_str(), GetAssetCount(), totalPakSize);
+
+	// if we had pages which we ended up padding out to match the alignment,
+	// then we need to seek back to the end of the file; SeekPut only writes
+	// up to len if we either write after it again, or close the stream when
+	// the SeekPut cursor is at that location.
+	out.SeekPut(totalPakSize);
 	out.Close();
 }

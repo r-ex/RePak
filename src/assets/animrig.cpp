@@ -21,8 +21,8 @@ void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, 
     PakGuid_t* const sequenceRefs = AnimSeq_AutoAddSequenceRefs(pak, &sequenceCount, mapEntry);
 
     // from here we start with creating chunks for the target animrig asset.
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(AnimRigAssetHeader_t), SF_HEAD, 8);
-    AnimRigAssetHeader_t* const pHdr = reinterpret_cast<AnimRigAssetHeader_t*>(hdrChunk.Data());
+    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(AnimRigAssetHeader_t), SF_HEAD, 8);
+    AnimRigAssetHeader_t* const pHdr = reinterpret_cast<AnimRigAssetHeader_t*>(hdrChunk.data);
 
     // open and validate file to get buffer
     char* const animRigFileBuffer = Model_ReadRMDLFile(pak->GetAssetPath() + assetPath, 8);
@@ -35,14 +35,14 @@ void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, 
 
     const size_t sequenceRefBufLen = sequenceCount * sizeof(PakGuid_t);
 
-    CPakDataChunk rigChunk = pak->CreateDataChunk(assetNameBufLen + rmdlBufLen + sequenceRefBufLen, SF_CPU, 8);
-    char* const nameBuf = rigChunk.Data();
+    PakPageLump_s rigChunk = pak->CreatePageLump(assetNameBufLen + rmdlBufLen + sequenceRefBufLen, SF_CPU, 8);
+    char* const nameBuf = rigChunk.data;
 
     memcpy(nameBuf, assetPath, assetNameBufLen);
     pHdr->name = rigChunk.GetPointer();
     pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, name)));
 
-    studiohdr_t* const studioBuf = reinterpret_cast<studiohdr_t*>(&rigChunk.Data()[assetNameBufLen]);
+    studiohdr_t* const studioBuf = reinterpret_cast<studiohdr_t*>(&rigChunk.data[assetNameBufLen]);
 
     memcpy(studioBuf, animRigFileBuffer, studiohdr->length);
     pHdr->data = rigChunk.GetPointer(assetNameBufLen);
@@ -53,7 +53,7 @@ void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, 
     if (sequenceRefs)
     {
         const size_t base = assetNameBufLen + rmdlBufLen;
-        PakGuid_t* const sequenceRefBuf = reinterpret_cast<PakGuid_t*>(&rigChunk.Data()[base]);
+        PakGuid_t* const sequenceRefBuf = reinterpret_cast<PakGuid_t*>(&rigChunk.data[base]);
 
         memcpy(sequenceRefBuf, sequenceRefs, sequenceRefBufLen);
         delete[] sequenceRefs;
@@ -66,14 +66,14 @@ void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, 
         for (uint32_t i = 0; i < sequenceCount; ++i)
         {
             const size_t offset = base + (i * sizeof(PakGuid_t));
-            const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&rigChunk.Data()[offset]);
+            const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&rigChunk.data[offset]);
 
             Pak_RegisterGuidRefAtOffset(pak, guid, offset, rigChunk, asset);
         }
     }
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ARIG);
-    asset.SetHeaderPointer(hdrChunk.Data());
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ARIG);
+    asset.SetHeaderPointer(hdrChunk.data);
 
     asset.version = 4;
     asset.pageEnd = pak->GetNumPages();

@@ -1,118 +1,13 @@
 #pragma once
 #include "public/rpak.h"
+#include "pakpage.h"
 
 #define PAK_MAX_PAGE_MERGE_SIZE 0xffff
-
-class CPakFile;
 
 struct _vseginfo_t
 {
 	int index = -1;
 	int size = 0;
-};
-
-class CPakVSegment
-{
-	friend class CPakFile;
-
-public:
-	CPakVSegment() = default;
-	CPakVSegment(int index, int flags, int align, size_t initialSize) : index(index), flags(flags), alignment(align), dataSize(initialSize) {};
-private:
-	int index;
-
-	int flags;
-	int alignment;
-
-	size_t dataSize;
-
-public:
-
-	inline int GetIndex() { return index; };
-	inline int GetFlags() { return flags; };
-	inline int GetAlignment() { return alignment; };
-
-	inline void AddToDataSize(size_t size) { dataSize += size; };
-	inline size_t GetDataSize() { return dataSize; };
-
-	inline PakSegmentHdr_t GetHeader() { return { flags, alignment, dataSize }; };
-};
-
-class CPakDataChunk;
-
-class CPakPage
-{
-	friend class CPakFile;
-
-public:
-	CPakPage() = default;
-	CPakPage(int segIdx, int pageIdx, int flags, int align)
-		: segmentIndex(segIdx), pageIndex(pageIdx), flags(flags), alignment(align), dataSize(0) {};
-
-private:
-	int segmentIndex; // index of the virtual data segment that this page is part of
-	int pageIndex; // index of this page in all of the pak's pages
-
-	int flags;
-	int alignment; // required memory alignment for all data in this page
-
-	std::vector<CPakDataChunk> chunks;
-
-	int dataSize;
-
-public:
-	inline int GetIndex() const { return pageIndex; };
-	inline int GetFlags() const { return flags; };
-	inline int GetAlignment() const { return alignment; };
-
-	PakPageHdr_t GetHeader() const { return { segmentIndex, alignment, dataSize }; };
-	int GetSize() const { return dataSize; };
-};
-
-class CPakDataChunk
-{
-	friend class CPakFile;
-	friend class CPakPage;
-
-public:
-	CPakDataChunk()
-		: pageIndex(0)
-		, pageOffset(0)
-		, size(0)
-		, alignment(0)
-		, released(false)
-		, pData(nullptr)
-	{}
-
-	CPakDataChunk(size_t size, uint8_t alignment, char* data) : pageIndex(0), pageOffset(0), size((int)size), alignment(alignment), pData(data), released(false) {};
-	CPakDataChunk(int pageIndex, int pageOffset, size_t size, uint8_t alignment, char* data) : pageIndex(pageIndex), pageOffset(pageOffset), size((int)size), alignment(alignment), pData(data), released(false) {};
-
-private:
-	char* pData;
-	int pageIndex;
-	int pageOffset;
-	int size;
-	uint8_t alignment;
-	bool released;
-public:
-
-	inline PagePtr_t GetPointer(size_t offset=0) { return { pageIndex, static_cast<int>(pageOffset + offset) }; };
-
-	inline int GetIndex() const { return pageIndex; };
-	inline char* Data() { return pData; };
-	inline int GetSize() const { return size; };
-	inline bool IsReleased() const { return released; };
-
-	inline void Release()
-	{
-		if (pData)
-		{
-			delete[] pData;
-			this->pData = nullptr;
-		}
-
-		this->released = true;
-	}
 };
 
 class CPakFile
@@ -149,7 +44,7 @@ public:
 	inline size_t GetMandatoryStreamingAssetCount() const { return m_mandatoryStreamingDataBlocks.size(); };
 	inline size_t GetOptionalStreamingAssetCount() const { return m_optionalStreamingDataBlocks.size(); };
 
-	inline size_t GetNumPages() const { return m_vPages.size(); };
+	inline uint16_t GetNumPages() const { return m_pageBuilder.GetPageCount(); };
 
 	inline uint32_t GetVersion() const { return m_Header.fileVersion; }
 	inline void SetVersion(const uint16_t version)
@@ -193,12 +88,8 @@ public:
 	//----------------------------------------------------------------------------
 	void WriteHeader(BinaryIO& io);
 	void WriteAssets(BinaryIO& io);
-	void WritePageData(BinaryIO& out);
 
 	size_t WriteStarpakPaths(BinaryIO& out, const PakStreamSet_e set);
-
-	void WriteSegmentHeaders(BinaryIO& out);
-	void WriteMemPageHeaders(BinaryIO& out);
 	void WritePakDescriptors(BinaryIO& out);
 
 	size_t EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount);
@@ -207,11 +98,7 @@ public:
 	void GenerateFileRelations();
 	void GenerateGuidData();
 
-	CPakPage& FindOrCreatePage(const int flags, const int alignment, const size_t newDataSize);
-
-	CPakDataChunk CreateDataChunk(const size_t size, const int flags, const int alignment, void* const buf = nullptr);
-	//_vseginfo_t CreateNewSegment(int size, uint32_t flags, uint32_t alignment, uint32_t vsegAlignment = -1);
-	CPakVSegment& FindOrCreateSegment(int flags, int alignment);
+	PakPageLump_s CreatePageLump(const size_t size, const int flags, const int alignment, void* const buf = nullptr);
 
 	PakAsset_t* GetAssetByGuid(const PakGuid_t guid, uint32_t* const idx = nullptr, const bool silent = false);
 
@@ -251,10 +138,9 @@ private:
 	std::string m_AssetPath;
 	std::string m_OutputPath;
 
-	std::vector<PakAsset_t> m_Assets;
+	CPakPageBuilder m_pageBuilder;
 
-	std::vector<CPakVSegment> m_vVirtualSegments;
-	std::vector<CPakPage> m_vPages;
+	std::vector<PakAsset_t> m_Assets;
 	std::vector<PakPointerHdr_t> m_vPakDescriptors;
 	std::vector<PakGuidRefHdr_t> m_vGuidDescriptors;
 	std::vector<uint32_t> m_vFileRelations;
@@ -275,7 +161,7 @@ private:
 
 // if the asset already existed, the function will return true.
 inline PakAsset_t* Pak_RegisterGuidRefAtOffset(CPakFile* const pak, const PakGuid_t guid, const size_t offset, 
-	CPakDataChunk& chunk, PakAsset_t& asset, PakAsset_t* targetAsset = nullptr)
+	PakPageLump_s& chunk, PakAsset_t& asset, PakAsset_t* targetAsset = nullptr)
 {
 	// NULL guids should never be added. we check it here because otherwise we
 	// have to do a check at call site, and if we miss one we will end up with

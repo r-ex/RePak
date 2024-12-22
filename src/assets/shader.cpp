@@ -11,7 +11,7 @@ static void Shader_LoadFromMSW(CPakFile* const pak, const char* const assetPath,
 }
 
 template <typename ShaderAssetHeader_t>
-static void Shader_CreateFromMSW(CPakFile* const pak, CPakDataChunk& cpuDataChunk, ParsedDXShaderData_t* const firstShaderData,
+static void Shader_CreateFromMSW(CPakFile* const pak, PakPageLump_s& cpuDataChunk, ParsedDXShaderData_t* const firstShaderData,
 								const CMultiShaderWrapperIO::Shader_t* shader, ShaderAssetHeader_t* const hdr)
 {
 	const size_t numShaderBuffers = shader->entries.size();
@@ -42,7 +42,7 @@ static void Shader_CreateFromMSW(CPakFile* const pak, CPakDataChunk& cpuDataChun
 	const size_t descriptorSize = numShaderBuffers * entrySize;
 
 	const size_t shaderBufferChunkSize = descriptorSize + totalShaderDataSize;
-	cpuDataChunk = pak->CreateDataChunk(shaderBufferChunkSize, SF_CPU | SF_TEMP, 8);
+	cpuDataChunk = pak->CreatePageLump(shaderBufferChunkSize, SF_CPU | SF_TEMP, 8);
 
 	// Offset at which the next bytecode buffer will be written.
 	// Initially starts at the end of the descriptors and then gets increased every time a buffer is written.
@@ -52,7 +52,7 @@ static void Shader_CreateFromMSW(CPakFile* const pak, CPakDataChunk& cpuDataChun
 	{
 		const CMultiShaderWrapperIO::ShaderEntry_t& entry = shader->entries[i];
 
-		ShaderByteCode_t* bc = reinterpret_cast<ShaderByteCode_t*>(cpuDataChunk.Data() + (i * entrySize));
+		ShaderByteCode_t* bc = reinterpret_cast<ShaderByteCode_t*>(cpuDataChunk.data + (i * entrySize));
 
 		if (entry.buffer)
 		{
@@ -72,7 +72,7 @@ static void Shader_CreateFromMSW(CPakFile* const pak, CPakDataChunk& cpuDataChun
 			// Register the data pointer at the 
 			pak->AddPointer(cpuDataChunk.GetPointer((i * entrySize) + offsetof(ShaderByteCode_t, data)));
 
-			memcpy_s(cpuDataChunk.Data() + nextBytecodeBufferOffset, entry.size, entry.buffer, entry.size);
+			memcpy_s(cpuDataChunk.data + nextBytecodeBufferOffset, entry.size, entry.buffer, entry.size);
 
 			nextBytecodeBufferOffset += IALIGN(entry.size, 8);
 		}
@@ -99,14 +99,14 @@ static void Shader_CreateFromMSW(CPakFile* const pak, CPakDataChunk& cpuDataChun
 	// and the second being unknown.
 	const size_t inputFlagsDataSize = numShaderBuffers * (2 * sizeof(uint64_t));
 	const size_t reservedDataSize = numShaderBuffers * (16);
-	CPakDataChunk shaderInfoChunk = pak->CreateDataChunk(reservedDataSize + inputFlagsDataSize, SF_CPU, 1);
+	PakPageLump_s shaderInfoChunk = pak->CreatePageLump(reservedDataSize + inputFlagsDataSize, SF_CPU, 1);
 
 	// Get a pointer to the beginning of the reserved data section
 	hdr->unk_10 = shaderInfoChunk.GetPointer();
 	// Get a pointer after the end of the reserved data section
 	hdr->shaderInputFlags = shaderInfoChunk.GetPointer(reservedDataSize);
 
-	uint64_t* const inputFlags = reinterpret_cast<uint64_t*>(shaderInfoChunk.Data() + reservedDataSize);
+	uint64_t* const inputFlags = reinterpret_cast<uint64_t*>(shaderInfoChunk.data + reservedDataSize);
 	size_t i = 0;
 
 	// vertex shaders seem to have data every 8 bytes, unlike (seemingly) every other shader that only uses 8 out of every 16 bytes
@@ -137,9 +137,9 @@ template<typename ShaderAssetHeader_t>
 static void Shader_InternalAddShader(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, 
 									const PakGuid_t shaderGuid, const int assetVersion)
 {
-	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderAssetHeader_t), SF_HEAD, 8);
+	PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(ShaderAssetHeader_t), SF_HEAD, 8);
 
-	ShaderAssetHeader_t* const hdr = reinterpret_cast<ShaderAssetHeader_t*>(hdrChunk.Data());
+	ShaderAssetHeader_t* const hdr = reinterpret_cast<ShaderAssetHeader_t*>(hdrChunk.data);
 	Shader_SetupHeader(hdr, shader);
 
 	if (pak->IsFlagSet(PF_KEEP_DEV) && shader->name.length() > 0)
@@ -149,16 +149,16 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 
 		if (stemLen > 0)
 		{
-			CPakDataChunk nameChunk = pak->CreateDataChunk(stemLen + 1, SF_CPU | SF_DEV, 1);
-			memcpy(nameChunk.Data(), pathStem, stemLen + 1);
+			PakPageLump_s nameChunk = pak->CreatePageLump(stemLen + 1, SF_CPU | SF_DEV, 1);
+			memcpy(nameChunk.data, pathStem, stemLen + 1);
 
 			hdr->name = nameChunk.GetPointer();
 			pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_t, name)));
 		}
 	}
 
-	CPakDataChunk dataChunk = {};
 	ParsedDXShaderData_t* const shaderData = new ParsedDXShaderData_t;
+	PakPageLump_s dataChunk;
 
 	Shader_CreateFromMSW(pak, dataChunk, shaderData, shader, hdr);
 
@@ -172,10 +172,10 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 	asset.InitAsset(
 		assetPath,
 		shaderGuid,
-		hdrChunk.GetPointer(), hdrChunk.GetSize(),
+		hdrChunk.GetPointer(), hdrChunk.size,
 		dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::SHDR);
 
-	asset.SetHeaderPointer(hdrChunk.Data());
+	asset.SetHeaderPointer(hdrChunk.data);
 
 	asset.version = assetVersion;
 	asset.SetPublicData(shaderData);

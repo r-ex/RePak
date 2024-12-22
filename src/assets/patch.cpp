@@ -4,9 +4,9 @@
 // only tested for apex, should be identical on tf2
 void Assets::AddPatchAsset(CPakFile* const pak, const PakGuid_t assetGuid, const char* assetPath, const rapidjson::Value& mapEntry)
 {
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(PatchAssetHeader_t), SF_HEAD, 8);
+    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(PatchAssetHeader_t), SF_HEAD, 8);
 
-    PatchAssetHeader_t* const pHdr = reinterpret_cast<PatchAssetHeader_t*>(hdrChunk.Data());
+    PatchAssetHeader_t* const pHdr = reinterpret_cast<PatchAssetHeader_t*>(hdrChunk.data);
 
     rapidjson::Value::ConstMemberIterator entryIt;
     JSON_GetRequired(mapEntry, "entries", JSONFieldType_e::kArray, entryIt);
@@ -34,7 +34,7 @@ void Assets::AddPatchAsset(CPakFile* const pak, const PakGuid_t assetGuid, const
     }
 
     const size_t dataPageSize = (sizeof(PagePtr_t) * pHdr->patchedPakCount) + (sizeof(uint8_t) * pHdr->patchedPakCount) + entryNamesSectionSize;
-    CPakDataChunk dataChunk = pak->CreateDataChunk(dataPageSize, SF_CPU, 8);
+    PakPageLump_s dataChunk = pak->CreatePageLump(dataPageSize, SF_CPU, 8);
 
     const int patchNumbersOffset = sizeof(PagePtr_t) * pHdr->patchedPakCount;
 
@@ -44,7 +44,7 @@ void Assets::AddPatchAsset(CPakFile* const pak, const PakGuid_t assetGuid, const
     pak->AddPointer(hdrChunk.GetPointer(offsetof(PatchAssetHeader_t, pPakNames)));
     pak->AddPointer(hdrChunk.GetPointer(offsetof(PatchAssetHeader_t, pPakPatchNums)));
 
-    rmem dataBuf(dataChunk.Data());
+    rmem dataBuf(dataChunk.data);
 
     uint32_t i = 0;
     for (const PtchEntry& it : patchEntries)
@@ -56,7 +56,7 @@ void Assets::AddPatchAsset(CPakFile* const pak, const PakGuid_t assetGuid, const
         // write the patch number for this entry into the buffer
         dataBuf.write<uint8_t>(it.highestPatchNum, pHdr->pPakPatchNums.offset + i);
 
-        snprintf(dataChunk.Data() + fileNameOffset, it.pakFileName.length() + 1, "%s", it.pakFileName.c_str());
+        snprintf(dataChunk.data + fileNameOffset, it.pakFileName.length() + 1, "%s", it.pakFileName.c_str());
 
         pak->AddPointer(dataChunk.GetPointer(sizeof(PagePtr_t) * i));
         i++;
@@ -66,8 +66,8 @@ void Assets::AddPatchAsset(CPakFile* const pak, const PakGuid_t assetGuid, const
     PakAsset_t asset;
 
     // NOTE: the only Ptch asset in the game has guid 0x6fc6fa5ad8f8bc9c
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::PTCH);
-    asset.SetHeaderPointer(hdrChunk.Data());
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::PTCH);
+    asset.SetHeaderPointer(hdrChunk.data);
 
     asset.version = 1;
     asset.pageEnd = pak->GetNumPages();

@@ -52,11 +52,11 @@ static void DataTable_SetupRows(const rapidcsv::Document& doc, datatable_asset_t
     }
 }
 
-// fills a CPakDataChunk with column data from a provided csv
-static void DataTable_SetupColumns(CPakFile* const pak, CPakDataChunk& dataChunk, const size_t columnNameBase, datatable_asset_t* const pHdrTemp,
+// fills a PakPageDataChunk_s with column data from a provided csv
+static void DataTable_SetupColumns(CPakFile* const pak, PakPageLump_s& dataChunk, const size_t columnNameBase, datatable_asset_t* const pHdrTemp,
     const rapidcsv::Document& doc, const std::vector<std::string>& typeRow)
 {
-    char* const colNameBufBase = &dataChunk.Data()[columnNameBase];
+    char* const colNameBufBase = &dataChunk.data[columnNameBase];
     char* colNameBuf = colNameBufBase;
 
     for (uint32_t i = 0; i < pHdrTemp->numColumns; ++i)
@@ -92,10 +92,10 @@ static void DataTable_ReportInvalidValueError(const dtblcoltype_t type, const ui
     Error("Invalid %s value at cell (%u, %u).\n", DataTable_GetStringFromType(type), colIdx, rowIdx);
 }
 
-// fills a CPakDataChunk with row data from a provided csv
-static void DataTable_SetupValues(CPakFile* const pak, CPakDataChunk& dataChunk, const size_t podValueBase, const size_t stringValueBase, datatable_asset_t* const pHdrTemp, rapidcsv::Document& doc)
+// fills a PakPageDataChunk_s with row data from a provided csv
+static void DataTable_SetupValues(CPakFile* const pak, PakPageLump_s& dataChunk, const size_t podValueBase, const size_t stringValueBase, datatable_asset_t* const pHdrTemp, rapidcsv::Document& doc)
 {
-    char* const pStringBufBase = &dataChunk.Data()[stringValueBase];
+    char* const pStringBufBase = &dataChunk.data[stringValueBase];
     char* pStringBuf = pStringBufBase;
 
     for (uint32_t rowIdx = 0; rowIdx < pHdrTemp->numRows; ++rowIdx)
@@ -105,7 +105,7 @@ static void DataTable_SetupValues(CPakFile* const pak, CPakDataChunk& dataChunk,
             const datacolumn_t& col = pHdrTemp->pDataColums[colIdx];
             const size_t valueOffset = (pHdrTemp->rowStride * rowIdx) + col.rowOffset;
 
-            void* const valueBufBase = &dataChunk.Data()[podValueBase + valueOffset];
+            void* const valueBufBase = &dataChunk.data[podValueBase + valueOffset];
 
             // get rmem instance for this cell's value buffer
             rmem valbuf(valueBufBase);
@@ -213,11 +213,11 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const PakGuid_t assetGuid, c
         return;
     }
 
-    CPakDataChunk hdrChunk;
+    PakPageLump_s hdrChunk;
     if (pak->GetVersion() <= 7)
-        hdrChunk = pak->CreateDataChunk(sizeof(datatable_v0_t), SF_HEAD, 8);
+        hdrChunk = pak->CreatePageLump(sizeof(datatable_v0_t), SF_HEAD, 8);
     else
-        hdrChunk = pak->CreateDataChunk(sizeof(datatable_v1_t), SF_HEAD, 8);
+        hdrChunk = pak->CreatePageLump(sizeof(datatable_v1_t), SF_HEAD, 8);
 
     datatable_asset_t dtblHdr{}; // temp header that we store values in, this is for sharing funcs across versions
 
@@ -234,11 +234,11 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const PakGuid_t assetGuid, c
     const size_t totalChunkSize = dataColumnsBufSize + columnNamesBufSize + dtblHdr.rowPodValueBufSize + dtblHdr.rowStringValueBufSize;
 
     // create whole datatable chunk
-    CPakDataChunk dataChunk = pak->CreateDataChunk(totalChunkSize, SF_CPU, 8);
+    PakPageLump_s dataChunk = pak->CreatePageLump(totalChunkSize, SF_CPU, 8);
     
     // colums from data chunk
     dtblHdr.pColumns = dataChunk.GetPointer();
-    dtblHdr.pDataColums = reinterpret_cast<datacolumn_t*>(dataChunk.Data());
+    dtblHdr.pDataColums = reinterpret_cast<datacolumn_t*>(dataChunk.data);
 
     pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_asset_t, pColumns)));
 
@@ -256,16 +256,16 @@ void Assets::AddDataTableAsset(CPakFile* const pak, const PakGuid_t assetGuid, c
     dtblHdr.pRows = dataChunk.GetPointer(rowPodValuesBase);
     pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_asset_t, pRows)));
 
-    dtblHdr.WriteToBuffer(hdrChunk.Data(), pak->GetVersion());
+    dtblHdr.WriteToBuffer(hdrChunk.data, pak->GetVersion());
 
     asset.InitAsset(
         assetPath,
         assetGuid,
-        hdrChunk.GetPointer(), hdrChunk.GetSize(),
+        hdrChunk.GetPointer(), hdrChunk.size,
         dtblHdr.pRows,
         UINT64_MAX, UINT64_MAX, AssetType::DTBL);
 
-    asset.SetHeaderPointer(hdrChunk.Data());
+    asset.SetHeaderPointer(hdrChunk.data);
 
     // rpak v7: v0
     // rpak v8: v1

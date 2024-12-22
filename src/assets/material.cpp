@@ -68,7 +68,7 @@ static size_t Material_AddTextures(CPakFile* const pak, const rapidjson::Value& 
 // there are 2 texture guid blocks, one for permanent and one for streaming.
 // we only set the permanent guid refs here, the streaming block is reserved
 // for the runtime, which gets initialized at Pak_UpdateMaterialAsset.
-static void Material_AddTextureRefs(CPakFile* const pak, CPakDataChunk& dataChunk, char* const dataBuf, PakAsset_t& asset,
+static void Material_AddTextureRefs(CPakFile* const pak, PakPageLump_s& dataChunk, char* const dataBuf, PakAsset_t& asset,
                                      const rapidjson::Value& textures, const size_t alignedPathSize)
 {
     size_t curIndex = 0;
@@ -325,7 +325,7 @@ static std::string Material_GetCpuPath(CPakFile* const pak, MaterialAsset_t* con
 
 template <typename MaterialShaderBuffer_t>
 static void Material_AddCpuData(CPakFile* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry,
-    CPakDataChunk& uberBufChunk, size_t& staticBufSize)
+    PakPageLump_s& uberBufChunk, size_t& staticBufSize)
 {
     const std::string cpuPath = Material_GetCpuPath(pak, matlAsset, mapEntry);
     BinaryIO cpuFile;
@@ -333,9 +333,9 @@ static void Material_AddCpuData(CPakFile* const pak, MaterialAsset_t* const matl
     if (cpuFile.Open(cpuPath, BinaryIO::Mode_e::Read))
     {
         staticBufSize = cpuFile.GetSize();
-        uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + staticBufSize, SF_CPU | SF_TEMP, 8);
+        uberBufChunk = pak->CreatePageLump(sizeof(MaterialCPUHeader) + staticBufSize, SF_CPU | SF_TEMP, 8);
 
-        cpuFile.Read(uberBufChunk.Data() + sizeof(MaterialCPUHeader), staticBufSize);
+        cpuFile.Read(uberBufChunk.data + sizeof(MaterialCPUHeader), staticBufSize);
     }
     else
     {
@@ -509,7 +509,7 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
     PakAsset_t asset;
 
     // header data chunk and generic struct
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
+    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
 
     // some var declaration
     size_t textureRefSize = textureCount * sizeof(PakGuid_t); // size of the texture guid section.
@@ -517,9 +517,9 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
     // !!!R2 SPECIFIC!!!
     {
         const size_t nameBufLen = matlAsset.name.length() + 1;
-        CPakDataChunk nameChunk = pak->CreateDataChunk(nameBufLen, SF_CPU | SF_DEV, 1);
+        PakPageLump_s nameChunk = pak->CreatePageLump(nameBufLen, SF_CPU | SF_DEV, 1);
 
-        memcpy(nameChunk.Data(), matlAsset.name.c_str(), nameBufLen);
+        memcpy(nameChunk.data, matlAsset.name.c_str(), nameBufLen);
         matlAsset.materialName = nameChunk.GetPointer();
 
         pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, materialName)));
@@ -567,9 +567,9 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
     }
 
     // asset data
-    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU, 8);
+    PakPageLump_s dataChunk = pak->CreatePageLump(dataBufSize, SF_CPU, 8);
 
-    char* dataBuf = dataChunk.Data();
+    char* dataBuf = dataChunk.data;
 
     if (textureCount)
     {
@@ -627,16 +627,16 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
     Pak_RegisterGuidRefAtOffset(pak, matlAsset.shaderSet, offsetof(MaterialAssetHeader_v12_t, shaderSet), hdrChunk, asset);
 
     // write header now that we are done setting it up
-    matlAsset.WriteToBuffer(hdrChunk.Data());
+    matlAsset.WriteToBuffer(hdrChunk.data);
 
     //////////////////////////////////////////
     /// cpu
     size_t dxStaticBufSize = 0;
-    CPakDataChunk uberBufChunk;
+    PakPageLump_s uberBufChunk;
 
     Material_AddCpuData<MaterialShaderBufferV12>(pak, &matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
 
-    MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
+    MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.data);
     cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
     cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
     cpuhdr->version = 3; // unsure what this value actually is but some cpu headers have
@@ -646,7 +646,7 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
 
     //////////////////////////////////////////
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
 
     asset.version = 12;
     asset.pageEnd = pak->GetNumPages();
@@ -660,7 +660,7 @@ static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t
     PakAsset_t asset;
 
     // header data chunk and generic struct
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
+    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
 
     // some var declaration
     size_t textureRefSize = textureCount * sizeof(PakGuid_t); // size of the texture guid section.
@@ -674,8 +674,8 @@ static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t
     const size_t dataBufSize = alignedPathSize + (textureRefSize * 2) + surfaceProp1Size + surfaceProp2Size;
 
     // asset data
-    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU, 8);
-    char* dataBuf = dataChunk.Data();
+    PakPageLump_s dataChunk = pak->CreatePageLump(dataBufSize, SF_CPU, 8);
+    char* dataBuf = dataChunk.data;
 
     // write asset name into the start of the buffer
     memcpy(dataBuf, matlAsset.name.c_str(), nameBufLen);
@@ -745,16 +745,16 @@ static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t
     Pak_RegisterGuidRefAtOffset(pak, matlAsset.textureAnimation, offsetof(MaterialAssetHeader_v15_t, textureAnimation), hdrChunk, asset);
 
     // write header now that we are done setting it up
-    matlAsset.WriteToBuffer(hdrChunk.Data());
+    matlAsset.WriteToBuffer(hdrChunk.data);
 
     //////////////////////////////////////////
     /// cpu
     size_t dxStaticBufSize = 0;
-    CPakDataChunk uberBufChunk;
+    PakPageLump_s uberBufChunk;
 
     Material_AddCpuData<MaterialShaderBufferV15>(pak, &matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
 
-    MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
+    MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.data);
     cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
     cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
     cpuhdr->version = 3; // unsure what this value actually is but some cpu headers have
@@ -764,8 +764,8 @@ static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t
 
     //////////////////////////////////////////
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
-    asset.SetHeaderPointer(hdrChunk.Data());
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
+    asset.SetHeaderPointer(hdrChunk.data);
 
     asset.version = 15;
     asset.pageEnd = pak->GetNumPages();

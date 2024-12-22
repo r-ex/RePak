@@ -12,8 +12,8 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
     if (!input.Open(textureFilePath, BinaryIO::Mode_e::Read))
         Error("Failed to open texture asset \"%s\".\n", textureFilePath.c_str());
 
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(TextureAssetHeader_t), SF_HEAD, 8);
-    TextureAssetHeader_t* const hdr = reinterpret_cast<TextureAssetHeader_t*>(hdrChunk.Data());
+    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(TextureAssetHeader_t), SF_HEAD, 8);
+    TextureAssetHeader_t* const hdr = reinterpret_cast<TextureAssetHeader_t*>(hdrChunk.data);
 
     // used for creating data buffers
     struct {
@@ -172,19 +172,19 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
 
         if (stemLen > 0)
         {
-            CPakDataChunk nameChunk = pak->CreateDataChunk(stemLen + 1, SF_CPU | SF_DEV, 1);
-            memcpy(nameChunk.Data(), pathStem, stemLen + 1);
+            PakPageLump_s nameChunk = pak->CreatePageLump(stemLen + 1, SF_CPU | SF_DEV, 1);
+            memcpy(nameChunk.data, pathStem, stemLen + 1);
 
             hdr->pName = nameChunk.GetPointer();
             pak->AddPointer(hdrChunk.GetPointer(offsetof(TextureAssetHeader_t, pName)));
         }
     }
 
-    CPakDataChunk dataChunk = pak->CreateDataChunk(mipSizes.staticSize, SF_CPU | SF_TEMP, 16);
+    PakPageLump_s dataChunk = pak->CreatePageLump(mipSizes.staticSize, SF_CPU | SF_TEMP, 16);
     char* const streamedbuf = new char[mipSizes.streamedSize];
     char* const optstreamedbuf = new char[mipSizes.streamedOptSize];
 
-    char* pCurrentPosStatic = dataChunk.Data();
+    char* pCurrentPosStatic = dataChunk.data;
     char* pCurrentPosStreamed = streamedbuf;
     char* pCurrentPosStreamedOpt = optstreamedbuf;
 
@@ -245,8 +245,8 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
     delete[] optstreamedbuf;
 
     PakAsset_t asset;
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), mandatoryStreamDataOffset, optionalStreamDataOffset, AssetType::TXTR);
-    asset.SetHeaderPointer(hdrChunk.Data());
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, dataChunk.GetPointer(), mandatoryStreamDataOffset, optionalStreamDataOffset, AssetType::TXTR);
+    asset.SetHeaderPointer(hdrChunk.data);
 
     asset.version = TXTR_VERSION;
     asset.pageEnd = pak->GetNumPages();

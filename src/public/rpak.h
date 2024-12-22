@@ -83,14 +83,14 @@ struct PakHdr_t
 	char  unk2[0x8];
 	uint16_t starpakPathsSize = 0; // size in bytes of the section containing mandatory starpak paths
 	uint16_t optStarpakPathsSize = 0; // size in bytes of the section containing optional starpak paths
-	uint16_t virtualSegmentCount = 0;
-	uint16_t pageCount = 0; // number of "mempages" in the rpak
+	uint16_t memSlabCount = 0;
+	uint16_t memPageCount = 0; // number of "mempages" in the rpak
 	uint16_t patchIndex = 0;
 	uint16_t alignment = 0;
-	uint32_t descriptorCount = 0;
+	uint32_t pointerCount = 0;
 	uint32_t assetCount = 0;
-	uint32_t guidDescriptorCount = 0;
-	uint32_t relationCount = 0;
+	uint32_t usesCount = 0;
+	uint32_t dependentsCount = 0;
 
 	// only in tf2, related to external
 	uint32_t unk7count = 0;
@@ -111,7 +111,7 @@ struct PakPatchFileHdr_t // follows immediately after the file header in patch r
 // these probably aren't actually called virtual segments
 // this struct doesn't really describe any real data segment, but collects info
 // about the size of pages that are using specific flags/types/whatever
-struct PakSegmentHdr_t
+struct PakSlabHdr_s
 {
 	int flags = 0;
 	int alignment = 0;
@@ -123,10 +123,10 @@ struct PakSegmentHdr_t
 // with page at idx 0 being just after the asset relation data
 // in patched rpaks (e.g. common(01).rpak), these sections don't fully line up with the data,
 // because of both the patch edit stream and also missing pages that are only present in the base rpak
-struct PakPageHdr_t
+struct PakPageHdr_s
 {
-	int segIdx; // index into vseg array
-	int pageAlignment; // alignment size when buffer is allocated
+	int slabIndex; // index into vseg array
+	int alignment; // alignment size when buffer is allocated
 	int dataSize; // actual size of page in bytes
 };
 #pragma pack(pop)
@@ -209,8 +209,7 @@ struct PakAsset_t
 	__int64 starpakOffset = -1;
 	__int64 optStarpakOffset = -1;
 
-	// this is actually uint16 in file. we store it as size_t here to avoid casts in every asset function
-	size_t pageEnd = 0; // highest mem page used by this asset
+	uint16_t pageEnd = 0; // highest mem page used by this asset
 
 	// internal asset dependency count, which counts the total number of assets
 	// that are in the same pak as this asset, and are needed for this asset
@@ -222,10 +221,10 @@ struct PakAsset_t
 
 	// start index for this asset's dependents/dependencies in respective arrays
 	uint32_t dependentsIndex = 0;
-	uint32_t dependenciesIndex = 0;
+	uint32_t usesIndex = 0;
 
 	uint32_t dependentsCount = 0; // number of local assets that use this asset
-	uint32_t dependenciesCount = 0; // number of local assets that are used by this asset
+	uint32_t usesCount = 0; // number of local assets that are used by this asset
 
 	// size of the asset header
 	uint32_t headDataSize = 0;

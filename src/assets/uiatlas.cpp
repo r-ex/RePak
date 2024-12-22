@@ -36,9 +36,9 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid,
     const rapidjson::Value::ConstArray& textureArray = texturesIt->value.GetArray();
     const uint16_t textureCount = static_cast<uint16_t>(textureArray.Size());
 
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(UIImageAtlasHeader_t), SF_HEAD | SF_CLIENT, 8);
+    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(UIImageAtlasHeader_t), SF_HEAD | SF_CLIENT, 8);
 
-    UIImageAtlasHeader_t* const  pHdr = reinterpret_cast<UIImageAtlasHeader_t*>(hdrChunk.Data());
+    UIImageAtlasHeader_t* const  pHdr = reinterpret_cast<UIImageAtlasHeader_t*>(hdrChunk.data);
     const TextureAssetHeader_t* const atlasHdr = reinterpret_cast<const TextureAssetHeader_t*>(atlasAsset->header);
 
     pHdr->width = atlasHdr->width;
@@ -63,17 +63,17 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid,
     const size_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
 
     // ui image/texture info
-    CPakDataChunk textureInfoChunk = pak->CreateDataChunk(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
+    PakPageLump_s textureInfoChunk = pak->CreatePageLump(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
 
     // cpu data
-    CPakDataChunk dataChunk = pak->CreateDataChunk(textureCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
+    PakPageLump_s dataChunk = pak->CreatePageLump(textureCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
     
     // register our descriptors so they get converted properly
     pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureOffsets)));
     pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureDimensions)));
     pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureHashes)));
 
-    rmem tiBuf(textureInfoChunk.Data());
+    rmem tiBuf(textureInfoChunk.data);
 
     // set texture offset page index and offset
     pHdr->pTextureOffsets = textureInfoChunk.GetPointer();
@@ -137,7 +137,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid,
         //nextStringTableOffset += textIt->value.GetStringLength();
     }
 
-    rmem uvBuf(dataChunk.Data());
+    rmem uvBuf(dataChunk.data);
 
     //////////////
     // IMAGE UVS
@@ -159,8 +159,8 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid,
         uvBuf.write(uiiu);
     }
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
-    asset.SetHeaderPointer(hdrChunk.Data());
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
+    asset.SetHeaderPointer(hdrChunk.data);
 
     asset.version = UIMG_VERSION;
     asset.pageEnd = pak->GetNumPages(); // number of the highest page that the asset references pageidx + 1

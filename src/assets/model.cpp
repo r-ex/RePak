@@ -91,7 +91,7 @@ static PakGuid_t* Model_AddAnimRigRefs(uint32_t* const sequenceCount, const rapi
     return guidBuf;
 }
 
-static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChunk& hdrChunk, ModelAssetHeader_t* const pHdr, 
+static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, PakPageLump_s& hdrChunk, ModelAssetHeader_t* const pHdr,
     PakGuid_t* const animrigRefs, const uint32_t animrigCount, PakGuid_t* const sequenceRefs, const uint32_t sequenceCount, 
     const char* const assetPath, PakAsset_t& asset)
 {
@@ -106,8 +106,8 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChu
 
     const bool hasGuidRefs = animrigRefs || sequenceRefs;
 
-    CPakDataChunk intermediateChunk = pak->CreateDataChunk(alignedNameBufLen + animRigRefsBufLen + sequenceRefsBufLen, SF_CPU, hasGuidRefs ? 8 : 1);
-    memcpy(intermediateChunk.Data(), assetPath, modelNameBufLen); // Write the null-terminated asset path to the chunk buffer.
+    PakPageLump_s intermediateChunk = pak->CreatePageLump(alignedNameBufLen + animRigRefsBufLen + sequenceRefsBufLen, SF_CPU, hasGuidRefs ? 8 : 1);
+    memcpy(intermediateChunk.data, assetPath, modelNameBufLen); // Write the null-terminated asset path to the chunk buffer.
 
     pHdr->pName = intermediateChunk.GetPointer();
     pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pName)));
@@ -121,7 +121,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChu
         {
             const size_t base = alignedNameBufLen;
 
-            memcpy(&intermediateChunk.Data()[base], animrigRefs, animRigRefsBufLen);
+            memcpy(&intermediateChunk.data[base], animrigRefs, animRigRefsBufLen);
             delete[] animrigRefs;
 
             pHdr->animRigCount = animrigCount;
@@ -132,7 +132,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChu
             for (uint32_t i = 0; i < animrigCount; ++i)
             {
                 const size_t offset = base + (sizeof(PakGuid_t) * i);
-                const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.Data()[offset]);
+                const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.data[offset]);
 
                 Pak_RegisterGuidRefAtOffset(pak, guid, offset, intermediateChunk, asset);
             }
@@ -142,7 +142,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChu
         {
             const size_t base = alignedNameBufLen + (curIndex * sizeof(PakGuid_t));
 
-            memcpy(&intermediateChunk.Data()[base], sequenceRefs, sequenceRefsBufLen);
+            memcpy(&intermediateChunk.data[base], sequenceRefs, sequenceRefsBufLen);
             delete[] sequenceRefs;
 
             pHdr->sequenceCount = sequenceCount;
@@ -153,7 +153,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChu
             for (uint32_t i = 0; i < sequenceCount; ++i)
             {
                 const size_t offset = base + (sizeof(PakGuid_t) * i);
-                const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.Data()[offset]);
+                const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.data[offset]);
 
                 Pak_RegisterGuidRefAtOffset(pak, guid, offset, intermediateChunk, asset);
             }
@@ -161,7 +161,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, CPakDataChu
     }
 }
 
-static uint64_t Model_InternalAddVertexGroupData(CPakFile* const pak, CPakDataChunk* const hdrChunk, ModelAssetHeader_t* const modelHdr, studiohdr_t* const studiohdr, const std::string& rmdlFilePath)
+static uint64_t Model_InternalAddVertexGroupData(CPakFile* const pak, PakPageLump_s* const hdrChunk, ModelAssetHeader_t* const modelHdr, studiohdr_t* const studiohdr, const std::string& rmdlFilePath)
 {
     modelHdr->totalVertexDataSize = studiohdr->vtxsize + studiohdr->vvdsize + studiohdr->vvcsize + studiohdr->vvwsize;
 
@@ -183,9 +183,9 @@ static uint64_t Model_InternalAddVertexGroupData(CPakFile* const pak, CPakDataCh
     // static props must have their vertex group data copied as permanent data in the pak file.
     if (studiohdr->IsStaticProp())
     {
-        CPakDataChunk vgChunk = pak->CreateDataChunk(vgFileSize, SF_CPU | SF_TEMP | SF_CLIENT, 1, vgBuf);
+        PakPageLump_s vgLump = pak->CreatePageLump(vgFileSize, SF_CPU | SF_TEMP | SF_CLIENT, 1, vgBuf);
 
-        modelHdr->pStaticPropVtxCache = vgChunk.GetPointer();
+        modelHdr->pStaticPropVtxCache = vgLump.GetPointer();
         pak->AddPointer(hdrChunk->GetPointer(offsetof(ModelAssetHeader_t, pStaticPropVtxCache)));
     }
     else
@@ -215,8 +215,8 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
     PakGuid_t* const animrigRefs = Model_AddAnimRigRefs(&animrigCount, mapEntry);
 
     // from here we start with creating chunks for the target model asset.
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ModelAssetHeader_t), SF_HEAD, 8);
-    ModelAssetHeader_t* const pHdr = reinterpret_cast<ModelAssetHeader_t*>(hdrChunk.Data());
+    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(ModelAssetHeader_t), SF_HEAD, 8);
+    ModelAssetHeader_t* const pHdr = reinterpret_cast<ModelAssetHeader_t*>(hdrChunk.data);
 
     std::vector<PakGuidRefHdr_t> guids;
 
@@ -246,8 +246,8 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
         if (studiohdr->vphysize != phyFileSize)
             Error("Expected physics file size is %zu, found physics asset of size %zu.\n", (size_t)studiohdr->vphysize, phyFileSize);
 
-        CPakDataChunk phyChunk = pak->CreateDataChunk(phyFileSize, SF_CPU | SF_TEMP, 1);
-        phyInput.Read(phyChunk.Data(), phyFileSize);
+        PakPageLump_s phyChunk = pak->CreatePageLump(phyFileSize, SF_CPU | SF_TEMP, 1);
+        phyInput.Read(phyChunk.data, phyFileSize);
 
         pHdr->pPhyData = phyChunk.GetPointer();
         pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pPhyData)));
@@ -265,7 +265,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
 
     // the last chunk is the actual data chunk that contains the rmdl
     const size_t alignedModelDataSize = IALIGN64(studiohdr->length); // todo(amos): should we just let CreateDataChunk align the provided size?
-    CPakDataChunk dataChunk = pak->CreateDataChunk(alignedModelDataSize, SF_CPU, 64, rmdlBuf);
+    PakPageLump_s dataChunk = pak->CreatePageLump(alignedModelDataSize, SF_CPU, 64, rmdlBuf);
 
     pHdr->pData = dataChunk.GetPointer();
     pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pData)));
@@ -283,7 +283,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
     // handle material overrides register all material guids
     for (int i = 0; i < studiohdr->numtextures; ++i)
     {
-        mstudiotexture_t* tex = studiohdr->pTexture(i);
+        mstudiotexture_t* const tex = studiohdr->pTexture(i);
 
         if (hasMaterialOverrides)
         {
@@ -300,7 +300,7 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
             }
         }
 
-        const size_t pos = (char*)tex - dataChunk.Data();
+        const size_t pos = (char*)tex - dataChunk.data;
         const size_t offset = pos + offsetof(mstudiotexture_t, guid);
 
         PakAsset_t* const internalAsset = Pak_RegisterGuidRefAtOffset(pak, tex->guid, offset, dataChunk, asset);
@@ -321,8 +321,8 @@ void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, co
         }
     }
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), PagePtr_t::NullPtr(), streamedVgOffset, UINT64_MAX, AssetType::RMDL);
-    asset.SetHeaderPointer(hdrChunk.Data());
+    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), streamedVgOffset, UINT64_MAX, AssetType::RMDL);
+    asset.SetHeaderPointer(hdrChunk.data);
   
     asset.version = RMDL_VERSION;
     asset.pageEnd = pak->GetNumPages();

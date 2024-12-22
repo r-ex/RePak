@@ -64,8 +64,8 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 
 	PakAsset_t asset;
 
-	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderSetAssetHeader_t), SF_HEAD, 8);
-	ShaderSetAssetHeader_t* const hdr = reinterpret_cast<ShaderSetAssetHeader_t*>(hdrChunk.Data());
+	PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(ShaderSetAssetHeader_t), SF_HEAD, 8);
+	ShaderSetAssetHeader_t* const hdr = reinterpret_cast<ShaderSetAssetHeader_t*>(hdrChunk.data);
 
 	if (pak->IsFlagSet(PF_KEEP_DEV))
 	{
@@ -74,8 +74,8 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 
 		if (stemLen > 0)
 		{
-			CPakDataChunk nameChunk = pak->CreateDataChunk(stemLen + 1, SF_CPU | SF_DEV, 1);
-			memcpy(nameChunk.Data(), pathStem, stemLen + 1);
+			PakPageLump_s nameChunk = pak->CreatePageLump(stemLen + 1, SF_CPU | SF_DEV, 1);
+			memcpy(nameChunk.data, pathStem, stemLen + 1);
 
 			hdr->name = nameChunk.GetPointer();
 			pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_t, name)));
@@ -114,9 +114,9 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 	asset.InitAsset(
 		assetPath,
 		shaderSetGuid,
-		hdrChunk.GetPointer(), hdrChunk.GetSize(),
+		hdrChunk.GetPointer(), hdrChunk.size,
 		PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::SHDS);
-	asset.SetHeaderPointer(hdrChunk.Data());
+	asset.SetHeaderPointer(hdrChunk.data);
 
 	asset.version = assetVersion;
 	asset.pageEnd = pak->GetNumPages();
