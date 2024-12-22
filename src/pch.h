@@ -38,3 +38,9 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #include "utils/logger.h"
 
 #define UNUSED(x)	(void)(x)
+
+template <typename T>
+FORCEINLINE bool IsPowerOfTwo(T x)
+{
+	return (x & (x - 1)) == 0;
+}

@@ -22,6 +22,7 @@
     <ClCompile Include="assets\shaderset.cpp" />
     <ClCompile Include="assets\uiatlas.cpp" />
     <ClCompile Include="assets\texture.cpp" />
+    <ClCompile Include="logic\pakpage.cpp" />
     <ClCompile Include="logic\pakfile.cpp" />
     <ClCompile Include="logic\rtech.cpp" />
     <ClCompile Include="pch.cpp">
@@ -155,6 +156,7 @@
     <ClInclude Include="assets\assets.h" />
     <ClInclude Include="common\const.h" />
     <ClInclude Include="common\decls.h" />
+    <ClInclude Include="logic\pakpage.h" />
     <ClInclude Include="logic\pakfile.h" />
     <ClInclude Include="logic\rmem.h" />
     <ClInclude Include="logic\rtech.h" />
