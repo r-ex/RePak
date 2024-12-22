@@ -267,7 +267,7 @@ void CPakPageBuilder::PadSlabsAndPages()
 			pad.alignment = pageHdr.alignment;
 			pad.pageInfo = PagePtr_t::NullPtr();
 
-			// grow the slab and page size to accommodate alignment padding
+			// Grow the slab and page size to accommodate alignment padding
 			pageHdr.dataSize += pagePadAmount;
 			slabHdr.dataSize += pagePadAmount;
 		}
@@ -321,8 +321,14 @@ void CPakPageBuilder::WritePageData(BinaryIO& out) const
 		{
 			if (lump.data)
 				out.Write(lump.data, lump.size);
-			else // Lump is padding to align the next asset or our current page.
+			else
+			{
+				// Lump is padding to either:
+				// - pad out the previous asset to align our current asset.
+				// - pad out the current asset to its full aligned size.
+				// - pad out the page to its full aligned size.
 				out.SeekPut(lump.size, std::ios::cur);
+			}
 		}
 	}
 }
