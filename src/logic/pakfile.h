@@ -10,10 +10,10 @@ struct _vseginfo_t
 	int size = 0;
 };
 
-class CPakFile
+class CPakFileBuilder
 {
 public:
-	CPakFile(short version)
+	CPakFileBuilder(short version)
 	{
 		m_Header.fileVersion = version;
 	};
@@ -22,7 +22,7 @@ public:
 	// assets
 	//----------------------------------------------------------------------------
 
-	typedef void(*AssetTypeFunc_t)(CPakFile*, const PakGuid_t, const char*, const rapidjson::Value&);
+	typedef void(*AssetTypeFunc_t)(CPakFileBuilder*, const PakGuid_t, const char*, const rapidjson::Value&);
 
 	bool AddJSONAsset(const char* const targetType, const char* const assetType, const char* const assetPath,
 					  const rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
@@ -160,7 +160,7 @@ private:
 };
 
 // if the asset already existed, the function will return true.
-inline PakAsset_t* Pak_RegisterGuidRefAtOffset(CPakFile* const pak, const PakGuid_t guid, const size_t offset, 
+inline PakAsset_t* Pak_RegisterGuidRefAtOffset(CPakFileBuilder* const pak, const PakGuid_t guid, const size_t offset, 
 	PakPageLump_s& chunk, PakAsset_t& asset, PakAsset_t* targetAsset = nullptr)
 {
 	// NULL guids should never be added. we check it here because otherwise we

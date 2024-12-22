@@ -1,6 +1,6 @@
 //=============================================================================//
 //
-// purpose: pakfile system
+// Pak file builder and management class
 //
 //=============================================================================//
 
@@ -11,7 +11,7 @@
 #include "thirdparty/zstd/zstd.h"
 #include "thirdparty/zstd/decompress/zstd_decompress_internal.h"
 
-bool CPakFile::AddJSONAsset(const char* const targetType, const char* const assetType, const char* const assetPath,
+bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* const assetType, const char* const assetPath,
 							const rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
 {
 	if (strcmp(targetType, assetType) != 0)
@@ -65,7 +65,7 @@ bool CPakFile::AddJSONAsset(const char* const targetType, const char* const asse
 //-----------------------------------------------------------------------------
 // purpose: installs asset types and their callbacks
 //-----------------------------------------------------------------------------
-void CPakFile::AddAsset(const rapidjson::Value& file)
+void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 {
 	const char* const assetType = JSON_GetValueOrDefault(file, "_type", static_cast<const char*>(nullptr));
 	const char* const assetPath = JSON_GetValueOrDefault(file, "_path", static_cast<const char*>(nullptr));
@@ -101,14 +101,14 @@ void CPakFile::AddAsset(const rapidjson::Value& file)
 //-----------------------------------------------------------------------------
 // purpose: adds page pointer to descriptor
 //-----------------------------------------------------------------------------
-void CPakFile::AddPointer(int pageIdx, int pageOffset)
+void CPakFileBuilder::AddPointer(int pageIdx, int pageOffset)
 {
 	PakGuidRefHdr_t& refHdr = m_vPakDescriptors.emplace_back();
 	refHdr.index = pageIdx;
 	refHdr.offset = pageOffset;
 }
 
-void CPakFile::AddPointer(PagePtr_t ptr)
+void CPakFileBuilder::AddPointer(PagePtr_t ptr)
 {
 	m_vPakDescriptors.push_back(ptr);
 }
@@ -116,7 +116,7 @@ void CPakFile::AddPointer(PagePtr_t ptr)
 //-----------------------------------------------------------------------------
 // purpose: adds new starpak file path to be used by the rpak
 //-----------------------------------------------------------------------------
-void CPakFile::AddStarpakReference(const std::string& path)
+void CPakFileBuilder::AddStarpakReference(const std::string& path)
 {
 	for (auto& it : m_mandatoryStreamFilePaths)
 	{
@@ -129,7 +129,7 @@ void CPakFile::AddStarpakReference(const std::string& path)
 //-----------------------------------------------------------------------------
 // purpose: adds new optional starpak file path to be used by the rpak
 //-----------------------------------------------------------------------------
-void CPakFile::AddOptStarpakReference(const std::string& path)
+void CPakFileBuilder::AddOptStarpakReference(const std::string& path)
 {
 	for (auto& it : m_optionalStreamFilePaths)
 	{
@@ -142,7 +142,7 @@ void CPakFile::AddOptStarpakReference(const std::string& path)
 //-----------------------------------------------------------------------------
 // purpose: adds new starpak data entry
 //-----------------------------------------------------------------------------
-void CPakFile::AddStreamingDataEntry(PakStreamSetEntry_s& block, const uint8_t* const data, const PakStreamSet_e set)
+void CPakFileBuilder::AddStreamingDataEntry(PakStreamSetEntry_s& block, const uint8_t* const data, const PakStreamSet_e set)
 {
 	const bool isMandatory = set == STREAMING_SET_MANDATORY;
 	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
@@ -174,7 +174,7 @@ void CPakFile::AddStreamingDataEntry(PakStreamSetEntry_s& block, const uint8_t* 
 //-----------------------------------------------------------------------------
 // purpose: writes header to file stream
 //-----------------------------------------------------------------------------
-void CPakFile::WriteHeader(BinaryIO& io)
+void CPakFileBuilder::WriteHeader(BinaryIO& io)
 {
 	m_Header.memSlabCount = m_pageBuilder.GetSlabCount();
 	m_Header.memPageCount = m_pageBuilder.GetPageCount();
@@ -236,7 +236,7 @@ void CPakFile::WriteHeader(BinaryIO& io)
 //-----------------------------------------------------------------------------
 // purpose: writes assets to file stream
 //-----------------------------------------------------------------------------
-void CPakFile::WriteAssets(BinaryIO& io)
+void CPakFileBuilder::WriteAssets(BinaryIO& io)
 {
 	for (PakAsset_t& it : m_Assets)
 	{
@@ -276,7 +276,7 @@ void CPakFile::WriteAssets(BinaryIO& io)
 // purpose: writes starpak paths to file stream
 // returns: total length of written path vector
 //-----------------------------------------------------------------------------
-size_t CPakFile::WriteStarpakPaths(BinaryIO& out, const PakStreamSet_e set)
+size_t CPakFileBuilder::WriteStarpakPaths(BinaryIO& out, const PakStreamSet_e set)
 {
 	const auto& vecPaths = set == STREAMING_SET_MANDATORY ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
 	return Utils::WriteStringVector(out, vecPaths);
@@ -285,7 +285,7 @@ size_t CPakFile::WriteStarpakPaths(BinaryIO& out, const PakStreamSet_e set)
 //-----------------------------------------------------------------------------
 // purpose: writes pak descriptors to file stream
 //-----------------------------------------------------------------------------
-void CPakFile::WritePakDescriptors(BinaryIO& out)
+void CPakFileBuilder::WritePakDescriptors(BinaryIO& out)
 {
 	// pointers must be written in order otherwise resolving them causes an access violation
 	std::sort(m_vPakDescriptors.begin(), m_vPakDescriptors.end());
@@ -297,7 +297,7 @@ void CPakFile::WritePakDescriptors(BinaryIO& out)
 // purpose: counts the number of internal dependencies for each asset and sets
 // them dependent from another. internal dependencies reside in the same pak!
 //-----------------------------------------------------------------------------
-void CPakFile::GenerateInternalDependencies()
+void CPakFileBuilder::GenerateInternalDependencies()
 {
 	for (size_t i = 0; i < m_Assets.size(); i++)
 	{
@@ -325,7 +325,7 @@ void CPakFile::GenerateInternalDependencies()
 //-----------------------------------------------------------------------------
 // purpose: populates file relations vector with combined asset relation data
 //-----------------------------------------------------------------------------
-void CPakFile::GenerateFileRelations()
+void CPakFileBuilder::GenerateFileRelations()
 {
 	for (auto& it : m_Assets)
 	{
@@ -347,7 +347,7 @@ void CPakFile::GenerateFileRelations()
 //-----------------------------------------------------------------------------
 // purpose: 
 //-----------------------------------------------------------------------------
-void CPakFile::GenerateGuidData()
+void CPakFileBuilder::GenerateGuidData()
 {
 	for (auto& it : m_Assets)
 	{
@@ -367,7 +367,7 @@ void CPakFile::GenerateGuidData()
 	m_Header.usesCount = static_cast<uint32_t>(m_vGuidDescriptors.size());
 }
 
-PakPageLump_s CPakFile::CreatePageLump(const size_t size, const int flags, const int alignment, void* const buf)
+PakPageLump_s CPakFileBuilder::CreatePageLump(const size_t size, const int flags, const int alignment, void* const buf)
 {
 	return m_pageBuilder.CreatePageLump(static_cast<int>(size), flags, alignment, buf);
 }
@@ -376,7 +376,7 @@ PakPageLump_s CPakFile::CreatePageLump(const size_t size, const int flags, const
 // purpose: 
 // returns: 
 //-----------------------------------------------------------------------------
-PakAsset_t* CPakFile::GetAssetByGuid(const PakGuid_t guid, uint32_t* const idx /*= nullptr*/, const bool silent /*= false*/)
+PakAsset_t* CPakFileBuilder::GetAssetByGuid(const PakGuid_t guid, uint32_t* const idx /*= nullptr*/, const bool silent /*= false*/)
 {
 	uint32_t i = 0;
 	for (PakAsset_t& it : m_Assets)
@@ -542,7 +542,7 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 //-----------------------------------------------------------------------------
 // Purpose: stream encode pak file to new stream and swap old stream with new
 //-----------------------------------------------------------------------------
-size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount)
+size_t CPakFileBuilder::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount)
 {
 	BinaryIO outCompressed;
 	const std::string outCompressedPath = m_Path + "_encoded";
@@ -597,7 +597,7 @@ size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, cons
 //-----------------------------------------------------------------------------
 // Purpose: creates the stream file stream and sets the header up
 //-----------------------------------------------------------------------------
-void CPakFile::CreateStreamFileStream(const char* const streamFilePath, const PakStreamSet_e set)
+void CPakFileBuilder::CreateStreamFileStream(const char* const streamFilePath, const PakStreamSet_e set)
 {
 	const bool isMandatory = set == STREAMING_SET_MANDATORY;
 	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
@@ -630,7 +630,7 @@ void CPakFile::CreateStreamFileStream(const char* const streamFilePath, const Pa
 //-----------------------------------------------------------------------------
 // Purpose: writes the sorts table and finishes the stream file stream
 //-----------------------------------------------------------------------------
-void CPakFile::FinishStreamFileStream(const PakStreamSet_e set)
+void CPakFileBuilder::FinishStreamFileStream(const PakStreamSet_e set)
 {
 	const bool isMandatory = set == STREAMING_SET_MANDATORY;
 	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
@@ -658,7 +658,7 @@ void CPakFile::FinishStreamFileStream(const PakStreamSet_e set)
 //-----------------------------------------------------------------------------
 // purpose: builds rpak and starpak from input map file
 //-----------------------------------------------------------------------------
-void CPakFile::BuildFromMap(const string& mapPath)
+void CPakFileBuilder::BuildFromMap(const string& mapPath)
 {
 	// load and parse map file, this file is essentially the
 	// control file; deciding what is getting packed, etc..

@@ -53,7 +53,7 @@ static void DataTable_SetupRows(const rapidcsv::Document& doc, datatable_asset_t
 }
 
 // fills a PakPageDataChunk_s with column data from a provided csv
-static void DataTable_SetupColumns(CPakFile* const pak, PakPageLump_s& dataChunk, const size_t columnNameBase, datatable_asset_t* const pHdrTemp,
+static void DataTable_SetupColumns(CPakFileBuilder* const pak, PakPageLump_s& dataChunk, const size_t columnNameBase, datatable_asset_t* const pHdrTemp,
     const rapidcsv::Document& doc, const std::vector<std::string>& typeRow)
 {
     char* const colNameBufBase = &dataChunk.data[columnNameBase];
@@ -93,7 +93,7 @@ static void DataTable_ReportInvalidValueError(const dtblcoltype_t type, const ui
 }
 
 // fills a PakPageDataChunk_s with row data from a provided csv
-static void DataTable_SetupValues(CPakFile* const pak, PakPageLump_s& dataChunk, const size_t podValueBase, const size_t stringValueBase, datatable_asset_t* const pHdrTemp, rapidcsv::Document& doc)
+static void DataTable_SetupValues(CPakFileBuilder* const pak, PakPageLump_s& dataChunk, const size_t podValueBase, const size_t stringValueBase, datatable_asset_t* const pHdrTemp, rapidcsv::Document& doc)
 {
     char* const pStringBufBase = &dataChunk.data[stringValueBase];
     char* pStringBuf = pStringBufBase;
@@ -185,7 +185,7 @@ static void DataTable_SetupValues(CPakFile* const pak, PakPageLump_s& dataChunk,
 // page chunk structure and order:
 // - header        HEAD        (align=8)
 // - data          CPU         (align=8) data columns, column names, pod row values then string row values. only data columns is aligned to 8, the rest is 1.
-void Assets::AddDataTableAsset(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddDataTableAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     UNUSED(mapEntry);
     PakAsset_t asset;

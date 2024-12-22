@@ -4,10 +4,10 @@
 
 #undef GetObject
 
-extern bool Texture_AutoAddTexture(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming);
+extern bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming);
 
 // returns true if a texture was added to the pak, false if we just use a guid ref
-static bool Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Value& texture, const int index, const bool disableStreaming)
+static bool Material_CheckAndAddTexture(CPakFileBuilder* const pak, const rapidjson::Value& texture, const int index, const bool disableStreaming)
 {
     // check if texture string is an asset guid (e.g., "0x5DCAT")
     // if it is then we don't add it here as its a reference.
@@ -22,7 +22,7 @@ static bool Material_CheckAndAddTexture(CPakFile* const pak, const rapidjson::Va
     return Texture_AutoAddTexture(pak, RTech::StringToGuid(texturePath), texturePath, disableStreaming);
 }
 
-static short Material_CreateTextures(CPakFile* const pak, const rapidjson::Value& textures, const bool disableStreaming)
+static short Material_CreateTextures(CPakFileBuilder* const pak, const rapidjson::Value& textures, const bool disableStreaming)
 {
     short numTexturesAdded = 0;
     int i = 0;
@@ -52,7 +52,7 @@ static size_t Material_GetHighestTextureBindPoint(const rapidjson::Value& textur
     return max;
 }
 
-static size_t Material_AddTextures(CPakFile* const pak, const rapidjson::Value& mapEntry, const rapidjson::Value& textures)
+static size_t Material_AddTextures(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry, const rapidjson::Value& textures)
 {
     const bool disableStreaming = JSON_GetValueOrDefault(mapEntry, "disableStreaming", false);
     Material_CreateTextures(pak, textures, disableStreaming);
@@ -68,7 +68,7 @@ static size_t Material_AddTextures(CPakFile* const pak, const rapidjson::Value& 
 // there are 2 texture guid blocks, one for permanent and one for streaming.
 // we only set the permanent guid refs here, the streaming block is reserved
 // for the runtime, which gets initialized at Pak_UpdateMaterialAsset.
-static void Material_AddTextureRefs(CPakFile* const pak, PakPageLump_s& dataChunk, char* const dataBuf, PakAsset_t& asset,
+static void Material_AddTextureRefs(CPakFileBuilder* const pak, PakPageLump_s& dataChunk, char* const dataBuf, PakAsset_t& asset,
                                      const rapidjson::Value& textures, const size_t alignedPathSize)
 {
     size_t curIndex = 0;
@@ -204,9 +204,9 @@ static PakGuid_t Material_DetermineDefaultDepthMaterial(const RenderPassMaterial
     }
 }
 
-bool Material_AutoAddMaterial(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion);
+bool Material_AutoAddMaterial(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion);
 
-void MaterialAsset_t::SetupDepthMaterials(CPakFile* const pak, const rapidjson::Value& mapEntry)
+void MaterialAsset_t::SetupDepthMaterials(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry)
 {
     if (this->materialTypeStr == "wld")
         Warning("WLD materials do not have generic depth materials, make sure that you have set them to 0 or have created your own.\n");
@@ -315,7 +315,7 @@ static void Material_SetupDXBufferFromJson(GenericShaderBuffer* shaderBuf, const
 */
 
 
-static std::string Material_GetCpuPath(CPakFile* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry)
+static std::string Material_GetCpuPath(CPakFileBuilder* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry)
 {
     const char* path; // is user hasn't specified a cpu path, load the one from the material path.
     const bool hasPath = JSON_GetValue(mapEntry, "$cpu", path);
@@ -324,7 +324,7 @@ static std::string Material_GetCpuPath(CPakFile* const pak, MaterialAsset_t* con
 }
 
 template <typename MaterialShaderBuffer_t>
-static void Material_AddCpuData(CPakFile* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry,
+static void Material_AddCpuData(CPakFileBuilder* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry,
     PakPageLump_s& uberBufChunk, size_t& staticBufSize)
 {
     const std::string cpuPath = Material_GetCpuPath(pak, matlAsset, mapEntry);
@@ -466,7 +466,7 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
     material->dxStates[1] = material->dxStates[0];
 }
 
-static bool Material_OpenFile(CPakFile* const pak, const char* const assetPath, rapidjson::Document& document)
+static bool Material_OpenFile(CPakFileBuilder* const pak, const char* const assetPath, rapidjson::Document& document)
 {
     const string fileName = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
     BinaryIO materialStream;
@@ -503,7 +503,7 @@ static bool Material_OpenFile(CPakFile* const pak, const char* const assetPath, 
     return true;
 }
 
-static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath,
+static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath,
     MaterialAsset_t& matlAsset, const rapidjson::Value& matEntry, const rapidjson::Value::ConstMemberIterator texturesIt, const size_t textureCount)
 {
     PakAsset_t asset;
@@ -654,7 +654,7 @@ static void Material_InternalAddMaterialV12(CPakFile* const pak, const PakGuid_t
     pak->PushAsset(asset);
 }
 
-static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, 
+static void Material_InternalAddMaterialV15(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, 
     MaterialAsset_t& matlAsset, const rapidjson::Value& matEntry, const rapidjson::Value::ConstMemberIterator texturesIt, const size_t textureCount)
 {
     PakAsset_t asset;
@@ -773,7 +773,7 @@ static void Material_InternalAddMaterialV15(CPakFile* const pak, const PakGuid_t
     pak->PushAsset(asset);
 }
 
-static bool Material_InternalAddMaterial(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value* const mapEntry, const int assetVersion)
+static bool Material_InternalAddMaterial(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value* const mapEntry, const int assetVersion)
 {
     rapidjson::Document document;
     const rapidjson::Value* matEntry;
@@ -816,7 +816,7 @@ static bool Material_InternalAddMaterial(CPakFile* const pak, const PakGuid_t as
     return true;
 }
 
-bool Material_AutoAddMaterial(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion)
+bool Material_AutoAddMaterial(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion)
 {
     PakAsset_t* const existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
 
@@ -828,13 +828,13 @@ bool Material_AutoAddMaterial(CPakFile* const pak, const PakGuid_t assetGuid, co
 }
 
 // VERSION 7
-void Assets::AddMaterialAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v12(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     Material_InternalAddMaterial(pak, assetGuid, assetPath, &mapEntry, 12);
 }
 
 // VERSION 8
-void Assets::AddMaterialAsset_v15(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v15(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     Material_InternalAddMaterial(pak, assetGuid, assetPath, &mapEntry, 15);
 }

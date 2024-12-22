@@ -578,7 +578,7 @@ struct MaterialAsset_t
 	// the path to the material without the .rpak extension
 	std::string path;
 
-	void SetupDepthMaterials(CPakFile* const pak, const rapidjson::Value& mapEntry);
+	void SetupDepthMaterials(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry);
 	void FromJSON(const rapidjson::Value& mapEntry);
 
 	void WriteToBuffer(char* buf)

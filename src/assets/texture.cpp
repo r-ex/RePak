@@ -4,7 +4,7 @@
 #include "public/texture.h"
 
 // materialGeneratedTexture - whether this texture's creation was invoked by material automatic texture generation
-static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming)
+static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming)
 {
     const std::string textureFilePath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".dds");
     BinaryIO input;
@@ -256,7 +256,7 @@ static void Texture_InternalAddTexture(CPakFile* const pak, const PakGuid_t asse
     input.Close();
 }
 
-bool Texture_AutoAddTexture(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming)
+bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming)
 {
     PakAsset_t* const existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
 
@@ -269,7 +269,7 @@ bool Texture_AutoAddTexture(CPakFile* const pak, const PakGuid_t assetGuid, cons
     return true;
 }
 
-void Assets::AddTextureAsset_v8(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddTextureAsset_v8(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     const bool disableStreaming = JSON_GetValueOrDefault(mapEntry, "$disableStreaming", false);
     Texture_InternalAddTexture(pak, assetGuid, assetPath, disableStreaming);

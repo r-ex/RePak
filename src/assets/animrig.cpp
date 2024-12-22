@@ -4,7 +4,7 @@
 #include "public/material.h"
 #include <public/animrig.h>
 
-extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
+extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFileBuilder* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
 
 // anim rigs are stored in rmdl's. use this to read it out.
 extern char* Model_ReadRMDLFile(const std::string& path, const uint64_t alignment);
@@ -12,7 +12,7 @@ extern char* Model_ReadRMDLFile(const std::string& path, const uint64_t alignmen
 // page chunk structure and order:
 // - header HEAD        (align=8)
 // - data   CPU         (align=8) name, rmdl then refs. name and rmdl are aligned to 1 byte, refs are 8 (padded from rmdl buffer)
-void Assets::AddAnimRigAsset_v4(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddAnimRigAsset_v4(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     PakAsset_t asset;
 

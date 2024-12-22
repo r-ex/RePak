@@ -5,7 +5,7 @@
 // page chunk structure and order:
 // - header HEAD        (align=8)
 // - data   CPU         (align=1) name, then rmdl. unlike models, this is aligned to 1 since we don't have BVH4 collision data here.
-static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath)
+static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
     PakAsset_t asset;
     const std::string rseqFilePath = pak->GetAssetPath() + assetPath;
@@ -68,7 +68,7 @@ static void AnimSeq_InternalAddAnimSeq(CPakFile* const pak, const PakGuid_t asse
     pak->PushAsset(asset);
 }
 
-PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
+PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFileBuilder* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
 {
     rapidjson::Value::ConstMemberIterator sequencesIt;
 
@@ -118,7 +118,7 @@ PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFile* const pak, uint32_t* const sequ
     return guidBuf;
 }
 
-void Assets::AddAnimSeqAsset_v7(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddAnimSeqAsset_v7(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     UNUSED(mapEntry);
     AnimSeq_InternalAddAnimSeq(pak, assetGuid, assetPath);

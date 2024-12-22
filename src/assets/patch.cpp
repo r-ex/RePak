@@ -2,7 +2,7 @@
 #include "assets.h"
 
 // only tested for apex, should be identical on tf2
-void Assets::AddPatchAsset(CPakFile* const pak, const PakGuid_t assetGuid, const char* assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddPatchAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* assetPath, const rapidjson::Value& mapEntry)
 {
     PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(PatchAssetHeader_t), SF_HEAD, 8);
 

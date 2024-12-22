@@ -6,7 +6,7 @@
 #include "public/shader.h"
 #include "public/multishader.h"
 
-static void ShaderSet_LoadFromMSW(CPakFile* const pak, const char* const assetPath, CMultiShaderWrapperIO::ShaderCache_t& shaderCache)
+static void ShaderSet_LoadFromMSW(CPakFileBuilder* const pak, const char* const assetPath, CMultiShaderWrapperIO::ShaderCache_t& shaderCache)
 {
 	const fs::path inputFilePath = pak->GetAssetPath() / fs::path(assetPath).replace_extension("msw");
 	MSW_ParseFile(inputFilePath, shaderCache, MultiShaderWrapperFileType_e::SHADERSET);
@@ -43,9 +43,9 @@ static void ShaderSet_SetInputSlots(ShaderSetAssetHeader_t* const hdr, PakAsset_
 	*inputCount = textureCount;
 }
 
-extern bool Shader_AutoAddShader(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int shaderAssetVersion);
+extern bool Shader_AutoAddShader(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int shaderAssetVersion);
 
-static void ShaderSet_AutoAddEmbeddedShader(CPakFile* const pak, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int assetVersion)
+static void ShaderSet_AutoAddEmbeddedShader(CPakFileBuilder* const pak, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int assetVersion)
 {
 	if (shader)
 	{
@@ -57,7 +57,7 @@ static void ShaderSet_AutoAddEmbeddedShader(CPakFile* const pak, const CMultiSha
 }
 
 template <typename ShaderSetAssetHeader_t>
-void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::ShaderSet_t* const shaderSet, const PakGuid_t shaderSetGuid, const int assetVersion)
+void ShaderSet_InternalCreateSet(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::ShaderSet_t* const shaderSet, const PakGuid_t shaderSetGuid, const int assetVersion)
 {
 	ShaderSet_AutoAddEmbeddedShader(pak, shaderSet->vertexShader, shaderSet->vertexShaderGuid, assetVersion);
 	ShaderSet_AutoAddEmbeddedShader(pak, shaderSet->pixelShader, shaderSet->pixelShaderGuid, assetVersion);
@@ -131,7 +131,7 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 // See if any of the other unknown variables are actually required
 
 template <typename ShaderSetAssetHeader_t>
-static void ShaderSet_AddFromMap(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry, const int assetVersion)
+static void ShaderSet_AddFromMap(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry, const int assetVersion)
 {
 	UNUSED(mapEntry);
 
@@ -141,12 +141,12 @@ static void ShaderSet_AddFromMap(CPakFile* const pak, const PakGuid_t assetGuid,
 	ShaderSet_InternalCreateSet<ShaderSetAssetHeader_t>(pak, assetPath, &cache.shaderSet, assetGuid, assetVersion);
 }
 
-void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderSetAsset_v8(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
 	ShaderSet_AddFromMap<ShaderSetAssetHeader_v8_t>(pak, assetGuid, assetPath, mapEntry, 8);
 }
 
-void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderSetAsset_v11(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
 	ShaderSet_AddFromMap<ShaderSetAssetHeader_v11_t>(pak, assetGuid, assetPath, mapEntry, 11);
 }

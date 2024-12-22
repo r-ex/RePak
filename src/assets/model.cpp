@@ -91,7 +91,7 @@ static PakGuid_t* Model_AddAnimRigRefs(uint32_t* const sequenceCount, const rapi
     return guidBuf;
 }
 
-static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, PakPageLump_s& hdrChunk, ModelAssetHeader_t* const pHdr,
+static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakPageLump_s& hdrChunk, ModelAssetHeader_t* const pHdr,
     PakGuid_t* const animrigRefs, const uint32_t animrigCount, PakGuid_t* const sequenceRefs, const uint32_t sequenceCount, 
     const char* const assetPath, PakAsset_t& asset)
 {
@@ -161,7 +161,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFile* const pak, PakPageLump
     }
 }
 
-static uint64_t Model_InternalAddVertexGroupData(CPakFile* const pak, PakPageLump_s* const hdrChunk, ModelAssetHeader_t* const modelHdr, studiohdr_t* const studiohdr, const std::string& rmdlFilePath)
+static uint64_t Model_InternalAddVertexGroupData(CPakFileBuilder* const pak, PakPageLump_s* const hdrChunk, ModelAssetHeader_t* const modelHdr, studiohdr_t* const studiohdr, const std::string& rmdlFilePath)
 {
     modelHdr->totalVertexDataSize = studiohdr->vtxsize + studiohdr->vvdsize + studiohdr->vvcsize + studiohdr->vvwsize;
 
@@ -194,7 +194,7 @@ static uint64_t Model_InternalAddVertexGroupData(CPakFile* const pak, PakPageLum
     return de.offset;
 }
 
-extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFile* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
+extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFileBuilder* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
 
 // page chunk structure and order:
 // - header        HEAD        (align=8)
@@ -202,7 +202,7 @@ extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFile* const pak, uint32_t* con
 // - vphysics      TEMP        (align=1)
 // - vertex groups TEMP_CLIENT (align=1)
 // - rmdl          CPU         (align=64) 64 bit aligned because collision data is loaded with aligned SIMD instructions.
-void Assets::AddModelAsset_v9(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     PakAsset_t asset;
 

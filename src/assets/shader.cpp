@@ -4,14 +4,14 @@
 #include "public/multishader.h"
 #include "utils/dxutils.h"
 
-static void Shader_LoadFromMSW(CPakFile* const pak, const char* const assetPath, CMultiShaderWrapperIO::ShaderCache_t& shaderCache)
+static void Shader_LoadFromMSW(CPakFileBuilder* const pak, const char* const assetPath, CMultiShaderWrapperIO::ShaderCache_t& shaderCache)
 {
 	const fs::path inputFilePath = pak->GetAssetPath() / fs::path(assetPath).replace_extension("msw");
 	MSW_ParseFile(inputFilePath, shaderCache, MultiShaderWrapperFileType_e::SHADER);
 }
 
 template <typename ShaderAssetHeader_t>
-static void Shader_CreateFromMSW(CPakFile* const pak, PakPageLump_s& cpuDataChunk, ParsedDXShaderData_t* const firstShaderData,
+static void Shader_CreateFromMSW(CPakFileBuilder* const pak, PakPageLump_s& cpuDataChunk, ParsedDXShaderData_t* const firstShaderData,
 								const CMultiShaderWrapperIO::Shader_t* shader, ShaderAssetHeader_t* const hdr)
 {
 	const size_t numShaderBuffers = shader->entries.size();
@@ -134,7 +134,7 @@ static void Shader_SetupHeader(ShaderAssetHeader_v12_t* const hdr, const CMultiS
 }
 
 template<typename ShaderAssetHeader_t>
-static void Shader_InternalAddShader(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, 
+static void Shader_InternalAddShader(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, 
 									const PakGuid_t shaderGuid, const int assetVersion)
 {
 	PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(ShaderAssetHeader_t), SF_HEAD, 8);
@@ -185,17 +185,17 @@ static void Shader_InternalAddShader(CPakFile* const pak, const char* const asse
 	pak->PushAsset(asset);
 }
 
-static void Shader_AddShaderV8(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid)
+static void Shader_AddShaderV8(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid)
 {
 	Shader_InternalAddShader<ShaderAssetHeader_v8_t>(pak, assetPath, shader, shaderGuid, 8);
 }
 
-static void Shader_AddShaderV12(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid)
+static void Shader_AddShaderV12(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid)
 {
 	Shader_InternalAddShader<ShaderAssetHeader_v12_t>(pak, assetPath, shader, shaderGuid, 12);
 }
 
-bool Shader_AutoAddShader(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int shaderAssetVersion)
+bool Shader_AutoAddShader(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int shaderAssetVersion)
 {
 	PakAsset_t* const existingAsset = pak->GetAssetByGuid(shaderGuid, nullptr, true);
 
@@ -210,7 +210,7 @@ bool Shader_AutoAddShader(CPakFile* const pak, const char* const assetPath, cons
 	return true;
 }
 
-void Assets::AddShaderAsset_v8(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderAsset_v8(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
 	UNUSED(mapEntry);
 	CMultiShaderWrapperIO::ShaderCache_t cache = {};
@@ -219,7 +219,7 @@ void Assets::AddShaderAsset_v8(CPakFile* const pak, const PakGuid_t assetGuid, c
 	Shader_AddShaderV8(pak, assetPath, cache.shader, assetGuid);
 }
 
-void Assets::AddShaderAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderAsset_v12(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
 	UNUSED(mapEntry);
 	CMultiShaderWrapperIO::ShaderCache_t cache = {};
