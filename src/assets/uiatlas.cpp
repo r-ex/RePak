@@ -60,23 +60,19 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     const size_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * textureCount;
 
     // get total size
-    const size_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
+    const size_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize;
 
     // ui image/texture info
     PakPageLump_s textureInfoChunk = pak->CreatePageLump(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
 
     // cpu data
     PakPageLump_s dataChunk = pak->CreatePageLump(textureCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
-    
-    // register our descriptors so they get converted properly
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureOffsets)));
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureDimensions)));
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureHashes)));
 
     rmem tiBuf(textureInfoChunk.data);
 
     // set texture offset page index and offset
     pHdr->pTextureOffsets = textureInfoChunk.GetPointer();
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureOffsets)));
 
     ////////////////////
     // IMAGE OFFSETS
@@ -103,6 +99,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     // IMAGE DIMENSIONS
     // set texture dimensions page index and offset
     pHdr->pTextureDimensions = textureInfoChunk.GetPointer(textureOffsetsDataSize);
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureDimensions)));
 
     for (const rapidjson::Value& it : textureArray)
     {
@@ -115,6 +112,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
 
     // set texture hashes page index and offset
     pHdr->pTextureHashes = textureInfoChunk.GetPointer(textureOffsetsDataSize + textureDimensionsDataSize);
+    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureHashes)));
 
     // TODO: is this used?
     //uint32_t nextStringTableOffset = 0;
