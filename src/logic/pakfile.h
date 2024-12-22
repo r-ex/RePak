@@ -2,8 +2,6 @@
 #include "public/rpak.h"
 #include "pakpage.h"
 
-#define PAK_MAX_PAGE_MERGE_SIZE 0xffff
-
 struct _vseginfo_t
 {
 	int index = -1;
