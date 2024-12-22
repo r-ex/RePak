@@ -65,7 +65,7 @@ public:
 	inline uint16_t GetSlabCount() const { return static_cast<uint16_t>(m_slabs.size()); }
 	inline uint16_t GetPageCount() const { return static_cast<uint16_t>(m_pages.size()); }
 
-	const PakPageLump_s CreatePageLump(const size_t size, const int flags, const int align, void* const buf = nullptr);
+	const PakPageLump_s CreatePageLump(const int size, const int flags, const int align, void* const buf = nullptr);
 
 	void PadSlabsAndPages();
 

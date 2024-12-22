@@ -369,7 +369,7 @@ void CPakFile::GenerateGuidData()
 
 PakPageLump_s CPakFile::CreatePageLump(const size_t size, const int flags, const int alignment, void* const buf)
 {
-	return m_pageBuilder.CreatePageLump(size, flags, alignment, buf);
+	return m_pageBuilder.CreatePageLump(static_cast<int>(size), flags, alignment, buf);
 }
 
 //-----------------------------------------------------------------------------

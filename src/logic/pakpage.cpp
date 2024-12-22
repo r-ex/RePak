@@ -160,13 +160,13 @@ PakPage_s& CPakPageBuilder::FindOrCreatePage(const int flags, const int align, c
 // Create a page lump, which is a piece of data that will be placed inside the
 // page with user requested alignment.
 //-----------------------------------------------------------------------------
-const PakPageLump_s CPakPageBuilder::CreatePageLump(const size_t size, const int flags, const int align, void* const buf)
+const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int flags, const int align, void* const buf)
 {
 	// this assert is replicated in r5sdk
 	assert(align != 0 && align < UINT8_MAX);
 	assert(IsPowerOfTwo(align));
 
-	PakPage_s& page = FindOrCreatePage(flags, align, static_cast<int>(size));
+	PakPage_s& page = FindOrCreatePage(flags, align, size);
 	const int padAmount = IALIGN(page.header.dataSize, align) - page.header.dataSize;
 
 	// If the requested alignment requires padding the previous asset to align
@@ -202,11 +202,11 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const size_t size, const int
 	PakPageLump_s& lump = page.lumps.emplace_back();
 
 	lump.data = targetBuf;
-	lump.size = static_cast<int>(size);
+	lump.size = size;
 	lump.alignment = page.header.alignment;
 
 	lump.pageInfo.index = page.index;
-	lump.pageInfo.offset = page.header.dataSize - static_cast<int>(size);
+	lump.pageInfo.offset = page.header.dataSize - size;
 
 	assert(lump.pageInfo.offset >= 0);
 	return lump;
