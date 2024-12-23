@@ -103,7 +103,7 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 //-----------------------------------------------------------------------------
 void CPakFileBuilder::AddPointer(int pageIdx, int pageOffset)
 {
-	PakGuidRefHdr_t& refHdr = m_vPakDescriptors.emplace_back();
+	PagePtr_t& refHdr = m_vPakDescriptors.emplace_back();
 	refHdr.index = pageIdx;
 	refHdr.offset = pageOffset;
 }

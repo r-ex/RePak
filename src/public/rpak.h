@@ -45,7 +45,7 @@ enum class AssetType : uint32_t
 #pragma pack(push, 1)
 
 // represents a "pointer" into a mempage by page index and offset
-// when loaded, these usually get converted to a real pointer
+// when loaded, these get converted to a real pointer in the runtime.
 struct PagePtr_t
 {
 	int index = 0;
@@ -131,14 +131,6 @@ struct PakPageHdr_s
 };
 #pragma pack(pop)
 
-// defines the location of a data "pointer" within the pak's mem pages
-// allows the engine to read the index/offset pair and replace it with an actual memory pointer at runtime
-typedef PagePtr_t PakPointerHdr_t;
-
-// same kinda thing as RPakDescriptor, but this one tells the engine where
-// guid references to other assets are within mem pages
-typedef PakPointerHdr_t PakGuidRefHdr_t;
-
 struct PakGuidRef_s
 {
 	inline bool operator<(const PakGuidRef_s& b) const
@@ -146,7 +138,7 @@ struct PakGuidRef_s
 		return (ptr < b.ptr);
 	}
 
-	PakGuidRefHdr_t ptr;
+	PagePtr_t ptr;
 
 	// this field is only used by repak.
 	PakGuid_t guid;
@@ -266,7 +258,7 @@ public:
 	FORCEINLINE void AddRelation(const unsigned int idx) { _relations.push_back({ idx }); };
 	FORCEINLINE void AddRelation(const size_t idx) { _relations.push_back({ static_cast<unsigned int>(idx) }); };
 
-	FORCEINLINE void AddGuid(const PakGuidRefHdr_t desc, const PakGuid_t assetGuid) { _guids.push_back({ desc, assetGuid }); };
+	FORCEINLINE void AddGuid(const PagePtr_t desc, const PakGuid_t assetGuid) { _guids.push_back({ desc, assetGuid }); };
 	FORCEINLINE void ExpandGuidBuf(const size_t amount) { _guids.reserve(_guids.size() + amount); }
 
 	FORCEINLINE bool IsType(uint32_t type) const

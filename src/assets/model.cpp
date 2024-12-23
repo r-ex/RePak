@@ -218,8 +218,6 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
     PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(ModelAssetHeader_t), SF_HEAD, 8);
     ModelAssetHeader_t* const pHdr = reinterpret_cast<ModelAssetHeader_t*>(hdrChunk.data);
 
-    std::vector<PakGuidRefHdr_t> guids;
-
     //
     // Name, Anim Rigs and Animseqs, these all share 1 data chunk.
     //

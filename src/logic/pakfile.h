@@ -2,12 +2,6 @@
 #include "public/rpak.h"
 #include "pakpage.h"
 
-struct _vseginfo_t
-{
-	int index = -1;
-	int size = 0;
-};
-
 class CPakFileBuilder
 {
 public:
@@ -139,8 +133,8 @@ private:
 	CPakPageBuilder m_pageBuilder;
 
 	std::vector<PakAsset_t> m_Assets;
-	std::vector<PakPointerHdr_t> m_vPakDescriptors;
-	std::vector<PakGuidRefHdr_t> m_vGuidDescriptors;
+	std::vector<PagePtr_t> m_vPakDescriptors;
+	std::vector<PagePtr_t> m_vGuidDescriptors;
 	std::vector<uint32_t> m_vFileRelations;
 
 	std::vector<std::string> m_mandatoryStreamFilePaths;
