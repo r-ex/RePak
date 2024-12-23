@@ -107,6 +107,7 @@ public:
 		m_size += size;
 	}
 	bool WriteString(const std::string& svInput);
+	void Pad(const size_t count);
 
 private:
 	std::fstream            m_stream; // I/O stream.

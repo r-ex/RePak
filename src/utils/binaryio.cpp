@@ -272,3 +272,26 @@ bool BinaryIO::WriteString(const std::string& input)
 
 	return true;
 }
+
+// limit number of io calls and allocations by just using this static buffer
+// for padding out the stream.
+static constexpr size_t PAD_BUF_SIZE = 4096;
+const static char s_padBuf[PAD_BUF_SIZE];
+
+//-----------------------------------------------------------------------------
+// Purpose: pads the out stream up to count bytes
+// Input  : count - 
+//-----------------------------------------------------------------------------
+void BinaryIO::Pad(const size_t count)
+{
+	assert(count > 0);
+	size_t remainder = count;
+
+	while (remainder)
+	{
+		const size_t writeCount = (std::min)(count, PAD_BUF_SIZE);
+		Write(s_padBuf, writeCount);
+
+		remainder -= writeCount;
+	}
+}
