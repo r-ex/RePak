@@ -269,12 +269,12 @@ public:
 	FORCEINLINE void AddGuid(const PakGuidRefHdr_t desc, const PakGuid_t assetGuid) { _guids.push_back({ desc, assetGuid }); };
 	FORCEINLINE void ExpandGuidBuf(const size_t amount) { _guids.reserve(_guids.size() + amount); }
 
-	FORCEINLINE bool IsType(uint32_t type)
+	FORCEINLINE bool IsType(uint32_t type) const
 	{
 		return static_cast<uint32_t>(id) == type;
 	}
 
-	FORCEINLINE void EnsureType(uint32_t type)
+	FORCEINLINE void EnsureType(uint32_t type) const
 	{
 		if (!IsType(type))
 		{
