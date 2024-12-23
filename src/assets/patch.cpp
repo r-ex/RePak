@@ -38,11 +38,8 @@ void Assets::AddPatchAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid
 
     const int patchNumbersOffset = sizeof(PagePtr_t) * pHdr->patchedPakCount;
 
-    pHdr->pPakNames = dataChunk.GetPointer();
-    pHdr->pPakPatchNums = dataChunk.GetPointer(patchNumbersOffset);
-
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(PatchAssetHeader_t, pPakNames)));
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(PatchAssetHeader_t, pPakPatchNums)));
+    pak->AddPointer(hdrChunk, offsetof(PatchAssetHeader_t, pPakNames), dataChunk, 0);
+    pak->AddPointer(hdrChunk, offsetof(PatchAssetHeader_t, pPakPatchNums), dataChunk, patchNumbersOffset);
 
     rmem dataBuf(dataChunk.data);
 
@@ -56,9 +53,9 @@ void Assets::AddPatchAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid
         // write the patch number for this entry into the buffer
         dataBuf.write<uint8_t>(it.highestPatchNum, pHdr->pPakPatchNums.offset + i);
 
-        snprintf(dataChunk.data + fileNameOffset, it.pakFileName.length() + 1, "%s", it.pakFileName.c_str());
+        memcpy(&dataChunk.data[fileNameOffset], it.pakFileName.c_str(), it.pakFileName.length() + 1);
 
-        pak->AddPointer(dataChunk.GetPointer(sizeof(PagePtr_t) * i));
+        pak->AddPointer(dataChunk, (sizeof(PagePtr_t) * i));
         i++;
     }
 

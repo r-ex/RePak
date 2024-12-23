@@ -60,7 +60,7 @@ static char* Model_ReadVGFile(const std::string& path, size_t* const pFileSize)
     return buf;
 }
 
-static PakGuid_t* Model_AddAnimRigRefs(uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)
+static PakGuid_t* Model_AddAnimRigRefs(uint32_t* const animrigCount, const rapidjson::Value& mapEntry)
 {
     rapidjson::Value::ConstMemberIterator it;
 
@@ -87,7 +87,7 @@ static PakGuid_t* Model_AddAnimRigRefs(uint32_t* const sequenceCount, const rapi
         guidBuf[i] = guid;
     }
 
-    (*sequenceCount) = static_cast<uint32_t>(animrigs.Size());
+    (*animrigCount) = static_cast<uint32_t>(animrigs.Size());
     return guidBuf;
 }
 
@@ -109,8 +109,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
     PakPageLump_s intermediateChunk = pak->CreatePageLump(alignedNameBufLen + animRigRefsBufLen + sequenceRefsBufLen, SF_CPU, hasGuidRefs ? 8 : 1);
     memcpy(intermediateChunk.data, assetPath, modelNameBufLen); // Write the null-terminated asset path to the chunk buffer.
 
-    pHdr->pName = intermediateChunk.GetPointer();
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pName)));
+    pak->AddPointer(hdrChunk, offsetof(ModelAssetHeader_t, pName), intermediateChunk, 0);
 
     if (hasGuidRefs)
     {
@@ -125,9 +124,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
             delete[] animrigRefs;
 
             pHdr->animRigCount = animrigCount;
-            pHdr->pAnimRigs = intermediateChunk.GetPointer(base);
-
-            pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pAnimRigs)));
+            pak->AddPointer(hdrChunk, offsetof(ModelAssetHeader_t, pAnimRigs), intermediateChunk, base);
 
             for (uint32_t i = 0; i < animrigCount; ++i)
             {
@@ -146,9 +143,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
             delete[] sequenceRefs;
 
             pHdr->sequenceCount = sequenceCount;
-            pHdr->pSequences = intermediateChunk.GetPointer(base);
-
-            pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pSequences)));
+            pak->AddPointer(hdrChunk, offsetof(ModelAssetHeader_t, pSequences), intermediateChunk, base);
 
             for (uint32_t i = 0; i < sequenceCount; ++i)
             {
@@ -184,9 +179,7 @@ static uint64_t Model_InternalAddVertexGroupData(CPakFileBuilder* const pak, Pak
     if (studiohdr->IsStaticProp())
     {
         PakPageLump_s vgLump = pak->CreatePageLump(vgFileSize, SF_CPU | SF_TEMP | SF_CLIENT, 1, vgBuf);
-
-        modelHdr->pStaticPropVtxCache = vgLump.GetPointer();
-        pak->AddPointer(hdrChunk->GetPointer(offsetof(ModelAssetHeader_t, pStaticPropVtxCache)));
+        pak->AddPointer(*hdrChunk, offsetof(ModelAssetHeader_t, pStaticPropVtxCache), vgLump, 0);
     }
     else
         delete[] vgBuf;
@@ -247,8 +240,7 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
         PakPageLump_s phyChunk = pak->CreatePageLump(phyFileSize, SF_CPU | SF_TEMP, 1);
         phyInput.Read(phyChunk.data, phyFileSize);
 
-        pHdr->pPhyData = phyChunk.GetPointer();
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pPhyData)));
+        pak->AddPointer(hdrChunk, offsetof(ModelAssetHeader_t, pPhyData), phyChunk, 0);
     }
 
     //
@@ -263,9 +255,7 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
 
     // the last chunk is the actual data chunk that contains the rmdl
     PakPageLump_s dataChunk = pak->CreatePageLump(studiohdr->length, SF_CPU, 64, rmdlBuf);
-
-    pHdr->pData = dataChunk.GetPointer();
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pData)));
+    pak->AddPointer(hdrChunk, offsetof(ModelAssetHeader_t, pData), dataChunk, 0);
 
     // Material Overrides Handling
     rapidjson::Value::ConstMemberIterator materialsIt;

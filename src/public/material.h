@@ -538,19 +538,12 @@ struct MaterialAsset_t
 
 	PakGuid_t guid; // guid of this material asset
 
-	PagePtr_t materialName; // pointer to partial asset path
-	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
-	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
-
 	PakGuid_t passMaterials[RENDER_PASS_MAT_COUNT];
 
 	PakGuid_t shaderSet = 0; // guid of the shaderset asset that this material uses
 
 	uint16_t numAnimationFrames;
 	PakGuid_t textureAnimation;
-
-	PagePtr_t textureHandles; // ptr to array of texture guids
-	PagePtr_t streamingTextureHandles; // ptr to array of streamable texture guids (empty at build time)
 
 	short width;
 	short height;
@@ -589,10 +582,6 @@ struct MaterialAsset_t
 
 			matl->guid = this->guid;
 
-			matl->materialName = this->materialName;
-			matl->surfaceProp = this->surfaceProp;
-			matl->surfaceProp2 = this->surfaceProp2;
-
 			matl->passMaterials[DEPTH_SHADOW] = this->passMaterials[DEPTH_SHADOW];
 			matl->passMaterials[DEPTH_PREPASS] = this->passMaterials[DEPTH_PREPASS];
 			matl->passMaterials[DEPTH_VSM] = this->passMaterials[DEPTH_VSM];
@@ -602,9 +591,6 @@ struct MaterialAsset_t
 			matl->passMaterials[DEPTH_SHADOW_TIGHT] = this->passMaterials[COL_PASS];
 
 			matl->shaderSet = this->shaderSet;
-
-			matl->textureHandles = this->textureHandles;
-			matl->streamingTextureHandles = this->streamingTextureHandles;
 
 			matl->width = this->width;
 			matl->height = this->height;
@@ -635,10 +621,6 @@ struct MaterialAsset_t
 
 			matl->guid = this->guid;
 
-			matl->materialName = this->materialName;
-			matl->surfaceProp = this->surfaceProp;
-			matl->surfaceProp2 = this->surfaceProp2;
-
 			matl->passMaterials[DEPTH_SHADOW] = this->passMaterials[DEPTH_SHADOW];
 			matl->passMaterials[DEPTH_PREPASS] = this->passMaterials[DEPTH_PREPASS];
 			matl->passMaterials[DEPTH_VSM] = this->passMaterials[DEPTH_VSM];
@@ -646,9 +628,6 @@ struct MaterialAsset_t
 			matl->passMaterials[COL_PASS] = this->passMaterials[COL_PASS];
 
 			matl->shaderSet = this->shaderSet;
-
-			matl->textureHandles = this->textureHandles;
-			matl->streamingTextureHandles = this->streamingTextureHandles;
 
 			matl->width = this->width;
 			matl->height = this->height;

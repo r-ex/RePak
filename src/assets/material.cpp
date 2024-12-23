@@ -522,9 +522,7 @@ static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const Pa
         PakPageLump_s nameChunk = pak->CreatePageLump(nameBufLen, SF_CPU | SF_DEV, 1);
 
         memcpy(nameChunk.data, matlAsset.name.c_str(), nameBufLen);
-        matlAsset.materialName = nameChunk.GetPointer();
-
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, materialName)));
+        pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v12_t, materialName), nameChunk, 0);
     }
 
     if (matlAsset.materialType != _TYPE_LEGACY)
@@ -597,25 +595,21 @@ static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const Pa
 
     size_t currentDataBufOffset = 0;
 
-    matlAsset.textureHandles = dataChunk.GetPointer(currentDataBufOffset);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, textureHandles)));
+    pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v12_t, textureHandles), dataChunk, currentDataBufOffset);
     currentDataBufOffset += textureRefSize;
 
-    matlAsset.streamingTextureHandles = dataChunk.GetPointer(currentDataBufOffset);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, streamingTextureHandles)));
+    pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v12_t, streamingTextureHandles), dataChunk, currentDataBufOffset);
     currentDataBufOffset += textureRefSize;
 
     if (surfaceProp1Size)
     {
-        matlAsset.surfaceProp = dataChunk.GetPointer(currentDataBufOffset);
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, surfaceProp)));
+        pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v12_t, surfaceProp), dataChunk, currentDataBufOffset);
         currentDataBufOffset += surfaceProp1Size;
     }
 
     if (surfaceProp2Size)
     {
-        matlAsset.surfaceProp2 = dataChunk.GetPointer(currentDataBufOffset);
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, surfaceProp2)));
+        pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v12_t, surfaceProp2), dataChunk, currentDataBufOffset);
         currentDataBufOffset += surfaceProp2Size;
     }
 
@@ -639,12 +633,11 @@ static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const Pa
     Material_AddCpuData<MaterialShaderBufferV12>(pak, &matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
 
     MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.data);
-    cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
     cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
     cpuhdr->version = 3; // unsure what this value actually is but some cpu headers have
     // different values. the engine doesn't seem to use it however.
 
-    pak->AddPointer(uberBufChunk.GetPointer(offsetof(MaterialCPUHeader, dataPtr)));
+    pak->AddPointer(uberBufChunk, offsetof(MaterialCPUHeader, dataPtr), uberBufChunk, sizeof(MaterialCPUHeader));
 
     //////////////////////////////////////////
 
@@ -708,29 +701,24 @@ static void Material_InternalAddMaterialV15(CPakFileBuilder* const pak, const Pa
 
     size_t currentDataBufOffset = 0;
 
-    matlAsset.materialName = dataChunk.GetPointer();
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, materialName)));
+    pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v15_t, materialName), dataChunk, currentDataBufOffset);
     currentDataBufOffset += alignedPathSize;
 
-    matlAsset.textureHandles = dataChunk.GetPointer(currentDataBufOffset);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, textureHandles)));
+    pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v15_t, textureHandles), dataChunk, currentDataBufOffset);
     currentDataBufOffset += textureRefSize;
 
-    matlAsset.streamingTextureHandles = dataChunk.GetPointer(currentDataBufOffset);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, streamingTextureHandles)));
+    pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v15_t, streamingTextureHandles), dataChunk, currentDataBufOffset);
     currentDataBufOffset += textureRefSize;
 
     if (surfaceProp1Size)
     {
-        matlAsset.surfaceProp = dataChunk.GetPointer(currentDataBufOffset);
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, surfaceProp)));
+        pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v15_t, surfaceProp), dataChunk, currentDataBufOffset);
         currentDataBufOffset += surfaceProp1Size;
     }
 
     if (surfaceProp2Size)
     {
-        matlAsset.surfaceProp2 = dataChunk.GetPointer(currentDataBufOffset);
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, surfaceProp2)));
+        pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v15_t, surfaceProp2), dataChunk, currentDataBufOffset);
         currentDataBufOffset += surfaceProp2Size;
     }
 
@@ -757,12 +745,11 @@ static void Material_InternalAddMaterialV15(CPakFileBuilder* const pak, const Pa
     Material_AddCpuData<MaterialShaderBufferV15>(pak, &matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
 
     MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.data);
-    cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
     cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
     cpuhdr->version = 3; // unsure what this value actually is but some cpu headers have
                          // different values. the engine doesn't seem to use it however.
 
-    pak->AddPointer(uberBufChunk.GetPointer(offsetof(MaterialCPUHeader, dataPtr)));
+    pak->AddPointer(uberBufChunk, offsetof(MaterialCPUHeader, dataPtr), uberBufChunk, sizeof(MaterialCPUHeader));
 
     //////////////////////////////////////////
 

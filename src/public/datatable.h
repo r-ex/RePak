@@ -124,46 +124,11 @@ struct datatable_v1_t
 
 struct datatable_asset_t
 {
-	uint32_t numColumns;
-	uint32_t numRows;
-
-	// !!!! DO NOT CHANGE THE POSITION OF THESE !!!!
-	// !!!!			IT WILL CAUSE ISSSUES		!!!!
-	// we are lucky and can cheat!!
-	PagePtr_t pColumns;
-	PagePtr_t pRows;
-
-	uint32_t rowStride;	// Number of bytes per row
-
-	const char* assetPath; // assets path on disk
-
 	// previously func vars
 	size_t rowPodValueBufSize;
 	size_t rowStringValueBufSize;
 
 	datacolumn_t* pDataColums; // pointer to column data from data chunk
-
-	void WriteToBuffer(char* const buf, const int pakVersion)
-	{
-		if (pakVersion <= 7)
-		{
-			datatable_v0_t* const dtbl = reinterpret_cast<datatable_v0_t*>(buf);
-			dtbl->numColumns = numColumns;
-			dtbl->numRows = numRows;
-			dtbl->pColumns = pColumns;
-			dtbl->pRows = pRows;
-			dtbl->rowStride = rowStride;
-		}
-		else
-		{
-			datatable_v1_t* const dtbl = reinterpret_cast<datatable_v1_t*>(buf);
-			dtbl->numColumns = numColumns;
-			dtbl->numRows = numRows;
-			dtbl->pColumns = pColumns;
-			dtbl->pRows = pRows;
-			dtbl->rowStride = rowStride;
-		}
-	}
 };
 
 static_assert(sizeof(datacolumn_t) == 16);

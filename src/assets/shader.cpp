@@ -12,7 +12,7 @@ static void Shader_LoadFromMSW(CPakFileBuilder* const pak, const char* const ass
 
 template <typename ShaderAssetHeader_t>
 static void Shader_CreateFromMSW(CPakFileBuilder* const pak, PakPageLump_s& cpuDataChunk, ParsedDXShaderData_t* const firstShaderData,
-								const CMultiShaderWrapperIO::Shader_t* shader, ShaderAssetHeader_t* const hdr)
+								const CMultiShaderWrapperIO::Shader_t* shader, PakPageLump_s& hdrChunk, ShaderAssetHeader_t* const hdr)
 {
 	const size_t numShaderBuffers = shader->entries.size();
 	size_t totalShaderDataSize = 0;
@@ -58,22 +58,17 @@ static void Shader_CreateFromMSW(CPakFileBuilder* const pak, PakPageLump_s& cpuD
 		{
 			assert(entry.size > 0);
 
-			bc->data = cpuDataChunk.GetPointer(nextBytecodeBufferOffset);
+			// Register the data pointer at the byte code.
+			pak->AddPointer(cpuDataChunk, (i * entrySize) + offsetof(ShaderByteCode_t, data), cpuDataChunk, nextBytecodeBufferOffset);
 			bc->dataSize = entry.size;
 
 			if (hdr->type == eShaderType::Vertex)
 			{
+				pak->AddPointer(cpuDataChunk, (i * entrySize) + offsetof(ShaderByteCode_t, inputSignatureBlob), cpuDataChunk, nextBytecodeBufferOffset);
 				bc->inputSignatureBlobSize = bc->dataSize;
-				bc->inputSignatureBlob = bc->data;
-
-				pak->AddPointer(cpuDataChunk.GetPointer((i * entrySize) + offsetof(ShaderByteCode_t, inputSignatureBlob)));
 			}
 
-			// Register the data pointer at the 
-			pak->AddPointer(cpuDataChunk.GetPointer((i * entrySize) + offsetof(ShaderByteCode_t, data)));
-
 			memcpy_s(cpuDataChunk.data + nextBytecodeBufferOffset, entry.size, entry.buffer, entry.size);
-
 			nextBytecodeBufferOffset += IALIGN(entry.size, 8);
 		}
 		else
@@ -101,10 +96,8 @@ static void Shader_CreateFromMSW(CPakFileBuilder* const pak, PakPageLump_s& cpuD
 	const size_t reservedDataSize = numShaderBuffers * (16);
 	PakPageLump_s shaderInfoChunk = pak->CreatePageLump(reservedDataSize + inputFlagsDataSize, SF_CPU, 1);
 
-	// Get a pointer to the beginning of the reserved data section
-	hdr->unk_10 = shaderInfoChunk.GetPointer();
-	// Get a pointer after the end of the reserved data section
-	hdr->shaderInputFlags = shaderInfoChunk.GetPointer(reservedDataSize);
+	pak->AddPointer(hdrChunk, offsetof(ShaderAssetHeader_t, unk_10), shaderInfoChunk, 0);
+	pak->AddPointer(hdrChunk, offsetof(ShaderAssetHeader_t, shaderInputFlags), shaderInfoChunk, reservedDataSize);
 
 	uint64_t* const inputFlags = reinterpret_cast<uint64_t*>(shaderInfoChunk.data + reservedDataSize);
 	size_t i = 0;
@@ -152,20 +145,14 @@ static void Shader_InternalAddShader(CPakFileBuilder* const pak, const char* con
 			PakPageLump_s nameChunk = pak->CreatePageLump(stemLen + 1, SF_CPU | SF_DEV, 1);
 			memcpy(nameChunk.data, pathStem, stemLen + 1);
 
-			hdr->name = nameChunk.GetPointer();
-			pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_t, name)));
+			pak->AddPointer(hdrChunk, offsetof(ShaderAssetHeader_t, name), nameChunk, 0);
 		}
 	}
 
 	ParsedDXShaderData_t* const shaderData = new ParsedDXShaderData_t;
 	PakPageLump_s dataChunk;
 
-	Shader_CreateFromMSW(pak, dataChunk, shaderData, shader, hdr);
-
-	// Register the pointers we have just written.
-	pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_t, unk_10)));
-	pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_t, shaderInputFlags)));
-
+	Shader_CreateFromMSW(pak, dataChunk, shaderData, shader, hdrChunk, hdr);
 	// =======================================
 
 	PakAsset_t asset;

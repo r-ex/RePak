@@ -19,8 +19,9 @@ public:
 	bool AddJSONAsset(const char* const targetType, const char* const assetType, const char* const assetPath,
 					  const rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
 	void AddAsset(const rapidjson::Value& file);
-	void AddPointer(PagePtr_t ptr);
-	void AddPointer(int pageIdx, int pageOffset);
+
+	void AddPointer(PakPageLump_s& pointerLump, const size_t pointerOffset, const PakPageLump_s& dataLump, const size_t dataOffset);
+	void AddPointer(PakPageLump_s& pointerLump, const size_t pointerOffset);
 
 	void AddStarpakReference(const std::string& path);
 	void AddOptStarpakReference(const std::string& path);

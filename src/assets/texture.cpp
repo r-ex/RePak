@@ -175,8 +175,7 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
             PakPageLump_s nameChunk = pak->CreatePageLump(stemLen + 1, SF_CPU | SF_DEV, 1);
             memcpy(nameChunk.data, pathStem, stemLen + 1);
 
-            hdr->pName = nameChunk.GetPointer();
-            pak->AddPointer(hdrChunk.GetPointer(offsetof(TextureAssetHeader_t, pName)));
+            pak->AddPointer(hdrChunk, offsetof(TextureAssetHeader_t, pName), nameChunk, 0);
         }
     }
 

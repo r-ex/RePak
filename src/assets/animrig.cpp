@@ -39,14 +39,12 @@ void Assets::AddAnimRigAsset_v4(CPakFileBuilder* const pak, const PakGuid_t asse
     char* const nameBuf = rigChunk.data;
 
     memcpy(nameBuf, assetPath, assetNameBufLen);
-    pHdr->name = rigChunk.GetPointer();
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, name)));
+    pak->AddPointer(hdrChunk, offsetof(AnimRigAssetHeader_t, name), rigChunk, 0);
 
     studiohdr_t* const studioBuf = reinterpret_cast<studiohdr_t*>(&rigChunk.data[assetNameBufLen]);
 
     memcpy(studioBuf, animRigFileBuffer, studiohdr->length);
-    pHdr->data = rigChunk.GetPointer(assetNameBufLen);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, data)));
+    pak->AddPointer(hdrChunk, offsetof(AnimRigAssetHeader_t, data), rigChunk, assetNameBufLen);
 
     delete[] animRigFileBuffer;
 
@@ -59,9 +57,7 @@ void Assets::AddAnimRigAsset_v4(CPakFileBuilder* const pak, const PakGuid_t asse
         delete[] sequenceRefs;
 
         pHdr->sequenceCount = sequenceCount;
-        pHdr->pSequences = rigChunk.GetPointer(base);
-
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimRigAssetHeader_t, pSequences)));
+        pak->AddPointer(hdrChunk, offsetof(AnimRigAssetHeader_t, pSequences), rigChunk, base);
 
         for (uint32_t i = 0; i < sequenceCount; ++i)
         {

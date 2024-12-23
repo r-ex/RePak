@@ -99,18 +99,21 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 }
 
 //-----------------------------------------------------------------------------
-// purpose: adds page pointer to descriptor
+// purpose: adds page pointer to the pak file
 //-----------------------------------------------------------------------------
-void CPakFileBuilder::AddPointer(int pageIdx, int pageOffset)
+void CPakFileBuilder::AddPointer(PakPageLump_s& pointerLump, const size_t pointerOffset,
+	const PakPageLump_s& dataLump, const size_t dataOffset)
 {
-	PagePtr_t& refHdr = m_pagePointers.emplace_back();
-	refHdr.index = pageIdx;
-	refHdr.offset = pageOffset;
+	m_pagePointers.push_back(pointerLump.GetPointer(pointerOffset));
+
+	// Set the pointer field in the struct to the page index and page offset.
+	char* const pointerField = &pointerLump.data[pointerOffset];
+	*reinterpret_cast<PagePtr_t*>(pointerField) = dataLump.GetPointer(dataOffset);
 }
 
-void CPakFileBuilder::AddPointer(PagePtr_t ptr)
+void CPakFileBuilder::AddPointer(PakPageLump_s& pointerLump, const size_t pointerOffset)
 {
-	m_pagePointers.push_back(ptr);
+	m_pagePointers.push_back(pointerLump.GetPointer(pointerOffset));
 }
 
 //-----------------------------------------------------------------------------

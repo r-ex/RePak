@@ -20,46 +20,48 @@ static void DataTable_ReportInvalidDataTypeError(const char* const type, const u
     Error("Invalid data type \"%s\" at cell (%u, %u).\n", type, colIdx, rowIdx);
 }
 
-static void DataTable_SetupRows(const rapidcsv::Document& doc, datatable_asset_t* const pHdrTemp, std::vector<std::string>& outTypeRow)
+template <typename datatable_t>
+static void DataTable_SetupRows(const rapidcsv::Document& doc, datatable_t* const dtblHdr, datatable_asset_t& tmp, std::vector<std::string>& outTypeRow)
 {
     // cache it so we don't have to make another deep copy.
-    outTypeRow = doc.GetRow<std::string>(pHdrTemp->numRows);
+    outTypeRow = doc.GetRow<std::string>(dtblHdr->numRows);
     const uint32_t numTypeNames = static_cast<uint32_t>(outTypeRow.size());
 
     // typically happens when there's an empty line in the csv file.
-    if (numTypeNames != pHdrTemp->numColumns)
-        Error("Expected %u columns for type name row, found %u.\n", pHdrTemp->numRows, numTypeNames);
+    if (numTypeNames != dtblHdr->numColumns)
+        Error("Expected %u columns for type name row, found %u.\n", dtblHdr->numRows, numTypeNames);
 
-    for (uint32_t i = 0; i < pHdrTemp->numColumns; ++i)
+    for (uint32_t i = 0; i < dtblHdr->numColumns; ++i)
     {
         const std::string& typeString = outTypeRow[i];
         const dtblcoltype_t type = DataTable_GetTypeFromString(typeString);
 
         if (type == dtblcoltype_t::INVALID)
-            DataTable_ReportInvalidDataTypeError(typeString.c_str(), i, pHdrTemp->numRows);
+            DataTable_ReportInvalidDataTypeError(typeString.c_str(), i, dtblHdr->numRows);
 
         if (DataTable_IsStringType(type))
         {
-            for (uint32_t j = 0; j < pHdrTemp->numRows; ++j)
+            for (uint32_t j = 0; j < dtblHdr->numRows; ++j)
             {
                 // this can be std::string since we only deal with the string types here
                 std::vector<std::string> row = doc.GetRow<std::string>(j);
-                pHdrTemp->rowStringValueBufSize += row[i].length() + 1;
+                tmp.rowStringValueBufSize += row[i].length() + 1;
             }
         }
 
-        pHdrTemp->rowPodValueBufSize += static_cast<size_t>(DataTable_GetValueSize(type)) * pHdrTemp->numRows; // size of type * row count (excluding the type row)
+        tmp.rowPodValueBufSize += static_cast<size_t>(DataTable_GetValueSize(type)) * dtblHdr->numRows; // size of type * row count (excluding the type row)
     }
 }
 
 // fills a PakPageDataChunk_s with column data from a provided csv
-static void DataTable_SetupColumns(CPakFileBuilder* const pak, PakPageLump_s& dataChunk, const size_t columnNameBase, datatable_asset_t* const pHdrTemp,
-    const rapidcsv::Document& doc, const std::vector<std::string>& typeRow)
+template <typename datatable_t>
+static void DataTable_SetupColumns(CPakFileBuilder* const pak, PakPageLump_s& dataChunk, const size_t columnNameBase, datatable_t* const dtblHdr,
+    datatable_asset_t& tmp, const rapidcsv::Document& doc, const std::vector<std::string>& typeRow)
 {
     char* const colNameBufBase = &dataChunk.data[columnNameBase];
     char* colNameBuf = colNameBufBase;
 
-    for (uint32_t i = 0; i < pHdrTemp->numColumns; ++i)
+    for (uint32_t i = 0; i < dtblHdr->numColumns; ++i)
     {
         const std::string name = doc.GetColumnName(i);
         const size_t nameBufLen = name.length() + 1;
@@ -67,23 +69,22 @@ static void DataTable_SetupColumns(CPakFileBuilder* const pak, PakPageLump_s& da
         // copy the column name into the namebuf
         memcpy(colNameBuf, name.c_str(), nameBufLen);
 
-        datacolumn_t& col = pHdrTemp->pDataColums[i];
-        col.pName = dataChunk.GetPointer(columnNameBase + (colNameBuf - colNameBufBase));
+        datacolumn_t& col = tmp.pDataColums[i];
 
         // register name pointer
-        pak->AddPointer(dataChunk.GetPointer(((sizeof(datacolumn_t) * i) + offsetof(datacolumn_t, pName))));
+        pak->AddPointer(dataChunk, ((sizeof(datacolumn_t) * i) + offsetof(datacolumn_t, pName)), dataChunk, columnNameBase + (colNameBuf - colNameBufBase));
         colNameBuf += nameBufLen;
 
         const std::string& typeString = typeRow[i];
         const dtblcoltype_t type = DataTable_GetTypeFromString(typeString);
 
         if (type == dtblcoltype_t::INVALID)
-            DataTable_ReportInvalidDataTypeError(typeString.c_str(), i, pHdrTemp->numRows);
+            DataTable_ReportInvalidDataTypeError(typeString.c_str(), i, dtblHdr->numRows);
 
-        col.rowOffset = pHdrTemp->rowStride;
+        col.rowOffset = dtblHdr->rowStride;
         col.type = type;
 
-        pHdrTemp->rowStride += DataTable_GetValueSize(type);
+        dtblHdr->rowStride += DataTable_GetValueSize(type);
     }
 }
 
@@ -93,17 +94,19 @@ static void DataTable_ReportInvalidValueError(const dtblcoltype_t type, const ui
 }
 
 // fills a PakPageDataChunk_s with row data from a provided csv
-static void DataTable_SetupValues(CPakFileBuilder* const pak, PakPageLump_s& dataChunk, const size_t podValueBase, const size_t stringValueBase, datatable_asset_t* const pHdrTemp, rapidcsv::Document& doc)
+template <typename datatable_t>
+static void DataTable_SetupValues(CPakFileBuilder* const pak, PakPageLump_s& dataChunk, const size_t podValueBase, const size_t stringValueBase,
+    datatable_t* const dtblHdr, datatable_asset_t& tmp, rapidcsv::Document& doc)
 {
     char* const pStringBufBase = &dataChunk.data[stringValueBase];
     char* pStringBuf = pStringBufBase;
 
-    for (uint32_t rowIdx = 0; rowIdx < pHdrTemp->numRows; ++rowIdx)
+    for (uint32_t rowIdx = 0; rowIdx < dtblHdr->numRows; ++rowIdx)
     {
-        for (uint32_t colIdx = 0; colIdx < pHdrTemp->numColumns; ++colIdx)
+        for (uint32_t colIdx = 0; colIdx < dtblHdr->numColumns; ++colIdx)
         {
-            const datacolumn_t& col = pHdrTemp->pDataColums[colIdx];
-            const size_t valueOffset = (pHdrTemp->rowStride * rowIdx) + col.rowOffset;
+            const datacolumn_t& col = tmp.pDataColums[colIdx];
+            const size_t valueOffset = (dtblHdr->rowStride * rowIdx) + col.rowOffset;
 
             void* const valueBufBase = &dataChunk.data[podValueBase + valueOffset];
 
@@ -172,7 +175,8 @@ static void DataTable_SetupValues(CPakFileBuilder* const pak, PakPageLump_s& dat
                 memcpy(pStringBuf, val.c_str(), valBufLen);
 
                 valbuf.write(dataChunk.GetPointer(stringValueBase + (pStringBuf - pStringBufBase)));
-                pak->AddPointer(dataChunk.GetPointer(podValueBase + valueOffset));
+
+                pak->AddPointer(dataChunk, podValueBase + valueOffset);
 
                 pStringBuf += valBufLen;
                 break;
@@ -185,7 +189,8 @@ static void DataTable_SetupValues(CPakFileBuilder* const pak, PakPageLump_s& dat
 // page chunk structure and order:
 // - header        HEAD        (align=8)
 // - data          CPU         (align=8) data columns, column names, pod row values then string row values. only data columns is aligned to 8, the rest is 1.
-void Assets::AddDataTableAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+template <typename datatable_t>
+static void DataTable_AddDataTable(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     UNUSED(mapEntry);
     PakAsset_t asset;
@@ -219,50 +224,47 @@ void Assets::AddDataTableAsset(CPakFileBuilder* const pak, const PakGuid_t asset
     else
         hdrChunk = pak->CreatePageLump(sizeof(datatable_v1_t), SF_HEAD, 8);
 
-    datatable_asset_t dtblHdr{}; // temp header that we store values in, this is for sharing funcs across versions
+    datatable_t* const dtblHdr = reinterpret_cast<datatable_t*>(hdrChunk.data);
+    datatable_asset_t dtblAsset{}; // temp header that we store values in.
 
-    dtblHdr.numColumns = static_cast<uint32_t>(doc.GetColumnCount());
-    dtblHdr.numRows = static_cast<uint32_t>(doc.GetRowCount()-1); // -1 because last row isn't added (used for type info)
-    dtblHdr.assetPath = assetPath;
+    dtblHdr->numColumns = static_cast<uint32_t>(doc.GetColumnCount());
+    dtblHdr->numRows = static_cast<uint32_t>(doc.GetRowCount() - 1); // -1 because last row isn't added (used for type info)
 
     std::vector<std::string> typeRow;
-    DataTable_SetupRows(doc, &dtblHdr, typeRow);
+    DataTable_SetupRows(doc, dtblHdr, dtblAsset, typeRow);
 
-    const size_t dataColumnsBufSize = dtblHdr.numColumns * sizeof(datacolumn_t);
+    const size_t dataColumnsBufSize = dtblHdr->numColumns * sizeof(datacolumn_t);
     const size_t columnNamesBufSize = DataTable_CalcColumnNameBufSize(doc);
 
-    const size_t totalChunkSize = dataColumnsBufSize + columnNamesBufSize + dtblHdr.rowPodValueBufSize + dtblHdr.rowStringValueBufSize;
+    const size_t totalChunkSize = dataColumnsBufSize + columnNamesBufSize + dtblAsset.rowPodValueBufSize + dtblAsset.rowStringValueBufSize;
 
     // create whole datatable chunk
     PakPageLump_s dataChunk = pak->CreatePageLump(totalChunkSize, SF_CPU, 8);
-    
-    // colums from data chunk
-    dtblHdr.pColumns = dataChunk.GetPointer();
-    dtblHdr.pDataColums = reinterpret_cast<datacolumn_t*>(dataChunk.data);
 
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_asset_t, pColumns)));
+    // colums from data chunk
+    dtblAsset.pDataColums = reinterpret_cast<datacolumn_t*>(dataChunk.data);
+
+    // datatable v0 and v1 use the same struct offset for pColumns.
+    pak->AddPointer(hdrChunk, offsetof(datatable_v1_t, pColumns), dataChunk, 0);
 
     // setup data in column data chunk
-    DataTable_SetupColumns(pak, dataChunk, dataColumnsBufSize, &dtblHdr, doc, typeRow);
+    DataTable_SetupColumns(pak, dataChunk, dataColumnsBufSize, dtblHdr, dtblAsset, doc, typeRow);
 
     // Plain-old-data and string values use different buffers!
     const size_t rowPodValuesBase = dataColumnsBufSize + columnNamesBufSize;
-    const size_t rowStringValuesBase = rowPodValuesBase + dtblHdr.rowPodValueBufSize;
+    const size_t rowStringValuesBase = rowPodValuesBase + dtblAsset.rowPodValueBufSize;
 
     // setup row data chunks
-    DataTable_SetupValues(pak, dataChunk, rowPodValuesBase, rowStringValuesBase, &dtblHdr, doc);
+    DataTable_SetupValues(pak, dataChunk, rowPodValuesBase, rowStringValuesBase, dtblHdr, dtblAsset, doc);
 
-    // setup row page ptr
-    dtblHdr.pRows = dataChunk.GetPointer(rowPodValuesBase);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(datatable_asset_t, pRows)));
-
-    dtblHdr.WriteToBuffer(hdrChunk.data, pak->GetVersion());
+    // datatable v0 and v1 use the same struct offset for pRows.
+    pak->AddPointer(hdrChunk, offsetof(datatable_v0_t, pRows), dataChunk, rowPodValuesBase);
 
     asset.InitAsset(
         assetPath,
         assetGuid,
         hdrChunk.GetPointer(), hdrChunk.size,
-        dtblHdr.pRows,
+        dataChunk.GetPointer(rowPodValuesBase), // points to datatable_asset_t::pRow
         UINT64_MAX, UINT64_MAX, AssetType::DTBL);
 
     asset.SetHeaderPointer(hdrChunk.data);
@@ -273,4 +275,12 @@ void Assets::AddDataTableAsset(CPakFileBuilder* const pak, const PakGuid_t asset
     asset.pageEnd = pak->GetNumPages();
 
     pak->PushAsset(asset);
+}
+
+void Assets::AddDataTableAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+{
+    if (pak->GetVersion() <= 7)
+        DataTable_AddDataTable<datatable_v0_t>(pak, assetGuid, assetPath, mapEntry);
+    else
+        DataTable_AddDataTable<datatable_v1_t>(pak, assetGuid, assetPath, mapEntry);
 }

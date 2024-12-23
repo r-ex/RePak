@@ -19,33 +19,29 @@ static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid
         return;
     }
 
-    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(AnimSeqAssetHeader_t), SF_HEAD, 8);
+    PakPageLump_s hdrLump = pak->CreatePageLump(sizeof(AnimSeqAssetHeader_t), SF_HEAD, 8);
 
     const size_t rseqNameBufLen = strlen(assetPath) + 1;
     const size_t rseqFileSize = rseqInput.GetSize();
 
-    PakPageLump_s dataChunk = pak->CreatePageLump(rseqNameBufLen + rseqFileSize, SF_CPU, 1);
+    PakPageLump_s dataLump = pak->CreatePageLump(rseqNameBufLen + rseqFileSize, SF_CPU, 1);
 
     // write the rseq file path into the data buffer
-    memcpy(dataChunk.data, assetPath, rseqNameBufLen);
+    memcpy(dataLump.data, assetPath, rseqNameBufLen);
 
     // write the rseq data into the data buffer
-    rseqInput.Read(dataChunk.data + rseqNameBufLen, rseqFileSize);
+    rseqInput.Read(dataLump.data + rseqNameBufLen, rseqFileSize);
     rseqInput.Close();
 
-    const mstudioseqdesc_t& seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(dataChunk.data + rseqNameBufLen);
-    AnimSeqAssetHeader_t* const aseqHeader = reinterpret_cast<AnimSeqAssetHeader_t*>(hdrChunk.data);
+    const mstudioseqdesc_t& seqdesc = *reinterpret_cast<mstudioseqdesc_t*>(dataLump.data + rseqNameBufLen);
 
-    aseqHeader->szname = dataChunk.GetPointer();
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSeqAssetHeader_t, szname)));
-
-    aseqHeader->data = dataChunk.GetPointer(rseqNameBufLen);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(AnimSeqAssetHeader_t, data)));
+    pak->AddPointer(hdrLump, offsetof(AnimSeqAssetHeader_t, szname), dataLump, 0);
+    pak->AddPointer(hdrLump, offsetof(AnimSeqAssetHeader_t, data), dataLump, rseqNameBufLen);
 
     if (seqdesc.numautolayers > 0)
         asset.ExpandGuidBuf(seqdesc.numautolayers);
 
-    rmem dataBuf(dataChunk.data);
+    rmem dataBuf(dataLump.data);
     dataBuf.seek(rseqNameBufLen + seqdesc.autolayerindex, rseekdir::beg);
 
     // Iterate over each of the sequence's autolayers to register each of the autolayer GUIDs
@@ -56,11 +52,11 @@ static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid
         const mstudioautolayer_t* const autolayer = dataBuf.get<const mstudioautolayer_t>();
 
         const size_t offset = dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid);
-        Pak_RegisterGuidRefAtOffset(autolayer->guid, offset, dataChunk, asset);
+        Pak_RegisterGuidRefAtOffset(autolayer->guid, offset, dataLump, asset);
     }
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ASEQ);
-    asset.SetHeaderPointer(hdrChunk.data);
+    asset.InitAsset(assetPath, assetGuid, hdrLump.GetPointer(), hdrLump.size, PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ASEQ);
+    asset.SetHeaderPointer(hdrLump.data);
 
     asset.version = 7;
     asset.pageEnd = pak->GetNumPages();

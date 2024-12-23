@@ -75,8 +75,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     rmem ofBuf(offsetLump.data);
 
     // set image offset page index and offset
-    pHdr->pImageOffsets = offsetLump.GetPointer();
-    pak->AddPointer(hdrLump.GetPointer(offsetof(UIImageAtlasHeader_t, pImageOffsets)));
+    pak->AddPointer(hdrLump, offsetof(UIImageAtlasHeader_t, pImageOffsets), offsetLump, 0);
 
     ////////////////////
     // IMAGE OFFSETS
@@ -111,8 +110,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     ///////////////////////
     // IMAGE DIMENSIONS
     // set image dimensions page index and offset
-    pHdr->pImageDimensions = infoLump.GetPointer();
-    pak->AddPointer(hdrLump.GetPointer(offsetof(UIImageAtlasHeader_t, pImageDimensions)));
+    pak->AddPointer(hdrLump, offsetof(UIImageAtlasHeader_t, pImageDimensions), infoLump, 0);
 
     for (const rapidjson::Value& it : imageArray)
     {
@@ -124,8 +122,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     }
 
     // set image hashes page index and offset
-    pHdr->pImageHashes = infoLump.GetPointer(imageDimensionsDataSize);
-    pak->AddPointer(hdrLump.GetPointer(offsetof(UIImageAtlasHeader_t, pImageHashes)));
+    pak->AddPointer(hdrLump, offsetof(UIImageAtlasHeader_t, pImageHashes), infoLump, imageDimensionsDataSize);
 
     // TODO: is this used?
     //uint32_t nextStringTableOffset = 0;

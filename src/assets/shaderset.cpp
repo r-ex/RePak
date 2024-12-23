@@ -77,8 +77,7 @@ void ShaderSet_InternalCreateSet(CPakFileBuilder* const pak, const char* const a
 			PakPageLump_s nameChunk = pak->CreatePageLump(stemLen + 1, SF_CPU | SF_DEV, 1);
 			memcpy(nameChunk.data, pathStem, stemLen + 1);
 
-			hdr->name = nameChunk.GetPointer();
-			pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_t, name)));
+			pak->AddPointer(hdrChunk, offsetof(ShaderSetAssetHeader_t, name), nameChunk, 0);
 		}
 	}
 
