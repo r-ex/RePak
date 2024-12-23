@@ -30,9 +30,9 @@ public:
 	//----------------------------------------------------------------------------
 	// inlines
 	//----------------------------------------------------------------------------
-	inline bool IsFlagSet(int flag) const { return m_Flags & flag; };
+	inline bool IsFlagSet(int flag) const { return m_buildFlags & flag; };
 
-	inline size_t GetAssetCount() const { return m_Assets.size(); };
+	inline size_t GetAssetCount() const { return m_assets.size(); };
 	inline size_t GetMandatoryStreamingAssetCount() const { return m_mandatoryStreamingDataBlocks.size(); };
 	inline size_t GetOptionalStreamingAssetCount() const { return m_optionalStreamingDataBlocks.size(); };
 
@@ -55,11 +55,11 @@ public:
 		m_Header.optStarpakPathsSize = optLen;
 	}
 
-	inline std::string GetPath() const { return m_Path; }
-	inline void SetPath(const std::string& path) { m_Path = path; }
+	inline std::string GetPath() const { return m_pakFilePath; }
+	inline void SetPath(const std::string& path) { m_pakFilePath = path; }
 
-	inline std::string GetAssetPath() const { return m_AssetPath; }
-	inline void SetAssetPath(const std::string& assetPath) { m_AssetPath = assetPath; }
+	inline std::string GetAssetPath() const { return m_assetPath; }
+	inline void SetAssetPath(const std::string& assetPath) { m_assetPath = assetPath; }
 
 	inline size_t GetNumStarpakPaths() const { return m_mandatoryStreamFilePaths.size(); }
 
@@ -72,8 +72,8 @@ public:
 	inline FILETIME GetFileTime() const { return m_Header.fileTime; }
 	inline void SetFileTime(FILETIME fileTime) { m_Header.fileTime = fileTime; }
 
-	inline void AddFlags(int flags) { m_Flags |= flags; }
-	inline void RemoveFlags(int flags) { m_Flags &= ~flags; }
+	inline void AddFlags(int flags) { m_buildFlags |= flags; }
+	inline void RemoveFlags(int flags) { m_buildFlags &= ~flags; }
 
 	//----------------------------------------------------------------------------
 	// rpak
@@ -105,7 +105,7 @@ public:
 			Error("Attempted to create asset with a non-unique GUID.\n"
 				"Assets at index %u (%s) and %u (%s) have the same GUID (%llx).\n",
 				assetIdx, match->name.c_str(),
-				static_cast<uint32_t>(m_Assets.size()), asset.name.c_str(),
+				static_cast<uint32_t>(m_assets.size()), asset.name.c_str(),
 				asset.guid
 			);
 		}
@@ -114,7 +114,7 @@ public:
 	FORCEINLINE void PushAsset(const PakAsset_t& asset)
 	{
 		RequireUniqueAssetGUID(asset);
-		m_Assets.push_back(asset);
+		m_assets.push_back(asset);
 	};
 
 	void CreateStreamFileStream(const char* const path, const PakStreamSet_e set);
@@ -125,17 +125,17 @@ public:
 private:
 	friend class CPakPage;
 
-	int m_Flags = 0;
+	int m_buildFlags = 0;
 	PakHdr_t m_Header;
 
-	std::string m_Path;
-	std::string m_AssetPath;
-	std::string m_OutputPath;
+	std::string m_pakFilePath;
+	std::string m_assetPath;
+	std::string m_outputPath;
+
+	std::vector<PakAsset_t> m_assets;
+	std::vector<PagePtr_t> m_pagePointers;
 
 	CPakPageBuilder m_pageBuilder;
-
-	std::vector<PakAsset_t> m_Assets;
-	std::vector<PagePtr_t> m_pagePointers;
 
 	std::vector<std::string> m_mandatoryStreamFilePaths;
 	std::vector<std::string> m_optionalStreamFilePaths;

@@ -232,7 +232,7 @@ void CPakFileBuilder::WriteHeader(BinaryIO& io)
 //-----------------------------------------------------------------------------
 void CPakFileBuilder::WriteAssetDescriptors(BinaryIO& io)
 {
-	for (PakAsset_t& it : m_Assets)
+	for (PakAsset_t& it : m_assets)
 	{
 		io.Write(it.guid);
 		io.Write(it.unk0);
@@ -261,9 +261,9 @@ void CPakFileBuilder::WriteAssetDescriptors(BinaryIO& io)
 		it.SetPublicData<void*>(nullptr);
 	}
 
-	assert(m_Assets.size() <= UINT32_MAX);
+	assert(m_assets.size() <= UINT32_MAX);
 	// update header asset count with the assets we've just written
-	this->m_Header.assetCount = static_cast<uint32_t>(m_Assets.size());
+	this->m_Header.assetCount = static_cast<uint32_t>(m_assets.size());
 }
 
 //-----------------------------------------------------------------------------
@@ -291,7 +291,7 @@ void CPakFileBuilder::WritePagePointers(BinaryIO& out)
 
 void CPakFileBuilder::WriteAssetUses(BinaryIO& out)
 {
-	for (const PakAsset_t& it : m_Assets)
+	for (const PakAsset_t& it : m_assets)
 	{
 		for (const PakGuidRef_s& ref : it._uses)
 			out.Write(ref.ptr);
@@ -300,7 +300,7 @@ void CPakFileBuilder::WriteAssetUses(BinaryIO& out)
 
 void CPakFileBuilder::WriteAssetDependents(BinaryIO& out)
 {
-	for (const PakAsset_t& it : m_Assets)
+	for (const PakAsset_t& it : m_assets)
 	{
 		for (const unsigned int dependent : it._dependents)
 			out.Write(dependent);
@@ -313,9 +313,9 @@ void CPakFileBuilder::WriteAssetDependents(BinaryIO& out)
 //-----------------------------------------------------------------------------
 void CPakFileBuilder::GenerateInternalDependencies()
 {
-	for (size_t i = 0; i < m_Assets.size(); i++)
+	for (size_t i = 0; i < m_assets.size(); i++)
 	{
-		PakAsset_t& it = m_Assets[i];
+		PakAsset_t& it = m_assets[i];
 		std::set<PakGuid_t> processed;
 
 		for (const PakGuidRef_s& ref : it._uses)
@@ -343,7 +343,7 @@ void CPakFileBuilder::GenerateAssetUses()
 {
 	size_t totalUsesCount = 0;
 
-	for (PakAsset_t& it : m_Assets)
+	for (PakAsset_t& it : m_assets)
 	{
 		const size_t numUses = it._uses.size();
 
@@ -370,7 +370,7 @@ void CPakFileBuilder::GenerateAssetDependents()
 {
 	size_t totalDependentsCount = 0;
 
-	for (PakAsset_t& it : m_Assets)
+	for (PakAsset_t& it : m_assets)
 	{
 		const size_t numDependents = it._dependents.size();
 
@@ -400,7 +400,7 @@ PakPageLump_s CPakFileBuilder::CreatePageLump(const size_t size, const int flags
 PakAsset_t* CPakFileBuilder::GetAssetByGuid(const PakGuid_t guid, uint32_t* const idx /*= nullptr*/, const bool silent /*= false*/)
 {
 	uint32_t i = 0;
-	for (PakAsset_t& it : m_Assets)
+	for (PakAsset_t& it : m_assets)
 	{
 		if (it.guid == guid)
 		{
@@ -566,7 +566,7 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 size_t CPakFileBuilder::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount)
 {
 	BinaryIO outCompressed;
-	const std::string outCompressedPath = m_Path + "_encoded";
+	const std::string outCompressedPath = m_pakFilePath + "_encoded";
 
 	if (!outCompressed.Open(outCompressedPath, BinaryIO::Mode_e::Write))
 	{
@@ -585,29 +585,29 @@ size_t CPakFileBuilder::EncodeStreamAndSwap(BinaryIO& io, const int compressLeve
 	// note(amos): we must reopen the file in ReadWrite mode as otherwise
 	// the file gets truncated.
 
-	if (!std::filesystem::remove(m_Path))
+	if (!std::filesystem::remove(m_pakFilePath))
 	{
 		Warning("Failed to remove uncompressed pak file \"%s\" for swap.\n", outCompressedPath.c_str());
 		
 		// reopen and continue uncompressed.
-		if (io.Open(m_Path, BinaryIO::Mode_e::ReadWrite))
-			Error("Failed to reopen pak file \"%s\".\n", m_Path.c_str());
+		if (io.Open(m_pakFilePath, BinaryIO::Mode_e::ReadWrite))
+			Error("Failed to reopen pak file \"%s\".\n", m_pakFilePath.c_str());
 
 		return 0;
 	}
 
-	std::filesystem::rename(outCompressedPath, m_Path);
+	std::filesystem::rename(outCompressedPath, m_pakFilePath);
 
 	// either the rename failed or something holds an open handle to the
 	// newly renamed compressed file, irrecoverable.
-	if (!io.Open(m_Path, BinaryIO::Mode_e::ReadWrite))
-		Error("Failed to reopen pak file \"%s\".\n", m_Path.c_str());
+	if (!io.Open(m_pakFilePath, BinaryIO::Mode_e::ReadWrite))
+		Error("Failed to reopen pak file \"%s\".\n", m_pakFilePath.c_str());
 
 	const size_t reopenedPakSize = io.GetSize();
 
 	if (reopenedPakSize != compressedSize)
 		Error("Reopened pak file \"%s\" appears truncated or corrupt; compressed size: %zu expected: %zu.\n",
-			m_Path.c_str(), reopenedPakSize, compressedSize);
+			m_pakFilePath.c_str(), reopenedPakSize, compressedSize);
 
 	// set the header flags indicating this pak is compressed.
 	m_Header.flags |= (PAK_HEADER_FLAGS_COMPRESSED | PAK_HEADER_FLAGS_ZSTREAM_ENCODED);
@@ -630,7 +630,7 @@ void CPakFileBuilder::CreateStreamFileStream(const char* const streamFilePath, c
 	else
 		streamFileName += 1; // advance from '/' to start of filename.
 
-	const std::string fullFilePath = m_OutputPath + streamFileName;
+	const std::string fullFilePath = m_outputPath + streamFileName;
 
 	if (!out.Open(fullFilePath, BinaryIO::Mode_e::Write))
 		Error("Failed to open %s streaming file \"%s\".\n", Pak_StreamSetToName(set), fullFilePath.c_str());
@@ -694,40 +694,40 @@ void CPakFileBuilder::BuildFromMap(const string& mapPath)
 	{
 		Warning("No \"assetsDir\" field provided; assuming that everything is relative to the working directory.\n");
 		if (inputPath.has_parent_path())
-			m_AssetPath = inputPath.parent_path().string();
+			m_assetPath = inputPath.parent_path().string();
 		else
-			m_AssetPath = ".\\";
+			m_assetPath = ".\\";
 	}
 	else
 	{
 		const fs::path assetsDirPath(assetDir);
 		if (assetsDirPath.is_relative() && inputPath.has_parent_path())
-			m_AssetPath = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).string();
+			m_assetPath = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).string();
 		else
-			m_AssetPath = assetsDirPath.string();
+			m_assetPath = assetsDirPath.string();
 
 		// ensure that the path has a slash at the end
-		Utils::AppendSlash(m_AssetPath);
+		Utils::AppendSlash(m_assetPath);
 	}
 
 	// determine final build path from map file
-	if (JSON_GetValue(doc, "outputDir", m_OutputPath))
+	if (JSON_GetValue(doc, "outputDir", m_outputPath))
 	{
 		fs::path outputDirPath(doc["outputDir"].GetString());
 
 		if (outputDirPath.is_relative() && inputPath.has_parent_path())
-			m_OutputPath = fs::canonical(inputPath.parent_path() / outputDirPath).string();
+			m_outputPath = fs::canonical(inputPath.parent_path() / outputDirPath).string();
 		else
-			m_OutputPath = outputDirPath.string();
+			m_outputPath = outputDirPath.string();
 
 		// ensure that the path has a slash at the end
-		Utils::AppendSlash(m_OutputPath);
+		Utils::AppendSlash(m_outputPath);
 	}
 	else
-		m_OutputPath = DEFAULT_RPAK_PATH;
+		m_outputPath = DEFAULT_RPAK_PATH;
 
 	// create output directory if it does not exist yet.
-	fs::create_directories(m_OutputPath);
+	fs::create_directories(m_outputPath);
 
 	const int pakVersion = JSON_GetValueOrDefault(doc, "version", -1);
 
@@ -741,11 +741,11 @@ void CPakFileBuilder::BuildFromMap(const string& mapPath)
 	Log("build settings:\n");
 	Log("version: %i\n", GetVersion());
 	Log("fileName: %s.rpak\n", pakName);
-	Log("assetsDir: %s\n", m_AssetPath.c_str());
-	Log("outputDir: %s\n\n", m_OutputPath.c_str());
+	Log("assetsDir: %s\n", m_assetPath.c_str());
+	Log("outputDir: %s\n\n", m_outputPath.c_str());
 
 	// set build path
-	SetPath(m_OutputPath + pakName + ".rpak");
+	SetPath(m_outputPath + pakName + ".rpak");
 
 	// should dev-only data be kept - e.g. texture asset names, uimg texture names
 	if (JSON_GetValueOrDefault(doc, "keepDevOnly", false))
@@ -759,8 +759,8 @@ void CPakFileBuilder::BuildFromMap(const string& mapPath)
 
 	// create file stream from path created above
 	BinaryIO out;
-	if (!out.Open(m_Path, BinaryIO::Mode_e::ReadWriteCreate))
-		Error("Failed to open output pak file \"%s\".\n", m_Path.c_str());
+	if (!out.Open(m_pakFilePath, BinaryIO::Mode_e::ReadWriteCreate))
+		Error("Failed to open output pak file \"%s\".\n", m_pakFilePath.c_str());
 
 	// write a placeholder header so we can come back and complete it
 	// when we have all the info
@@ -867,7 +867,7 @@ void CPakFileBuilder::BuildFromMap(const string& mapPath)
 	const ssize_t totalPakSize = out.GetSize();
 
 	Log("Written pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
-		m_Path.c_str(), GetAssetCount(), totalPakSize);
+		m_pakFilePath.c_str(), GetAssetCount(), totalPakSize);
 
 	// if we had pages which we ended up padding out to match the alignment,
 	// then we need to seek back to the end of the file; SeekPut only writes
