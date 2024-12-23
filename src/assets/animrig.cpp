@@ -68,7 +68,7 @@ void Assets::AddAnimRigAsset_v4(CPakFileBuilder* const pak, const PakGuid_t asse
             const size_t offset = base + (i * sizeof(PakGuid_t));
             const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&rigChunk.data[offset]);
 
-            Pak_RegisterGuidRefAtOffset(pak, guid, offset, rigChunk, asset);
+            Pak_RegisterGuidRefAtOffset(guid, offset, rigChunk, asset);
         }
     }
 

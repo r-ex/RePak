@@ -56,7 +56,7 @@ static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid
         const mstudioautolayer_t* const autolayer = dataBuf.get<const mstudioautolayer_t>();
 
         const size_t offset = dataBuf.getPosition() + offsetof(mstudioautolayer_t, guid);
-        Pak_RegisterGuidRefAtOffset(pak, autolayer->guid, offset, dataChunk, asset);
+        Pak_RegisterGuidRefAtOffset(autolayer->guid, offset, dataChunk, asset);
     }
 
     asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ASEQ);

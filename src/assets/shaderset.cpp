@@ -91,10 +91,16 @@ void ShaderSet_InternalCreateSet(CPakFileBuilder* const pak, const char* const a
 
 	// todo: can shader refs be null???
 	if (hdr->vertexShader != 0)
-		vertexShader = Pak_RegisterGuidRefAtOffset(pak, hdr->vertexShader, offsetof(ShaderSetAssetHeader_t, vertexShader), hdrChunk, asset);
+	{
+		Pak_RegisterGuidRefAtOffset(hdr->vertexShader, offsetof(ShaderSetAssetHeader_t, vertexShader), hdrChunk, asset);
+		vertexShader = pak->GetAssetByGuid(hdr->vertexShader);
+	}
 
 	if (hdr->pixelShader != 0)
-		pixelShader = Pak_RegisterGuidRefAtOffset(pak, hdr->pixelShader, offsetof(ShaderSetAssetHeader_t, pixelShader), hdrChunk, asset);
+	{
+		Pak_RegisterGuidRefAtOffset(hdr->pixelShader, offsetof(ShaderSetAssetHeader_t, pixelShader), hdrChunk, asset);
+		pixelShader = pak->GetAssetByGuid(hdr->pixelShader);
+	}
 
 	ShaderSet_SetInputSlots(hdr, vertexShader, true, shaderSet, assetVersion);
 	ShaderSet_SetInputSlots(hdr, pixelShader, false, shaderSet, assetVersion);

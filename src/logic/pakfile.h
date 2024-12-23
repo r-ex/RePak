@@ -158,25 +158,16 @@ private:
 };
 
 // if the asset already existed, the function will return true.
-inline PakAsset_t* Pak_RegisterGuidRefAtOffset(CPakFileBuilder* const pak, const PakGuid_t guid, const size_t offset, 
-	PakPageLump_s& chunk, PakAsset_t& asset, PakAsset_t* targetAsset = nullptr)
+inline bool Pak_RegisterGuidRefAtOffset(const PakGuid_t guid, const size_t offset, 
+	PakPageLump_s& chunk, PakAsset_t& asset)
 {
 	// NULL guids should never be added. we check it here because otherwise we
 	// have to do a check at call site, and if we miss one we will end up with
 	// a hard to track bug. so always call this function, even if your guid
 	// might be NULL.
 	if (guid == 0)
-		return nullptr;
+		return false;
 
 	asset.AddGuid(chunk.GetPointer(offset), guid);
-
-	if (!targetAsset)
-	{
-		targetAsset = pak->GetAssetByGuid(guid, nullptr, true);
-
-		if (!targetAsset)
-			return nullptr;
-	}
-
-	return targetAsset;
+	return true;
 }

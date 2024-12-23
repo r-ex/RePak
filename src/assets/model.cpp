@@ -134,7 +134,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
                 const size_t offset = base + (i * sizeof(PakGuid_t));
                 const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.data[offset]);
 
-                Pak_RegisterGuidRefAtOffset(pak, guid, offset, intermediateChunk, asset);
+                Pak_RegisterGuidRefAtOffset(guid, offset, intermediateChunk, asset);
             }
         }
 
@@ -155,7 +155,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
                 const size_t offset = base + (i * sizeof(PakGuid_t));
                 const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.data[offset]);
 
-                Pak_RegisterGuidRefAtOffset(pak, guid, offset, intermediateChunk, asset);
+                Pak_RegisterGuidRefAtOffset(guid, offset, intermediateChunk, asset);
             }
         }
     }
@@ -302,7 +302,8 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
         const size_t pos = (char*)tex - dataChunk.data;
         const size_t offset = pos + offsetof(mstudiotexture_t, guid);
 
-        PakAsset_t* const internalAsset = Pak_RegisterGuidRefAtOffset(pak, tex->guid, offset, dataChunk, asset);
+        Pak_RegisterGuidRefAtOffset(tex->guid, offset, dataChunk, asset);
+        const PakAsset_t* const internalAsset = pak->GetAssetByGuid(tex->guid);
 
         if (internalAsset)
         {
@@ -310,7 +311,7 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
             internalAsset->EnsureType(TYPE_MATL);
 
             // model assets don't exist on r2 so we can be sure that this is a v8 pak (and therefore has v15 materials)
-            MaterialAssetHeader_v15_t* matlHdr = reinterpret_cast<MaterialAssetHeader_v15_t*>(internalAsset->header);
+            MaterialAssetHeader_v15_t* const matlHdr = reinterpret_cast<MaterialAssetHeader_v15_t*>(internalAsset->header);
 
             if (matlHdr->materialType != studiohdr->materialType(i))
             {

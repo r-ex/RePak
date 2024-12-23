@@ -93,7 +93,9 @@ static void Material_AddTextureRefs(CPakFileBuilder* const pak, PakPageLump_s& d
         reinterpret_cast<PakGuid_t*>(dataBuf)[bindPoint] = textureGuid;
         const size_t offset = alignedPathSize + (bindPoint * sizeof(PakGuid_t));
 
-        if (!Pak_RegisterGuidRefAtOffset(pak, textureGuid, offset, dataChunk, asset))
+        Pak_RegisterGuidRefAtOffset(textureGuid, offset, dataChunk, asset);
+
+        if (!pak->GetAssetByGuid(textureGuid))
             Warning("Unable to find texture #%zu within the local assets.\n", bindPoint);
     }
 }
@@ -619,12 +621,12 @@ static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const Pa
 
     // register referenced assets (depth materials, colpass material, shader sets)
 
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[0], offsetof(MaterialAssetHeader_v12_t, passMaterials[0]), hdrChunk, asset);
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[1], offsetof(MaterialAssetHeader_v12_t, passMaterials[1]), hdrChunk, asset);
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[2], offsetof(MaterialAssetHeader_v12_t, passMaterials[2]), hdrChunk, asset);
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.passMaterials[3], offsetof(MaterialAssetHeader_v12_t, passMaterials[3]), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[0], offsetof(MaterialAssetHeader_v12_t, passMaterials[0]), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[1], offsetof(MaterialAssetHeader_v12_t, passMaterials[1]), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[2], offsetof(MaterialAssetHeader_v12_t, passMaterials[2]), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[3], offsetof(MaterialAssetHeader_v12_t, passMaterials[3]), hdrChunk, asset);
 
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.shaderSet, offsetof(MaterialAssetHeader_v12_t, shaderSet), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.shaderSet, offsetof(MaterialAssetHeader_v12_t, shaderSet), hdrChunk, asset);
 
     // write header now that we are done setting it up
     matlAsset.WriteToBuffer(hdrChunk.data);
@@ -738,11 +740,11 @@ static void Material_InternalAddMaterialV15(CPakFileBuilder* const pak, const Pa
         const PakGuid_t guid = matlAsset.passMaterials[i];
         const size_t offset = offsetof(MaterialAssetHeader_v15_t, passMaterials[i]);
 
-        Pak_RegisterGuidRefAtOffset(pak, guid, offset, hdrChunk, asset);
+        Pak_RegisterGuidRefAtOffset(guid, offset, hdrChunk, asset);
     }
 
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.shaderSet, offsetof(MaterialAssetHeader_v15_t, shaderSet), hdrChunk, asset);
-    Pak_RegisterGuidRefAtOffset(pak, matlAsset.textureAnimation, offsetof(MaterialAssetHeader_v15_t, textureAnimation), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.shaderSet, offsetof(MaterialAssetHeader_v15_t, shaderSet), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.textureAnimation, offsetof(MaterialAssetHeader_v15_t, textureAnimation), hdrChunk, asset);
 
     // write header now that we are done setting it up
     matlAsset.WriteToBuffer(hdrChunk.data);

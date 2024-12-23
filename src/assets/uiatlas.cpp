@@ -66,7 +66,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     pHdr->unkCount = unkCount;
     pHdr->atlasGUID = atlasGuid;
 
-    Pak_RegisterGuidRefAtOffset(pak, atlasGuid, offsetof(UIImageAtlasHeader_t, atlasGUID), hdrLump, asset, atlasAsset);
+    Pak_RegisterGuidRefAtOffset(atlasGuid, offsetof(UIImageAtlasHeader_t, atlasGUID), hdrLump, asset);
 
     const size_t textureOffsetsDataSize = sizeof(UIImageOffset) * textureCount;
 
