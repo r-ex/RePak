@@ -38,11 +38,11 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     // make sure referenced asset is a texture for sanity
     atlasAsset->EnsureType(TYPE_TXTR);
 
-    rapidjson::Value::ConstMemberIterator texturesIt;
-    JSON_GetRequired(mapEntry, "textures", JSONFieldType_e::kArray, texturesIt);
+    rapidjson::Value::ConstMemberIterator imagesIt;
+    JSON_GetRequired(mapEntry, "images", JSONFieldType_e::kArray, imagesIt);
 
-    const rapidjson::Value::ConstArray& textureArray = texturesIt->value.GetArray();
-    const uint16_t textureCount = static_cast<uint16_t>(textureArray.Size());
+    const rapidjson::Value::ConstArray& imageArray = imagesIt->value.GetArray();
+    const uint16_t imageCount = static_cast<uint16_t>(imageArray.Size());
 
     // needs to be reversed still, not all uimg's use this! this might be
     // necessary to reverse at some point since some uimg's (especially in
@@ -61,26 +61,26 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     pHdr->widthRatio = 1.f / pHdr->width;
     pHdr->heightRatio = 1.f / pHdr->height;
 
-    // legion uses this to get the texture count, so its probably set correctly
-    pHdr->textureCount = textureCount;
+    // legion uses this to get the image count, so its probably set correctly
+    pHdr->imageCount = imageCount;
     pHdr->unkCount = unkCount;
     pHdr->atlasGUID = atlasGuid;
 
     Pak_RegisterGuidRefAtOffset(atlasGuid, offsetof(UIImageAtlasHeader_t, atlasGUID), hdrLump, asset);
 
-    const size_t textureOffsetsDataSize = sizeof(UIImageOffset) * textureCount;
+    const size_t imageOffsetsDataSize = sizeof(UIImageOffset) * imageCount;
 
     // ui image offset info
-    PakPageLump_s offsetLump = pak->CreatePageLump(textureOffsetsDataSize, SF_CPU | SF_CLIENT, 32);
+    PakPageLump_s offsetLump = pak->CreatePageLump(imageOffsetsDataSize, SF_CPU | SF_CLIENT, 32);
     rmem ofBuf(offsetLump.data);
 
-    // set texture offset page index and offset
-    pHdr->pTextureOffsets = offsetLump.GetPointer();
-    pak->AddPointer(hdrLump.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureOffsets)));
+    // set image offset page index and offset
+    pHdr->pImageOffsets = offsetLump.GetPointer();
+    pak->AddPointer(hdrLump.GetPointer(offsetof(UIImageAtlasHeader_t, pImageOffsets)));
 
     ////////////////////
     // IMAGE OFFSETS
-    for (const rapidjson::Value& it : textureArray)
+    for (const rapidjson::Value& it : imageArray)
     {
         UIImageOffset uiio{};
 
@@ -99,22 +99,22 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
         ofBuf.write(uiio);
     }
 
-    const size_t textureDimensionsDataSize = sizeof(uint16_t) * 2 * textureCount;
-    const size_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * textureCount;
+    const size_t imageDimensionsDataSize = sizeof(uint16_t) * 2 * imageCount;
+    const size_t imageHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * imageCount;
 
     // note: aligned to 4 if we do not have UIImageAtlasHeader_t::unkCount
     // (which needs to be reversed still). Else this lump must reside in a
     // page that is aligned to 16.
-    PakPageLump_s infoLump = pak->CreatePageLump(textureDimensionsDataSize + textureHashesDataSize, SF_CPU | SF_CLIENT, unkCount > 0 ? 16 : 4);
+    PakPageLump_s infoLump = pak->CreatePageLump(imageDimensionsDataSize + imageHashesDataSize, SF_CPU | SF_CLIENT, unkCount > 0 ? 16 : 4);
     rmem ifBuf(infoLump.data);
 
     ///////////////////////
     // IMAGE DIMENSIONS
-    // set texture dimensions page index and offset
-    pHdr->pTextureDimensions = infoLump.GetPointer();
-    pak->AddPointer(hdrLump.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureDimensions)));
+    // set image dimensions page index and offset
+    pHdr->pImageDimensions = infoLump.GetPointer();
+    pak->AddPointer(hdrLump.GetPointer(offsetof(UIImageAtlasHeader_t, pImageDimensions)));
 
-    for (const rapidjson::Value& it : textureArray)
+    for (const rapidjson::Value& it : imageArray)
     {
         const uint16_t width = (uint16_t)JSON_GetNumberRequired<int>(it, "width");
         const uint16_t height = (uint16_t)JSON_GetNumberRequired<int>(it, "height");
@@ -123,38 +123,38 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
         ifBuf.write<uint16_t>(height);
     }
 
-    // set texture hashes page index and offset
-    pHdr->pTextureHashes = infoLump.GetPointer(textureDimensionsDataSize);
-    pak->AddPointer(hdrLump.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureHashes)));
+    // set image hashes page index and offset
+    pHdr->pImageHashes = infoLump.GetPointer(imageDimensionsDataSize);
+    pak->AddPointer(hdrLump.GetPointer(offsetof(UIImageAtlasHeader_t, pImageHashes)));
 
     // TODO: is this used?
     //uint32_t nextStringTableOffset = 0;
 
     /////////////////////////
     // IMAGE HASHES/NAMES
-    for (const rapidjson::Value& it : textureArray)
+    for (const rapidjson::Value& it : imageArray)
     {
         rapidjson::Value::ConstMemberIterator pathIt;
         JSON_GetRequired(it, "path", pathIt);
 
-        const char* const texturePath = pathIt->value.GetString();
-        const uint32_t pathHash = RTech::StringToUIMGHash(texturePath);
+        const char* const imagePath = pathIt->value.GetString();
+        const uint32_t pathHash = RTech::StringToUIMGHash(imagePath);
 
         ifBuf.write(pathHash);
 
-        // offset into the path table for this texture - not really needed since we don't write the image names
+        // offset into the path table for this image - not really needed since we don't write the image names
         ifBuf.write(0ul);
 
         //nextStringTableOffset += textIt->value.GetStringLength();
     }
 
     // cpu data
-    PakPageLump_s uvLump = pak->CreatePageLump(textureCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
+    PakPageLump_s uvLump = pak->CreatePageLump(imageCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
     rmem uvBuf(uvLump.data);
 
     //////////////
     // IMAGE UVS
-    for (const rapidjson::Value& it : textureArray)
+    for (const rapidjson::Value& it : imageArray)
     {
         UIImageUV uiiu;
 
