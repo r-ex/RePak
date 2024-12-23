@@ -743,7 +743,7 @@ void CPakFileBuilder::BuildFromMap(const string& mapPath)
 
 	// write a placeholder header so we can come back and complete it
 	// when we have all the info
-	out.Seek(pakVersion >= 8 ? 0x80 : 0x58);
+	out.Pad(pakVersion >= 8 ? 0x80 : 0x58);
 
 	const char* streamFileMandatory = nullptr;
 
