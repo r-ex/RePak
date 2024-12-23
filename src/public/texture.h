@@ -134,16 +134,21 @@ struct UIImageAtlasHeader_t
 {
 	float widthRatio; // 1 / m_nWidth
 	float heightRatio; // 1 / m_nHeight
+
 	uint16_t width = 1;
 	uint16_t height = 1;
+
 	uint16_t textureCount = 0;
 	uint16_t unkCount = 0;
+
 	PagePtr_t pTextureOffsets{};
 	PagePtr_t pTextureDimensions{};
-	uint32_t unk1 = 0;
-	uint32_t unk2 = 0;
+
+	PagePtr_t unknown{}; // something with UV's?
+
 	PagePtr_t pTextureHashes{};
 	PagePtr_t pTextureNames{};
+
 	PakGuid_t atlasGUID = 0;
 };
 

@@ -5,6 +5,14 @@
 
 extern bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming);
 
+// todo:
+// - keepDevOnly names
+
+// page lump structure and order:
+// - header        HEAD        (align=8)
+// - image offsets CPU_CLIENT  (align=32)
+// - information   CPU_CLIENT  (align=4?16) unknown, dimensions, then hashes, aligned to 16 if we have unknown (which needs to be reserved still).
+// - uv data       TEMP_CLIENT (align=4)
 void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     PakAsset_t asset;
@@ -36,9 +44,15 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     const rapidjson::Value::ConstArray& textureArray = texturesIt->value.GetArray();
     const uint16_t textureCount = static_cast<uint16_t>(textureArray.Size());
 
-    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(UIImageAtlasHeader_t), SF_HEAD | SF_CLIENT, 8);
+    // needs to be reversed still, not all uimg's use this! this might be
+    // necessary to reverse at some point since some uimg's (especially in
+    // world rui's) seem to flicker or glitch at certain view angles and the
+    // only data we currently do not set is this.
+    const uint16_t unkCount = 0;
 
-    UIImageAtlasHeader_t* const  pHdr = reinterpret_cast<UIImageAtlasHeader_t*>(hdrChunk.data);
+    PakPageLump_s hdrLump = pak->CreatePageLump(sizeof(UIImageAtlasHeader_t), SF_HEAD | SF_CLIENT, 8);
+
+    UIImageAtlasHeader_t* const pHdr = reinterpret_cast<UIImageAtlasHeader_t*>(hdrLump.data);
     const TextureAssetHeader_t* const atlasHdr = reinterpret_cast<const TextureAssetHeader_t*>(atlasAsset->header);
 
     pHdr->width = atlasHdr->width;
@@ -49,30 +63,20 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
 
     // legion uses this to get the texture count, so its probably set correctly
     pHdr->textureCount = textureCount;
-    pHdr->unkCount = 0;
+    pHdr->unkCount = unkCount;
     pHdr->atlasGUID = atlasGuid;
 
-    Pak_RegisterGuidRefAtOffset(pak, atlasGuid, offsetof(UIImageAtlasHeader_t, atlasGUID), hdrChunk, asset, atlasAsset);
+    Pak_RegisterGuidRefAtOffset(pak, atlasGuid, offsetof(UIImageAtlasHeader_t, atlasGUID), hdrLump, asset, atlasAsset);
 
-    // calculate data sizes so we can allocate a page and segment
     const size_t textureOffsetsDataSize = sizeof(UIImageOffset) * textureCount;
-    const size_t textureDimensionsDataSize = sizeof(uint16_t) * 2 * textureCount;
-    const size_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * textureCount;
 
-    // get total size
-    const size_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize;
-
-    // ui image/texture info
-    PakPageLump_s textureInfoChunk = pak->CreatePageLump(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
-
-    // cpu data
-    PakPageLump_s dataChunk = pak->CreatePageLump(textureCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
-
-    rmem tiBuf(textureInfoChunk.data);
+    // ui image offset info
+    PakPageLump_s offsetLump = pak->CreatePageLump(textureOffsetsDataSize, SF_CPU | SF_CLIENT, 32);
+    rmem ofBuf(offsetLump.data);
 
     // set texture offset page index and offset
-    pHdr->pTextureOffsets = textureInfoChunk.GetPointer();
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureOffsets)));
+    pHdr->pTextureOffsets = offsetLump.GetPointer();
+    pak->AddPointer(hdrLump.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureOffsets)));
 
     ////////////////////
     // IMAGE OFFSETS
@@ -92,27 +96,36 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
 
         // this doesn't affect legion but does affect game?
         //uiio.InitUIImageOffset(startX, startY, endX, endY);
-        tiBuf.write(uiio);
+        ofBuf.write(uiio);
     }
+
+    const size_t textureDimensionsDataSize = sizeof(uint16_t) * 2 * textureCount;
+    const size_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * textureCount;
+
+    // note: aligned to 4 if we do not have UIImageAtlasHeader_t::unkCount
+    // (which needs to be reversed still). Else this lump must reside in a
+    // page that is aligned to 16.
+    PakPageLump_s infoLump = pak->CreatePageLump(textureDimensionsDataSize + textureHashesDataSize, SF_CPU | SF_CLIENT, unkCount > 0 ? 16 : 4);
+    rmem ifBuf(infoLump.data);
 
     ///////////////////////
     // IMAGE DIMENSIONS
     // set texture dimensions page index and offset
-    pHdr->pTextureDimensions = textureInfoChunk.GetPointer(textureOffsetsDataSize);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureDimensions)));
+    pHdr->pTextureDimensions = infoLump.GetPointer();
+    pak->AddPointer(hdrLump.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureDimensions)));
 
     for (const rapidjson::Value& it : textureArray)
     {
         const uint16_t width = (uint16_t)JSON_GetNumberRequired<int>(it, "width");
         const uint16_t height = (uint16_t)JSON_GetNumberRequired<int>(it, "height");
 
-        tiBuf.write<uint16_t>(width);
-        tiBuf.write<uint16_t>(height);
+        ifBuf.write<uint16_t>(width);
+        ifBuf.write<uint16_t>(height);
     }
 
     // set texture hashes page index and offset
-    pHdr->pTextureHashes = textureInfoChunk.GetPointer(textureOffsetsDataSize + textureDimensionsDataSize);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureHashes)));
+    pHdr->pTextureHashes = infoLump.GetPointer(textureDimensionsDataSize);
+    pak->AddPointer(hdrLump.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureHashes)));
 
     // TODO: is this used?
     //uint32_t nextStringTableOffset = 0;
@@ -127,15 +140,17 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
         const char* const texturePath = pathIt->value.GetString();
         const uint32_t pathHash = RTech::StringToUIMGHash(texturePath);
 
-        tiBuf.write(pathHash);
+        ifBuf.write(pathHash);
 
         // offset into the path table for this texture - not really needed since we don't write the image names
-        tiBuf.write(0ul);
+        ifBuf.write(0ul);
 
         //nextStringTableOffset += textIt->value.GetStringLength();
     }
 
-    rmem uvBuf(dataChunk.data);
+    // cpu data
+    PakPageLump_s uvLump = pak->CreatePageLump(textureCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
+    rmem uvBuf(uvLump.data);
 
     //////////////
     // IMAGE UVS
@@ -157,8 +172,8 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
         uvBuf.write(uiiu);
     }
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
-    asset.SetHeaderPointer(hdrChunk.data);
+    asset.InitAsset(assetPath, assetGuid, hdrLump.GetPointer(), hdrLump.size, uvLump.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
+    asset.SetHeaderPointer(hdrLump.data);
 
     asset.version = UIMG_VERSION;
     asset.pageEnd = pak->GetNumPages(); // number of the highest page that the asset references pageidx + 1
