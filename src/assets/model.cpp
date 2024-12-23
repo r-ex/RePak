@@ -97,7 +97,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
 {
     // the model name is aligned to 1 byte, but the guid ref block is aligned
     // to 8, we have to pad the name buffer to align the guid ref block. if
-    // we have no guid ref blocks, the entire chunk will be aligned to 1 byte.
+    // we have no guid ref blocks, the entire lump will be aligned to 1 byte.
     const size_t modelNameBufLen = strlen(assetPath) + 1;
     const size_t alignedNameBufLen = IALIGN8(modelNameBufLen);
 
@@ -131,7 +131,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
 
             for (uint32_t i = 0; i < animrigCount; ++i)
             {
-                const size_t offset = base + (sizeof(PakGuid_t) * i);
+                const size_t offset = base + (i * sizeof(PakGuid_t));
                 const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.data[offset]);
 
                 Pak_RegisterGuidRefAtOffset(pak, guid, offset, intermediateChunk, asset);
@@ -152,7 +152,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
 
             for (uint32_t i = 0; i < sequenceCount; ++i)
             {
-                const size_t offset = base + (sizeof(PakGuid_t) * i);
+                const size_t offset = base + (i * sizeof(PakGuid_t));
                 const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.data[offset]);
 
                 Pak_RegisterGuidRefAtOffset(pak, guid, offset, intermediateChunk, asset);
