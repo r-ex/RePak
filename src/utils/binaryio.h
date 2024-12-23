@@ -24,12 +24,12 @@ public:
 	std::streampos TellGet();
 	std::streampos TellPut();
 
-	void SeekGet(const std::streampos offset, const std::ios_base::seekdir way = std::ios::beg);
-	void SeekPut(const std::streampos offset, const std::ios_base::seekdir way = std::ios::beg);
-	void Seek(const std::streampos offset, const std::ios_base::seekdir way = std::ios::beg);
+	void SeekGet(const std::streamoff offset, const std::ios_base::seekdir way = std::ios::beg);
+	void SeekPut(const std::streamoff offset, const std::ios_base::seekdir way = std::ios::beg);
+	void Seek(const std::streamoff offset, const std::ios_base::seekdir way = std::ios::beg);
 
 	const std::filebuf* GetData() const;
-	const std::streampos GetSize() const;
+	const std::streamoff GetSize() const;
 
 	bool IsReadMode() const;
 	bool IsWriteMode() const;
@@ -110,7 +110,7 @@ public:
 
 private:
 	std::fstream            m_stream; // I/O stream.
-	std::streampos          m_size;   // File size.
+	std::streamoff          m_size;   // File size.
 	std::ios_base::openmode m_flags;  // Stream flags.
 	Mode_e                  m_mode;   // Stream mode.
 };

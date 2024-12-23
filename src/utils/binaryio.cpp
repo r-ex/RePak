@@ -118,17 +118,17 @@ std::streampos BinaryIO::TellPut()
 // Input  : offset - 
 //			way - 
 //-----------------------------------------------------------------------------
-void BinaryIO::SeekGet(const std::streampos offset, const std::ios_base::seekdir way)
+void BinaryIO::SeekGet(const std::streamoff offset, const std::ios_base::seekdir way)
 {
 	assert(IsReadMode());
 	m_stream.seekg(offset, way);
 }
-void BinaryIO::SeekPut(const std::streampos offset, const std::ios_base::seekdir way)
+void BinaryIO::SeekPut(const std::streamoff offset, const std::ios_base::seekdir way)
 {
 	assert(IsWriteMode());
 
 	m_stream.seekp(offset, way);
-	const std::streampos newOffset = m_stream.tellp();
+	const std::streamoff newOffset = m_stream.tellp();
 
 	// seekp writes padding when we go beyond eof, therefore we should update
 	// the size in case this happens.
@@ -136,7 +136,7 @@ void BinaryIO::SeekPut(const std::streampos offset, const std::ios_base::seekdir
 		m_size = newOffset;
 
 }
-void BinaryIO::Seek(const std::streampos offset, const std::ios_base::seekdir way)
+void BinaryIO::Seek(const std::streamoff offset, const std::ios_base::seekdir way)
 {
 	if (IsReadMode())
 		SeekGet(offset, way);
@@ -157,7 +157,7 @@ const std::filebuf* BinaryIO::GetData() const
 // Purpose: returns the data size
 // Output : std::streampos
 //-----------------------------------------------------------------------------
-const std::streampos BinaryIO::GetSize() const
+const std::streamoff BinaryIO::GetSize() const
 {
 	return m_size;
 }
