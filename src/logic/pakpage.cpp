@@ -28,11 +28,8 @@ CPakPageBuilder::~CPakPageBuilder()
 // is also as close as possible to requested. If no slabs can be found with
 // requested flags, a new one will be created.
 //-----------------------------------------------------------------------------
-PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align, const int size)
+PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align)
 {
-	// Caller must provide the aligned size.
-	assert((IALIGN(size, align) - size) == 0);
-
 	PakSlab_s* toReturn = nullptr;
 	int lastAlignDiff = INT32_MAX;
 
@@ -74,7 +71,6 @@ PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align, c
 		if (header.alignment < align)
 			header.alignment = align;
 
-		header.dataSize += size;
 		return *toReturn;
 	}
 
@@ -84,7 +80,7 @@ PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align, c
 	newSegment.index = static_cast<int>(m_slabs.size() - 1);
 	newSegment.header.flags = flags;
 	newSegment.header.alignment = align;
-	newSegment.header.dataSize = size;
+	newSegment.header.dataSize = 0;
 
 	return newSegment;
 }
@@ -100,7 +96,7 @@ PakPage_s& CPakPageBuilder::FindOrCreatePage(const int flags, const int align, c
 	// Caller must provide the aligned size.
 	assert((IALIGN(size, align) - size) == 0);
 
-	PakSlab_s& slab = FindOrCreateSlab(flags, align, size);
+	PakSlab_s& slab = FindOrCreateSlab(flags, align);
 
 	PakPage_s* toReturn = nullptr;
 	int lastAlignDiff = INT32_MAX;
@@ -147,7 +143,6 @@ PakPage_s& CPakPageBuilder::FindOrCreatePage(const int flags, const int align, c
 		if (header.alignment < align)
 			header.alignment = align;
 
-		header.dataSize += size;
 		return *toReturn;
 	}
 
@@ -157,7 +152,7 @@ PakPage_s& CPakPageBuilder::FindOrCreatePage(const int flags, const int align, c
 	page.flags = flags;
 	page.header.slabIndex = slab.index;
 	page.header.alignment = align;
-	page.header.dataSize = size;
+	page.header.dataSize = 0;
 
 	return page;
 }
@@ -172,8 +167,10 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 	assert(align != 0 && align < UINT8_MAX);
 	assert(IsPowerOfTwo(align));
 
-	const int alignedSize = IALIGN(size, align);
-	PakPage_s& page = FindOrCreatePage(flags, align, alignedSize);
+	const int sizeAligned = IALIGN(size, align);
+
+	PakPage_s& page = FindOrCreatePage(flags, align, sizeAligned);
+	PakSlab_s& slab = m_slabs[page.header.slabIndex];
 
 	const int pagePadAmount = IALIGN(page.header.dataSize, align) - page.header.dataSize;
 
@@ -191,25 +188,11 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 
 		// Grow the slab and page size to accommodate the page align padding.
 		page.header.dataSize += pagePadAmount;
-		m_slabs[page.header.slabIndex].header.dataSize += pagePadAmount;
+		slab.header.dataSize += pagePadAmount;
 	}
 
-	const int lumpPadAmount = alignedSize - size;
-
-	// If the lump is smaller than its size with requested alignment, we should
-	// pad the remainder out. Unlike the page padding above, we shouldn't grow
-	// the slab and page sizes because the aligned size was already provided to
-	// FindOrCreatePage. That function expects the full aligned size because it
-	// has to check if it fits to be merged in a page with matching flags.
-	if (lumpPadAmount > 0)
-	{
-		PakPageLump_s& pad = page.lumps.emplace_back();
-
-		pad.data = nullptr;
-		pad.size = lumpPadAmount;
-		pad.alignment = align;
-		pad.pageInfo = PagePtr_t::NullPtr();
-	}
+	page.header.dataSize += sizeAligned;
+	slab.header.dataSize += sizeAligned;
 
 	char* targetBuf;
 
@@ -224,6 +207,13 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 	else
 		targetBuf = reinterpret_cast<char*>(buf);
 
+	const int lumpPadAmount = sizeAligned - size;
+
+	// Reserve for 2 because we need to add a padding lump afterwards to pad the
+	// data lump out to its alignment boundary, this avoids reallocation.
+	if (lumpPadAmount > 0)
+		page.lumps.reserve(page.lumps.size() + 2);
+
 	PakPageLump_s& lump = page.lumps.emplace_back();
 
 	lump.data = targetBuf;
@@ -231,9 +221,23 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 	lump.alignment = page.header.alignment;
 
 	lump.pageInfo.index = page.index;
-	lump.pageInfo.offset = page.header.dataSize - size;
+	lump.pageInfo.offset = page.header.dataSize - sizeAligned;
 
 	assert(lump.pageInfo.offset >= 0);
+
+	// If the lump is smaller than its size with requested alignment, we should
+	// pad the remainder out. Unlike the page padding above, we shouldn't grow
+	// the slab and page sizes because the aligned size was already added.
+	if (lumpPadAmount > 0)
+	{
+		PakPageLump_s& pad = page.lumps.emplace_back();
+
+		pad.data = nullptr;
+		pad.size = lumpPadAmount;
+		pad.alignment = align;
+		pad.pageInfo = PagePtr_t::NullPtr();
+	}
+
 	return lump;
 }
 

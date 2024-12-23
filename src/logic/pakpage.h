@@ -74,7 +74,7 @@ public:
 	void WritePageData(BinaryIO& out) const;
 
 private:
-	PakSlab_s& FindOrCreateSlab(const int flags, const int align, const int size);
+	PakSlab_s& FindOrCreateSlab(const int flags, const int align);
 	PakPage_s& FindOrCreatePage(const int flags, const int align, const int size);
 
 private:
