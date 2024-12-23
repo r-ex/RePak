@@ -264,8 +264,7 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
         streamedVgOffset = UINT64_MAX;
 
     // the last chunk is the actual data chunk that contains the rmdl
-    const size_t alignedModelDataSize = IALIGN64(studiohdr->length); // todo(amos): should we just let CreateDataChunk align the provided size?
-    PakPageLump_s dataChunk = pak->CreatePageLump(alignedModelDataSize, SF_CPU, 64, rmdlBuf);
+    PakPageLump_s dataChunk = pak->CreatePageLump(studiohdr->length, SF_CPU, 64, rmdlBuf);
 
     pHdr->pData = dataChunk.GetPointer();
     pak->AddPointer(hdrChunk.GetPointer(offsetof(ModelAssetHeader_t, pData)));
