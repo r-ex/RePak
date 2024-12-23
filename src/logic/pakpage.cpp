@@ -33,7 +33,7 @@ PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align)
 	PakSlab_s* toReturn = nullptr;
 	int lastAlignDiff = INT32_MAX;
 
-	// Try and find a segment that has the same flags, and the closest alignment
+	// Try and find a slab that has the same flags, and the closest alignment
 	// of request.
 	for (size_t i = 0; i < m_slabs.size(); i++)
 	{
@@ -64,7 +64,7 @@ PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align)
 	{
 		PakSlabHdr_s& header = toReturn->header;
 
-		// If the segment's alignment is less than our requested alignment, we
+		// If the slab's alignment is less than our requested alignment, we
 		// can increase it as increasing the alignment will still allow the
 		// previous data to be aligned to the same boundary (all alignments are
 		// powers of two).
@@ -74,15 +74,15 @@ PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align)
 		return *toReturn;
 	}
 
-	// If we didn't have a close match, create a new segment.
-	PakSlab_s& newSegment = m_slabs.emplace_back();
+	// If we didn't have a close match, create a new slab.
+	PakSlab_s& newSlab = m_slabs.emplace_back();
 
-	newSegment.index = static_cast<int>(m_slabs.size() - 1);
-	newSegment.header.flags = flags;
-	newSegment.header.alignment = align;
-	newSegment.header.dataSize = 0;
+	newSlab.index = static_cast<int>(m_slabs.size() - 1);
+	newSlab.header.flags = flags;
+	newSlab.header.alignment = align;
+	newSlab.header.dataSize = 0;
 
-	return newSegment;
+	return newSlab;
 }
 
 //-----------------------------------------------------------------------------
@@ -146,15 +146,15 @@ PakPage_s& CPakPageBuilder::FindOrCreatePage(const int flags, const int align, c
 		return *toReturn;
 	}
 
-	PakPage_s& page = m_pages.emplace_back();
+	PakPage_s& newPage = m_pages.emplace_back();
 
-	page.index = static_cast<int>(m_pages.size() - 1);
-	page.flags = flags;
-	page.header.slabIndex = slab.index;
-	page.header.alignment = align;
-	page.header.dataSize = 0;
+	newPage.index = static_cast<int>(m_pages.size() - 1);
+	newPage.flags = flags;
+	newPage.header.slabIndex = slab.index;
+	newPage.header.alignment = align;
+	newPage.header.dataSize = 0;
 
-	return page;
+	return newPage;
 }
 
 //-----------------------------------------------------------------------------
