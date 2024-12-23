@@ -79,16 +79,18 @@ public:
 	// rpak
 	//----------------------------------------------------------------------------
 	void WriteHeader(BinaryIO& io);
-	void WriteAssets(BinaryIO& io);
+	void WriteAssetDescriptors(BinaryIO& io);
+	void WriteAssetUses(BinaryIO& io);
+	void WriteAssetDependents(BinaryIO& io);
 
 	size_t WriteStarpakPaths(BinaryIO& out, const PakStreamSet_e set);
-	void WritePakDescriptors(BinaryIO& out);
+	void WritePagePointers(BinaryIO& out);
 
 	size_t EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount);
 
 	void GenerateInternalDependencies();
-	void GenerateFileRelations();
-	void GenerateGuidData();
+	void GenerateAssetDependents();
+	void GenerateAssetUses();
 
 	PakPageLump_s CreatePageLump(const size_t size, const int flags, const int alignment, void* const buf = nullptr);
 
@@ -133,9 +135,7 @@ private:
 	CPakPageBuilder m_pageBuilder;
 
 	std::vector<PakAsset_t> m_Assets;
-	std::vector<PagePtr_t> m_vPakDescriptors;
-	std::vector<PagePtr_t> m_vGuidDescriptors;
-	std::vector<uint32_t> m_vFileRelations;
+	std::vector<PagePtr_t> m_pagePointers;
 
 	std::vector<std::string> m_mandatoryStreamFilePaths;
 	std::vector<std::string> m_optionalStreamFilePaths;

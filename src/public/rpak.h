@@ -239,10 +239,10 @@ public:
 	std::shared_ptr<void> _publicData;
 
 	// vector of indexes for local assets that use this asset
-	std::vector<unsigned int> _relations;
+	std::vector<unsigned int> _dependents;
 
 	// guid reference pointers
-	std::vector<PakGuidRef_s> _guids;
+	std::vector<PakGuidRef_s> _uses;
 
 	FORCEINLINE void SetHeaderPointer(void* pHeader) { this->header = pHeader; };
 
@@ -255,11 +255,11 @@ public:
 
 	char* const PublicData() { return reinterpret_cast<char*>(_publicData.get()); };
 
-	FORCEINLINE void AddRelation(const unsigned int idx) { _relations.push_back({ idx }); };
-	FORCEINLINE void AddRelation(const size_t idx) { _relations.push_back({ static_cast<unsigned int>(idx) }); };
+	FORCEINLINE void AddDependent(const unsigned int idx) { _dependents.push_back({ idx }); };
+	FORCEINLINE void AddDependent(const size_t idx) { _dependents.push_back({ static_cast<unsigned int>(idx) }); };
 
-	FORCEINLINE void AddGuid(const PagePtr_t desc, const PakGuid_t assetGuid) { _guids.push_back({ desc, assetGuid }); };
-	FORCEINLINE void ExpandGuidBuf(const size_t amount) { _guids.reserve(_guids.size() + amount); }
+	FORCEINLINE void AddGuid(const PagePtr_t desc, const PakGuid_t assetGuid) { _uses.push_back({ desc, assetGuid }); };
+	FORCEINLINE void ExpandGuidBuf(const size_t amount) { _uses.reserve(_uses.size() + amount); }
 
 	FORCEINLINE bool IsType(uint32_t type) const
 	{

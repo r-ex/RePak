@@ -103,14 +103,14 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 //-----------------------------------------------------------------------------
 void CPakFileBuilder::AddPointer(int pageIdx, int pageOffset)
 {
-	PagePtr_t& refHdr = m_vPakDescriptors.emplace_back();
+	PagePtr_t& refHdr = m_pagePointers.emplace_back();
 	refHdr.index = pageIdx;
 	refHdr.offset = pageOffset;
 }
 
 void CPakFileBuilder::AddPointer(PagePtr_t ptr)
 {
-	m_vPakDescriptors.push_back(ptr);
+	m_pagePointers.push_back(ptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -179,14 +179,8 @@ void CPakFileBuilder::WriteHeader(BinaryIO& io)
 	m_Header.memSlabCount = m_pageBuilder.GetSlabCount();
 	m_Header.memPageCount = m_pageBuilder.GetPageCount();
 
-	assert(m_vPakDescriptors.size() <= UINT32_MAX);
-	m_Header.pointerCount = static_cast<uint32_t>(m_vPakDescriptors.size());
-
-	assert(m_vGuidDescriptors.size() <= UINT32_MAX);
-	m_Header.usesCount = static_cast<uint32_t>(m_vGuidDescriptors.size());
-
-	assert(m_vFileRelations.size() <= UINT32_MAX);
-	m_Header.dependentsCount = static_cast<uint32_t>(m_vFileRelations.size());
+	assert(m_pagePointers.size() <= UINT32_MAX);
+	m_Header.pointerCount = static_cast<uint32_t>(m_pagePointers.size());
 
 	const uint16_t version = m_Header.fileVersion;
 
@@ -236,7 +230,7 @@ void CPakFileBuilder::WriteHeader(BinaryIO& io)
 //-----------------------------------------------------------------------------
 // purpose: writes assets to file stream
 //-----------------------------------------------------------------------------
-void CPakFileBuilder::WriteAssets(BinaryIO& io)
+void CPakFileBuilder::WriteAssetDescriptors(BinaryIO& io)
 {
 	for (PakAsset_t& it : m_Assets)
 	{
@@ -285,12 +279,32 @@ size_t CPakFileBuilder::WriteStarpakPaths(BinaryIO& out, const PakStreamSet_e se
 //-----------------------------------------------------------------------------
 // purpose: writes pak descriptors to file stream
 //-----------------------------------------------------------------------------
-void CPakFileBuilder::WritePakDescriptors(BinaryIO& out)
+void CPakFileBuilder::WritePagePointers(BinaryIO& out)
 {
-	// pointers must be written in order otherwise resolving them causes an access violation
-	std::sort(m_vPakDescriptors.begin(), m_vPakDescriptors.end());
+	// pointers must be written in order otherwise the runtime crashes as the
+	// decoding depends on their order.
+	std::sort(m_pagePointers.begin(), m_pagePointers.end());
 
-	WRITE_VECTOR(out, m_vPakDescriptors);
+	for (const PagePtr_t& ptr : m_pagePointers)
+		out.Write(ptr);
+}
+
+void CPakFileBuilder::WriteAssetUses(BinaryIO& out)
+{
+	for (const PakAsset_t& it : m_Assets)
+	{
+		for (const PakGuidRef_s& ref : it._uses)
+			out.Write(ref.ptr);
+	}
+}
+
+void CPakFileBuilder::WriteAssetDependents(BinaryIO& out)
+{
+	for (const PakAsset_t& it : m_Assets)
+	{
+		for (const unsigned int dependent : it._dependents)
+			out.Write(dependent);
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -304,7 +318,7 @@ void CPakFileBuilder::GenerateInternalDependencies()
 		PakAsset_t& it = m_Assets[i];
 		std::set<PakGuid_t> processed;
 
-		for (const PakGuidRef_s& ref : it._guids)
+		for (const PakGuidRef_s& ref : it._uses)
 		{
 			// an asset can use a dependency more than once, but we should only
 			// increment the dependency counter once per unique dependency!
@@ -315,7 +329,7 @@ void CPakFileBuilder::GenerateInternalDependencies()
 
 			if (dependency)
 			{
-				dependency->AddRelation(i);
+				dependency->AddDependent(i);
 				it.internalDependencyCount++;
 			}
 		}
@@ -323,48 +337,55 @@ void CPakFileBuilder::GenerateInternalDependencies()
 }
 
 //-----------------------------------------------------------------------------
-// purpose: populates file relations vector with combined asset relation data
+// purpose: 
 //-----------------------------------------------------------------------------
-void CPakFileBuilder::GenerateFileRelations()
+void CPakFileBuilder::GenerateAssetUses()
 {
-	for (auto& it : m_Assets)
+	size_t totalUsesCount = 0;
+
+	for (PakAsset_t& it : m_Assets)
 	{
-		assert(it._relations.size() <= UINT32_MAX);
-		it.dependentsCount = static_cast<uint32_t>(it._relations.size());
+		const size_t numUses = it._uses.size();
 
-		// todo: check why this is different to dependencies index
-		it.dependentsIndex = static_cast<uint32_t>(m_vFileRelations.size());
+		if (numUses > 0)
+		{
+			assert(numUses <= UINT32_MAX);
 
-		for (int i = 0; i < it._relations.size(); ++i)
-			m_vFileRelations.push_back(it._relations[i]);
+			it.usesIndex = static_cast<uint32_t>(totalUsesCount);
+			it.usesCount = static_cast<uint32_t>(numUses);
+
+			// pointers must be sorted, same principle as WritePagePointers.
+			std::sort(it._uses.begin(), it._uses.end());
+			totalUsesCount += numUses;
+		}
 	}
 
-	assert(m_vFileRelations.size() <= UINT32_MAX);
-
-	m_Header.dependentsCount = static_cast<uint32_t>(m_vFileRelations.size());
+	m_Header.usesCount = static_cast<uint32_t>(totalUsesCount);
 }
 
 //-----------------------------------------------------------------------------
-// purpose: 
+// purpose: populates file relations vector with combined asset relation data
 //-----------------------------------------------------------------------------
-void CPakFileBuilder::GenerateGuidData()
+void CPakFileBuilder::GenerateAssetDependents()
 {
-	for (auto& it : m_Assets)
+	size_t totalDependentsCount = 0;
+
+	for (PakAsset_t& it : m_Assets)
 	{
-		assert(it._guids.size() <= UINT32_MAX);
+		const size_t numDependents = it._dependents.size();
 
-		it.usesCount = static_cast<uint32_t>(it._guids.size());
-		it.usesIndex = it.usesCount == 0 ? 0 : static_cast<uint32_t>(m_vGuidDescriptors.size());
+		if (numDependents > 0)
+		{
+			assert(numDependents <= UINT32_MAX);
 
-		std::sort(it._guids.begin(), it._guids.end());
+			it.dependentsIndex = static_cast<uint32_t>(totalDependentsCount);
+			it.dependentsCount = static_cast<uint32_t>(numDependents);
 
-		for (int i = 0; i < it._guids.size(); ++i)
-			m_vGuidDescriptors.push_back({ it._guids[i].ptr });
+			totalDependentsCount += numDependents;
+		}
 	}
 
-	assert(m_vGuidDescriptors.size() <= UINT32_MAX);
-
-	m_Header.usesCount = static_cast<uint32_t>(m_vGuidDescriptors.size());
+	m_Header.dependentsCount = static_cast<uint32_t>(totalDependentsCount);
 }
 
 PakPageLump_s CPakFileBuilder::CreatePageLump(const size_t size, const int flags, const int alignment, void* const buf)
@@ -788,19 +809,20 @@ void CPakFileBuilder::BuildFromMap(const string& mapPath)
 	GenerateInternalDependencies();
 
 	// generate file relation vector to be written
-	GenerateFileRelations();
-	GenerateGuidData();
+	GenerateAssetUses();
+	GenerateAssetDependents();
 
 	m_pageBuilder.PadSlabsAndPages();
 
 	// write the non-paged data to the file first
 	m_pageBuilder.WriteSlabHeaders(out);
 	m_pageBuilder.WritePageHeaders(out);
-	WritePakDescriptors(out);
-	WriteAssets(out);
 
-	WRITE_VECTOR(out, m_vGuidDescriptors);
-	WRITE_VECTOR(out, m_vFileRelations);
+	WritePagePointers(out);
+	WriteAssetDescriptors(out);
+
+	WriteAssetUses(out);
+	WriteAssetDependents(out);
 
 	// now the actual paged data
 	m_pageBuilder.WritePageData(out);

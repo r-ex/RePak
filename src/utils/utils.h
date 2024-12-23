@@ -50,16 +50,6 @@ private:
 #define XTIME_SCOPE(x, y) XTIME_SCOPE2(x, y)
 #define TIME_SCOPE(x) XTIME_SCOPE(x, __COUNTER__)
 
-#define WRITE_VECTOR(out, dataVector) for (auto it = dataVector.begin(); it != dataVector.end(); ++it) \
-{ \
-	out.Write(*it); \
-}
-
-#define WRITE_VECTOR_PTRIO(out, dataVector) for (auto it = dataVector.begin(); it != dataVector.end(); ++it) \
-{ \
-	out->Write(*it); \
-}
-
 #define IALIGN(a,b)  (((a) + ((b)-1)) & ~((b)-1))
 
 #define IALIGN2(a)   IALIGN(a,2)
