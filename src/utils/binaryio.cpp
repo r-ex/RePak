@@ -102,12 +102,12 @@ void BinaryIO::Flush()
 // Purpose: gets the position of the current character in the stream
 // Output : std::streampos
 //-----------------------------------------------------------------------------
-std::streampos BinaryIO::TellGet()
+std::streamoff BinaryIO::TellGet()
 {
 	assert(IsReadMode());
 	return m_stream.tellg();
 }
-std::streampos BinaryIO::TellPut()
+std::streamoff BinaryIO::TellPut()
 {
 	assert(IsWriteMode());
 	return m_stream.tellp();

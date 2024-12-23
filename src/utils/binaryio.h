@@ -21,8 +21,8 @@ public:
 	void Close();
 	void Flush();
 
-	std::streampos TellGet();
-	std::streampos TellPut();
+	std::streamoff TellGet();
+	std::streamoff TellPut();
 
 	void SeekGet(const std::streamoff offset, const std::ios_base::seekdir way = std::ios::beg);
 	void SeekPut(const std::streamoff offset, const std::ios_base::seekdir way = std::ios::beg);
