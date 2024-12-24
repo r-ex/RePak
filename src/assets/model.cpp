@@ -132,6 +132,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
                 const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.data[offset]);
 
                 Pak_RegisterGuidRefAtOffset(guid, offset, intermediateChunk, asset);
+                curIndex++;
             }
         }
 
