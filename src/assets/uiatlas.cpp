@@ -15,8 +15,6 @@ extern bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t a
 // - uv data       TEMP_CLIENT (align=4)
 void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    PakAsset_t asset;
-
     // get the info for the ui atlas image
     const char* const atlasPath = JSON_GetValueRequired<const char*>(mapEntry, "atlas");
     const PakGuid_t atlasGuid = RTech::StringToGuid(atlasPath);
@@ -25,6 +23,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     if (!Texture_AutoAddTexture(pak, atlasGuid, atlasPath, true/*streaming disabled as uimg can not be streamed*/))
         Error("Atlas asset \"%s\" with GUID 0x%llX was already added as 'txtr' asset; it can only be added through an 'uimg' asset.\n", atlasPath, atlasGuid);
 
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
     PakAsset_t* const atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 
     // this really shouldn't be triggered, since the texture is either automatically added above, or a fatal error is thrown
@@ -169,12 +168,8 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
         uvBuf.write(uiiu);
     }
 
-    asset.InitAsset(assetPath, assetGuid, hdrLump.GetPointer(), hdrLump.size, uvLump.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
+    asset.InitAsset(hdrLump.GetPointer(), hdrLump.size, uvLump.GetPointer(), -1, -1, UIMG_VERSION, AssetType::UIMG);
     asset.SetHeaderPointer(hdrLump.data);
 
-    asset.version = UIMG_VERSION;
-    asset.pageEnd = pak->GetNumPages(); // number of the highest page that the asset references pageidx + 1
-
-    // add the asset entry
-    pak->PushAsset(asset);
+    pak->FinishAsset();
 }

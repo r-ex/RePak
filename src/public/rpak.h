@@ -154,22 +154,21 @@ struct PakAsset_t
 		internalDependencyCount = 1;
 	};
 
-	void InitAsset(const char* const assetName,
-		const PakGuid_t nGuid,
+	void InitAsset(
 		const PagePtr_t pHeadPtr,
 		const uint32_t nHeaderSize,
 		const PagePtr_t pCpuPtr,
-		const uint64_t nStarpakOffset,
-		const uint64_t nOptStarpakOffset,
+		const int64_t nStarpakOffset,
+		const int64_t nOptStarpakOffset,
+		const uint32_t nVersion,
 		const AssetType type)
 	{
-		this->name = assetName;
-		this->guid = nGuid;
 		this->headPtr = pHeadPtr;
 		this->cpuPtr = pCpuPtr;
 		this->starpakOffset = nStarpakOffset;
 		this->optStarpakOffset = nOptStarpakOffset;
 		this->headDataSize = nHeaderSize;
+		this->version = nVersion;
 		this->id = type;
 	}
 
@@ -195,11 +194,8 @@ struct PakAsset_t
 	// offset to any available streamed data
 	// starpakOffset    = "mandatory" starpak file offset
 	// optStarpakOffset = "optional" starpak file offset
-	// 
-	// in reality both are mandatory but respawn likes to do a little trolling
-	// so "opt" starpaks are a thing
-	__int64 starpakOffset = -1;
-	__int64 optStarpakOffset = -1;
+	int64_t starpakOffset = -1;
+	int64_t optStarpakOffset = -1;
 
 	uint16_t pageEnd = 0; // highest mem page used by this asset
 
@@ -223,7 +219,7 @@ struct PakAsset_t
 
 	// this isn't always changed when the asset gets changed
 	// but respawn calls it a version so i will as well
-	int version = 0;
+	uint32_t version = 0;
 
 	// see AssetType enum
 	AssetType id = AssetType::NONE;

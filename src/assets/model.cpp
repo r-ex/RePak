@@ -196,8 +196,6 @@ extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFileBuilder* const pak, uint32
 // - rmdl          CPU         (align=64) 64 bit aligned because collision data is loaded with aligned SIMD instructions.
 void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    PakAsset_t asset;
-
     // deal with dependencies first; auto-add all animation sequences.
     uint32_t sequenceCount = 0;
     PakGuid_t* const sequenceRefs = AnimSeq_AutoAddSequenceRefs(pak, &sequenceCount, mapEntry);
@@ -206,7 +204,9 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
     uint32_t animrigCount = 0;
     PakGuid_t* const animrigRefs = Model_AddAnimRigRefs(&animrigCount, mapEntry);
 
-    // from here we start with creating chunks for the target model asset.
+    // from here we start with creating lumps for the target model asset.
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
+
     PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(ModelAssetHeader_t), SF_HEAD, 8);
     ModelAssetHeader_t* const pHdr = reinterpret_cast<ModelAssetHeader_t*>(hdrChunk.data);
 
@@ -308,11 +308,8 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
         }
     }
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), streamedVgOffset, UINT64_MAX, AssetType::RMDL);
+    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), streamedVgOffset, -1, RMDL_VERSION, AssetType::RMDL);
     asset.SetHeaderPointer(hdrChunk.data);
-  
-    asset.version = RMDL_VERSION;
-    asset.pageEnd = pak->GetNumPages();
 
-    pak->PushAsset(asset);
+    pak->FinishAsset();
 }

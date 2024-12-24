@@ -62,7 +62,7 @@ void ShaderSet_InternalCreateSet(CPakFileBuilder* const pak, const char* const a
 	ShaderSet_AutoAddEmbeddedShader(pak, shaderSet->vertexShader, shaderSet->vertexShaderGuid, assetVersion);
 	ShaderSet_AutoAddEmbeddedShader(pak, shaderSet->pixelShader, shaderSet->pixelShaderGuid, assetVersion);
 
-	PakAsset_t asset;
+	PakAsset_t& asset = pak->BeginAsset(shaderSetGuid, assetPath);
 
 	PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(ShaderSetAssetHeader_t), SF_HEAD, 8);
 	ShaderSetAssetHeader_t* const hdr = reinterpret_cast<ShaderSetAssetHeader_t*>(hdrChunk.data);
@@ -117,16 +117,11 @@ void ShaderSet_InternalCreateSet(CPakFileBuilder* const pak, const char* const a
 	hdr->numResources = shaderSet->numResources;
 
 	asset.InitAsset(
-		assetPath,
-		shaderSetGuid,
 		hdrChunk.GetPointer(), hdrChunk.size,
-		PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::SHDS);
+		PagePtr_t::NullPtr(), -1, -1, assetVersion, AssetType::SHDS);
 	asset.SetHeaderPointer(hdrChunk.data);
 
-	asset.version = assetVersion;
-	asset.pageEnd = pak->GetNumPages();
-
-	pak->PushAsset(asset);
+	pak->FinishAsset();
 }
 
 // TODO:

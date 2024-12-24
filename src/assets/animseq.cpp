@@ -7,7 +7,7 @@
 // - data   CPU         (align=1) name, then rmdl. unlike models, this is aligned to 1 since we don't have BVH4 collision data here.
 static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
-    PakAsset_t asset;
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
     const std::string rseqFilePath = pak->GetAssetPath() + assetPath;
 
     // begin rseq input
@@ -55,13 +55,10 @@ static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid
         Pak_RegisterGuidRefAtOffset(autolayer->guid, offset, dataLump, asset);
     }
 
-    asset.InitAsset(assetPath, assetGuid, hdrLump.GetPointer(), hdrLump.size, PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ASEQ);
+    asset.InitAsset(hdrLump.GetPointer(), hdrLump.size, PagePtr_t::NullPtr(), -1, -1, ASEQ_VERSION, AssetType::ASEQ);
     asset.SetHeaderPointer(hdrLump.data);
 
-    asset.version = 7;
-    asset.pageEnd = pak->GetNumPages();
-
-    pak->PushAsset(asset);
+    pak->FinishAsset();
 }
 
 PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFileBuilder* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry)

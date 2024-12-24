@@ -2,10 +2,13 @@
 #include "logic/pakfile.h"
 
 // asset versions
+#define PTCH_VERSION 1
 #define TXTR_VERSION 8
 #define UIMG_VERSION 10
 //#define DTBL_VERSION 1
 #define RMDL_VERSION 10
+#define ARIG_VERSION 4
+#define ASEQ_VERSION 7
 #define MATL_VERSION 15
 
 namespace Assets

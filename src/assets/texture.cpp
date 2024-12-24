@@ -6,6 +6,8 @@
 // materialGeneratedTexture - whether this texture's creation was invoked by material automatic texture generation
 static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming)
 {
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
+
     const std::string textureFilePath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".dds");
     BinaryIO input;
 
@@ -243,16 +245,10 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
 
     delete[] optstreamedbuf;
 
-    PakAsset_t asset;
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, dataChunk.GetPointer(), mandatoryStreamDataOffset, optionalStreamDataOffset, AssetType::TXTR);
+    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, dataChunk.GetPointer(), mandatoryStreamDataOffset, optionalStreamDataOffset, TXTR_VERSION, AssetType::TXTR);
     asset.SetHeaderPointer(hdrChunk.data);
 
-    asset.version = TXTR_VERSION;
-    asset.pageEnd = pak->GetNumPages();
-
-    pak->PushAsset(asset);
-
-    input.Close();
+    pak->FinishAsset();
 }
 
 bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming)

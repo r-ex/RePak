@@ -508,7 +508,7 @@ static bool Material_OpenFile(CPakFileBuilder* const pak, const char* const asse
 static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath,
     MaterialAsset_t& matlAsset, const rapidjson::Value& matEntry, const rapidjson::Value::ConstMemberIterator texturesIt, const size_t textureCount)
 {
-    PakAsset_t asset;
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
 
     // header data chunk and generic struct
     PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
@@ -641,18 +641,16 @@ static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const Pa
 
     //////////////////////////////////////////
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
+    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, uberBufChunk.GetPointer(), -1, -1, 12, AssetType::MATL);
+    asset.SetHeaderPointer(hdrChunk.data);
 
-    asset.version = 12;
-    asset.pageEnd = pak->GetNumPages();
-
-    pak->PushAsset(asset);
+    pak->FinishAsset();
 }
 
 static void Material_InternalAddMaterialV15(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, 
     MaterialAsset_t& matlAsset, const rapidjson::Value& matEntry, const rapidjson::Value::ConstMemberIterator texturesIt, const size_t textureCount)
 {
-    PakAsset_t asset;
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
 
     // header data chunk and generic struct
     PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
@@ -753,13 +751,10 @@ static void Material_InternalAddMaterialV15(CPakFileBuilder* const pak, const Pa
 
     //////////////////////////////////////////
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
+    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, uberBufChunk.GetPointer(), -1, -1, 15, AssetType::MATL);
     asset.SetHeaderPointer(hdrChunk.data);
 
-    asset.version = 15;
-    asset.pageEnd = pak->GetNumPages();
-
-    pak->PushAsset(asset);
+    pak->FinishAsset();
 }
 
 static bool Material_InternalAddMaterial(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value* const mapEntry, const int assetVersion)

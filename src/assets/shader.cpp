@@ -130,6 +130,7 @@ template<typename ShaderAssetHeader_t>
 static void Shader_InternalAddShader(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, 
 									const PakGuid_t shaderGuid, const int assetVersion)
 {
+	PakAsset_t& asset = pak->BeginAsset(shaderGuid, assetPath);
 	PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(ShaderAssetHeader_t), SF_HEAD, 8);
 
 	ShaderAssetHeader_t* const hdr = reinterpret_cast<ShaderAssetHeader_t*>(hdrChunk.data);
@@ -155,21 +156,14 @@ static void Shader_InternalAddShader(CPakFileBuilder* const pak, const char* con
 	Shader_CreateFromMSW(pak, dataChunk, shaderData, shader, hdrChunk, hdr);
 	// =======================================
 
-	PakAsset_t asset;
 	asset.InitAsset(
-		assetPath,
-		shaderGuid,
 		hdrChunk.GetPointer(), hdrChunk.size,
-		dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::SHDR);
+		dataChunk.GetPointer(), -1, -1, assetVersion, AssetType::SHDR);
 
 	asset.SetHeaderPointer(hdrChunk.data);
-
-	asset.version = assetVersion;
 	asset.SetPublicData(shaderData);
 
-	asset.pageEnd = pak->GetNumPages();
-
-	pak->PushAsset(asset);
+	pak->FinishAsset();
 }
 
 static void Shader_AddShaderV8(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid)

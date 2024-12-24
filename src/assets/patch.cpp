@@ -4,8 +4,9 @@
 // only tested for apex, should be identical on tf2
 void Assets::AddPatchAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* assetPath, const rapidjson::Value& mapEntry)
 {
-    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(PatchAssetHeader_t), SF_HEAD, 8);
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
 
+    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(PatchAssetHeader_t), SF_HEAD, 8);
     PatchAssetHeader_t* const pHdr = reinterpret_cast<PatchAssetHeader_t*>(hdrChunk.data);
 
     rapidjson::Value::ConstMemberIterator entryIt;
@@ -59,15 +60,9 @@ void Assets::AddPatchAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid
         i++;
     }
 
-    // create and init the asset entry
-    PakAsset_t asset;
-
     // NOTE: the only Ptch asset in the game has guid 0x6fc6fa5ad8f8bc9c
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::PTCH);
+    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), -1, -1, PTCH_VERSION, AssetType::PTCH);
     asset.SetHeaderPointer(hdrChunk.data);
 
-    asset.version = 1;
-    asset.pageEnd = pak->GetNumPages();
-
-    pak->PushAsset(asset);
+    pak->FinishAsset();
 }

@@ -14,13 +14,13 @@ extern char* Model_ReadRMDLFile(const std::string& path, const uint64_t alignmen
 // - data   CPU         (align=8) name, rmdl then refs. name and rmdl are aligned to 1 byte, refs are 8 (padded from rmdl buffer)
 void Assets::AddAnimRigAsset_v4(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    PakAsset_t asset;
-
     // deal with dependencies first; auto-add all animation sequences.
     uint32_t sequenceCount = 0;
     PakGuid_t* const sequenceRefs = AnimSeq_AutoAddSequenceRefs(pak, &sequenceCount, mapEntry);
 
-    // from here we start with creating chunks for the target animrig asset.
+    // from here we start with creating lumps for the target animrig asset.
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
+
     PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(AnimRigAssetHeader_t), SF_HEAD, 8);
     AnimRigAssetHeader_t* const pHdr = reinterpret_cast<AnimRigAssetHeader_t*>(hdrChunk.data);
 
@@ -68,11 +68,8 @@ void Assets::AddAnimRigAsset_v4(CPakFileBuilder* const pak, const PakGuid_t asse
         }
     }
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::ARIG);
+    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), -1, -1, ARIG_VERSION, AssetType::ARIG);
     asset.SetHeaderPointer(hdrChunk.data);
 
-    asset.version = 4;
-    asset.pageEnd = pak->GetNumPages();
-
-    pak->PushAsset(asset);
+    pak->FinishAsset();
 }

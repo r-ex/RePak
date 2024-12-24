@@ -193,7 +193,7 @@ template <typename datatable_t>
 static void DataTable_AddDataTable(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     UNUSED(mapEntry);
-    PakAsset_t asset;
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
 
     const std::string datatableFile = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".csv");
     std::ifstream datatableStream(datatableFile);
@@ -261,20 +261,17 @@ static void DataTable_AddDataTable(CPakFileBuilder* const pak, const PakGuid_t a
     pak->AddPointer(hdrChunk, offsetof(datatable_v0_t, pRows), dataChunk, rowPodValuesBase);
 
     asset.InitAsset(
-        assetPath,
-        assetGuid,
         hdrChunk.GetPointer(), hdrChunk.size,
         dataChunk.GetPointer(rowPodValuesBase), // points to datatable_asset_t::pRow
-        UINT64_MAX, UINT64_MAX, AssetType::DTBL);
+        -1, -1, 
+        // rpak v7: v0
+        // rpak v8: v1
+        pak->GetVersion() <= 7 ? 0 : 1, 
+        AssetType::DTBL);
 
     asset.SetHeaderPointer(hdrChunk.data);
 
-    // rpak v7: v0
-    // rpak v8: v1
-    asset.version = pak->GetVersion() <= 7 ? 0 : 1;
-    asset.pageEnd = pak->GetNumPages();
-
-    pak->PushAsset(asset);
+    pak->FinishAsset();
 }
 
 void Assets::AddDataTableAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)

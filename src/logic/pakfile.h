@@ -101,7 +101,7 @@ public:
 	{
 		uint32_t assetIdx = UINT32_MAX;
 		PakAsset_t* match = GetAssetByGuid(asset.guid, &assetIdx, true);
-		if (match != nullptr)
+		if (match != nullptr && match != &asset)
 		{
 			Error("Attempted to create asset with a non-unique GUID.\n"
 				"Assets at index %u (%s) and %u (%s) have the same GUID (%llx).\n",
@@ -112,10 +112,30 @@ public:
 		}
 	}
 
-	FORCEINLINE void PushAsset(const PakAsset_t& asset)
+	FORCEINLINE PakAsset_t& BeginAsset(const PakGuid_t assetGuid, const char* const assetPath)
 	{
+		// Only one asset can be processed at a time! This only asserts when
+		// another asset is being created while we are still working on one,
+		// or when 'FinishAsset()' wasn't called after everything was done.
+		assert(!m_processingAsset);
+		m_processingAsset = true;
+
+		PakAsset_t& asset = m_assets.emplace_back();
+
+		asset.guid = assetGuid;
+		asset.name = assetPath;
+
 		RequireUniqueAssetGUID(asset);
-		m_assets.push_back(asset);
+
+		return asset;
+	}
+
+	FORCEINLINE void FinishAsset()
+	{
+		PakAsset_t& asset = m_assets.back();
+		asset.pageEnd = GetNumPages();
+
+		m_processingAsset = false;
 	};
 
 	void CreateStreamFileStream(const char* const path, const PakStreamSet_e set);
@@ -127,6 +147,8 @@ private:
 	friend class CPakPage;
 
 	int m_buildFlags = 0;
+	bool m_processingAsset = false;
+
 	PakHdr_t m_Header;
 
 	std::string m_pakFilePath;
