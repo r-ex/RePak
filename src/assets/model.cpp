@@ -114,7 +114,6 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
     if (hasGuidRefs)
     {
         asset.ExpandGuidBuf(animrigCount + sequenceCount);
-        uint64_t curIndex = 0;
 
         if (animrigRefs)
         {
@@ -132,13 +131,12 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
                 const PakGuid_t guid = *reinterpret_cast<PakGuid_t*>(&intermediateChunk.data[offset]);
 
                 Pak_RegisterGuidRefAtOffset(guid, offset, intermediateChunk, asset);
-                curIndex++;
             }
         }
 
         if (sequenceRefs)
         {
-            const size_t base = alignedNameBufLen + (curIndex * sizeof(PakGuid_t));
+            const size_t base = alignedNameBufLen + animRigRefsBufLen;
 
             memcpy(&intermediateChunk.data[base], sequenceRefs, sequenceRefsBufLen);
             delete[] sequenceRefs;
