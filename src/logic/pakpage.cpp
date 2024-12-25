@@ -2,6 +2,37 @@
 //
 // Pak page builder and management class
 //
+// ----------------------------------------------------------------------------
+// Design details:
+// 
+// - a slab is a memory buffer in which all pages get allocated to, the slab's
+//   alignment is equal to its containing page with the highest alignment.
+// - a page is a memory buffer in which assets are statically stored, the page's
+//   alignment is equal to its containing asset with the highest alignment.
+// - a lump is a piece of data that represents a part of an asset, pages are
+//   constructed from these ordered lumps.
+// 
+// Slab and page details (both header and data) gets stored in the pak file,
+// lumps are only used to construct these slabs and pages, no other details
+// about them are stored in the resulting pak file.
+// 
+// The stored sizes of slabs and pages do not necessarily extend to their full
+// aligned size, the runtime aligns the size and allocates a buffer to its full
+// boundary.
+// 
+// Since pages are static, the assets that are in them need to be aligned and
+// padded out to their full alignments already. This means that if we have an
+// asset that has a higher alignment than the previous asset in the same page,
+// the previous asset must be padded out to accommodate the alignment of this
+// asset. If the requested alignment of the asset results in a boundary that is
+// larger than the total asset's data size, then the remainder must be padded.
+// 
+// Slabs on the other hand are not static, but constructed in the runtime from
+// their pages. Even though the pages aren't necessarily stored to their full
+// aligned size, the slab must have a size of all containing pages with their
+// full aligned size. This is necessary because the runtime aligns the page
+// size to their alignment boundaries and copies it into the preallocated slab.
+// 
 //=============================================================================//
 #include "pch.h"
 #include "pakpage.h"
