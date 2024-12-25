@@ -66,8 +66,8 @@ PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align)
 
 		// If the slab's alignment is less than our requested alignment, we
 		// can increase it as increasing the alignment will still allow the
-		// previous data to be aligned to the same boundary (all alignments are
-		// powers of two).
+		// previous data to be aligned to the same boundary (all alignments
+		// are powers of two).
 		if (header.alignment < align)
 			header.alignment = align;
 
@@ -242,53 +242,47 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 }
 
 //-----------------------------------------------------------------------------
-// During build time, the slabs and pages are not necessarily aligned to their
-// own alignments as an asset could request its own alignment, i.e., we have a
-// page with an alignment of 64 but an asset could still be aligned to 8 within
-// this page. Its possible we add several assets with align 8 into a 64 aligned
-// page, and we then only have to pad each asset out to an 8 bytes boundary to
-// align them rather than doing the full 64. The slabs and pages must however
-// be padded out to match their alignments after we are done building the pages
-// but before we start writing out to the stream. This optimization saves a lot
-// of data for paks with a large amount of assets merged into single pages.
+// There are 2 important things we have to take into account here:
+// 
+// - if a page inside a slab has a higher alignment than the previous page, the
+//   previous page needs to be padded out in the runtime to align that page.
+// - pages are not padded out to their alignment boundaries in the pak file,
+//   this is done by the runtime when loading the pages.
+// 
+// The extra sizes required by this is not added to the slab when we are
+// building the pages as their alignments can change when a lump requests a
+// higher alignment.
 //-----------------------------------------------------------------------------
 void CPakPageBuilder::PadSlabsAndPages()
 {
+	int lastPageSizeAligned = 0;
+	int lastPageAlign = 0;
+
 	for (PakPage_s& page : m_pages)
 	{
 		PakPageHdr_s& pageHdr = page.header;
 		PakSlab_s& slab = m_slabs[pageHdr.slabIndex];
 		PakSlabHdr_s& slabHdr = slab.header;
 
-		const int pagePadAmount = IALIGN(pageHdr.dataSize, pageHdr.alignment) - pageHdr.dataSize;
+		const int pageSize = pageHdr.dataSize;
+		const int pageAlign = pageHdr.alignment;
 
+		// The runtime pads the previous page to align our current page, we have
+		// to add this extra size to the slab to accommodate for this.
+		if (lastPageSizeAligned > 0 && pageAlign > lastPageAlign)
+			slabHdr.dataSize += IALIGN(lastPageSizeAligned, pageAlign) - lastPageSizeAligned;
+
+		const int pagePadAmount = IALIGN(pageSize, pageAlign) - pageSize;
+
+		// The runtime allocates the page to its alignment boundary, which means
+		// it will pad out the remainder if a page inside the pak file isn't as
+		// large as it will be when allocated to its required boundary. We have
+		// to add this extra size to the slab to accommodate for this.
 		if (pagePadAmount > 0)
-		{
-			PakPageLump_s& pad = page.lumps.emplace_back();
-
-			pad.data = nullptr;
-			pad.size = pagePadAmount;
-			pad.alignment = pageHdr.alignment;
-			pad.pageInfo = PagePtr_t::NullPtr();
-
-			// Grow the slab and page size to accommodate alignment padding
-			pageHdr.dataSize += pagePadAmount;
 			slabHdr.dataSize += pagePadAmount;
-		}
 
-		// Note: we aligned the page above, and since we grew its size, we have
-		// to grow the slab size too. Growing the page and slab sizes together
-		// does not necessarily mean they are both synced and aligned to their
-		// respective alignments as slabs with an alignment of 1, can be turned
-		// into a slab with an alignment of 8, and a page of alignment of 1 can
-		// still use this slab without being padded to 8, as an alignment of 8
-		// will still align a page to anything below in the powers of 2. The
-		// pages with lower alignment than the slabs them selfs will cause the
-		// desync if we do not realign the slab to its own alignment below.
-		const size_t slabPadAmount = IALIGN(slabHdr.dataSize, slabHdr.alignment) - slabHdr.dataSize;
-
-		if (slabPadAmount > 0)
-			slabHdr.dataSize += slabPadAmount;
+		lastPageSizeAligned = pageSize + pagePadAmount;
+		lastPageAlign = pageAlign;
 	}
 }
 
