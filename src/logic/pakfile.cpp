@@ -679,6 +679,26 @@ void CPakFileBuilder::FinishStreamFileStream(const PakStreamSet_e set)
 	out.Close();
 }
 
+static void ResolvePath(std::string& outPath, const std::filesystem::path& mapPath, const bool input)
+{
+	fs::path outputDirPath(outPath);
+
+	if (outputDirPath.is_relative() && mapPath.has_parent_path())
+	{
+		try {
+			outPath = fs::canonical(mapPath.parent_path() / outputDirPath).string();
+		}
+		catch (const fs::filesystem_error& e) {
+			Error("Failed to resolve %s path: %s.\n", input ? "input" : "output", e.what());
+		}
+	}
+	else
+		outPath = outputDirPath.string();
+
+	// ensure that the path has a slash at the end
+	Utils::AppendSlash(outPath);
+}
+
 //-----------------------------------------------------------------------------
 // purpose: builds rpak and starpak from input map file
 //-----------------------------------------------------------------------------
@@ -691,41 +711,17 @@ void CPakFileBuilder::BuildFromMap(const string& mapPath)
 	Utils::ParseMapDocument(doc, inputPath);
 
 	// determine source asset directory from map file
-	const char* assetDir;
-
-	if (!JSON_GetValue(doc, "assetsDir", assetDir))
+	if (!JSON_GetValue(doc, "assetsDir", m_assetPath))
 	{
 		Warning("No \"assetsDir\" field provided; assuming that everything is relative to the working directory.\n");
-		if (inputPath.has_parent_path())
-			m_assetPath = inputPath.parent_path().string();
-		else
-			m_assetPath = ".\\";
+		m_assetPath = ".\\";
 	}
 	else
-	{
-		const fs::path assetsDirPath(assetDir);
-		if (assetsDirPath.is_relative() && inputPath.has_parent_path())
-			m_assetPath = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).string();
-		else
-			m_assetPath = assetsDirPath.string();
-
-		// ensure that the path has a slash at the end
-		Utils::AppendSlash(m_assetPath);
-	}
+		ResolvePath(m_assetPath, inputPath, true);
 
 	// determine final build path from map file
 	if (JSON_GetValue(doc, "outputDir", m_outputPath))
-	{
-		fs::path outputDirPath(doc["outputDir"].GetString());
-
-		if (outputDirPath.is_relative() && inputPath.has_parent_path())
-			m_outputPath = fs::canonical(inputPath.parent_path() / outputDirPath).string();
-		else
-			m_outputPath = outputDirPath.string();
-
-		// ensure that the path has a slash at the end
-		Utils::AppendSlash(m_outputPath);
-	}
+		ResolvePath(m_outputPath, inputPath, false);
 	else
 		m_outputPath = DEFAULT_RPAK_PATH;
 
