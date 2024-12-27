@@ -50,27 +50,27 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
             input.Read(ddsh_dx10);
 
             dxgiFormat = ddsh_dx10.dxgiFormat;
-
-            if (s_txtrFormatMap.count(dxgiFormat) == 0)
-                Error("Attempted to add a texture asset using unsupported DDS type \"%s\", exiting...\n", DXUtils::GetFormatAsString(dxgiFormat));
-
             isDX10 = true;
         }
         else {
             dxgiFormat = DXUtils::GetFormatFromHeader(ddsh);
 
             if (dxgiFormat == DXGI_FORMAT_UNKNOWN)
-                Error("Attempted to add a texture asset that was not using a supported DDS type, exiting...\n");
+                Error("Attempted to add a texture asset from which the format type couldn't be classified, exiting...\n");
         }
 
         const char* const pDxgiFormat = DXUtils::GetFormatAsString(dxgiFormat);
+        const auto& it = s_txtrFormatMap.find(dxgiFormat);
 
+        if (it == s_txtrFormatMap.end())
+            Error("Attempted to add a texture asset using an unsupported format type \"%s\", exiting...\n", pDxgiFormat);
+
+        hdr->imgFormat = it->second;
         Log("-> fmt: %s\n", pDxgiFormat);
-        hdr->imgFormat = s_txtrFormatMap.at(dxgiFormat);
 
-        Log("-> dimensions: %ux%u\n", ddsh.dwWidth, ddsh.dwHeight);
         hdr->width = static_cast<uint16_t>(ddsh.dwWidth);
         hdr->height = static_cast<uint16_t>(ddsh.dwHeight);
+        Log("-> dimensions: %ux%u\n", ddsh.dwWidth, ddsh.dwHeight);
 
         /*MIPMAP HANDLING*/
         // set streamable boolean based on if we have disabled it, also don't stream if we have only one mip
