@@ -24,7 +24,7 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
         size_t streamedOptSize;
     } mipSizes{};
 
-    std::vector<mipLevel_t> mips;
+    std::vector<std::vector<mipLevel_t>> textureArray;
 
     bool isStreamable = false; // does this texture require streaming? true if total size of mip levels would exceed 64KiB. can be forced to false.
     bool isStreamableOpt = false; // can this texture use optional starpaks? can only be set if pak is version v8
@@ -42,6 +42,7 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
         input.Read(ddsh);
 
         DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN;
+        uint8_t arraySize = 1;
 
         // Go to the end of the DX10 header if it exists.
         if (ddsh.ddspf.dwFourCC == '01XD')
@@ -50,6 +51,7 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
             input.Read(ddsh_dx10);
 
             dxgiFormat = ddsh_dx10.dxgiFormat;
+            arraySize = static_cast<uint8_t>(ddsh_dx10.arraySize);
             isDX10 = true;
         }
         else {
@@ -72,6 +74,12 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
         hdr->height = static_cast<uint16_t>(ddsh.dwHeight);
         Log("-> dimensions: %ux%u\n", ddsh.dwWidth, ddsh.dwHeight);
 
+        hdr->arraySize = arraySize;
+        textureArray.resize(arraySize);
+
+        for (auto& mips : textureArray)
+            mips.resize(ddsh.dwMipMapCount);
+
         /*MIPMAP HANDLING*/
         // set streamable boolean based on if we have disabled it, also don't stream if we have only one mip
         if (!forceDisableStreaming && ddsh.dwMipMapCount > 1)
@@ -80,85 +88,95 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
         if (isStreamable && pak->GetVersion() >= 8)
             isStreamableOpt = true;
 
-        mips.resize(ddsh.dwMipMapCount);
         size_t mipOffset = isDX10 ? 0x94 : 0x80; // add header length
 
         unsigned int streamedMipCount = 0;
 
-        for (unsigned int mipLevel = 0; mipLevel < ddsh.dwMipMapCount; mipLevel++)
+        for (auto& mips : textureArray)
         {
-            // subtracts 1 so skip mips w/h at 1, gets added back when setting in mipLevel_t
-            uint16_t mipWidth = 0;
-            if (hdr->width >> mipLevel > 1)
-                mipWidth = (hdr->width >> mipLevel) - 1;
-
-            uint16_t mipHeight = 0;
-            if (hdr->height >> mipLevel > 1)
-                mipHeight = (hdr->height >> mipLevel) - 1;
-
-            const auto& bytesPerPixel = s_pBytesPerPixel[hdr->imgFormat];
-
-            const uint8_t x = bytesPerPixel.first;
-            const uint8_t y = bytesPerPixel.second;
-
-            const uint32_t bppWidth = (y + mipWidth) >> (y >> 1);
-            const uint32_t bppHeight = (y + mipHeight) >> (y >> 1);
-            
-            const size_t slicePitch = x * bppWidth * bppHeight;
-            const size_t alignedSize = IALIGN16(slicePitch);
-
-            mipLevel_t& mipMap = mips[mipLevel];
-
-            mipMap.mipOffset = mipOffset;
-            mipMap.mipSize = slicePitch;
-            mipMap.mipSizeAligned = alignedSize;
-            mipMap.mipWidth = static_cast<uint16_t>(mipWidth + 1);
-            mipMap.mipHeight = static_cast<uint16_t>(mipHeight + 1);
-            mipMap.mipLevel = static_cast<uint8_t>(mipLevel + 1);
-            mipMap.mipType = mipType_e::INVALID;
-
-            hdr->dataSize += static_cast<uint32_t>(alignedSize); // all mips are aligned to 16 bytes within rpak/starpak
-            mipOffset += slicePitch; // add size for the next mip's offset
-
-            // important:
-            // - we cannot have more than 4 streamed mip levels; the engine can
-            //   only store up to 4 streamable mip handles per texture, anything
-            //   else must be stored as a permanent mip!
-            //
-            // - there must always be at least 1 permanent mip level, regardless
-            //   of its size. not adhering to this rule will result in a failure
-            //   in ID3D11Device::CreateTexture2D during the runtime. we make
-            //   sure that the smallest mip is always permanent (static) here.
-            if ((streamedMipCount < MAX_STREAMED_TEXTURE_MIPS) && (mipLevel != (ddsh.dwMipMapCount - 1)))
+            for (unsigned int mipLevel = 0; mipLevel < mips.size(); mipLevel++)
             {
-                // if opt streamable textures are enabled, check if this mip is supposed to be opt streamed
-                if (isStreamableOpt && mipMap.mipSizeAligned > MAX_STREAM_MIP_SIZE)
-                {
-                    mipSizes.streamedOptSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
-                    hdr->optStreamedMipLevels++; // add a streamed mip level
+                // subtracts 1 so skip mips w/h at 1, gets added back when setting in mipLevel_t
+                uint16_t mipWidth = 0;
+                if (hdr->width >> mipLevel > 1)
+                    mipWidth = (hdr->width >> mipLevel) - 1;
 
-                    mipMap.mipType = mipType_e::STREAMED_OPT;
+                uint16_t mipHeight = 0;
+                if (hdr->height >> mipLevel > 1)
+                    mipHeight = (hdr->height >> mipLevel) - 1;
+
+                const auto& bytesPerPixel = s_pBytesPerPixel[hdr->imgFormat];
+
+                const uint8_t x = bytesPerPixel.x;
+                const uint8_t y = bytesPerPixel.y;
+
+                const uint32_t bppWidth = (y + mipWidth) >> (y >> 1);
+                const uint32_t bppHeight = (y + mipHeight) >> (y >> 1);
+
+                const uint32_t slicePitch = x * bppWidth * bppHeight;
+                const uint32_t alignedSize = IALIGN16(slicePitch);
+
+                mipLevel_t& mipMap = mips[mipLevel];
+
+                mipMap.mipOffset = mipOffset;
+                mipMap.mipSize = slicePitch;
+                mipMap.mipSizeAligned = alignedSize;
+                mipMap.mipWidth = static_cast<uint16_t>(mipWidth + 1);
+                mipMap.mipHeight = static_cast<uint16_t>(mipHeight + 1);
+                mipMap.mipLevel = static_cast<uint8_t>(mipLevel + 1);
+                mipMap.mipType = mipType_e::INVALID;
+
+                hdr->dataSize += alignedSize; // all mips are aligned to 16 bytes within rpak/starpak
+                mipOffset += slicePitch; // add size for the next mip's offset
+
+                // important:
+                // - texture arrays cannot be streamed.
+                // 
+                // - we cannot have more than 4 streamed mip levels; the engine can
+                //   only store up to 4 streamable mip handles per texture, anything
+                //   else must be stored as a permanent mip!
+                //
+                // - there must always be at least 1 permanent mip level, regardless
+                //   of its size. not adhering to this rule will result in a failure
+                //   in ID3D11Device::CreateTexture2D during the runtime. we make
+                //   sure that the smallest mip is always permanent (static) here.
+                if (arraySize == 1 && (streamedMipCount < MAX_STREAMED_TEXTURE_MIPS) && (mipLevel != (ddsh.dwMipMapCount - 1)))
+                {
+                    // if opt streamable textures are enabled, check if this mip is supposed to be opt streamed
+                    if (isStreamableOpt && alignedSize > MAX_STREAM_MIP_SIZE)
+                    {
+                        mipSizes.streamedOptSize += alignedSize; // only reason this is done is to create the data buffers
+                        hdr->optStreamedMipLevels++; // add a streamed mip level
+
+                        mipMap.mipType = mipType_e::STREAMED_OPT;
+                    }
+
+                    // if streamable textures are enabled, check if this mip is supposed to be streamed
+                    else if (isStreamable && alignedSize > MAX_PERM_MIP_SIZE)
+                    {
+                        mipSizes.streamedSize += alignedSize; // only reason this is done is to create the data buffers
+                        hdr->streamedMipLevels++; // add a streamed mip level
+
+                        mipMap.mipType = mipType_e::STREAMED;
+                    }
+
+                    streamedMipCount++;
                 }
 
-                // if streamable textures are enabled, check if this mip is supposed to be streamed
-                else if (isStreamable && mipMap.mipSizeAligned > MAX_PERM_MIP_SIZE)
+                // texture was not streamed, make it permanent.
+                if (mipMap.mipType == mipType_e::INVALID)
                 {
-                    mipSizes.streamedSize += mipMap.mipSizeAligned; // only reason this is done is to create the data buffers
-                    hdr->streamedMipLevels++; // add a streamed mip level
+                    mipSizes.staticSize += alignedSize;
 
-                    mipMap.mipType = mipType_e::STREAMED;
+                    // if it is larger, then we are processing the subsequent in the
+                    // array. and we shouldn't count mip levels from all subsequent
+                    // textures here. The mip levels get applied on all textures in
+                    // the array.
+                    if (hdr->mipLevels < ddsh.dwMipMapCount)
+                        hdr->mipLevels++;
+
+                    mipMap.mipType = mipType_e::STATIC;
                 }
-
-                streamedMipCount++;
-            }
-
-            // texture was not streamed, make it permanent.
-            if (mipMap.mipType == mipType_e::INVALID)
-            {
-                mipSizes.staticSize += mipMap.mipSizeAligned;
-                hdr->mipLevels++;
-
-                mipMap.mipType = mipType_e::STATIC;
             }
         }
 
@@ -185,39 +203,52 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     char* const streamedbuf = new char[mipSizes.streamedSize];
     char* const optstreamedbuf = new char[mipSizes.streamedOptSize];
 
-    char* pCurrentPosStatic = dataChunk.data;
-    char* pCurrentPosStreamed = streamedbuf;
-    char* pCurrentPosStreamedOpt = optstreamedbuf;
-
-    uint8_t mipLevel = static_cast<uint8_t>(mips.size());
-
-    while (mipLevel > 0)
+    //for (const auto& mips : textureArray)
+    for (size_t i = 0; i < textureArray.size(); i++)
     {
-        const mipLevel_t& mipMap = mips.at(mipLevel - 1);
-        input.SeekGet(mipMap.mipOffset);
+        const auto& mips = textureArray[i];
 
-        switch (mipMap.mipType)
+        char* pCurrentPosStatic = dataChunk.data;
+        char* pCurrentPosStreamed = streamedbuf;
+        char* pCurrentPosStreamedOpt = optstreamedbuf;
+
+        for (auto mipIter = mips.rbegin(); mipIter != mips.rend(); ++mipIter)
         {
-        case mipType_e::STATIC:
-            input.Read(pCurrentPosStatic, mipMap.mipSize);
-            pCurrentPosStatic += mipMap.mipSizeAligned; // move ptr
+            const mipLevel_t& mipMap = *mipIter;
+            input.SeekGet(mipMap.mipOffset);
 
-            break;
-        case mipType_e::STREAMED:
-            input.Read(pCurrentPosStreamed, mipMap.mipSize);
-            pCurrentPosStreamed += mipMap.mipSizeAligned; // move ptr
+            // only used by static mip types, used for offsetting the pointer
+            // from mip base into the actual mip corresponding to the texture
+            // in the array.
+            char* targetPos;
 
-            break;
-        case mipType_e::STREAMED_OPT:
-            input.Read(pCurrentPosStreamedOpt, mipMap.mipSize);
-            pCurrentPosStreamedOpt += mipMap.mipSizeAligned; // move ptr
+            switch (mipMap.mipType)
+            {
+            case mipType_e::STATIC:
+                targetPos = pCurrentPosStatic + (mipMap.mipSizeAligned * i);
+                input.Read(targetPos, mipMap.mipSize);
 
-            break;
-        default:
-            break;
+                // texture arrays group mips together, i.e. mip 1 of texture 1
+                // 2 and 3 are directly placed into a contiguous block, and to
+                // access the second one, the mip size must be multiplied by
+                // the texture index.
+                pCurrentPosStatic += mipMap.mipSizeAligned * textureArray.size(); // move ptr
+
+                break;
+            case mipType_e::STREAMED:
+                input.Read(pCurrentPosStreamed, mipMap.mipSize);
+                pCurrentPosStreamed += mipMap.mipSizeAligned; // move ptr
+
+                break;
+            case mipType_e::STREAMED_OPT:
+                input.Read(pCurrentPosStreamedOpt, mipMap.mipSize);
+                pCurrentPosStreamedOpt += mipMap.mipSizeAligned; // move ptr
+
+                break;
+            default:
+                break;
+            }
         }
-
-        mipLevel--;
     }
 
     // now time to add the higher level asset entry

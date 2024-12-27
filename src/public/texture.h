@@ -5,7 +5,13 @@
 #define MAX_PERM_MIP_SIZE	0x3FFF // "Any MIP below 64kiB is permanent."
 #define MAX_STREAM_MIP_SIZE	0xFFFFF
 
-static inline const std::pair<uint8_t, uint8_t> s_pBytesPerPixel[] =
+struct TextureBytesPerPixel_t
+{
+	uint8_t x;
+	uint8_t y;
+};
+
+static inline const TextureBytesPerPixel_t s_pBytesPerPixel[] =
 {
   { uint8_t(8u),  uint8_t(4u) },
   { uint8_t(8u),  uint8_t(4u) },
