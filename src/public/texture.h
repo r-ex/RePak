@@ -69,20 +69,6 @@ static inline const std::pair<uint8_t, uint8_t> s_pBytesPerPixel[] =
   { uint8_t(4u),  uint8_t(1u) },
   { uint8_t(4u),  uint8_t(1u) },
   { uint8_t(2u),  uint8_t(1u) },
-  { uint8_t(0u),  uint8_t(0u) },
-  { uint8_t(0u),  uint8_t(0u) },
-  { uint8_t(5u),  uint8_t(0u) },
-  { uint8_t(0u),  uint8_t(0u) },
-  { uint8_t(5u),  uint8_t(0u) },
-  { uint8_t(0u),  uint8_t(0u) },
-  { uint8_t(1u),  uint8_t(0u) },
-  { uint8_t(0u),  uint8_t(0u) },
-  { uint8_t(2u),  uint8_t(0u) },
-  { uint8_t(0u),  uint8_t(0u) },
-  { uint8_t(0u),  uint8_t(0u) },
-  { uint8_t(0u),  uint8_t(0u) },
-  { uint8_t(1u),  uint8_t(0u) },
-  { uint8_t(0u),  uint8_t(0u) }
 };
 
 enum class mipType_e : char
