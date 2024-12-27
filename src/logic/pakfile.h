@@ -5,10 +5,7 @@
 class CPakFileBuilder
 {
 public:
-	CPakFileBuilder(short version)
-	{
-		m_Header.fileVersion = version;
-	};
+	CPakFileBuilder() {};
 
 	//----------------------------------------------------------------------------
 	// assets

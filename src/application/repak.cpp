@@ -18,7 +18,7 @@ int main(int argc, char** argv)
     if (argc < 2)
         Error("invalid usage\n");
 
-    CPakFileBuilder pakFile(8);
+    CPakFileBuilder pakFile;
     pakFile.BuildFromMap(argv[1]);
 
     return EXIT_SUCCESS;

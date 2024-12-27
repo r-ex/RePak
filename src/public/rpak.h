@@ -72,15 +72,15 @@ struct PakHdr_t
 	DWORD magic = 0x6b615052;
 
 	uint16_t fileVersion = 0x8;
-	uint16_t flags;
-	FILETIME fileTime;
-	char  unk0[0x8];
-	uint64_t compressedSize; // size of the rpak file on disk before decompression
+	uint16_t flags = 0;
+	FILETIME fileTime{};
+	char  unk0[0x8]{};
+	uint64_t compressedSize = 0; // size of the rpak file on disk before decompression
 	uint64_t embeddedStarpakOffset = 0;
-	char  unk1[0x8];
-	uint64_t decompressedSize; // actual data size of the rpak file after decompression
+	char  unk1[0x8]{};
+	uint64_t decompressedSize = 0; // actual data size of the rpak file after decompression
 	uint64_t embeddedStarpakSize = 0;
-	char  unk2[0x8];
+	char  unk2[0x8]{};
 	uint16_t starpakPathsSize = 0; // size in bytes of the section containing mandatory starpak paths
 	uint16_t optStarpakPathsSize = 0; // size in bytes of the section containing optional starpak paths
 	uint16_t memSlabCount = 0;
@@ -97,7 +97,7 @@ struct PakHdr_t
 	uint32_t unk8count = 0;
 
 	// only in apex
-	char  unk3[0x1c];
+	char  unk3[0x1c]{};
 };
 static_assert(sizeof(PakHdr_t) == 136);
 
