@@ -356,7 +356,7 @@ void CPakPageBuilder::WritePageData(BinaryIO& out) const
 				// - pad out the previous asset to align our current asset.
 				// - pad out the current asset to its full aligned size.
 				// - pad out the page to its full aligned size.
-				out.SeekPut(lump.size, std::ios::cur);
+				out.Pad(lump.size);
 			}
 		}
 	}

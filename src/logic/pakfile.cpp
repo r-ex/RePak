@@ -160,7 +160,7 @@ void CPakFileBuilder::AddStreamingDataEntry(PakStreamSetEntry_s& block, const ui
 	if (paddedSize > block.dataSize)
 	{
 		const size_t paddingRemainder = paddedSize - block.dataSize;
-		out.SeekPut(paddingRemainder, std::ios::cur);
+		out.Pad(paddingRemainder);
 	}
 
 	size_t& nextOffsetCounter = isMandatory ? m_nextMandatoryStarpakOffset : m_nextOptionalStarpakOffset;
@@ -868,10 +868,5 @@ void CPakFileBuilder::BuildFromMap(const string& mapPath)
 	Log("Written pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
 		m_pakFilePath.c_str(), GetAssetCount(), totalPakSize);
 
-	// if we had pages which we ended up padding out to match the alignment,
-	// then we need to seek back to the end of the file; SeekPut only writes
-	// up to len if we either write after it again, or close the stream when
-	// the SeekPut cursor is at that location.
-	out.SeekPut(totalPakSize);
 	out.Close();
 }
