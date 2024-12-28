@@ -19,8 +19,8 @@ static void Shader_CreateFromMSW(CPakFileBuilder* const pak, PakPageLump_s& cpuD
 
 	for (auto& it : shader->entries)
 	{
-		if (it.buffer != nullptr)
-			totalShaderDataSize += IALIGN(it.size, 8);
+		if (it.buffer == nullptr)
+			continue;
 
 		// If the shader type hasn't been found yet, parse this buffer and find out what we want to set it as.
 		if (hdr->type == eShaderType::Invalid)
@@ -33,6 +33,8 @@ static void Shader_CreateFromMSW(CPakFileBuilder* const pak, PakPageLump_s& cpuD
 				}
 			}
 		}
+
+		totalShaderDataSize += IALIGN(it.size, 8);
 	}
 	assert(totalShaderDataSize != 0);
 
