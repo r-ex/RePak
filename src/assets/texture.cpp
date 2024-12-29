@@ -29,7 +29,7 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     input.Read(magic);
 
     if (magic != DDS_MAGIC) // b'DDS '
-        Error("Attempted to add a texture asset that was not a valid DDS file (invalid magic), exiting...\n");
+        Error("Attempted to add a texture asset that was not a valid DDS file (invalid magic).\n");
 
     DDS_HEADER ddsh;
     input.Read(ddsh);
@@ -56,14 +56,14 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
         dxgiFormat = DXUtils::GetFormatFromHeader(ddsh);
 
         if (dxgiFormat == DXGI_FORMAT_UNKNOWN)
-            Error("Attempted to add a texture asset from which the format type couldn't be classified, exiting...\n");
+            Error("Attempted to add a texture asset from which the format type couldn't be classified.\n");
     }
 
     const char* const pDxgiFormat = DXUtils::GetFormatAsString(dxgiFormat);
     const auto& it = s_txtrFormatMap.find(dxgiFormat);
 
     if (it == s_txtrFormatMap.end())
-        Error("Attempted to add a texture asset using an unsupported format type \"%s\", exiting...\n", pDxgiFormat);
+        Error("Attempted to add a texture asset using an unsupported format type \"%s\".\n", pDxgiFormat);
 
     hdr->imgFormat = it->second;
     Log("-> fmt: %s\n", pDxgiFormat);
