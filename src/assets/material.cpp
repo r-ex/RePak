@@ -317,22 +317,22 @@ static void Material_SetupDXBufferFromJson(GenericShaderBuffer* shaderBuf, const
 */
 
 
-static std::string Material_GetCpuPath(CPakFileBuilder* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry)
+static std::string Material_GetUberPath(CPakFileBuilder* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry)
 {
-    const char* path; // is user hasn't specified a cpu path, load the one from the material path.
-    const bool hasPath = JSON_GetValue(mapEntry, "$cpu", path);
+    const char* path; // is user hasn't specified an uber path, load the one from the material path.
+    const bool hasPath = JSON_GetValue(mapEntry, "$uber", path);
 
-    return Utils::VFormat("%s%s.cpu_raw", pak->GetAssetPath().c_str(), hasPath ? path : matlAsset->path.c_str());
+    return Utils::VFormat("%s%s.uber", pak->GetAssetPath().c_str(), hasPath ? path : matlAsset->path.c_str());
 }
 
 template <typename MaterialShaderBuffer_t>
-static void Material_AddCpuData(CPakFileBuilder* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry,
+static void Material_AddUberData(CPakFileBuilder* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry,
     PakPageLump_s& uberBufChunk, size_t& staticBufSize)
 {
-    const std::string cpuPath = Material_GetCpuPath(pak, matlAsset, mapEntry);
+    const std::string uberPath = Material_GetUberPath(pak, matlAsset, mapEntry);
     BinaryIO cpuFile;
 
-    if (cpuFile.Open(cpuPath, BinaryIO::Mode_e::Read))
+    if (cpuFile.Open(uberPath, BinaryIO::Mode_e::Read))
     {
         staticBufSize = cpuFile.GetSize();
         uberBufChunk = pak->CreatePageLump(sizeof(MaterialCPUHeader) + staticBufSize, SF_CPU | SF_TEMP, 8);
@@ -341,13 +341,13 @@ static void Material_AddCpuData(CPakFileBuilder* const pak, MaterialAsset_t* con
     }
     else
     {
-        Error("Failed to open cpu asset \"%s\".\n", cpuPath.c_str());
+        Error("Failed to open uber asset \"%s\".\n", uberPath.c_str());
 
-        // todo(amos): do we want this? without the cpu, the material will always look incorrect/dark
+        // todo(amos): do we want this? without the uber, the material will always look incorrect/dark
         // when we fall back here. disabled the code for now in favor of an error as this prevents a
         // ton of confusion and questions from users when the material ends up looking incorrect.
         // 
-        // Warning("Failed to open cpu asset \"%s\"; using generic buffer\n", cpuPath.c_str());
+        // Warning("Failed to open uber asset \"%s\"; using generic buffer\n", cpuPath.c_str());
         // 
         //staticBufSize = sizeof(MaterialShaderBuffer_t);
         //uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + staticBufSize, SF_CPU | SF_TEMP, 8);
@@ -407,8 +407,8 @@ void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
 
     Material_SetDXStates(mapEntry, dxStates);
 
-    this->shaderSet = Pak_ParseGuidRequired(mapEntry, "shaderSet");
-    this->textureAnimation = Pak_ParseGuid(mapEntry, "$textureAnimation");
+    this->shaderSet = Pak_ParseGuidRequired(mapEntry, "shaderSet"); // todo: auto-add
+    this->textureAnimation = Pak_ParseGuid(mapEntry, "$textureAnimation"); // todo: auto-add
 }
 
 void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& presetName)
@@ -630,7 +630,7 @@ static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const Pa
     size_t dxStaticBufSize = 0;
     PakPageLump_s uberBufChunk;
 
-    Material_AddCpuData<MaterialShaderBufferV12>(pak, &matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
+    Material_AddUberData<MaterialShaderBufferV12>(pak, &matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
 
     MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.data);
     cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
@@ -740,7 +740,7 @@ static void Material_InternalAddMaterialV15(CPakFileBuilder* const pak, const Pa
     size_t dxStaticBufSize = 0;
     PakPageLump_s uberBufChunk;
 
-    Material_AddCpuData<MaterialShaderBufferV15>(pak, &matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
+    Material_AddUberData<MaterialShaderBufferV15>(pak, &matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
 
     MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.data);
     cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
@@ -756,6 +756,8 @@ static void Material_InternalAddMaterialV15(CPakFileBuilder* const pak, const Pa
 
     pak->FinishAsset();
 }
+
+extern bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath);
 
 static bool Material_InternalAddMaterial(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value* const mapEntry, const int assetVersion)
 {
