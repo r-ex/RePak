@@ -34,6 +34,9 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     DDS_HEADER ddsh;
     input.Read(ddsh);
 
+    if (ddsh.dwMipMapCount > MAX_TOTAL_MIP_COUNT)
+        Error("Attempted to add a texture asset with too many mipmaps (max %u, got %u).\n", MAX_TOTAL_MIP_COUNT, ddsh.dwMipMapCount);
+
     DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN;
 
     uint8_t arraySize = 1;
