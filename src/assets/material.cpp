@@ -786,12 +786,11 @@ static bool Material_InternalAddMaterial(CPakFileBuilder* const pak, const PakGu
              // typically, these are prepass/vsm/etc materials.
 
     MaterialAsset_t matlAsset{};
-    matlAsset.FromJSON(*matEntry); // parse json inputs for matl header
-
     matlAsset.assetVersion = assetVersion;
     matlAsset.guid = assetGuid;
     matlAsset.path = Utils::ChangeExtension(assetPath, ""); // todo: should this be the stem? if yes, use Pak_ExtractAssetStem
 
+    matlAsset.FromJSON(*matEntry); // parse json inputs for matl header
     matlAsset.SetupDepthMaterials(pak, *matEntry);
 
     if (assetVersion == 12)
