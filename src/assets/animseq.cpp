@@ -55,7 +55,7 @@ static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid
         Pak_RegisterGuidRefAtOffset(autolayer->guid, offset, dataLump, asset);
     }
 
-    asset.InitAsset(hdrLump.GetPointer(), hdrLump.size, PagePtr_t::NullPtr(), -1, -1, ASEQ_VERSION, AssetType::ASEQ);
+    asset.InitAsset(hdrLump.GetPointer(), sizeof(AnimSeqAssetHeader_t), PagePtr_t::NullPtr(), -1, -1, ASEQ_VERSION, AssetType::ASEQ);
     asset.SetHeaderPointer(hdrLump.data);
 
     pak->FinishAsset();

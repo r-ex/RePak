@@ -276,7 +276,7 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
 
     delete[] optstreamedbuf;
 
-    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, dataChunk.GetPointer(), mandatoryStreamDataOffset, optionalStreamDataOffset, TXTR_VERSION, AssetType::TXTR);
+    asset.InitAsset(hdrChunk.GetPointer(), sizeof(TextureAssetHeader_t), dataChunk.GetPointer(), mandatoryStreamDataOffset, optionalStreamDataOffset, TXTR_VERSION, AssetType::TXTR);
     asset.SetHeaderPointer(hdrChunk.data);
 
     pak->FinishAsset();

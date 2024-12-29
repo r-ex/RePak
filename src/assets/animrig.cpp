@@ -68,7 +68,7 @@ void Assets::AddAnimRigAsset_v4(CPakFileBuilder* const pak, const PakGuid_t asse
         }
     }
 
-    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), -1, -1, ARIG_VERSION, AssetType::ARIG);
+    asset.InitAsset(hdrChunk.GetPointer(), sizeof(AnimRigAssetHeader_t), PagePtr_t::NullPtr(), -1, -1, ARIG_VERSION, AssetType::ARIG);
     asset.SetHeaderPointer(hdrChunk.data);
 
     pak->FinishAsset();

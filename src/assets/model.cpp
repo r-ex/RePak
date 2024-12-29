@@ -308,7 +308,7 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
         }
     }
 
-    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, PagePtr_t::NullPtr(), streamedVgOffset, -1, RMDL_VERSION, AssetType::RMDL);
+    asset.InitAsset(hdrChunk.GetPointer(), sizeof(ModelAssetHeader_t), PagePtr_t::NullPtr(), streamedVgOffset, -1, RMDL_VERSION, AssetType::RMDL);
     asset.SetHeaderPointer(hdrChunk.data);
 
     pak->FinishAsset();

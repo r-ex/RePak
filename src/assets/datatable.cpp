@@ -218,8 +218,10 @@ static void DataTable_AddDataTable(CPakFileBuilder* const pak, const PakGuid_t a
         return;
     }
 
+    const uint32_t pakVersion = pak->GetVersion();
+
     PakPageLump_s hdrChunk;
-    if (pak->GetVersion() <= 7)
+    if (pakVersion <= 7)
         hdrChunk = pak->CreatePageLump(sizeof(datatable_v0_t), SF_HEAD, 8);
     else
         hdrChunk = pak->CreatePageLump(sizeof(datatable_v1_t), SF_HEAD, 8);
@@ -261,12 +263,12 @@ static void DataTable_AddDataTable(CPakFileBuilder* const pak, const PakGuid_t a
     pak->AddPointer(hdrChunk, offsetof(datatable_v0_t, pRows), dataChunk, rowPodValuesBase);
 
     asset.InitAsset(
-        hdrChunk.GetPointer(), hdrChunk.size,
+        hdrChunk.GetPointer(), pakVersion <= 7 ? sizeof(datatable_v0_t) : sizeof(datatable_v1_t),
         dataChunk.GetPointer(rowPodValuesBase), // points to datatable_asset_t::pRow
         -1, -1, 
         // rpak v7: v0
         // rpak v8: v1
-        pak->GetVersion() <= 7 ? 0 : 1, 
+        pakVersion <= 7 ? 0 : 1,
         AssetType::DTBL);
 
     asset.SetHeaderPointer(hdrChunk.data);

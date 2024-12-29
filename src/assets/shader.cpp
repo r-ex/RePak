@@ -159,7 +159,7 @@ static void Shader_InternalAddShader(CPakFileBuilder* const pak, const char* con
 	// =======================================
 
 	asset.InitAsset(
-		hdrChunk.GetPointer(), hdrChunk.size,
+		hdrChunk.GetPointer(), sizeof(ShaderAssetHeader_t),
 		dataChunk.GetPointer(), -1, -1, assetVersion, AssetType::SHDR);
 
 	asset.SetHeaderPointer(hdrChunk.data);
