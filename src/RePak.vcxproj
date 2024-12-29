@@ -20,6 +20,7 @@
     <ClCompile Include="assets\patch.cpp" />
     <ClCompile Include="assets\shader.cpp" />
     <ClCompile Include="assets\shaderset.cpp" />
+    <ClCompile Include="assets\texture_anim.cpp" />
     <ClCompile Include="assets\uiatlas.cpp" />
     <ClCompile Include="assets\texture.cpp" />
     <ClCompile Include="logic\pakpage.cpp" />
@@ -174,6 +175,7 @@
     <ClInclude Include="public\studio.h" />
     <ClInclude Include="public\datatable.h" />
     <ClInclude Include="public\texture.h" />
+    <ClInclude Include="public\texture_anim.h" />
     <ClInclude Include="thirdparty\rapidcsv\rapidcsv.h" />
     <ClInclude Include="thirdparty\rapidjson\allocators.h" />
     <ClInclude Include="thirdparty\rapidjson\cursorstreamwrapper.h" />

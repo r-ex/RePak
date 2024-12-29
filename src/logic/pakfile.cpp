@@ -79,6 +79,7 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 	//if (IsFlagSet(PF_KEEP_CLIENT))
 	{
 		HANDLE_ASSET_TYPE("txtr", assetType, assetPath, file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
+		HANDLE_ASSET_TYPE("txan", assetType, assetPath, file, nullptr, Assets::AddTextureAnimAsset_v1);
 		HANDLE_ASSET_TYPE("uimg", assetType, assetPath, file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
 		HANDLE_ASSET_TYPE("matl", assetType, assetPath, file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
 

@@ -16,6 +16,7 @@
 #define PAK_HEADER_FLAGS_ZSTREAM_ENCODED (1<<9) // use the ZStd decoder instead of the RTech one
 
 #define TYPE_TXTR	MAKE_FOURCC('t', 'x', 't', 'r') // txtr
+#define TYPE_TXAN	MAKE_FOURCC('t', 'x', 'a', 'n') // txan
 #define TYPE_RMDL	MAKE_FOURCC('m', 'd', 'l', '_') // mdl_
 #define TYPE_UIMG	MAKE_FOURCC('u', 'i', 'm', 'g') // uimg
 #define TYPE_PTCH	MAKE_FOURCC('P', 't', 'c', 'h') // Ptch
@@ -31,6 +32,7 @@ enum class AssetType : uint32_t
 	NONE = 0, // !!!INVALID TYPE!!!
 
 	TXTR = TYPE_TXTR, // texture
+	TXAN = TYPE_TXAN, // texture animation
 	RMDL = TYPE_RMDL, // model
 	UIMG = TYPE_UIMG, // ui image atlas
 	PTCH = TYPE_PTCH, // patch
