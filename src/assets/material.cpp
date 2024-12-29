@@ -367,7 +367,10 @@ static void Material_AddUberData(CPakFileBuilder* const pak, MaterialAsset_t* co
 void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
 {
     this->materialTypeStr = JSON_GetValueRequired<const char*>(mapEntry, "shaderType");
-    this->materialType = Material_ShaderTypeFromString(this->materialTypeStr);
+    this->materialType = Material_ShaderTypeFromString(this->materialTypeStr, this->assetVersion);
+
+    if (this->materialType == MaterialShaderType_e::_TYPE_INVALID)
+        Error("Material shader type '%s' is unsupported.\n", this->materialTypeStr.c_str());
 
     // this only seems to be in apex? heavily affects how the buffers are setup
     // and which one is selected at Pak_LoadMaterialAsset(). Func sub_1403B4680

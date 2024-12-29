@@ -36,41 +36,52 @@ static const char* s_materialShaderTypeNames[] = {
 	"ptcs",
 };
 
-static const std::map<int, MaterialShaderType_e> s_materialShaderTypeMap
+inline MaterialShaderType_e Material_ShaderTypeFromString(const std::string& str, const unsigned int assetVersion)
 {
-	// static props
-	{'udgr', RGDU}, // rgdu
-	{'pdgr', RGDP}, // rgdp
-	{'cdgr', RGDC}, // rgdc
+	// note: for titanfall 2 materials, we only need 3 bytes for 'fix', 'gen',
+	// etc, the fourth byte is a null. for apex materials, we need 4 bytes for
+	// 'sknp', 'ptcu', etc and the 5th byte is a null. so we just check on 3 to
+	// make sure we never overflow when we read the data out directly as an int.
+	if (str.length() < 3)
+		return _TYPE_INVALID;
 
-	// non-static models
-	{'unks', SKNU}, // sknu
-	{'pnks', SKNP}, // sknp
-	{'cnks', SKNC}, // sknc
-
-	// world/geo models
-	{'udlw', WLDU}, // wldu
-	{'cdlw', WLDC}, // wldc
-
-	// particles
-	{'uctp', PTCU}, // ptcu
-	{'sctp', PTCS}, // ptcs
-
-	// r2 materials
-	{'neg', _TYPE_LEGACY}, // gen
-	{'dlw', _TYPE_LEGACY}, // wld
-	{'xif', _TYPE_LEGACY}, // fix
-	{'nks', _TYPE_LEGACY}, // skn
-};
-
-
-inline MaterialShaderType_e Material_ShaderTypeFromString(const std::string& str)
-{
-	// todo: is this reliable?
 	const int type = *reinterpret_cast<const int*>(str.c_str());
 
-	if (s_materialShaderTypeMap.count(type) != 0)
-		return s_materialShaderTypeMap.at(type);
+	if (assetVersion >= 15)
+	{
+		switch (type)
+		{
+			// static props
+		case 'udgr': return RGDU; // rgdu
+		case 'pdgr': return RGDP; // rgdp
+		case 'cdgr': return RGDC; // rgdc
+
+			// non-static models
+		case 'unks': return SKNU; // sknu
+		case 'pnks': return SKNP; // sknp
+		case 'cnks': return SKNC; // sknc
+
+			// world/geo models
+		case 'udlw': return WLDU; // wldu
+		case 'cdlw': return WLDC; // wldc
+
+			// particles
+		case 'uctp': return PTCU; // ptcu
+		case 'sctp': return PTCS; // ptcs
+		}
+	}
+	else
+	{
+		switch (type)
+		{
+			// r2 materials
+		case 'neg': // gen
+		case 'dlw': // wld
+		case 'xif': // fix
+		case 'nks': // skn
+			return _TYPE_LEGACY;
+		}
+	}
 
 	return _TYPE_INVALID;
 }
