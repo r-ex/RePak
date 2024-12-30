@@ -481,6 +481,7 @@ inline V JSON_GetNumberRequired(const T& data, const char* const member)
     return V{};
 }
 
+bool JSON_ParseFromFile(const char* const assetPath, const char* const debugName, rapidjson::Document& document);
 void JSON_DocumentToBufferDeserialize(const rapidjson::Document& document, rapidjson::StringBuffer& buffer, unsigned int indent = 4);
 
 #endif // JSONUTILS_H
