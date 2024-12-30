@@ -3,6 +3,65 @@
 #include "utils/dxutils.h"
 #include "public/texture.h"
 
+#define TEXTURE_USAGE_FLAGS_FIELD "usageFlags"
+#define TEXTURE_MIP_INFO_FIELD "mipInfo"
+
+// If the texture has additional metadata, parse it.
+static void Texture_ProcessMetaData(CPakFileBuilder* const pak, const char* const assetPath, 
+                                    TextureAssetHeader_t* const hdr, const int totalMipCount)
+{
+    const std::string metaFilePath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
+    rapidjson::Document document;
+
+    if (!JSON_ParseFromFile(metaFilePath.c_str(), "texture metadata", document))
+        return;
+
+    rapidjson::Value::ConstMemberIterator usageFlagsIt;
+
+    if (JSON_GetIterator(document, TEXTURE_USAGE_FLAGS_FIELD, usageFlagsIt))
+    {
+        int32_t usageFlags;
+
+        if (!JSON_ParseNumber(usageFlagsIt->value, usageFlags))
+            Error("Failed to parse \"" TEXTURE_USAGE_FLAGS_FIELD "\" from texture metadata.\n");
+
+        hdr->usageFlags = static_cast<uint8_t>(usageFlags);
+    }
+
+    rapidjson::Value::ConstMemberIterator mipInfoIt;
+
+    if (JSON_GetIterator(document, TEXTURE_MIP_INFO_FIELD, mipInfoIt))
+    {
+        if (!JSON_IsOfType(mipInfoIt->value, JSONFieldType_e::kArray))
+            Error("Field \"" TEXTURE_MIP_INFO_FIELD "\" in texture metadata must be an array.\n");
+
+        const rapidjson::Value::ConstArray& mipInfoArray = mipInfoIt->value.GetArray();
+
+        if (mipInfoArray.Empty())
+            Error("Array \"" TEXTURE_MIP_INFO_FIELD "\" was found empty in texture metadata.\n");
+
+        const size_t arraySize = mipInfoArray.Size();
+
+        if (arraySize != totalMipCount-1)
+            Error("Array \"" TEXTURE_MIP_INFO_FIELD "\" in texture metadata must cover all mips except the base (expected %i, got %i).\n", 
+                totalMipCount-1, static_cast<int>(arraySize));
+
+        // note: unclamped loop and write into static sized array because we
+        // have already confirmed that the texture mip count is sane.
+        uint32_t index = 0;
+
+        for (const auto& mipInfoEntry : mipInfoArray)
+        {
+            int32_t mipInfo;
+
+            if (!JSON_ParseNumber(mipInfoEntry, mipInfo))
+                Error("Failed to parse \"" TEXTURE_MIP_INFO_FIELD "\" #%u from texture metadata.\n", index);
+
+            hdr->unkPerMip[index++] = static_cast<uint8_t>(mipInfo);
+        }
+    }
+}
+
 // materialGeneratedTexture - whether this texture's creation was invoked by material automatic texture generation
 static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming)
 {
@@ -34,8 +93,10 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     DDS_HEADER ddsh;
     input.Read(ddsh);
 
-    if (ddsh.dwMipMapCount > MAX_TOTAL_MIP_COUNT)
-        Error("Attempted to add a texture asset with too many mipmaps (max %u, got %u).\n", MAX_TOTAL_MIP_COUNT, ddsh.dwMipMapCount);
+    if (ddsh.dwMipMapCount > MAX_MIPS_PER_TEXTURE)
+        Error("Attempted to add a texture asset with too many mipmaps (max %u, got %u).\n", MAX_MIPS_PER_TEXTURE, ddsh.dwMipMapCount);
+
+    Texture_ProcessMetaData(pak, assetPath, hdr, ddsh.dwMipMapCount);
 
     DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN;
 
@@ -60,12 +121,12 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     }
 
     const char* const pDxgiFormat = DXUtils::GetFormatAsString(dxgiFormat);
-    const auto& it = s_txtrFormatMap.find(dxgiFormat);
+    const uint16_t imageFormat = Texture_DXGIToImageFormat(dxgiFormat);
 
-    if (it == s_txtrFormatMap.end())
+    if (imageFormat == TEXTURE_INVALID_FORMAT_INDEX)
         Error("Attempted to add a texture asset using an unsupported format type \"%s\".\n", pDxgiFormat);
 
-    hdr->imgFormat = it->second;
+    hdr->imageFormat = imageFormat;
     Log("-> fmt: %s\n", pDxgiFormat);
 
     hdr->width = static_cast<uint16_t>(ddsh.dwWidth);
@@ -107,7 +168,7 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
             if (hdr->height >> mipLevel > 1)
                 mipHeight = (hdr->height >> mipLevel) - 1;
 
-            const auto& bytesPerPixel = s_pBytesPerPixel[hdr->imgFormat];
+            const auto& bytesPerPixel = s_pBytesPerPixel[hdr->imageFormat];
 
             const uint8_t x = bytesPerPixel.x;
             const uint8_t y = bytesPerPixel.y;
@@ -199,7 +260,7 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
             PakPageLump_s nameChunk = pak->CreatePageLump(stemLen + 1, SF_CPU | SF_DEV, 1);
             memcpy(nameChunk.data, pathStem, stemLen + 1);
 
-            pak->AddPointer(hdrChunk, offsetof(TextureAssetHeader_t, pName), nameChunk, 0);
+            pak->AddPointer(hdrChunk, offsetof(TextureAssetHeader_t, name), nameChunk, 0);
         }
     }
 
