@@ -615,11 +615,11 @@ static inline bool MSW_ParseFile(const fs::path& inputPath, CMultiShaderWrapperI
 		return false;
 	}
 
-	if (shaderCache.type != MultiShaderWrapperFileType_e::SHADERSET)
+	if (shaderCache.type != expectType)
 	{
 		Error("Attempted to load MSW file \"%s\" as %s while %s was expected.\n",
-			MSW_TypeToString(shaderCache.type), MSW_TypeToString(expectType),
-			inputPath.string().c_str());
+			inputPath.string().c_str(),
+			MSW_TypeToString(shaderCache.type), MSW_TypeToString(expectType));
 
 		return false;
 	}
