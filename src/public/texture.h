@@ -1,7 +1,7 @@
 #pragma once
 
 #define MAX_STREAMED_TEXTURE_MIPS 4
-#define MAX_TOTAL_MIP_COUNT 12 // max total mips per texture
+#define MAX_MIPS_PER_TEXTURE 13 // max total mips per texture
 
 #define MAX_PERM_MIP_SIZE	0x3FFF // "Any MIP below 64kiB is permanent."
 #define MAX_STREAM_MIP_SIZE	0xFFFFF
