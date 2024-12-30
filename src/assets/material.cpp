@@ -474,35 +474,12 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
 static bool Material_OpenFile(CPakFileBuilder* const pak, const char* const assetPath, rapidjson::Document& document)
 {
     const string fileName = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
-    BinaryIO materialStream;
 
-    // note(amos): once finished this must error on failure
-    if (!materialStream.Open(fileName, BinaryIO::Mode_e::Read))
+    if (!JSON_ParseFromFile(fileName.c_str(), "material asset", document))
     {
+        // note(amos): once finished this must error on failure
         //Error("Failed to open material asset \"%s\".\n", fileName.c_str());
         return false;
-    }
-
-    const ssize_t fileSize = materialStream.GetSize();
-
-    if (!fileSize)
-        Error("Material asset was empty.\n");
-
-    std::unique_ptr<char[]> uniquebuf(new char[fileSize+1]);
-    char* const bufptr = uniquebuf.get();
-
-    materialStream.Read(bufptr, fileSize);
-    bufptr[fileSize] = '\0';
-
-    if (document.Parse(bufptr).HasParseError())
-    {
-        Error("Material asset parse error at position %zu: [%s].\n",
-            document.GetErrorOffset(), rapidjson::GetParseError_En(document.GetParseError()));
-    }
-
-    if (!document.IsObject())
-    {
-        Error("Material asset root was not an object.\n");
     }
 
     return true;
