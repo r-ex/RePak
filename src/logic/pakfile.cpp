@@ -12,10 +12,22 @@
 #include "thirdparty/zstd/decompress/zstd_decompress_internal.h"
 
 bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* const assetType, const char* const assetPath,
-							const rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
+							const AssetScope_e assetScope, const rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
 {
 	if (strcmp(targetType, assetType) != 0)
 		return false;
+
+	switch (assetScope)
+	{
+	case AssetScope_e::kServerOnly:
+		if (!IsFlagSet(PF_KEEP_SERVER))
+			return true;
+		break;
+	case AssetScope_e::kClientOnly:
+		if (!IsFlagSet(PF_KEEP_CLIENT))
+			return true;
+		break;
+	}
 
 	AssetTypeFunc_t targetFunc = nullptr;
 	const uint16_t fileVersion = this->m_Header.fileVersion;
@@ -60,7 +72,7 @@ bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* con
 	return true;
 }
 
-#define HANDLE_ASSET_TYPE(targetType, assetType, assetPath, asset, func_r2, func_r5) if (AddJSONAsset(targetType, assetType, assetPath, asset, func_r2, func_r5)) return;
+#define HANDLE_ASSET_TYPE(targetType, assetType, assetPath, assetScope, asset, func_r2, func_r5) if (AddJSONAsset(targetType, assetType, assetPath, assetScope, asset, func_r2, func_r5)) return;
 
 //-----------------------------------------------------------------------------
 // purpose: installs asset types and their callbacks
@@ -76,24 +88,21 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 	if (!assetPath)
 		Error("No path provided for an asset of type '%.4s'.\n", assetType);
 
-	//if (IsFlagSet(PF_KEEP_CLIENT))
-	{
-		HANDLE_ASSET_TYPE("txtr", assetType, assetPath, file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
-		HANDLE_ASSET_TYPE("txan", assetType, assetPath, file, nullptr, Assets::AddTextureAnimAsset_v1);
-		HANDLE_ASSET_TYPE("uimg", assetType, assetPath, file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
-		HANDLE_ASSET_TYPE("matl", assetType, assetPath, file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
+	HANDLE_ASSET_TYPE("txtr", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
+	HANDLE_ASSET_TYPE("txan", assetType, assetPath, AssetScope_e::kClientOnly, file, nullptr, Assets::AddTextureAnimAsset_v1);
+	HANDLE_ASSET_TYPE("uimg", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
+	HANDLE_ASSET_TYPE("matl", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
 
-		HANDLE_ASSET_TYPE("shds", assetType, assetPath, file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
-		HANDLE_ASSET_TYPE("shdr", assetType, assetPath, file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
-	}
+	HANDLE_ASSET_TYPE("shds", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
+	HANDLE_ASSET_TYPE("shdr", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
 
-	HANDLE_ASSET_TYPE("dtbl", assetType, assetPath, file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
+	HANDLE_ASSET_TYPE("dtbl", assetType, assetPath, AssetScope_e::kAll, file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
 
-	HANDLE_ASSET_TYPE("mdl_", assetType, assetPath, file, nullptr, Assets::AddModelAsset_v9);
-	HANDLE_ASSET_TYPE("aseq", assetType, assetPath, file, nullptr, Assets::AddAnimSeqAsset_v7);
-	HANDLE_ASSET_TYPE("arig", assetType, assetPath, file, nullptr, Assets::AddAnimRigAsset_v4);
+	HANDLE_ASSET_TYPE("mdl_", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddModelAsset_v9);
+	HANDLE_ASSET_TYPE("aseq", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddAnimSeqAsset_v7);
+	HANDLE_ASSET_TYPE("arig", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddAnimRigAsset_v4);
 
-	HANDLE_ASSET_TYPE("Ptch", assetType, assetPath, file, Assets::AddPatchAsset, Assets::AddPatchAsset);
+	HANDLE_ASSET_TYPE("Ptch", assetType, assetPath, AssetScope_e::kAll, file, Assets::AddPatchAsset, Assets::AddPatchAsset);
 
 	// If the function has not returned by this point, we have an unhandled asset type.
 	Error("Unhandled asset type '%.4s' provided for asset \"%s\".\n", assetType, assetPath);
@@ -152,7 +161,7 @@ void CPakFileBuilder::AddStreamingDataEntry(PakStreamSetEntry_s& block, const ui
 	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
 
 	if (!out.IsWritable())
-		Error("Attempted to write a %s streaming asset without a stream file handle.\n", Pak_StreamSetToName(set));
+		Error("Attempted to write %s streaming asset without a stream file handle.\n", Pak_StreamSetToName(set));
 
 	out.Write(data, block.dataSize);
 	const size_t paddedSize = IALIGN(block.dataSize, STARPAK_DATABLOCK_ALIGNMENT);
@@ -767,14 +776,17 @@ void CPakFileBuilder::BuildFromMap(const string& mapPath)
 	out.Pad(pakVersion >= 8 ? 0x80 : 0x58);
 
 	const char* streamFileMandatory = nullptr;
-
-	if (JSON_GetValue(doc, "streamFileMandatory", streamFileMandatory))
-		CreateStreamFileStream(streamFileMandatory, STREAMING_SET_MANDATORY);
-
 	const char* streamFileOptional = nullptr;
 
-	if (pakVersion >= 8 && JSON_GetValue(doc, "streamFileOptional", streamFileOptional))
-		CreateStreamFileStream(streamFileOptional, STREAMING_SET_OPTIONAL);
+	// Server-only paks never uses streaming assets.
+	if (IsFlagSet(PF_KEEP_CLIENT))
+	{
+		if (JSON_GetValue(doc, "streamFileMandatory", streamFileMandatory))
+			CreateStreamFileStream(streamFileMandatory, STREAMING_SET_MANDATORY);
+
+		if (pakVersion >= 8 && JSON_GetValue(doc, "streamFileOptional", streamFileOptional))
+			CreateStreamFileStream(streamFileOptional, STREAMING_SET_OPTIONAL);
+	}
 
 	// build asset data;
 	// loop through all assets defined in the map file

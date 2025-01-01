@@ -4,6 +4,13 @@
 
 class CPakFileBuilder
 {
+	enum class AssetScope_e
+	{
+		kServerOnly,
+		kClientOnly,
+		kAll,
+	};
+
 public:
 	CPakFileBuilder() {};
 
@@ -14,7 +21,7 @@ public:
 	typedef void(*AssetTypeFunc_t)(CPakFileBuilder*, const PakGuid_t, const char*, const rapidjson::Value&);
 
 	bool AddJSONAsset(const char* const targetType, const char* const assetType, const char* const assetPath,
-					  const rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
+			const AssetScope_e assetScope, const rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
 	void AddAsset(const rapidjson::Value& file);
 
 	void AddPointer(PakPageLump_s& pointerLump, const size_t pointerOffset, const PakPageLump_s& dataLump, const size_t dataOffset);
