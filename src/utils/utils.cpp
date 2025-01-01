@@ -226,6 +226,43 @@ PakGuid_t Pak_GetGuidOverridable(const rapidjson::Value& mapEntry, const char* c
     return RTech::StringToGuid(assetPath);
 }
 
+// If the field was defined as a string, outAssetName will point to the asset's name
+PakGuid_t Pak_ParseGuidFromObject(const rapidjson::Value& val, const char* const debugName,
+    const char*& outAssetName)
+{
+    PakGuid_t resultGuid;
+
+    if (JSON_ParseNumber(val, resultGuid))
+        return 0;
+
+    if (!val.IsString())
+        Error("%s: %s is of unsupported type; expected %s or %s, found %s.\n", __FUNCTION__, debugName,
+            JSON_TypeToString(JSONFieldType_e::kUint64), JSON_TypeToString(JSONFieldType_e::kString),
+            JSON_TypeToString(JSON_ExtractType(val)));
+
+    if (val.GetStringLength() == 0)
+        Error("%s: %s was defined as an invalid empty string.\n", __FUNCTION__, debugName);
+
+    outAssetName = val.GetString();
+    return RTech::StringToGuid(outAssetName);
+}
+
+PakGuid_t Pak_ParseGuidFromMap(const rapidjson::Value& mapEntry, const char* const fieldName,
+    const char* const debugName, const char*& outAssetName, const bool requiredField)
+{
+    rapidjson::Value::ConstMemberIterator it;
+
+    if (requiredField)
+        JSON_GetRequired(mapEntry, fieldName, it);
+    else
+    {
+        if (!JSON_GetIterator(mapEntry, fieldName, it))
+            return 0;
+    }
+
+    return Pak_ParseGuidFromObject(it->value, debugName, outAssetName);
+}
+
 size_t Pak_ExtractAssetStem(const char* const assetPath, char* const outBuf, const size_t outBufLen)
 {
     // skip 'texture/'

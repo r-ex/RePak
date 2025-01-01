@@ -22,6 +22,12 @@ extern PakGuid_t Pak_ParseGuidRequired(const rapidjson::Value& val, const char* 
 
 extern PakGuid_t Pak_GetGuidOverridable(const rapidjson::Value& mapEntry, const char* const assetPath);
 
+extern PakGuid_t Pak_ParseGuidFromObject(const rapidjson::Value& val, const char* const debugName,
+	const char*& outAssetName);
+
+extern PakGuid_t Pak_ParseGuidFromMap(const rapidjson::Value& mapEntry, const char* const fieldName,
+	const char* const debugName, const char*& outAssetName, const bool requiredField);
+
 extern size_t Pak_ExtractAssetStem(const char* const assetPath, char* const outBuf, const size_t outBufLen);
 
 using namespace std::chrono;
