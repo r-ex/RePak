@@ -80,27 +80,24 @@ PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFileBuilder* const pak, uint32_t* con
     for (const auto& sequence : sequencesArray)
     {
         seqIndex++;
-        PakGuid_t guid;
 
-        if (!JSON_ParseNumber(sequence, guid))
+        char buffer[32]; const char* base = "sequence #";
+        char* current = std::copy(base, base + 10, buffer);
+        std::to_chars_result result = std::to_chars(current, buffer + sizeof(buffer), seqIndex);
+
+        *result.ptr = '\0';
+
+        const char* sequenceName = nullptr;
+        const PakGuid_t guid = Pak_ParseGuidFromObject(sequence, buffer, sequenceName);
+
+        if (sequenceName)
         {
-            if (!sequence.IsString())
-                Error("Sequence #%i is of unsupported type; expected %s or %s, found %s.\n", seqIndex,
-                    JSON_TypeToString(JSONFieldType_e::kUint64), JSON_TypeToString(JSONFieldType_e::kString),
-                    JSON_TypeToString(JSON_ExtractType(sequence)));
-
-            if (sequence.GetStringLength() == 0)
-                Error("Sequence #%i was defined as an invalid empty string.\n", seqIndex);
-
-            const char* const sequencePath = sequence.GetString();
-            guid = RTech::StringToGuid(sequencePath);
-
             const PakAsset_t* const existingAsset = pak->GetAssetByGuid(guid, nullptr, true);
 
             if (!existingAsset)
             {
-                Log("Auto-adding 'aseq' asset \"%s\".\n", sequencePath);
-                AnimSeq_InternalAddAnimSeq(pak, guid, sequencePath);
+                Log("Auto-adding 'aseq' asset \"%s\".\n", sequenceName);
+                AnimSeq_InternalAddAnimSeq(pak, guid, sequenceName);
             }
         }
 
