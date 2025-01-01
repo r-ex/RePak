@@ -138,10 +138,12 @@ static void Shader_InternalAddShader(CPakFileBuilder* const pak, const char* con
 	ShaderAssetHeader_t* const hdr = reinterpret_cast<ShaderAssetHeader_t*>(hdrChunk.data);
 	Shader_SetupHeader(hdr, shader);
 
-	if (pak->IsFlagSet(PF_KEEP_DEV) && shader->name.length() > 0)
+	if (pak->IsFlagSet(PF_KEEP_DEV))
 	{
+		const char* const targetName = shader->name.length() > 0 ? shader->name.c_str() : assetPath;
+
 		char pathStem[256];
-		const size_t stemLen = Pak_ExtractAssetStem(shader->name.c_str(), pathStem, sizeof(pathStem));
+		const size_t stemLen = Pak_ExtractAssetStem(targetName, pathStem, sizeof(pathStem));
 
 		if (stemLen > 0)
 		{
