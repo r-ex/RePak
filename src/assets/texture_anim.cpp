@@ -38,7 +38,7 @@ static char* TextureAnim_ParseFromTXAN(const char* const assetPath, unsigned int
 	return buf;
 }
 
-static void TextureAnim_AddTextureAnim(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& /*mapEntry*/)
+static void TextureAnim_InternalAddTextureAnim(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
 	const std::string txanPath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, "txan");
 
@@ -66,7 +66,20 @@ static void TextureAnim_AddTextureAnim(CPakFileBuilder* const pak, const PakGuid
 	pak->FinishAsset();
 }
 
-void Assets::AddTextureAnimAsset_v1(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+bool TextureAnim_AutoAddTextureAnim(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
-	TextureAnim_AddTextureAnim(pak, assetGuid, assetPath, mapEntry);
+	PakAsset_t* const existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
+
+	if (existingAsset)
+		return false; // already present in the pak.
+
+	Log("Auto-adding 'txan' asset \"%s\".\n", assetPath);
+	TextureAnim_InternalAddTextureAnim(pak, assetGuid, assetPath);
+
+	return true;
+}
+
+void Assets::AddTextureAnimAsset_v1(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& /*mapEntry*/)
+{
+	TextureAnim_InternalAddTextureAnim(pak, assetGuid, assetPath);
 }

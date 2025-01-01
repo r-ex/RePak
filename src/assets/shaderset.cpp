@@ -131,22 +131,39 @@ void ShaderSet_InternalCreateSet(CPakFileBuilder* const pak, const char* const a
 // See if any of the other unknown variables are actually required
 
 template <typename ShaderSetAssetHeader_t>
-static void ShaderSet_AddFromMap(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry, const int assetVersion)
+static void ShaderSet_InternalAddShaderSet(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion)
 {
-	UNUSED(mapEntry);
-
 	CMultiShaderWrapperIO::ShaderCache_t cache = {};
 	ShaderSet_LoadFromMSW(pak, assetPath, cache);
 
 	ShaderSet_InternalCreateSet<ShaderSetAssetHeader_t>(pak, assetPath, &cache.shaderSet, assetGuid, assetVersion);
 }
 
+bool ShaderSet_AutoAddShaderSet(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion)
+{
+	PakAsset_t* const existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
+
+	if (existingAsset)
+		return false; // already present in the pak.
+
+	Log("Auto-adding 'shds' asset \"%s\".\n", assetPath);
+
+	if (assetVersion == 8)
+		ShaderSet_InternalAddShaderSet<ShaderSetAssetHeader_v8_t>(pak, assetGuid, assetPath, assetVersion);
+	else
+		ShaderSet_InternalAddShaderSet<ShaderSetAssetHeader_v11_t>(pak, assetGuid, assetPath, assetVersion);
+
+	return true;
+}
+
 void Assets::AddShaderSetAsset_v8(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-	ShaderSet_AddFromMap<ShaderSetAssetHeader_v8_t>(pak, assetGuid, assetPath, mapEntry, 8);
+	UNUSED(mapEntry);
+	ShaderSet_InternalAddShaderSet<ShaderSetAssetHeader_v8_t>(pak, assetGuid, assetPath, 8);
 }
 
 void Assets::AddShaderSetAsset_v11(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-	ShaderSet_AddFromMap<ShaderSetAssetHeader_v11_t>(pak, assetGuid, assetPath, mapEntry, 11);
+	UNUSED(mapEntry);
+	ShaderSet_InternalAddShaderSet<ShaderSetAssetHeader_v11_t>(pak, assetGuid, assetPath, 11);
 }

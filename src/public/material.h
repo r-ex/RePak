@@ -434,6 +434,14 @@ enum RenderPassMaterial_e
 	RENDER_PASS_MAT_COUNT,
 };
 
+static inline const char* s_renderPassMaterialNames[] = {
+	"depth shadow",
+	"depth prepass",
+	"depth variance shadow map",
+	"depth shadow tight",
+	"color pass"
+};
+
 struct __declspec(align(16)) MaterialAssetHeader_v12_t
 {
 	uint64_t vftableReserved; // Gets set to CMaterialGlue vtbl ptr
@@ -673,6 +681,7 @@ struct MaterialAsset_t
 };
 
 #pragma warning(pop)
+#pragma pack(pop)
 
 // header struct for the material asset cpu data
 struct MaterialCPUHeader
@@ -681,4 +690,3 @@ struct MaterialCPUHeader
 	uint32_t dataSize;
 	uint32_t version;
 };
-#pragma pack(pop)

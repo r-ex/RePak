@@ -214,7 +214,7 @@ void MaterialAsset_t::SetupDepthMaterials(CPakFileBuilder* const pak, const rapi
         Warning("WLD materials do not have generic depth materials, make sure that you have set them to 0 or have created your own.\n");
 
     // titanfall 2 (v12) doesn't have depth_tight, so it has 1 less depth material.
-    const int depthMatCount = this->assetVersion > 12 ? RENDER_PASS_MAT_COUNT : (RENDER_PASS_MAT_COUNT - 1);
+    const int depthMatCount = this->assetVersion >= 15 ? RENDER_PASS_MAT_COUNT : (RENDER_PASS_MAT_COUNT - 1);
 
     for (int i = 0; i < depthMatCount; i++)
     {
@@ -231,21 +231,15 @@ void MaterialAsset_t::SetupDepthMaterials(CPakFileBuilder* const pak, const rapi
             continue;
         }
 
-        const rapidjson::Value& val = it->value;
+        // Titanfall 2 doesn't have depth tight, which is the last depth material,
+        // and color pass is always the last; skip depth tight if its Titanfall 2.
+        const int debugNameIndex = i == (depthMatCount - 1) ? COL_PASS : i;
+        const char* materialPath = nullptr;
 
-        if (JSON_ParseNumber(val, passMaterial))
+        passMaterial = Pak_ParseGuidFromObject(it->value, s_renderPassMaterialNames[debugNameIndex], materialPath);
+
+        if (!materialPath)
             continue;
-
-        if (!val.IsString())
-            Error("%s #%i is of unsupported type; expected %s or %s, found %s.\n", fieldName, i,
-                JSON_TypeToString(JSONFieldType_e::kUint64), JSON_TypeToString(JSONFieldType_e::kString),
-                JSON_TypeToString(JSON_ExtractType(val)));
-
-        if (val.GetStringLength() == 0)
-            Error("%s #%i was defined as an invalid empty string.\n", fieldName, i);
-
-        const char* const materialPath = val.GetString();
-        passMaterial = RTech::StringToGuid(materialPath);
 
         Material_AutoAddMaterial(pak, passMaterial, materialPath, this->assetVersion);
     }
@@ -364,6 +358,28 @@ static void Material_AddUberData(CPakFileBuilder* const pak, MaterialAsset_t* co
     }
 }
 
+extern bool ShaderSet_AutoAddShaderSet(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion);
+
+static void Material_HandleShaderSet(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry, MaterialAsset_t* const material)
+{
+    const char* shaderSetName = nullptr;
+    material->shaderSet = Pak_ParseGuidFromMap(mapEntry, "shaderSet", "shader set", shaderSetName, true);
+
+    if (shaderSetName)
+        ShaderSet_AutoAddShaderSet(pak, material->shaderSet, shaderSetName, material->assetVersion == 12 ? 8 : 11);
+}
+
+extern bool TextureAnim_AutoAddTextureAnim(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath);
+
+static void Material_HandleTextureAnimation(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry, MaterialAsset_t* const material)
+{
+    const char* textureAnimName = nullptr;
+    material->textureAnimation = Pak_ParseGuidFromMap(mapEntry, "$textureAnimation", "texture animation", textureAnimName, false);
+
+    if (textureAnimName)
+        TextureAnim_AutoAddTextureAnim(pak, material->textureAnimation, textureAnimName);
+}
+
 void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
 {
     this->materialTypeStr = JSON_GetValueRequired<const char*>(mapEntry, "shaderType");
@@ -409,12 +425,9 @@ void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
     *(uint32_t*)this->samplers = JSON_GetNumberRequired<uint32_t>(mapEntry, "samplers");
 
     Material_SetDXStates(mapEntry, dxStates);
-
-    this->shaderSet = Pak_ParseGuidRequired(mapEntry, "shaderSet"); // todo: auto-add
-    this->textureAnimation = Pak_ParseGuid(mapEntry, "$textureAnimation"); // todo: auto-add
 }
 
-void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& presetName)
+void Material_SetTitanfall2Preset(MaterialAsset_t* const material, const std::string& presetName)
 {
     MaterialDXState_v15_t& dxState = material->dxStates[0];
     bool useDefaultBlendStates = true;
@@ -768,7 +781,10 @@ static bool Material_InternalAddMaterial(CPakFileBuilder* const pak, const PakGu
     MaterialAsset_t matlAsset{};
     matlAsset.assetVersion = assetVersion;
     matlAsset.guid = assetGuid;
-    matlAsset.path = Utils::ChangeExtension(assetPath, ""); // todo: should this be the stem? if yes, use Pak_ExtractAssetStem
+    matlAsset.path = Utils::ChangeExtension(assetPath, "");
+
+    Material_HandleShaderSet(pak, *matEntry, &matlAsset);
+    Material_HandleTextureAnimation(pak, *matEntry, &matlAsset);
 
     matlAsset.FromJSON(*matEntry); // parse json inputs for matl header
     matlAsset.SetupDepthMaterials(pak, *matEntry);
