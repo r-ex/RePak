@@ -233,7 +233,7 @@ PakGuid_t Pak_ParseGuidFromObject(const rapidjson::Value& val, const char* const
     PakGuid_t resultGuid;
 
     if (JSON_ParseNumber(val, resultGuid))
-        return 0;
+        return resultGuid;
 
     if (!val.IsString())
         Error("%s: %s is of unsupported type; expected %s or %s, found %s.\n", __FUNCTION__, debugName,
