@@ -31,6 +31,18 @@ static void DataTable_SetupRows(const rapidcsv::Document& doc, datatable_t* cons
     if (numTypeNames != dtblHdr->numColumns)
         Error("Expected %u columns for type name row, found %u.\n", dtblHdr->numRows, numTypeNames);
 
+    // Make sure every row (including rows we don't end up storing in the pak),
+    // have the same number of columns as the type row. The column count in the
+    // datatable header is set to the count in the type row and therefore all
+    // other rows must match this count.
+    for (uint32_t i = 0; i < doc.GetRowCount(); ++i)
+    {
+        const uint32_t columnCount = static_cast<uint32_t>(doc.GetColumnCount(i));
+
+        if (columnCount != dtblHdr->numColumns)
+            Error("Expected %u columns for data row #%u, found %u.\n", dtblHdr->numColumns, i, columnCount);
+    }
+
     for (uint32_t i = 0; i < dtblHdr->numColumns; ++i)
     {
         const std::string& typeString = outTypeRow[i];
