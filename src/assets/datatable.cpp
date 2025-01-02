@@ -15,9 +15,9 @@ static inline size_t DataTable_CalcColumnNameBufSize(const rapidcsv::Document& d
     return colNameBufSize;
 }
 
-static void DataTable_ReportInvalidDataTypeError(const char* const type, const uint32_t colIdx, const uint32_t rowIdx)
+static void DataTable_ReportInvalidDataTypeError(const char* const type, const uint32_t rowIdx, const uint32_t colIdx)
 {
-    Error("Invalid data type \"%s\" at cell (%u, %u).\n", type, colIdx, rowIdx);
+    Error("Invalid data type \"%s\" at cell [%u,%u].\n", type, rowIdx, colIdx);
 }
 
 template <typename datatable_t>
@@ -49,7 +49,7 @@ static void DataTable_SetupRows(const rapidcsv::Document& doc, datatable_t* cons
         const dtblcoltype_t type = DataTable_GetTypeFromString(typeString);
 
         if (type == dtblcoltype_t::INVALID)
-            DataTable_ReportInvalidDataTypeError(typeString.c_str(), i, dtblHdr->numRows);
+            DataTable_ReportInvalidDataTypeError(typeString.c_str(), dtblHdr->numRows, i);
 
         if (DataTable_IsStringType(type))
         {
@@ -91,7 +91,7 @@ static void DataTable_SetupColumns(CPakFileBuilder* const pak, PakPageLump_s& da
         const dtblcoltype_t type = DataTable_GetTypeFromString(typeString);
 
         if (type == dtblcoltype_t::INVALID)
-            DataTable_ReportInvalidDataTypeError(typeString.c_str(), i, dtblHdr->numRows);
+            DataTable_ReportInvalidDataTypeError(typeString.c_str(), dtblHdr->numRows, i);
 
         col.rowOffset = dtblHdr->rowStride;
         col.type = type;
@@ -100,9 +100,21 @@ static void DataTable_SetupColumns(CPakFileBuilder* const pak, PakPageLump_s& da
     }
 }
 
-static void DataTable_ReportInvalidValueError(const dtblcoltype_t type, const uint32_t colIdx, const uint32_t rowIdx)
+template <typename T>
+static T DataTable_ParseCellFromDocument(rapidcsv::Document& doc, const uint32_t colIdx, const uint32_t rowIdx)
 {
-    Error("Invalid %s value at cell (%u, %u).\n", DataTable_GetStringFromType(type), colIdx, rowIdx);
+    try {
+        return doc.GetCell<T>(colIdx, rowIdx);
+    }
+    catch (const std::exception& ex) {
+        Error("Exception while parsing cell [%u,%u]: %s.\n", rowIdx, colIdx, ex.what());
+        return T{};
+    }
+}
+
+static void DataTable_ReportInvalidValueError(const dtblcoltype_t type, const uint32_t rowIdx, const uint32_t colIdx)
+{
+    Error("Invalid %s value at cell [%u,%u].\n", DataTable_GetStringFromType(type), rowIdx, colIdx);
 }
 
 // fills a PakPageDataChunk_s with row data from a provided csv
@@ -129,32 +141,32 @@ static void DataTable_SetupValues(CPakFileBuilder* const pak, PakPageLump_s& dat
             {
             case dtblcoltype_t::Bool:
             {
-                const std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
+                const std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx);
 
                 if (!_stricmp(val.c_str(), "true") || val == "1")
                     valbuf.write<uint32_t>(true);
                 else if (!_stricmp(val.c_str(), "false") || val == "0")
                     valbuf.write<uint32_t>(false);
                 else
-                    DataTable_ReportInvalidValueError(col.type, colIdx, rowIdx);
+                    DataTable_ReportInvalidValueError(col.type, rowIdx, colIdx);
 
                 break;
             }
             case dtblcoltype_t::Int:
             {
-                const uint32_t val = doc.GetCell<uint32_t>(colIdx, rowIdx);
+                const uint32_t val = DataTable_ParseCellFromDocument<uint32_t>(doc, colIdx, rowIdx);
                 valbuf.write(val);
                 break;
             }
             case dtblcoltype_t::Float:
             {
-                const float val = doc.GetCell<float>(colIdx, rowIdx);
+                const float val = DataTable_ParseCellFromDocument<float>(doc, colIdx, rowIdx);
                 valbuf.write(val);
                 break;
             }
             case dtblcoltype_t::Vector:
             {
-                std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
+                std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx);
                 std::smatch sm;
 
                 // get values from format "<x,y,z>"
@@ -174,14 +186,14 @@ static void DataTable_SetupValues(CPakFileBuilder* const pak, PakPageLump_s& dat
                     valbuf.write(vec);
                 }
                 else
-                    DataTable_ReportInvalidValueError(col.type, colIdx, rowIdx);
+                    DataTable_ReportInvalidValueError(col.type, rowIdx, colIdx);
                 break;
             }
             case dtblcoltype_t::String:
             case dtblcoltype_t::Asset:
             case dtblcoltype_t::AssetNoPrecache:
             {
-                const std::string val = doc.GetCell<std::string>(colIdx, rowIdx);
+                const std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx);
                 const size_t valBufLen = val.length() + 1;
 
                 memcpy(pStringBuf, val.c_str(), valBufLen);
