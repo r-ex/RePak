@@ -6,7 +6,7 @@
 #include "public/shader.h"
 #include "public/multishader.h"
 
-static void ShaderSet_LoadFromMSW(CPakFile* const pak, const char* const assetPath, CMultiShaderWrapperIO::ShaderCache_t& shaderCache)
+static void ShaderSet_LoadFromMSW(CPakFileBuilder* const pak, const char* const assetPath, CMultiShaderWrapperIO::ShaderCache_t& shaderCache)
 {
 	const fs::path inputFilePath = pak->GetAssetPath() / fs::path(assetPath).replace_extension("msw");
 	MSW_ParseFile(inputFilePath, shaderCache, MultiShaderWrapperFileType_e::SHADERSET);
@@ -43,9 +43,9 @@ static void ShaderSet_SetInputSlots(ShaderSetAssetHeader_t* const hdr, PakAsset_
 	*inputCount = textureCount;
 }
 
-extern bool Shader_AutoAddShader(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int shaderAssetVersion);
+extern bool Shader_AutoAddShader(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int shaderAssetVersion);
 
-static void ShaderSet_AutoAddEmbeddedShader(CPakFile* const pak, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int assetVersion)
+static void ShaderSet_AutoAddEmbeddedShader(CPakFileBuilder* const pak, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int assetVersion)
 {
 	if (shader)
 	{
@@ -57,41 +57,51 @@ static void ShaderSet_AutoAddEmbeddedShader(CPakFile* const pak, const CMultiSha
 }
 
 template <typename ShaderSetAssetHeader_t>
-void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::ShaderSet_t* const shaderSet, const PakGuid_t shaderSetGuid, const int assetVersion)
+void ShaderSet_InternalCreateSet(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::ShaderSet_t* const shaderSet, const PakGuid_t shaderSetGuid, const int assetVersion)
 {
 	ShaderSet_AutoAddEmbeddedShader(pak, shaderSet->vertexShader, shaderSet->vertexShaderGuid, assetVersion);
 	ShaderSet_AutoAddEmbeddedShader(pak, shaderSet->pixelShader, shaderSet->pixelShaderGuid, assetVersion);
 
-	std::vector<PakGuidRefHdr_t> guids{};
+	PakAsset_t& asset = pak->BeginAsset(shaderSetGuid, assetPath);
 
-	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderSetAssetHeader_t), SF_HEAD, 8);
+	PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(ShaderSetAssetHeader_t), SF_HEAD, 8);
+	ShaderSetAssetHeader_t* const hdr = reinterpret_cast<ShaderSetAssetHeader_t*>(hdrChunk.data);
 
-	const std::string assetPathWithoutExtension = Utils::ChangeExtension(assetPath, "");
+	if (pak->IsFlagSet(PF_KEEP_DEV))
+	{
+		char pathStem[PAK_MAX_STEM_PATH];
+		const size_t stemLen = Pak_ExtractAssetStem(assetPath, pathStem, sizeof(pathStem));
 
-	CPakDataChunk nameChunk = pak->CreateDataChunk(assetPathWithoutExtension.length() + 1, SF_CPU | SF_DEV, 1);
-	strcpy_s(nameChunk.Data(), nameChunk.GetSize(), assetPathWithoutExtension.c_str());
+		if (stemLen > 0)
+		{
+			PakPageLump_s nameChunk = pak->CreatePageLump(stemLen + 1, SF_CPU | SF_DEV, 1);
+			memcpy(nameChunk.data, pathStem, stemLen + 1);
 
-	ShaderSetAssetHeader_t* const hdr = reinterpret_cast<ShaderSetAssetHeader_t*>(hdrChunk.Data());
-
-	hdr->name = nameChunk.GetPointer();
-
-	pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_t, name)));
+			pak->AddPointer(hdrChunk, offsetof(ShaderSetAssetHeader_t, name), nameChunk, 0);
+		}
+	}
 
 	// === Shader Inputs ===
 	hdr->vertexShader = shaderSet->vertexShaderGuid;
 	hdr->pixelShader = shaderSet->pixelShaderGuid;
 
+	PakAsset_t* vertexShader = nullptr;
+	PakAsset_t* pixelShader = nullptr;
+
 	// todo: can shader refs be null???
 	if (hdr->vertexShader != 0)
-		pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_t, vertexShader)));
+	{
+		Pak_RegisterGuidRefAtOffset(hdr->vertexShader, offsetof(ShaderSetAssetHeader_t, vertexShader), hdrChunk, asset);
+		vertexShader = pak->GetAssetByGuid(hdr->vertexShader);
+	}
 
 	if (hdr->pixelShader != 0)
-		pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(ShaderSetAssetHeader_t, pixelShader)));
+	{
+		Pak_RegisterGuidRefAtOffset(hdr->pixelShader, offsetof(ShaderSetAssetHeader_t, pixelShader), hdrChunk, asset);
+		pixelShader = pak->GetAssetByGuid(hdr->pixelShader);
+	}
 
-	PakAsset_t* const vertexShader = hdr->vertexShader != 0 ? pak->GetAssetByGuid(hdr->vertexShader, nullptr, true) : nullptr;
 	ShaderSet_SetInputSlots(hdr, vertexShader, true, shaderSet, assetVersion);
-
-	PakAsset_t* const pixelShader = hdr->pixelShader != 0 ? pak->GetAssetByGuid(hdr->pixelShader, nullptr, true) : nullptr;
 	ShaderSet_SetInputSlots(hdr, pixelShader, false, shaderSet, assetVersion);
 
 	// On v11 shaders, the input count is added on top of the second one.
@@ -106,23 +116,12 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 	hdr->firstResourceBindPoint = shaderSet->firstResourceBindPoint;
 	hdr->numResources = shaderSet->numResources;
 
-	PakAsset_t asset;
 	asset.InitAsset(
-		assetPath,
-		shaderSetGuid,
-		hdrChunk.GetPointer(), hdrChunk.GetSize(),
-		PagePtr_t::NullPtr(), UINT64_MAX, UINT64_MAX, AssetType::SHDS);
-	asset.SetHeaderPointer(hdrChunk.Data());
+		hdrChunk.GetPointer(), sizeof(ShaderSetAssetHeader_t),
+		PagePtr_t::NullPtr(), -1, -1, assetVersion, AssetType::SHDS);
+	asset.SetHeaderPointer(hdrChunk.data);
 
-	asset.version = assetVersion;
-	asset.pageEnd = pak->GetNumPages();
-
-	// this doesnt account for external dependencies atm
-	// todo: can shader sets have external dependencies?
-	asset.remainingDependencyCount = static_cast<short>(guids.size() + 1);
-
-	asset.AddGuids(&guids);
-	pak->PushAsset(asset);
+	pak->FinishAsset();
 }
 
 // TODO:
@@ -132,22 +131,39 @@ void ShaderSet_InternalCreateSet(CPakFile* const pak, const char* const assetPat
 // See if any of the other unknown variables are actually required
 
 template <typename ShaderSetAssetHeader_t>
-static void ShaderSet_AddFromMap(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry, const int assetVersion)
+static void ShaderSet_InternalAddShaderSet(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion)
 {
-	UNUSED(mapEntry);
-
 	CMultiShaderWrapperIO::ShaderCache_t cache = {};
 	ShaderSet_LoadFromMSW(pak, assetPath, cache);
 
 	ShaderSet_InternalCreateSet<ShaderSetAssetHeader_t>(pak, assetPath, &cache.shaderSet, assetGuid, assetVersion);
 }
 
-void Assets::AddShaderSetAsset_v8(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+bool ShaderSet_AutoAddShaderSet(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion)
 {
-	ShaderSet_AddFromMap<ShaderSetAssetHeader_v8_t>(pak, assetGuid, assetPath, mapEntry, 8);
+	PakAsset_t* const existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
+
+	if (existingAsset)
+		return false; // already present in the pak.
+
+	Log("Auto-adding 'shds' asset \"%s\".\n", assetPath);
+
+	if (assetVersion == 8)
+		ShaderSet_InternalAddShaderSet<ShaderSetAssetHeader_v8_t>(pak, assetGuid, assetPath, assetVersion);
+	else
+		ShaderSet_InternalAddShaderSet<ShaderSetAssetHeader_v11_t>(pak, assetGuid, assetPath, assetVersion);
+
+	return true;
 }
 
-void Assets::AddShaderSetAsset_v11(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderSetAsset_v8(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-	ShaderSet_AddFromMap<ShaderSetAssetHeader_v11_t>(pak, assetGuid, assetPath, mapEntry, 11);
+	UNUSED(mapEntry);
+	ShaderSet_InternalAddShaderSet<ShaderSetAssetHeader_v8_t>(pak, assetGuid, assetPath, 8);
+}
+
+void Assets::AddShaderSetAsset_v11(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+{
+	UNUSED(mapEntry);
+	ShaderSet_InternalAddShaderSet<ShaderSetAssetHeader_v11_t>(pak, assetGuid, assetPath, 11);
 }

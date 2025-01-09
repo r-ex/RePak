@@ -3,9 +3,17 @@
 #include "utils/dxutils.h"
 #include "public/texture.h"
 
-extern bool Texture_AutoAddTexture(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming);
+extern bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming);
 
-void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+// todo:
+// - keepDevOnly names
+
+// page lump structure and order:
+// - header        HEAD        (align=8)
+// - image offsets CPU_CLIENT  (align=32)
+// - information   CPU_CLIENT  (align=4?16) unknown, dimensions, then hashes, aligned to 16 if we have unknown (which needs to be reserved still).
+// - uv data       TEMP_CLIENT (align=4)
+void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     // get the info for the ui atlas image
     const char* const atlasPath = JSON_GetValueRequired<const char*>(mapEntry, "atlas");
@@ -15,6 +23,7 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid,
     if (!Texture_AutoAddTexture(pak, atlasGuid, atlasPath, true/*streaming disabled as uimg can not be streamed*/))
         Error("Atlas asset \"%s\" with GUID 0x%llX was already added as 'txtr' asset; it can only be added through an 'uimg' asset.\n", atlasPath, atlasGuid);
 
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
     PakAsset_t* const atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 
     // this really shouldn't be triggered, since the texture is either automatically added above, or a fatal error is thrown
@@ -28,15 +37,21 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid,
     // make sure referenced asset is a texture for sanity
     atlasAsset->EnsureType(TYPE_TXTR);
 
-    rapidjson::Value::ConstMemberIterator texturesIt;
-    JSON_GetRequired(mapEntry, "textures", JSONFieldType_e::kArray, texturesIt);
+    rapidjson::Value::ConstMemberIterator imagesIt;
+    JSON_GetRequired(mapEntry, "images", JSONFieldType_e::kArray, imagesIt);
 
-    const rapidjson::Value::ConstArray& textureArray = texturesIt->value.GetArray();
-    const uint16_t textureCount = static_cast<uint16_t>(textureArray.Size());
+    const rapidjson::Value::ConstArray& imageArray = imagesIt->value.GetArray();
+    const uint16_t imageCount = static_cast<uint16_t>(imageArray.Size());
 
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(UIImageAtlasHeader_t), SF_HEAD | SF_CLIENT, 8);
+    // needs to be reversed still, not all uimg's use this! this might be
+    // necessary to reverse at some point since some uimg's (especially in
+    // world rui's) seem to flicker or glitch at certain view angles and the
+    // only data we currently do not set is this.
+    const uint16_t unkCount = 0;
 
-    UIImageAtlasHeader_t* const  pHdr = reinterpret_cast<UIImageAtlasHeader_t*>(hdrChunk.Data());
+    PakPageLump_s hdrLump = pak->CreatePageLump(sizeof(UIImageAtlasHeader_t), SF_HEAD | SF_CLIENT, 8);
+
+    UIImageAtlasHeader_t* const pHdr = reinterpret_cast<UIImageAtlasHeader_t*>(hdrLump.data);
     const TextureAssetHeader_t* const atlasHdr = reinterpret_cast<const TextureAssetHeader_t*>(atlasAsset->header);
 
     pHdr->width = atlasHdr->width;
@@ -45,38 +60,25 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid,
     pHdr->widthRatio = 1.f / pHdr->width;
     pHdr->heightRatio = 1.f / pHdr->height;
 
-    // legion uses this to get the texture count, so its probably set correctly
-    pHdr->textureCount = textureCount;
-    pHdr->unkCount = 0;
+    // legion uses this to get the image count, so its probably set correctly
+    pHdr->imageCount = imageCount;
+    pHdr->unkCount = unkCount;
     pHdr->atlasGUID = atlasGuid;
 
-    // calculate data sizes so we can allocate a page and segment
-    const size_t textureOffsetsDataSize = sizeof(UIImageOffset) * textureCount;
-    const size_t textureDimensionsDataSize = sizeof(uint16_t) * 2 * textureCount;
-    const size_t textureHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * textureCount;
+    Pak_RegisterGuidRefAtOffset(atlasGuid, offsetof(UIImageAtlasHeader_t, atlasGUID), hdrLump, asset);
 
-    // get total size
-    const size_t textureInfoPageSize = textureOffsetsDataSize + textureDimensionsDataSize + textureHashesDataSize /*+ (4 * nTexturesCount)*/;
+    const size_t imageOffsetsDataSize = sizeof(UIImageOffset) * imageCount;
 
-    // ui image/texture info
-    CPakDataChunk textureInfoChunk = pak->CreateDataChunk(textureInfoPageSize, SF_CPU | SF_CLIENT, 32);
+    // ui image offset info
+    PakPageLump_s offsetLump = pak->CreatePageLump(imageOffsetsDataSize, SF_CPU | SF_CLIENT, 32);
+    rmem ofBuf(offsetLump.data);
 
-    // cpu data
-    CPakDataChunk dataChunk = pak->CreateDataChunk(textureCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
-    
-    // register our descriptors so they get converted properly
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureOffsets)));
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureDimensions)));
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, pTextureHashes)));
-
-    rmem tiBuf(textureInfoChunk.Data());
-
-    // set texture offset page index and offset
-    pHdr->pTextureOffsets = textureInfoChunk.GetPointer();
+    // set image offset page index and offset
+    pak->AddPointer(hdrLump, offsetof(UIImageAtlasHeader_t, pImageOffsets), offsetLump, 0);
 
     ////////////////////
     // IMAGE OFFSETS
-    for (const rapidjson::Value& it : textureArray)
+    for (const rapidjson::Value& it : imageArray)
     {
         UIImageOffset uiio{};
 
@@ -92,55 +94,63 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid,
 
         // this doesn't affect legion but does affect game?
         //uiio.InitUIImageOffset(startX, startY, endX, endY);
-        tiBuf.write(uiio);
+        ofBuf.write(uiio);
     }
+
+    const size_t imageDimensionsDataSize = sizeof(uint16_t) * 2 * imageCount;
+    const size_t imageHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * imageCount;
+
+    // note: aligned to 4 if we do not have UIImageAtlasHeader_t::unkCount
+    // (which needs to be reversed still). Else this lump must reside in a
+    // page that is aligned to 16.
+    PakPageLump_s infoLump = pak->CreatePageLump(imageDimensionsDataSize + imageHashesDataSize, SF_CPU | SF_CLIENT, unkCount > 0 ? 16 : 4);
+    rmem ifBuf(infoLump.data);
 
     ///////////////////////
     // IMAGE DIMENSIONS
-    // set texture dimensions page index and offset
-    pHdr->pTextureDimensions = textureInfoChunk.GetPointer(textureOffsetsDataSize);
+    // set image dimensions page index and offset
+    pak->AddPointer(hdrLump, offsetof(UIImageAtlasHeader_t, pImageDimensions), infoLump, 0);
 
-    for (const rapidjson::Value& it : textureArray)
+    for (const rapidjson::Value& it : imageArray)
     {
         const uint16_t width = (uint16_t)JSON_GetNumberRequired<int>(it, "width");
         const uint16_t height = (uint16_t)JSON_GetNumberRequired<int>(it, "height");
 
-        tiBuf.write<uint16_t>(width);
-        tiBuf.write<uint16_t>(height);
+        ifBuf.write<uint16_t>(width);
+        ifBuf.write<uint16_t>(height);
     }
 
-    // set texture hashes page index and offset
-    pHdr->pTextureHashes = textureInfoChunk.GetPointer(textureOffsetsDataSize + textureDimensionsDataSize);
+    // set image hashes page index and offset
+    pak->AddPointer(hdrLump, offsetof(UIImageAtlasHeader_t, pImageHashes), infoLump, imageDimensionsDataSize);
 
     // TODO: is this used?
     //uint32_t nextStringTableOffset = 0;
 
     /////////////////////////
     // IMAGE HASHES/NAMES
-    for (const rapidjson::Value& it : textureArray)
+    for (const rapidjson::Value& it : imageArray)
     {
         rapidjson::Value::ConstMemberIterator pathIt;
         JSON_GetRequired(it, "path", pathIt);
 
-        const char* const texturePath = pathIt->value.GetString();
-        const uint32_t pathHash = RTech::StringToUIMGHash(texturePath);
+        const char* const imagePath = pathIt->value.GetString();
+        const uint32_t pathHash = RTech::StringToUIMGHash(imagePath);
 
-        tiBuf.write(pathHash);
+        ifBuf.write(pathHash);
 
-        // offset into the path table for this texture - not really needed since we don't write the image names
-        tiBuf.write(0ul);
+        // offset into the path table for this image - not really needed since we don't write the image names
+        ifBuf.write(0ul);
 
         //nextStringTableOffset += textIt->value.GetStringLength();
     }
 
-    // add the file relation from this uimg asset to the atlas txtr
-    pak->SetCurrentAssetAsDependentForAsset(atlasAsset);
-
-    rmem uvBuf(dataChunk.Data());
+    // cpu data
+    PakPageLump_s uvLump = pak->CreatePageLump(imageCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
+    rmem uvBuf(uvLump.data);
 
     //////////////
     // IMAGE UVS
-    for (const rapidjson::Value& it : textureArray)
+    for (const rapidjson::Value& it : imageArray)
     {
         UIImageUV uiiu;
 
@@ -158,20 +168,8 @@ void Assets::AddUIImageAsset_v10(CPakFile* const pak, const PakGuid_t assetGuid,
         uvBuf.write(uiiu);
     }
 
-    // create and init the asset entry
-    PakAsset_t asset;
+    asset.InitAsset(hdrLump.GetPointer(), sizeof(UIImageAtlasHeader_t), uvLump.GetPointer(), -1, -1, UIMG_VERSION, AssetType::UIMG);
+    asset.SetHeaderPointer(hdrLump.data);
 
-    asset.InitAsset(assetPath, assetGuid, hdrChunk.GetPointer(), hdrChunk.GetSize(), dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::UIMG);
-    asset.SetHeaderPointer(hdrChunk.Data());
-
-    asset.version = UIMG_VERSION;
-
-    asset.pageEnd = pak->GetNumPages(); // number of the highest page that the asset references pageidx + 1
-    asset.remainingDependencyCount = 2;
-
-    // this asset only has one guid reference so im just gonna do it here
-    asset.AddGuid(hdrChunk.GetPointer(offsetof(UIImageAtlasHeader_t, atlasGUID)));
-
-    // add the asset entry
-    pak->PushAsset(asset);
+    pak->FinishAsset();
 }

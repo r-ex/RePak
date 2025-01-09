@@ -853,15 +853,25 @@ namespace rapidcsv
       UpdateColumnNames();
     }
 
+     /**
+     * @brief   Get number of data columns (excluding label columns) at specified row index.
+     * @param   pRowIdx               zero-based row index.
+     * @returns column count.
+     */
+    size_t GetColumnCount(const size_t pRowIdx) const
+    {
+      const int count = static_cast<int>((mData.size() > 0) ? mData.at(pRowIdx).size() : 0) -
+        (mLabelParams.mRowNameIdx + 1);
+      return (count >= 0) ? static_cast<size_t>(count) : 0;
+    }
+
     /**
      * @brief   Get number of data columns (excluding label columns).
      * @returns column count.
      */
     size_t GetColumnCount() const
     {
-      const int count = static_cast<int>((mData.size() > 0) ? mData.at(0).size() : 0) -
-        (mLabelParams.mRowNameIdx + 1);
-      return (count >= 0) ? static_cast<size_t>(count) : 0;
+      return GetColumnCount(0);
     }
 
     /**

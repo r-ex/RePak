@@ -29,8 +29,8 @@ int main(int argc, char** argv)
     }
     else
     {
-        CPakFile pakFile(8);
-        pakFile.BuildFromMap(targetPath);
+        CPakFileBuilder pakFile;
+        pakFile.BuildFromMap(argv[1]);
     }
 
     return EXIT_SUCCESS;

@@ -22,6 +22,14 @@ extern PakGuid_t Pak_ParseGuidRequired(const rapidjson::Value& val, const char* 
 
 extern PakGuid_t Pak_GetGuidOverridable(const rapidjson::Value& mapEntry, const char* const assetPath);
 
+extern PakGuid_t Pak_ParseGuidFromObject(const rapidjson::Value& val, const char* const debugName,
+	const char*& outAssetName);
+
+extern PakGuid_t Pak_ParseGuidFromMap(const rapidjson::Value& mapEntry, const char* const fieldName,
+	const char* const debugName, const char*& outAssetName, const bool requiredField);
+
+extern size_t Pak_ExtractAssetStem(const char* const assetPath, char* const outBuf, const size_t outBufLen);
+
 using namespace std::chrono;
 
 class CScopeTimer
@@ -47,16 +55,6 @@ private:
 #define XTIME_SCOPE2(x, y) CScopeTimer __timer_##y(x)
 #define XTIME_SCOPE(x, y) XTIME_SCOPE2(x, y)
 #define TIME_SCOPE(x) XTIME_SCOPE(x, __COUNTER__)
-
-#define WRITE_VECTOR(out, dataVector) for (auto it = dataVector.begin(); it != dataVector.end(); ++it) \
-{ \
-	out.Write(*it); \
-}
-
-#define WRITE_VECTOR_PTRIO(out, dataVector) for (auto it = dataVector.begin(); it != dataVector.end(); ++it) \
-{ \
-	out->Write(*it); \
-}
 
 #define IALIGN(a,b)  (((a) + ((b)-1)) & ~((b)-1))
 

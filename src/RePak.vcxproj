@@ -21,8 +21,10 @@
     <ClCompile Include="assets\patch.cpp" />
     <ClCompile Include="assets\shader.cpp" />
     <ClCompile Include="assets\shaderset.cpp" />
+    <ClCompile Include="assets\texture_anim.cpp" />
     <ClCompile Include="assets\uiatlas.cpp" />
     <ClCompile Include="assets\texture.cpp" />
+    <ClCompile Include="logic\pakpage.cpp" />
     <ClCompile Include="logic\pakfile.cpp" />
     <ClCompile Include="logic\rtech.cpp" />
     <ClCompile Include="pch.cpp">
@@ -161,6 +163,7 @@
     <ClInclude Include="assets\assets.h" />
     <ClInclude Include="common\const.h" />
     <ClInclude Include="common\decls.h" />
+    <ClInclude Include="logic\pakpage.h" />
     <ClInclude Include="logic\pakfile.h" />
     <ClInclude Include="logic\rmem.h" />
     <ClInclude Include="logic\rtech.h" />
@@ -178,6 +181,7 @@
     <ClInclude Include="public\studio.h" />
     <ClInclude Include="public\datatable.h" />
     <ClInclude Include="public\texture.h" />
+    <ClInclude Include="public\texture_anim.h" />
     <ClInclude Include="thirdparty\rapidcsv\rapidcsv.h" />
     <ClInclude Include="thirdparty\rapidjson\allocators.h" />
     <ClInclude Include="thirdparty\rapidjson\cursorstreamwrapper.h" />
@@ -327,7 +331,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)\;$(ProjectDir)thirdparty\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "RAPIDJSON_PARSE_DEFAULT_FLAGS=kParseIterativeFlag|kParseValidateEncodingFlag" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -351,7 +355,7 @@
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "RAPIDJSON_PARSE_DEFAULT_FLAGS=kParseIterativeFlag|kParseValidateEncodingFlag" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

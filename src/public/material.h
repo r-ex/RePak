@@ -36,41 +36,52 @@ static const char* s_materialShaderTypeNames[] = {
 	"ptcs",
 };
 
-static const std::map<int, MaterialShaderType_e> s_materialShaderTypeMap
+inline MaterialShaderType_e Material_ShaderTypeFromString(const std::string& str, const unsigned int assetVersion)
 {
-	// static props
-	{'udgr', RGDU}, // rgdu
-	{'pdgr', RGDP}, // rgdp
-	{'cdgr', RGDC}, // rgdc
+	// note: for titanfall 2 materials, we only need 3 bytes for 'fix', 'gen',
+	// etc, the fourth byte is a null. for apex materials, we need 4 bytes for
+	// 'sknp', 'ptcu', etc and the 5th byte is a null. so we just check on 3 to
+	// make sure we never overflow when we read the data out directly as an int.
+	if (str.length() < 3)
+		return _TYPE_INVALID;
 
-	// non-static models
-	{'unks', SKNU}, // sknu
-	{'pnks', SKNP}, // sknp
-	{'cnks', SKNC}, // sknc
-
-	// world/geo models
-	{'udlw', WLDU}, // wldu
-	{'cdlw', WLDC}, // wldc
-
-	// particles
-	{'uctp', PTCU}, // ptcu
-	{'sctp', PTCS}, // ptcs
-
-	// r2 materials
-	{'neg', _TYPE_LEGACY}, // gen
-	{'dlw', _TYPE_LEGACY}, // wld
-	{'xif', _TYPE_LEGACY}, // fix
-	{'nks', _TYPE_LEGACY}, // skn
-};
-
-
-inline MaterialShaderType_e Material_ShaderTypeFromString(const std::string& str)
-{
-	// todo: is this reliable?
 	const int type = *reinterpret_cast<const int*>(str.c_str());
 
-	if (s_materialShaderTypeMap.count(type) != 0)
-		return s_materialShaderTypeMap.at(type);
+	if (assetVersion >= 15)
+	{
+		switch (type)
+		{
+			// static props
+		case 'udgr': return RGDU; // rgdu
+		case 'pdgr': return RGDP; // rgdp
+		case 'cdgr': return RGDC; // rgdc
+
+			// non-static models
+		case 'unks': return SKNU; // sknu
+		case 'pnks': return SKNP; // sknp
+		case 'cnks': return SKNC; // sknc
+
+			// world/geo models
+		case 'udlw': return WLDU; // wldu
+		case 'cdlw': return WLDC; // wldc
+
+			// particles
+		case 'uctp': return PTCU; // ptcu
+		case 'sctp': return PTCS; // ptcs
+		}
+	}
+	else
+	{
+		switch (type)
+		{
+			// r2 materials
+		case 'neg': // gen
+		case 'dlw': // wld
+		case 'xif': // fix
+		case 'nks': // skn
+			return _TYPE_LEGACY;
+		}
+	}
 
 	return _TYPE_INVALID;
 }
@@ -412,6 +423,25 @@ struct GenericShaderBuffer
 #pragma warning(push)
 #pragma warning(disable : 4324)
 
+enum RenderPassMaterial_e
+{
+	DEPTH_SHADOW,
+	DEPTH_PREPASS,
+	DEPTH_VSM,
+	DEPTH_SHADOW_TIGHT,
+	COL_PASS,
+
+	RENDER_PASS_MAT_COUNT,
+};
+
+static inline const char* s_renderPassMaterialNames[] = {
+	"depth shadow",
+	"depth prepass",
+	"depth variance shadow map",
+	"depth shadow tight",
+	"color pass"
+};
+
 struct __declspec(align(16)) MaterialAssetHeader_v12_t
 {
 	uint64_t vftableReserved; // Gets set to CMaterialGlue vtbl ptr
@@ -422,10 +452,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v12_t
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
 
-	PakGuid_t depthShadowMaterial;
-	PakGuid_t depthPrepassMaterial;
-	PakGuid_t depthVSMMaterial;
-	PakGuid_t colpassMaterial;
+	PakGuid_t passMaterials[RENDER_PASS_MAT_COUNT-1]; // -1 because v12 does not have shadow_tight.
 
 	// these blocks dont seem to change often but are the same?
 	// these blocks relate to different render filters and flags. still not well understood.
@@ -473,11 +500,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
 
-	PakGuid_t depthShadowMaterial;
-	PakGuid_t depthPrepassMaterial;
-	PakGuid_t depthVSMMaterial;
-	PakGuid_t depthShadowTightMaterial;
-	PakGuid_t colpassMaterial;
+	PakGuid_t passMaterials[RENDER_PASS_MAT_COUNT];
 
 	PakGuid_t shaderSet; // guid of the shaderset asset that this material uses
 
@@ -534,23 +557,12 @@ struct MaterialAsset_t
 
 	PakGuid_t guid; // guid of this material asset
 
-	PagePtr_t materialName; // pointer to partial asset path
-	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
-	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
-
-	PakGuid_t depthShadowMaterial;
-	PakGuid_t depthPrepassMaterial;
-	PakGuid_t depthVSMMaterial;
-	PakGuid_t depthShadowTightMaterial;
-	PakGuid_t colpassMaterial;
+	PakGuid_t passMaterials[RENDER_PASS_MAT_COUNT];
 
 	PakGuid_t shaderSet = 0; // guid of the shaderset asset that this material uses
 
 	uint16_t numAnimationFrames;
 	PakGuid_t textureAnimation;
-
-	PagePtr_t textureHandles; // ptr to array of texture guids
-	PagePtr_t streamingTextureHandles; // ptr to array of streamable texture guids (empty at build time)
 
 	short width;
 	short height;
@@ -578,7 +590,7 @@ struct MaterialAsset_t
 	// the path to the material without the .rpak extension
 	std::string path;
 
-	void SetupDepthMaterials(const rapidjson::Value& mapEntry);
+	void SetupDepthMaterials(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry);
 	void FromJSON(const rapidjson::Value& mapEntry);
 
 	void WriteToBuffer(char* buf)
@@ -589,18 +601,15 @@ struct MaterialAsset_t
 
 			matl->guid = this->guid;
 
-			matl->materialName = this->materialName;
-			matl->surfaceProp = this->surfaceProp;
-			matl->surfaceProp2 = this->surfaceProp2;
+			matl->passMaterials[DEPTH_SHADOW] = this->passMaterials[DEPTH_SHADOW];
+			matl->passMaterials[DEPTH_PREPASS] = this->passMaterials[DEPTH_PREPASS];
+			matl->passMaterials[DEPTH_VSM] = this->passMaterials[DEPTH_VSM];
 
-			matl->depthShadowMaterial = this->depthShadowMaterial;
-			matl->depthPrepassMaterial = this->depthPrepassMaterial;
-			matl->depthVSMMaterial = this->depthVSMMaterial;
-			matl->colpassMaterial = this->colpassMaterial;
+			// note: DEPTH_SHADOW_TIGHT is mapped to COL_PASS because unlike v15, v12 
+			// doesn't have shadow_tight, colpass uses its space instead.
+			matl->passMaterials[DEPTH_SHADOW_TIGHT] = this->passMaterials[COL_PASS];
+
 			matl->shaderSet = this->shaderSet;
-
-			matl->textureHandles = this->textureHandles;
-			matl->streamingTextureHandles = this->streamingTextureHandles;
 
 			matl->width = this->width;
 			matl->height = this->height;
@@ -631,19 +640,13 @@ struct MaterialAsset_t
 
 			matl->guid = this->guid;
 
-			matl->materialName = this->materialName;
-			matl->surfaceProp = this->surfaceProp;
-			matl->surfaceProp2 = this->surfaceProp2;
+			matl->passMaterials[DEPTH_SHADOW] = this->passMaterials[DEPTH_SHADOW];
+			matl->passMaterials[DEPTH_PREPASS] = this->passMaterials[DEPTH_PREPASS];
+			matl->passMaterials[DEPTH_VSM] = this->passMaterials[DEPTH_VSM];
+			matl->passMaterials[DEPTH_SHADOW_TIGHT] = this->passMaterials[DEPTH_SHADOW_TIGHT];
+			matl->passMaterials[COL_PASS] = this->passMaterials[COL_PASS];
 
-			matl->depthShadowMaterial = this->depthShadowMaterial;
-			matl->depthPrepassMaterial = this->depthPrepassMaterial;
-			matl->depthVSMMaterial = this->depthVSMMaterial;
-			matl->depthShadowTightMaterial = this->depthShadowTightMaterial;
-			matl->colpassMaterial = this->colpassMaterial;
 			matl->shaderSet = this->shaderSet;
-
-			matl->textureHandles = this->textureHandles;
-			matl->streamingTextureHandles = this->streamingTextureHandles;
 
 			matl->width = this->width;
 			matl->height = this->height;
@@ -678,6 +681,7 @@ struct MaterialAsset_t
 };
 
 #pragma warning(pop)
+#pragma pack(pop)
 
 // header struct for the material asset cpu data
 struct MaterialCPUHeader
@@ -686,4 +690,3 @@ struct MaterialCPUHeader
 	uint32_t dataSize;
 	uint32_t version;
 };
-#pragma pack(pop)

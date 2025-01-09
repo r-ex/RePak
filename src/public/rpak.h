@@ -15,7 +15,10 @@
 #define PAK_HEADER_FLAGS_COMPRESSED      (1<<8)
 #define PAK_HEADER_FLAGS_ZSTREAM_ENCODED (1<<9) // use the ZStd decoder instead of the RTech one
 
+#define PAK_MAX_STEM_PATH 512
+
 #define TYPE_TXTR	MAKE_FOURCC('t', 'x', 't', 'r') // txtr
+#define TYPE_TXAN	MAKE_FOURCC('t', 'x', 'a', 'n') // txan
 #define TYPE_RMDL	MAKE_FOURCC('m', 'd', 'l', '_') // mdl_
 #define TYPE_UIMG	MAKE_FOURCC('u', 'i', 'm', 'g') // uimg
 #define TYPE_PTCH	MAKE_FOURCC('P', 't', 'c', 'h') // Ptch
@@ -31,6 +34,7 @@ enum class AssetType : uint32_t
 	NONE = 0, // !!!INVALID TYPE!!!
 
 	TXTR = TYPE_TXTR, // texture
+	TXAN = TYPE_TXAN, // texture animation
 	RMDL = TYPE_RMDL, // model
 	UIMG = TYPE_UIMG, // ui image atlas
 	PTCH = TYPE_PTCH, // patch
@@ -45,7 +49,7 @@ enum class AssetType : uint32_t
 #pragma pack(push, 1)
 
 // represents a "pointer" into a mempage by page index and offset
-// when loaded, these usually get converted to a real pointer
+// when loaded, these get converted to a real pointer in the runtime.
 struct PagePtr_t
 {
 	int index = 0;
@@ -72,32 +76,32 @@ struct PakHdr_t
 	DWORD magic = 0x6b615052;
 
 	uint16_t fileVersion = 0x8;
-	uint16_t flags;
-	FILETIME fileTime;
-	char  unk0[0x8];
-	uint64_t compressedSize; // size of the rpak file on disk before decompression
+	uint16_t flags = 0;
+	FILETIME fileTime{};
+	char  unk0[0x8]{};
+	uint64_t compressedSize = 0; // size of the rpak file on disk before decompression
 	uint64_t embeddedStarpakOffset = 0;
-	char  unk1[0x8];
-	uint64_t decompressedSize; // actual data size of the rpak file after decompression
+	char  unk1[0x8]{};
+	uint64_t decompressedSize = 0; // actual data size of the rpak file after decompression
 	uint64_t embeddedStarpakSize = 0;
-	char  unk2[0x8];
+	char  unk2[0x8]{};
 	uint16_t starpakPathsSize = 0; // size in bytes of the section containing mandatory starpak paths
 	uint16_t optStarpakPathsSize = 0; // size in bytes of the section containing optional starpak paths
-	uint16_t virtualSegmentCount = 0;
-	uint16_t pageCount = 0; // number of "mempages" in the rpak
+	uint16_t memSlabCount = 0;
+	uint16_t memPageCount = 0; // number of "mempages" in the rpak
 	uint16_t patchIndex = 0;
 	uint16_t alignment = 0;
-	uint32_t descriptorCount = 0;
+	uint32_t pointerCount = 0;
 	uint32_t assetCount = 0;
-	uint32_t guidDescriptorCount = 0;
-	uint32_t relationCount = 0;
+	uint32_t usesCount = 0;
+	uint32_t dependentsCount = 0;
 
 	// only in tf2, related to external
 	uint32_t unk7count = 0;
 	uint32_t unk8count = 0;
 
 	// only in apex
-	char  unk3[0x1c];
+	char  unk3[0x1c]{};
 };
 static_assert(sizeof(PakHdr_t) == 136);
 
@@ -111,7 +115,7 @@ struct PakPatchFileHdr_t // follows immediately after the file header in patch r
 // these probably aren't actually called virtual segments
 // this struct doesn't really describe any real data segment, but collects info
 // about the size of pages that are using specific flags/types/whatever
-struct PakSegmentHdr_t
+struct PakSlabHdr_s
 {
 	int flags = 0;
 	int alignment = 0;
@@ -123,43 +127,52 @@ struct PakSegmentHdr_t
 // with page at idx 0 being just after the asset relation data
 // in patched rpaks (e.g. common(01).rpak), these sections don't fully line up with the data,
 // because of both the patch edit stream and also missing pages that are only present in the base rpak
-struct PakPageHdr_t
+struct PakPageHdr_s
 {
-	int segIdx; // index into vseg array
-	int pageAlignment; // alignment size when buffer is allocated
+	int slabIndex; // index into vseg array
+	int alignment; // alignment size when buffer is allocated
 	int dataSize; // actual size of page in bytes
 };
 #pragma pack(pop)
 
-// defines the location of a data "pointer" within the pak's mem pages
-// allows the engine to read the index/offset pair and replace it with an actual memory pointer at runtime
-typedef PagePtr_t PakPointerHdr_t;
+struct PakGuidRef_s
+{
+	inline bool operator<(const PakGuidRef_s& b) const
+	{
+		return (ptr < b.ptr);
+	}
 
-// same kinda thing as RPakDescriptor, but this one tells the engine where
-// guid references to other assets are within mem pages
-typedef PakPointerHdr_t PakGuidRefHdr_t;
+	PagePtr_t ptr;
+
+	// this field is only used by repak.
+	PakGuid_t guid;
+};
 
 // defines a bunch of values for registering/using an asset from the rpak
 struct PakAsset_t
 {
-	PakAsset_t() = default;
+	PakAsset_t()
+	{
+		// the asset always depends on itself, and therefore this value
+		// should always be at least 1 if the asset is added.
+		internalDependencyCount = 1;
+	};
 
-	void InitAsset(const char* const assetName,
-		const PakGuid_t nGuid,
+	void InitAsset(
 		const PagePtr_t pHeadPtr,
 		const uint32_t nHeaderSize,
 		const PagePtr_t pCpuPtr,
-		const uint64_t nStarpakOffset,
-		const uint64_t nOptStarpakOffset,
+		const int64_t nStarpakOffset,
+		const int64_t nOptStarpakOffset,
+		const uint32_t nVersion,
 		const AssetType type)
 	{
-		this->name = assetName;
-		this->guid = nGuid;
 		this->headPtr = pHeadPtr;
 		this->cpuPtr = pCpuPtr;
 		this->starpakOffset = nStarpakOffset;
 		this->optStarpakOffset = nOptStarpakOffset;
 		this->headDataSize = nHeaderSize;
+		this->version = nVersion;
 		this->id = type;
 	}
 
@@ -185,31 +198,32 @@ struct PakAsset_t
 	// offset to any available streamed data
 	// starpakOffset    = "mandatory" starpak file offset
 	// optStarpakOffset = "optional" starpak file offset
-	// 
-	// in reality both are mandatory but respawn likes to do a little trolling
-	// so "opt" starpaks are a thing
-	__int64 starpakOffset = -1;
-	__int64 optStarpakOffset = -1;
+	int64_t starpakOffset = -1;
+	int64_t optStarpakOffset = -1;
 
-	// this is actually uint16 in file. we store it as size_t here to avoid casts in every asset function
-	size_t pageEnd = 0; // highest mem page used by this asset
+	uint16_t pageEnd = 0; // highest mem page used by this asset
 
-	// value is decremented every time a dependency finishes processing its own dependencies
-	short remainingDependencyCount = 0;
+	// internal asset dependency count, which counts the total number of assets
+	// that are in the same pak as this asset, and are needed for this asset
+	// to work. the dependency count also includes the asset itself; the asset
+	// depends on itself. the runtime decrements this value atomically when
+	// processing the internal dependencies until it reaches 1, and then starts
+	// loading this asset.
+	short internalDependencyCount;
 
 	// start index for this asset's dependents/dependencies in respective arrays
 	uint32_t dependentsIndex = 0;
-	uint32_t dependenciesIndex = 0;
+	uint32_t usesIndex = 0;
 
 	uint32_t dependentsCount = 0; // number of local assets that use this asset
-	uint32_t dependenciesCount = 0; // number of local assets that are used by this asset
+	uint32_t usesCount = 0; // number of local assets that are used by this asset
 
 	// size of the asset header
-	int headDataSize = 0;
+	uint32_t headDataSize = 0;
 
 	// this isn't always changed when the asset gets changed
 	// but respawn calls it a version so i will as well
-	int version = 0;
+	uint32_t version = 0;
 
 	// see AssetType enum
 	AssetType id = AssetType::NONE;
@@ -219,15 +233,16 @@ public:
 	int _assetidx;
 	std::string name;
 
-	void* header;
+	void* header = nullptr;
 
 	// Extra information about the asset that is made available to other assets when being created.
 	std::shared_ptr<void> _publicData;
 
 	// vector of indexes for local assets that use this asset
-	std::vector<unsigned int> _relations{};
+	std::vector<unsigned int> _dependents;
 
-	std::vector<PakGuidRefHdr_t> _guids{};
+	// guid reference pointers
+	std::vector<PakGuidRef_s> _uses;
 
 	FORCEINLINE void SetHeaderPointer(void* pHeader) { this->header = pHeader; };
 
@@ -240,23 +255,18 @@ public:
 
 	char* const PublicData() { return reinterpret_cast<char*>(_publicData.get()); };
 
-	FORCEINLINE void AddRelation(const unsigned int idx) { _relations.push_back({ idx }); };
-	FORCEINLINE void AddRelation(const size_t idx) { _relations.push_back({ static_cast<unsigned int>(idx) }); };
+	FORCEINLINE void AddDependent(const unsigned int idx) { _dependents.push_back({ idx }); };
+	FORCEINLINE void AddDependent(const size_t idx) { _dependents.push_back({ static_cast<unsigned int>(idx) }); };
 
-	FORCEINLINE void AddGuid(PakGuidRefHdr_t desc) { _guids.push_back(desc); };
+	FORCEINLINE void AddGuid(const PagePtr_t desc, const PakGuid_t assetGuid) { _uses.push_back({ desc, assetGuid }); };
+	FORCEINLINE void ExpandGuidBuf(const size_t amount) { _uses.reserve(_uses.size() + amount); }
 
-	FORCEINLINE void AddGuids(std::vector<PakGuidRefHdr_t>* descs)
-	{
-		for (auto& it : *descs)
-			_guids.push_back(it);
-	};
-
-	FORCEINLINE bool IsType(uint32_t type)
+	FORCEINLINE bool IsType(uint32_t type) const
 	{
 		return static_cast<uint32_t>(id) == type;
 	}
 
-	FORCEINLINE void EnsureType(uint32_t type)
+	FORCEINLINE void EnsureType(uint32_t type) const
 	{
 		if (!IsType(type))
 		{

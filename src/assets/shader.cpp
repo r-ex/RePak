@@ -4,23 +4,23 @@
 #include "public/multishader.h"
 #include "utils/dxutils.h"
 
-static void Shader_LoadFromMSW(CPakFile* const pak, const char* const assetPath, CMultiShaderWrapperIO::ShaderCache_t& shaderCache)
+static void Shader_LoadFromMSW(CPakFileBuilder* const pak, const char* const assetPath, CMultiShaderWrapperIO::ShaderCache_t& shaderCache)
 {
 	const fs::path inputFilePath = pak->GetAssetPath() / fs::path(assetPath).replace_extension("msw");
 	MSW_ParseFile(inputFilePath, shaderCache, MultiShaderWrapperFileType_e::SHADER);
 }
 
 template <typename ShaderAssetHeader_t>
-static void Shader_CreateFromMSW(CPakFile* const pak, CPakDataChunk& cpuDataChunk, ParsedDXShaderData_t* const firstShaderData,
-								const CMultiShaderWrapperIO::Shader_t* shader, ShaderAssetHeader_t* const hdr)
+static void Shader_CreateFromMSW(CPakFileBuilder* const pak, PakPageLump_s& cpuDataChunk, ParsedDXShaderData_t* const firstShaderData,
+								const CMultiShaderWrapperIO::Shader_t* shader, PakPageLump_s& hdrChunk, ShaderAssetHeader_t* const hdr)
 {
 	const size_t numShaderBuffers = shader->entries.size();
 	size_t totalShaderDataSize = 0;
 
 	for (auto& it : shader->entries)
 	{
-		if (it.buffer != nullptr)
-			totalShaderDataSize += IALIGN(it.size, 8);
+		if (it.buffer == nullptr)
+			continue;
 
 		// If the shader type hasn't been found yet, parse this buffer and find out what we want to set it as.
 		if (hdr->type == eShaderType::Invalid)
@@ -33,6 +33,8 @@ static void Shader_CreateFromMSW(CPakFile* const pak, CPakDataChunk& cpuDataChun
 				}
 			}
 		}
+
+		totalShaderDataSize += IALIGN(it.size, 8);
 	}
 	assert(totalShaderDataSize != 0);
 
@@ -42,7 +44,7 @@ static void Shader_CreateFromMSW(CPakFile* const pak, CPakDataChunk& cpuDataChun
 	const size_t descriptorSize = numShaderBuffers * entrySize;
 
 	const size_t shaderBufferChunkSize = descriptorSize + totalShaderDataSize;
-	cpuDataChunk = pak->CreateDataChunk(shaderBufferChunkSize, SF_CPU | SF_TEMP, 8);
+	cpuDataChunk = pak->CreatePageLump(shaderBufferChunkSize, SF_CPU | SF_TEMP, 8);
 
 	// Offset at which the next bytecode buffer will be written.
 	// Initially starts at the end of the descriptors and then gets increased every time a buffer is written.
@@ -52,28 +54,23 @@ static void Shader_CreateFromMSW(CPakFile* const pak, CPakDataChunk& cpuDataChun
 	{
 		const CMultiShaderWrapperIO::ShaderEntry_t& entry = shader->entries[i];
 
-		ShaderByteCode_t* bc = reinterpret_cast<ShaderByteCode_t*>(cpuDataChunk.Data() + (i * entrySize));
+		ShaderByteCode_t* bc = reinterpret_cast<ShaderByteCode_t*>(cpuDataChunk.data + (i * entrySize));
 
 		if (entry.buffer)
 		{
 			assert(entry.size > 0);
 
-			bc->data = cpuDataChunk.GetPointer(nextBytecodeBufferOffset);
+			// Register the data pointer at the byte code.
+			pak->AddPointer(cpuDataChunk, (i * entrySize) + offsetof(ShaderByteCode_t, data), cpuDataChunk, nextBytecodeBufferOffset);
 			bc->dataSize = entry.size;
 
 			if (hdr->type == eShaderType::Vertex)
 			{
+				pak->AddPointer(cpuDataChunk, (i * entrySize) + offsetof(ShaderByteCode_t, inputSignatureBlob), cpuDataChunk, nextBytecodeBufferOffset);
 				bc->inputSignatureBlobSize = bc->dataSize;
-				bc->inputSignatureBlob = bc->data;
-
-				pak->AddPointer(cpuDataChunk.GetPointer((i * entrySize) + offsetof(ShaderByteCode_t, inputSignatureBlob)));
 			}
 
-			// Register the data pointer at the 
-			pak->AddPointer(cpuDataChunk.GetPointer((i * entrySize) + offsetof(ShaderByteCode_t, data)));
-
-			memcpy_s(cpuDataChunk.Data() + nextBytecodeBufferOffset, entry.size, entry.buffer, entry.size);
-
+			memcpy_s(cpuDataChunk.data + nextBytecodeBufferOffset, entry.size, entry.buffer, entry.size);
 			nextBytecodeBufferOffset += IALIGN(entry.size, 8);
 		}
 		else
@@ -99,14 +96,12 @@ static void Shader_CreateFromMSW(CPakFile* const pak, CPakDataChunk& cpuDataChun
 	// and the second being unknown.
 	const size_t inputFlagsDataSize = numShaderBuffers * (2 * sizeof(uint64_t));
 	const size_t reservedDataSize = numShaderBuffers * (16);
-	CPakDataChunk shaderInfoChunk = pak->CreateDataChunk(reservedDataSize + inputFlagsDataSize, SF_CPU, 1);
+	PakPageLump_s shaderInfoChunk = pak->CreatePageLump(reservedDataSize + inputFlagsDataSize, SF_CPU, 1);
 
-	// Get a pointer to the beginning of the reserved data section
-	hdr->unk_10 = shaderInfoChunk.GetPointer();
-	// Get a pointer after the end of the reserved data section
-	hdr->shaderInputFlags = shaderInfoChunk.GetPointer(reservedDataSize);
+	pak->AddPointer(hdrChunk, offsetof(ShaderAssetHeader_t, unk_10), shaderInfoChunk, 0);
+	pak->AddPointer(hdrChunk, offsetof(ShaderAssetHeader_t, shaderInputFlags), shaderInfoChunk, reservedDataSize);
 
-	uint64_t* const inputFlags = reinterpret_cast<uint64_t*>(shaderInfoChunk.Data() + reservedDataSize);
+	uint64_t* const inputFlags = reinterpret_cast<uint64_t*>(shaderInfoChunk.data + reservedDataSize);
 	size_t i = 0;
 
 	// vertex shaders seem to have data every 8 bytes, unlike (seemingly) every other shader that only uses 8 out of every 16 bytes
@@ -134,69 +129,58 @@ static void Shader_SetupHeader(ShaderAssetHeader_v12_t* const hdr, const CMultiS
 }
 
 template<typename ShaderAssetHeader_t>
-static void Shader_InternalAddShader(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, 
+static void Shader_InternalAddShader(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, 
 									const PakGuid_t shaderGuid, const int assetVersion)
 {
-	CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(ShaderAssetHeader_t), SF_HEAD, 8);
+	PakAsset_t& asset = pak->BeginAsset(shaderGuid, assetPath);
+	PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(ShaderAssetHeader_t), SF_HEAD, 8);
 
-	ShaderAssetHeader_t* const hdr = reinterpret_cast<ShaderAssetHeader_t*>(hdrChunk.Data());
+	ShaderAssetHeader_t* const hdr = reinterpret_cast<ShaderAssetHeader_t*>(hdrChunk.data);
 	Shader_SetupHeader(hdr, shader);
 
-	const size_t nameLen = shader->name.length();
-
-	if (nameLen > 0)
+	if (pak->IsFlagSet(PF_KEEP_DEV))
 	{
-		CPakDataChunk nameChunk = pak->CreateDataChunk(nameLen + 1, SF_CPU | SF_DEV, 1);
-		strcpy_s(nameChunk.Data(), nameChunk.GetSize(), shader->name.c_str());
+		const char* const targetName = shader->name.length() > 0 ? shader->name.c_str() : assetPath;
 
-		hdr->name = nameChunk.GetPointer();
-		pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_t, name)));
+		char pathStem[PAK_MAX_STEM_PATH];
+		const size_t stemLen = Pak_ExtractAssetStem(targetName, pathStem, sizeof(pathStem));
+
+		if (stemLen > 0)
+		{
+			PakPageLump_s nameChunk = pak->CreatePageLump(stemLen + 1, SF_CPU | SF_DEV, 1);
+			memcpy(nameChunk.data, pathStem, stemLen + 1);
+
+			pak->AddPointer(hdrChunk, offsetof(ShaderAssetHeader_t, name), nameChunk, 0);
+		}
 	}
 
-	CPakDataChunk dataChunk = {};
 	ParsedDXShaderData_t* const shaderData = new ParsedDXShaderData_t;
+	PakPageLump_s dataChunk;
 
-	Shader_CreateFromMSW(pak, dataChunk, shaderData, shader, hdr);
-
-	// Register the pointers we have just written.
-	pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_t, unk_10)));
-	pak->AddPointer(hdrChunk.GetPointer(offsetof(ShaderAssetHeader_t, shaderInputFlags)));
-
+	Shader_CreateFromMSW(pak, dataChunk, shaderData, shader, hdrChunk, hdr);
 	// =======================================
 
-	PakAsset_t asset;
 	asset.InitAsset(
-		assetPath,
-		shaderGuid,
-		hdrChunk.GetPointer(), hdrChunk.GetSize(),
-		dataChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::SHDR);
+		hdrChunk.GetPointer(), sizeof(ShaderAssetHeader_t),
+		dataChunk.GetPointer(), -1, -1, assetVersion, AssetType::SHDR);
 
-	asset.SetHeaderPointer(hdrChunk.Data());
-
-	asset.version = assetVersion;
+	asset.SetHeaderPointer(hdrChunk.data);
 	asset.SetPublicData(shaderData);
 
-	asset.pageEnd = pak->GetNumPages();
-
-	// this doesnt account for external dependencies atm
-	// note(amos): do shaders even depend on external dependencies?
-	//             remove the comments if its confirmed to not depend on external dependencies.
-	asset.remainingDependencyCount = 1;
-
-	pak->PushAsset(asset);
+	pak->FinishAsset();
 }
 
-static void Shader_AddShaderV8(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid)
+static void Shader_AddShaderV8(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid)
 {
 	Shader_InternalAddShader<ShaderAssetHeader_v8_t>(pak, assetPath, shader, shaderGuid, 8);
 }
 
-static void Shader_AddShaderV12(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid)
+static void Shader_AddShaderV12(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid)
 {
 	Shader_InternalAddShader<ShaderAssetHeader_v12_t>(pak, assetPath, shader, shaderGuid, 12);
 }
 
-bool Shader_AutoAddShader(CPakFile* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int shaderAssetVersion)
+bool Shader_AutoAddShader(CPakFileBuilder* const pak, const char* const assetPath, const CMultiShaderWrapperIO::Shader_t* const shader, const PakGuid_t shaderGuid, const int shaderAssetVersion)
 {
 	PakAsset_t* const existingAsset = pak->GetAssetByGuid(shaderGuid, nullptr, true);
 
@@ -211,7 +195,7 @@ bool Shader_AutoAddShader(CPakFile* const pak, const char* const assetPath, cons
 	return true;
 }
 
-void Assets::AddShaderAsset_v8(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderAsset_v8(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
 	UNUSED(mapEntry);
 	CMultiShaderWrapperIO::ShaderCache_t cache = {};
@@ -220,7 +204,7 @@ void Assets::AddShaderAsset_v8(CPakFile* const pak, const PakGuid_t assetGuid, c
 	Shader_AddShaderV8(pak, assetPath, cache.shader, assetGuid);
 }
 
-void Assets::AddShaderAsset_v12(CPakFile* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+void Assets::AddShaderAsset_v12(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
 	UNUSED(mapEntry);
 	CMultiShaderWrapperIO::ShaderCache_t cache = {};

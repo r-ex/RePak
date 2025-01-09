@@ -9,7 +9,9 @@ enum class dtblcoltype_t : uint32_t
 	Vector,
 	String,
 	Asset,
-	AssetNoPrecache
+	AssetNoPrecache,
+
+	INVALID = 0xffffffff
 };
 
 static inline const std::unordered_map<std::string, dtblcoltype_t> s_dataTableColumnTypeMap =
@@ -20,26 +22,36 @@ static inline const std::unordered_map<std::string, dtblcoltype_t> s_dataTableCo
 	{ "vector", dtblcoltype_t::Vector },
 	{ "string", dtblcoltype_t::String },
 	{ "asset",  dtblcoltype_t::Asset },
-	{ "assetnoprecache", dtblcoltype_t::AssetNoPrecache }
+	{ "asset_noprecache", dtblcoltype_t::AssetNoPrecache }
 };
 
 // gets enum value from type string
 // e.g. "string" to dtblcoltype::StringT
 
-static char char_tolower(const char ch) {
-	return static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
-}
-dtblcoltype_t DataTable_GetTypeFromString(std::string& sType)
+dtblcoltype_t DataTable_GetTypeFromString(const std::string& sType)
 {
-	std::transform(sType.begin(), sType.end(), sType.begin(), char_tolower);
-
 	for (const auto& [key, value] : s_dataTableColumnTypeMap) // get each element in the type map
 	{
-		if (sType.compare(key) == 0) // are they equal?
+		if (_stricmp(sType.c_str(), key.c_str()) == 0) // are they equal?
 			return value;
 	}
 
-	return dtblcoltype_t::String;
+	return dtblcoltype_t::INVALID;
+}
+
+inline const char* DataTable_GetStringFromType(const dtblcoltype_t type)
+{
+	switch (type)
+	{
+	case dtblcoltype_t::Bool: return "bool";
+	case dtblcoltype_t::Int: return "int";
+	case dtblcoltype_t::Float: return "float";
+	case dtblcoltype_t::Vector: return "vector";
+	case dtblcoltype_t::String: return "string";
+	case dtblcoltype_t::Asset: return "asset";
+	case dtblcoltype_t::AssetNoPrecache: return "asset_noprecache";
+	default: return "type_invalid";
+	}
 }
 
 inline bool DataTable_IsStringType(const dtblcoltype_t type)
@@ -112,46 +124,11 @@ struct datatable_v1_t
 
 struct datatable_asset_t
 {
-	uint32_t numColumns;
-	uint32_t numRows;
-
-	// !!!! DO NOT CHANGE THE POSITION OF THESE !!!!
-	// !!!!			IT WILL CAUSE ISSSUES		!!!!
-	// we are lucky and can cheat!!
-	PagePtr_t pColumns;
-	PagePtr_t pRows;
-
-	uint32_t rowStride;	// Number of bytes per row
-
-	const char* assetPath; // assets path on disk
-
 	// previously func vars
-	size_t stringEntriesSize;
-	size_t rowDataPageSize;
+	size_t rowPodValueBufSize;
+	size_t rowStringValueBufSize;
 
 	datacolumn_t* pDataColums; // pointer to column data from data chunk
-
-	void WriteToBuffer(char* const buf, const int pakVersion)
-	{
-		if (pakVersion <= 7)
-		{
-			datatable_v0_t* const dtbl = reinterpret_cast<datatable_v0_t*>(buf);
-			dtbl->numColumns = numColumns;
-			dtbl->numRows = numRows;
-			dtbl->pColumns = pColumns;
-			dtbl->pRows = pRows;
-			dtbl->rowStride = rowStride;
-		}
-		else
-		{
-			datatable_v1_t* const dtbl = reinterpret_cast<datatable_v1_t*>(buf);
-			dtbl->numColumns = numColumns;
-			dtbl->numRows = numRows;
-			dtbl->pColumns = pColumns;
-			dtbl->pRows = pRows;
-			dtbl->rowStride = rowStride;
-		}
-	}
 };
 
 static_assert(sizeof(datacolumn_t) == 16);
