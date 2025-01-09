@@ -2,7 +2,7 @@
 #include "assets/assets.h"
 #include "logic/pakfile.h"
 
-#include <application/cachebuilder.h>
+#include <logic/streamcache.h>
 
 const char startupVersion[] = {
     "RePak - Built "

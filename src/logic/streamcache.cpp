@@ -195,7 +195,7 @@ bool BuildCacheFileFromGamePaksDirectory(const fs::path& directoryPath)
 
 	for (const std::string& it : cacheFile->cachedStarpaks)
 	{
-		cacheFileStream.WriteString(it);
+		cacheFileStream.WriteString(it, true);
 	}
 	
 	cacheFileStream.Seek(cacheHeader.dataEntriesOffset);

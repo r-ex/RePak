@@ -11,7 +11,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="application\cachebuilder.cpp" />
     <ClCompile Include="application\repak.cpp" />
     <ClCompile Include="assets\animrig.cpp" />
     <ClCompile Include="assets\animseq.cpp" />
@@ -27,6 +26,7 @@
     <ClCompile Include="logic\pakpage.cpp" />
     <ClCompile Include="logic\pakfile.cpp" />
     <ClCompile Include="logic\rtech.cpp" />
+    <ClCompile Include="logic\streamcache.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -159,7 +159,6 @@
     <ClCompile Include="utils\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="application\cachebuilder.h" />
     <ClInclude Include="assets\assets.h" />
     <ClInclude Include="common\const.h" />
     <ClInclude Include="common\decls.h" />
@@ -167,6 +166,7 @@
     <ClInclude Include="logic\pakfile.h" />
     <ClInclude Include="logic\rmem.h" />
     <ClInclude Include="logic\rtech.h" />
+    <ClInclude Include="logic\streamcache.h" />
     <ClInclude Include="math\color.h" />
     <ClInclude Include="math\vector.h" />
     <ClInclude Include="pch.h" />
@@ -271,7 +271,6 @@
   <ItemGroup>
     <None Include="cpp.hint" />
     <None Include="thirdparty\zstd\decompress\huf_decompress_amd64.S" />
-    <None Include="thirdparty\zstd\decompress\huf_decompress_amd64.S.vsspell" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
