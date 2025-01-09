@@ -142,7 +142,7 @@ static void Shader_InternalAddShader(CPakFileBuilder* const pak, const char* con
 	{
 		const char* const targetName = shader->name.length() > 0 ? shader->name.c_str() : assetPath;
 
-		char pathStem[256];
+		char pathStem[PAK_MAX_STEM_PATH];
 		const size_t stemLen = Pak_ExtractAssetStem(targetName, pathStem, sizeof(pathStem));
 
 		if (stemLen > 0)

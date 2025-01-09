@@ -15,6 +15,8 @@
 #define PAK_HEADER_FLAGS_COMPRESSED      (1<<8)
 #define PAK_HEADER_FLAGS_ZSTREAM_ENCODED (1<<9) // use the ZStd decoder instead of the RTech one
 
+#define PAK_MAX_STEM_PATH 512
+
 #define TYPE_TXTR	MAKE_FOURCC('t', 'x', 't', 'r') // txtr
 #define TYPE_TXAN	MAKE_FOURCC('t', 'x', 'a', 'n') // txan
 #define TYPE_RMDL	MAKE_FOURCC('m', 'd', 'l', '_') // mdl_
