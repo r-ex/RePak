@@ -101,13 +101,13 @@ static void DataTable_SetupColumns(CPakFileBuilder* const pak, PakPageLump_s& da
 }
 
 template <typename T>
-static T DataTable_ParseCellFromDocument(rapidcsv::Document& doc, const uint32_t colIdx, const uint32_t rowIdx)
+static T DataTable_ParseCellFromDocument(rapidcsv::Document& doc, const uint32_t colIdx, const uint32_t rowIdx, const dtblcoltype_t type)
 {
     try {
         return doc.GetCell<T>(colIdx, rowIdx);
     }
     catch (const std::exception& ex) {
-        Error("Exception while parsing cell [%u,%u]: %s.\n", rowIdx, colIdx, ex.what());
+        Error("Exception while parsing %s value from cell [%u,%u]: %s.\n", DataTable_GetStringFromType(type), rowIdx, colIdx, ex.what());
         return T{};
     }
 }
@@ -141,7 +141,7 @@ static void DataTable_SetupValues(CPakFileBuilder* const pak, PakPageLump_s& dat
             {
             case dtblcoltype_t::Bool:
             {
-                const std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx);
+                const std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx, col.type);
 
                 if (!_stricmp(val.c_str(), "true") || val == "1")
                     valbuf.write<uint32_t>(true);
@@ -154,19 +154,19 @@ static void DataTable_SetupValues(CPakFileBuilder* const pak, PakPageLump_s& dat
             }
             case dtblcoltype_t::Int:
             {
-                const uint32_t val = DataTable_ParseCellFromDocument<uint32_t>(doc, colIdx, rowIdx);
+                const uint32_t val = DataTable_ParseCellFromDocument<uint32_t>(doc, colIdx, rowIdx, col.type);
                 valbuf.write(val);
                 break;
             }
             case dtblcoltype_t::Float:
             {
-                const float val = DataTable_ParseCellFromDocument<float>(doc, colIdx, rowIdx);
+                const float val = DataTable_ParseCellFromDocument<float>(doc, colIdx, rowIdx, col.type);
                 valbuf.write(val);
                 break;
             }
             case dtblcoltype_t::Vector:
             {
-                std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx);
+                std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx, col.type);
                 std::smatch sm;
 
                 // get values from format "<x,y,z>"
@@ -193,7 +193,7 @@ static void DataTable_SetupValues(CPakFileBuilder* const pak, PakPageLump_s& dat
             case dtblcoltype_t::Asset:
             case dtblcoltype_t::AssetNoPrecache:
             {
-                const std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx);
+                const std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx, col.type);
                 const size_t valBufLen = val.length() + 1;
 
                 memcpy(pStringBuf, val.c_str(), valBufLen);
