@@ -25,7 +25,7 @@ int main(int argc, char** argv)
     // this should be changed to proper CLI handling and mode selection 
     if (std::filesystem::is_directory(targetPath))
     {
-        CacheBuilder::BuildCacheFileFromGamePaksDirectory(targetPath);
+        StreamCache_BuildFromGamePaks(targetPath);
     }
     else
     {

@@ -4,68 +4,7 @@
 #include <fstream>
 
 #include <utils/MurmurHash3.h>
-
-REPAK_BEGIN_NAMESPACE(CacheBuilder)
-
-#pragma pack(push, 1)
-struct CacheFileHeader_t
-{
-	size_t starpakPathBufferSize;
-
-	size_t dataEntryCount;
-	size_t dataEntriesOffset;
-};
-#pragma pack(pop)
-
-struct CacheDataEntry_t
-{
-	size_t dataOffset;
-	size_t dataSize;
-
-	__m128i hash;
-
-	size_t starpakPathOffset;
-};
-static_assert(sizeof(CacheDataEntry_t) == 0x30);
-
-class CCacheFile
-{
-public:
-	CCacheFile() : starpakBufSize(0) {};
-
-	// returns offset in starpak paths buffer to this path
-	size_t AddStarpakPathToCache(const std::string& path)
-	{
-		this->cachedStarpaks.push_back(path);
-
-		assert(this->cachedStarpaks.size() > 0 && this->cachedStarpaks.size() <= UINT32_MAX);
-
-		size_t pathOffset = this->starpakBufSize;
-
-		// add this path to the starpak buffer size
-		this->starpakBufSize += path.length() + 1;
-
-		return pathOffset;
-	}
-
-	CacheFileHeader_t ConstructHeader() const 
-	{
-		CacheFileHeader_t fileHeader = {};
-		fileHeader.starpakPathBufferSize = starpakBufSize;
-		fileHeader.dataEntryCount = cachedDataEntries.size();
-		fileHeader.dataEntriesOffset = IALIGN4(sizeof(CacheFileHeader_t) + starpakBufSize);
-
-		return fileHeader;
-	}
-
-	size_t starpakBufSize;
-
-	// vector of starpak paths relative to game root
-	// (i.e., paks/Win64/(name).starpak)
-	std::vector<std::string> cachedStarpaks;
-
-	std::vector<CacheDataEntry_t> cachedDataEntries;
-};
+#include "streamcache.h"
 
 std::vector<fs::path> GetStarpakFilesFromDirectory(const fs::path& directoryPath)
 {
@@ -84,7 +23,7 @@ std::vector<fs::path> GetStarpakFilesFromDirectory(const fs::path& directoryPath
 	return paths;
 }
 
-bool BuildCacheFileFromGamePaksDirectory(const fs::path& directoryPath)
+bool StreamCache_BuildFromGamePaks(const fs::path& directoryPath)
 {
 	// ensure that our directory path is both a path and a directory
 	if (!std::filesystem::exists(directoryPath) || !std::filesystem::is_directory(directoryPath))
@@ -100,7 +39,7 @@ bool BuildCacheFileFromGamePaksDirectory(const fs::path& directoryPath)
 		return false;
 	}
 
-	const std::unique_ptr<CCacheFile> cacheFile = std::make_unique<CCacheFile>();
+	const std::unique_ptr<CStreamCacheBuilder> cacheFile = std::make_unique<CStreamCacheBuilder>();
 	const std::vector<fs::path> foundStarpakPaths = GetStarpakFilesFromDirectory(directoryPath);
 
 	Log("CacheBuilder: Found %lld streaming files to cache in directory \"%s\".\n", foundStarpakPaths.size(), directoryPath.string().c_str());
@@ -169,7 +108,7 @@ bool BuildCacheFileFromGamePaksDirectory(const fs::path& directoryPath)
 			starpakStream.Seek(entryHeader->offset, std::ios::beg);
 			starpakStream.Read(entryData, entryHeader->dataSize);
 
-			CacheDataEntry_t cacheEntry = {};
+			StreamCacheDataEntry_s cacheEntry = {};
 			cacheEntry.starpakPathOffset = starpakPathOffset;
 			cacheEntry.dataOffset = entryHeader->offset;
 			cacheEntry.dataSize = entryHeader->dataSize;
@@ -189,7 +128,7 @@ bool BuildCacheFileFromGamePaksDirectory(const fs::path& directoryPath)
 		starpakStream.Close();
 	}
 
-	CacheFileHeader_t cacheHeader = cacheFile->ConstructHeader();
+	StreamCacheFileHeader_s cacheHeader = cacheFile->ConstructHeader();
 
 	cacheFileStream.Write(cacheHeader);
 
@@ -200,7 +139,7 @@ bool BuildCacheFileFromGamePaksDirectory(const fs::path& directoryPath)
 	
 	cacheFileStream.Seek(cacheHeader.dataEntriesOffset);
 
-	for (const CacheDataEntry_t& dataEntry : cacheFile->cachedDataEntries)
+	for (const StreamCacheDataEntry_s& dataEntry : cacheFile->cachedDataEntries)
 	{
 		cacheFileStream.Write(dataEntry);
 	}
@@ -209,6 +148,3 @@ bool BuildCacheFileFromGamePaksDirectory(const fs::path& directoryPath)
 
 	return true;
 }
-
-
-REPAK_END_NAMESPACE()
