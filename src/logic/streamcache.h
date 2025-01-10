@@ -2,9 +2,18 @@
 #include <filesystem>
 #include <utils/utils.h>
 
+#define STREAM_CACHE_FILE_MAGIC ('S'+('R'<<8)+('c'<<16)+('h'<<24))
+#define STREAM_CACHE_FILE_MAJOR_VERSION 0
+#define STREAM_CACHE_FILE_MINOR_VERSION 0
+
 #pragma pack(push, 1)
 struct StreamCacheFileHeader_s
 {
+	int magic;
+
+	unsigned short majorVersion;
+	unsigned short minorVersion;
+
 	size_t starpakPathBufferSize;
 
 	size_t dataEntryCount;
@@ -45,7 +54,11 @@ public:
 
 	StreamCacheFileHeader_s ConstructHeader() const
 	{
-		StreamCacheFileHeader_s fileHeader = {};
+		StreamCacheFileHeader_s fileHeader;
+
+		fileHeader.magic = STREAM_CACHE_FILE_MAGIC;
+		fileHeader.majorVersion = STREAM_CACHE_FILE_MAJOR_VERSION;
+		fileHeader.minorVersion = STREAM_CACHE_FILE_MINOR_VERSION;
 		fileHeader.starpakPathBufferSize = starpakBufSize;
 		fileHeader.dataEntryCount = cachedDataEntries.size();
 		fileHeader.dataEntriesOffset = IALIGN4(sizeof(StreamCacheFileHeader_s) + starpakBufSize);
