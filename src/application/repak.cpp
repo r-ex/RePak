@@ -20,10 +20,16 @@ int main(int argc, char** argv)
     if (argc < 2)
         Error("invalid usage\n");
 
+    fs::path starmapPath(argv[1]);
+
     // this should be changed to proper CLI handling and mode selection 
-    if (std::filesystem::is_directory(argv[1]))
+    if (std::filesystem::is_directory(starmapPath))
     {
-        StreamCache_BuildMapFromGamePaks(argv[1]);
+        starmapPath.append("pc_roots.starmap");
+        const std::string starmapStreamStr = starmapPath.string();
+
+        CStreamCache writeCache;
+        writeCache.BuildMapFromGamePaks(starmapStreamStr.c_str());
     }
     else
     {

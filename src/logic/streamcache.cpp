@@ -5,6 +5,7 @@
 
 #include <utils/MurmurHash3.h>
 #include "streamcache.h"
+#include <public/rpak.h>
 
 static std::vector<std::string> StreamCache_GetStarpakFilesFromDirectory(const char* const directoryPath)
 {
@@ -34,27 +35,23 @@ static std::vector<std::string> StreamCache_GetStarpakFilesFromDirectory(const c
 	return paths;
 }
 
-bool StreamCache_BuildMapFromGamePaks(const char* const directoryPath)
+void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 {
-	fs::path starmapStream(directoryPath);
-	starmapStream.append("pc_roots.starmap");
-
-	const std::string starmapStreamStr = starmapStream.string();
+	std::string directoryPath(streamCacheFile);
+	directoryPath = directoryPath.substr(0, directoryPath.find_last_of("\\/"));
 
 	// open cache file at the start so we don't get thru the whole process and fail to write at the end
 	BinaryIO cacheFileStream;
 
-	if (!cacheFileStream.Open(starmapStreamStr, BinaryIO::Mode_e::Write))
-		Error("Failed to create streaming map file \"%s\".\n", starmapStreamStr.c_str());
+	if (!cacheFileStream.Open(streamCacheFile, BinaryIO::Mode_e::Write))
+		Error("Failed to create streaming map file \"%s\".\n", streamCacheFile);
 
-	const std::vector<std::string> foundStarpakPaths = StreamCache_GetStarpakFilesFromDirectory(directoryPath);
+	const std::vector<std::string> foundStarpakPaths = StreamCache_GetStarpakFilesFromDirectory(directoryPath.c_str());
 
-	Log("Found %zu streaming files to cache in directory \"%s\".\n", foundStarpakPaths.size(), starmapStreamStr.c_str());
+	Log("Found %zu streaming files to cache in directory \"%s\".\n", foundStarpakPaths.size(), streamCacheFile);
 
 	// Start a timer for the cache builder process so that the user is notified when the tool finishes.
 	TIME_SCOPE("StreamCacheBuilder");
-
-	CStreamCacheBuilder cacheFile;
 	size_t starpakIndex = 0;
 
 	for (const std::string& starpakPath : foundStarpakPaths)
@@ -101,7 +98,7 @@ bool StreamCache_BuildMapFromGamePaks(const char* const directoryPath)
 		std::string relativeStarpakPath("paks/Win64/");
 		relativeStarpakPath.append(starpakFileName);
 
-		const size_t starpakPathOffset = cacheFile.AddStarpakPathToCache(relativeStarpakPath);
+		const size_t pathIndex = AddStarpakPathToCache(relativeStarpakPath);
 
 		for (size_t i = 0; i < starpakEntryCount; ++i)
 		{
@@ -118,8 +115,8 @@ bool StreamCache_BuildMapFromGamePaks(const char* const directoryPath)
 			starpakStream.Seek(entryHeader->offset, std::ios::beg);
 			starpakStream.Read(entryData, entryHeader->dataSize);
 
-			StreamCacheDataEntry_s cacheEntry = {};
-			cacheEntry.starpakPathOffset = starpakPathOffset;
+			StreamCacheDataEntry_s cacheEntry;
+			cacheEntry.pathIndex = pathIndex;
 			cacheEntry.dataOffset = entryHeader->offset;
 			cacheEntry.dataSize = entryHeader->dataSize;
 
@@ -128,7 +125,7 @@ bool StreamCache_BuildMapFromGamePaks(const char* const directoryPath)
 
 			MurmurHash3_x64_128(entryData, static_cast<int>(entryHeader->dataSize), 0x165DCA75, &cacheEntry.hash);
 
-			cacheFile.m_cachedDataEntries.push_back(cacheEntry);
+			m_dataEntries.push_back(cacheEntry);
 
 			_aligned_free(entryData);
 		}
@@ -136,25 +133,25 @@ bool StreamCache_BuildMapFromGamePaks(const char* const directoryPath)
 		starpakIndex++;
 	}
 
-	StreamCacheFileHeader_s cacheHeader = cacheFile.ConstructHeader();
+	StreamCacheFileHeader_s cacheHeader = ConstructHeader();
 
 	cacheFileStream.Write(cacheHeader);
 
-	for (const std::string& it : cacheFile.m_cachedStarpaks)
+	for (const std::string& it : m_streamPaths)
 	{
 		cacheFileStream.WriteString(it, true);
 	}
 	
 	cacheFileStream.Seek(cacheHeader.dataEntriesOffset);
 
-	for (const StreamCacheDataEntry_s& dataEntry : cacheFile.m_cachedDataEntries)
+	for (const StreamCacheDataEntry_s& dataEntry : m_dataEntries)
 	{
 		cacheFileStream.Write(dataEntry);
 	}
 
 	cacheFileStream.Close();
 
-	return true;
+	return;
 }
 
 void CStreamCache::ParseMap(const char* const streamCacheFile)
@@ -184,28 +181,52 @@ void CStreamCache::ParseMap(const char* const streamCacheFile)
 	}
 
 	// Make sure the file contains as much as what the header says.
-	if (streamCacheHeader.starpakPathBufferSize > streamCacheHeader.dataEntriesOffset)
-	{
-		Error("Streaming map file \"%s\" appears malformed (pathBufferSize(%zu) > dataEntriesOffset(%zu)).\n", streamCacheFile,
-			streamCacheHeader.starpakPathBufferSize, streamCacheHeader.dataEntriesOffset);
-	}
+	const size_t actualBlockSize = streamMapSize - streamCacheHeader.dataEntriesOffset;
+	const size_t expectedSize = streamCacheHeader.dataEntryCount * sizeof(StreamCacheDataEntry_s);
 
-	// dataEntriesOffset contains the size of the header as well.
-	const size_t dataEntryBufSize = streamCacheHeader.dataEntryCount * sizeof(StreamCacheDataEntry_s);
-	const size_t expectedSize = streamCacheHeader.dataEntriesOffset + dataEntryBufSize;
-
-	if (streamMapSize < expectedSize)
+	if (actualBlockSize < expectedSize)
 	{
-		Error("Streaming map file \"%s\" appears malformed (streamMapSize(%zu) < expectedSize(%zu)).\n", streamCacheFile,
+		Error("Streaming map file \"%s\" appears malformed (actualBlockSize(%zu) < expectedSize(%zu)).\n", streamCacheFile,
 			streamMapSize, expectedSize);
 	}
 
 	// Page the data in.
-	m_pathBuffer.resize(streamCacheHeader.starpakPathBufferSize);
-	cacheFileStream.Read(m_pathBuffer.data(), streamCacheHeader.starpakPathBufferSize);
+	m_streamPaths.resize(streamCacheHeader.streamingFileCount);
 
-	m_cachedDataEntries.resize(streamCacheHeader.dataEntryCount);
+	for (size_t i = 0; i < streamCacheHeader.streamingFileCount; i++)
+		cacheFileStream.ReadString(m_streamPaths[i]);
+
+	m_dataEntries.resize(streamCacheHeader.dataEntryCount);
 
 	cacheFileStream.SeekGet(streamCacheHeader.dataEntriesOffset);
-	cacheFileStream.Read(m_cachedDataEntries.data(), dataEntryBufSize);
+	cacheFileStream.Read(m_dataEntries.data(), actualBlockSize);
+}
+
+uint64_t CStreamCache::AddStarpakPathToCache(const std::string& path)
+{
+	const uint64_t index = m_streamPaths.size();
+	m_streamPaths.push_back(path);
+
+	// We store the count into 12 bits, so we cannot have more than 4096.
+	// Realistically, we shouldn't ever exceed this as we should only
+	// deduplicate data across the 'all' and 'roots' starpaks.
+	assert(m_streamPaths.size() <= 4096);
+
+	// add this path to the starpak buffer size
+	m_starpakBufSize += path.length() + 1;
+	return index;
+}
+
+StreamCacheFileHeader_s CStreamCache::ConstructHeader() const
+{
+	StreamCacheFileHeader_s fileHeader;
+
+	fileHeader.magic = STREAM_CACHE_FILE_MAGIC;
+	fileHeader.majorVersion = STREAM_CACHE_FILE_MAJOR_VERSION;
+	fileHeader.minorVersion = STREAM_CACHE_FILE_MINOR_VERSION;
+	fileHeader.streamingFileCount = m_streamPaths.size();
+	fileHeader.dataEntryCount = m_dataEntries.size();
+	fileHeader.dataEntriesOffset = IALIGN4(sizeof(StreamCacheFileHeader_s) + m_starpakBufSize);
+
+	return fileHeader;
 }
