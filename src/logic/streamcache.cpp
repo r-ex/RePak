@@ -16,19 +16,19 @@ static std::vector<std::string> StreamCache_GetStarpakFilesFromDirectory(const c
 		if (!entryPath.has_extension())
 			continue;
 
-		if (entryPath.extension() == ".starpak")
+		if (entryPath.extension() != ".starpak")
+			continue;
+
+		std::string newEntry = entryPath.string();
+
+		// Normalize the slashes.
+		for (char& c : newEntry)
 		{
-			std::string newEntry = entryPath.string();
-
-			// Normalize the slashes.
-			for (char& c : newEntry)
-			{
-				if (c == '\\')
-					c = '/';
-			}
-
-			paths.push_back(newEntry);
+			if (c == '\\')
+				c = '/';
 		}
+
+		paths.push_back(newEntry);
 	}
 
 	return paths;
