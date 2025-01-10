@@ -75,4 +75,14 @@ public:
 	std::vector<StreamCacheDataEntry_s> m_cachedDataEntries;
 };
 
+class CStreamCache
+{
+public:
+	void ParseMap(const char* const streamCacheFile);
+
+private:
+	std::vector<char> m_pathBuffer;
+	std::vector<StreamCacheDataEntry_s> m_cachedDataEntries;
+};
+
 bool StreamCache_BuildMapFromGamePaks(const char* const directoryPath);

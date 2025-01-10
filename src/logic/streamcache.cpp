@@ -156,3 +156,56 @@ bool StreamCache_BuildMapFromGamePaks(const char* const directoryPath)
 
 	return true;
 }
+
+void CStreamCache::ParseMap(const char* const streamCacheFile)
+{
+	BinaryIO cacheFileStream;
+
+	if (!cacheFileStream.Open(streamCacheFile, BinaryIO::Mode_e::Read))
+		Error("Failed to open streaming map file \"%s\".\n", streamCacheFile);
+
+	const size_t streamMapSize = cacheFileStream.GetSize();
+
+	if (streamMapSize < sizeof(StreamCacheFileHeader_s))
+		Error("Streaming map file \"%s\" appears truncated (%zu < %zu).\n", streamCacheFile, streamMapSize, sizeof(StreamCacheFileHeader_s));
+
+	StreamCacheFileHeader_s streamCacheHeader;
+	cacheFileStream.Read(streamCacheHeader);
+
+	if (streamCacheHeader.magic != STREAM_CACHE_FILE_MAGIC)
+		Error("Streaming map file \"%s\" has bad magic (expected magic %x, got %x).\n", streamCacheFile, STREAM_CACHE_FILE_MAGIC, streamCacheHeader.magic);
+
+	if (streamCacheHeader.majorVersion != STREAM_CACHE_FILE_MAJOR_VERSION ||
+		streamCacheHeader.minorVersion != STREAM_CACHE_FILE_MINOR_VERSION)
+	{
+		Error("Streaming map file \"%s\" is unsupported (expected version %hu.%hu, got %hu.%hu).\n", 
+			streamCacheFile, STREAM_CACHE_FILE_MAJOR_VERSION, STREAM_CACHE_FILE_MINOR_VERSION,
+			streamCacheHeader.majorVersion, streamCacheHeader.minorVersion);
+	}
+
+	// Make sure the file contains as much as what the header says.
+	if (streamCacheHeader.starpakPathBufferSize > streamCacheHeader.dataEntriesOffset)
+	{
+		Error("Streaming map file \"%s\" appears malformed (pathBufferSize(%zu) > dataEntriesOffset(%zu)).\n", streamCacheFile,
+			streamCacheHeader.starpakPathBufferSize, streamCacheHeader.dataEntriesOffset);
+	}
+
+	// dataEntriesOffset contains the size of the header as well.
+	const size_t dataEntryBufSize = streamCacheHeader.dataEntryCount * sizeof(StreamCacheDataEntry_s);
+	const size_t expectedSize = streamCacheHeader.dataEntriesOffset + dataEntryBufSize;
+
+	if (streamMapSize < expectedSize)
+	{
+		Error("Streaming map file \"%s\" appears malformed (streamMapSize(%zu) < expectedSize(%zu)).\n", streamCacheFile,
+			streamMapSize, expectedSize);
+	}
+
+	// Page the data in.
+	m_pathBuffer.resize(streamCacheHeader.starpakPathBufferSize);
+	cacheFileStream.Read(m_pathBuffer.data(), streamCacheHeader.starpakPathBufferSize);
+
+	m_cachedDataEntries.resize(streamCacheHeader.dataEntryCount);
+
+	cacheFileStream.SeekGet(streamCacheHeader.dataEntriesOffset);
+	cacheFileStream.Read(m_cachedDataEntries.data(), dataEntryBufSize);
+}
