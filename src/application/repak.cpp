@@ -20,12 +20,10 @@ int main(int argc, char** argv)
     if (argc < 2)
         Error("invalid usage\n");
 
-    const std::string targetPath = argv[1];
-
     // this should be changed to proper CLI handling and mode selection 
-    if (std::filesystem::is_directory(targetPath))
+    if (std::filesystem::is_directory(argv[1]))
     {
-        StreamCache_BuildFromGamePaks(targetPath);
+        StreamCache_BuildMapFromGamePaks(argv[1]);
     }
     else
     {

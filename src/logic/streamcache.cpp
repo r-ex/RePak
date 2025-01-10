@@ -6,9 +6,9 @@
 #include <utils/MurmurHash3.h>
 #include "streamcache.h"
 
-std::vector<fs::path> GetStarpakFilesFromDirectory(const fs::path& directoryPath)
+static std::vector<std::string> StreamCache_GetStarpakFilesFromDirectory(const char* const directoryPath)
 {
-	std::vector<fs::path> paths;
+	std::vector<std::string> paths;
 	for (auto& it : std::filesystem::directory_iterator(directoryPath))
 	{
 		const fs::path& entryPath = it.path();
@@ -17,38 +17,47 @@ std::vector<fs::path> GetStarpakFilesFromDirectory(const fs::path& directoryPath
 			continue;
 
 		if (entryPath.extension() == ".starpak")
-			paths.push_back(entryPath);
+		{
+			std::string newEntry = entryPath.string();
+
+			// Normalize the slashes.
+			for (char& c : newEntry)
+			{
+				if (c == '\\')
+					c = '/';
+			}
+
+			paths.push_back(newEntry);
+		}
 	}
 
 	return paths;
 }
 
-bool StreamCache_BuildFromGamePaks(const fs::path& directoryPath)
+bool StreamCache_BuildMapFromGamePaks(const char* const directoryPath)
 {
-	// ensure that our directory path is both a path and a directory
-	if (!std::filesystem::exists(directoryPath) || !std::filesystem::is_directory(directoryPath))
-		return false;
+	fs::path cacheStreamPathFs(directoryPath);
+	cacheStreamPathFs.append("pc_stream.starmap");
+
+	const std::string cacheStreamPathStr = cacheStreamPathFs.string();
 
 	// open cache file at the start so we don't get thru the whole process and fail to write at the end
 	BinaryIO cacheFileStream;
-	cacheFileStream.Open((directoryPath / "repak_starpak_cache.bin").string(), BinaryIO::Mode_e::Write);
 
-	if (!cacheFileStream.IsWritable())
-	{
-		Warning("CacheBuilder: Failed to open cache file '%s' for writing.\n", (directoryPath / "repak_starpak_cache.bin").u8string().c_str());
-		return false;
-	}
+	if (!cacheFileStream.Open(cacheStreamPathStr, BinaryIO::Mode_e::Write))
+		Error("Failed to create stream map file \"%s\".\n", cacheStreamPathStr.c_str());
 
-	const std::unique_ptr<CStreamCacheBuilder> cacheFile = std::make_unique<CStreamCacheBuilder>();
-	const std::vector<fs::path> foundStarpakPaths = GetStarpakFilesFromDirectory(directoryPath);
+	const std::vector<std::string> foundStarpakPaths = StreamCache_GetStarpakFilesFromDirectory(directoryPath);
 
-	Log("CacheBuilder: Found %lld streaming files to cache in directory \"%s\".\n", foundStarpakPaths.size(), directoryPath.string().c_str());
+	Log("Found %zu streaming files to cache in directory \"%s\".\n", foundStarpakPaths.size(), cacheStreamPathStr.c_str());
 
 	// Start a timer for the cache builder process so that the user is notified when the tool finishes.
-	TIME_SCOPE("CacheBuilder");
+	TIME_SCOPE("StreamCacheBuilder");
 
+	CStreamCacheBuilder cacheFile;
 	size_t starpakIndex = 0;
-	for (const fs::path& starpakPath : foundStarpakPaths)
+
+	for (const std::string& starpakPath : foundStarpakPaths)
 	{
 #if _DEBUG
 		//printf("\n");
@@ -56,17 +65,13 @@ bool StreamCache_BuildFromGamePaks(const fs::path& directoryPath)
 		//Debug("CacheBuilder: Opening StarPak file '%s' (%lld/%lld) for reading.\n", starpakPath.u8string().c_str(), starpakIndex+1, foundStarpakPaths.size());
 #endif
 
-		Log("CacheBuilder: (%03lld/%lld) Adding streaming file \"%s\" to the cache.\n", starpakIndex+1, foundStarpakPaths.size(), starpakPath.string().c_str());
-
-		const std::string relativeStarpakPath = ("paks/Win64/" / starpakPath.stem()).string();
-		const size_t starpakPathOffset = cacheFile->AddStarpakPathToCache(relativeStarpakPath);
+		Log("Adding streaming file \"%s\" (%zu/%zu) to the cache.\n", starpakPath.c_str(), starpakIndex+1, foundStarpakPaths.size());
 
 		BinaryIO starpakStream;
-		starpakStream.Open(starpakPath.string(), BinaryIO::Mode_e::Read);
 
-		if (!starpakStream.IsReadable())
+		if (!starpakStream.Open(starpakPath, BinaryIO::Mode_e::Read))
 		{
-			Warning("CacheBuilder: Failed to open StarPak file '%s' for reading.\n", starpakPath.u8string().c_str());
+			Warning("Failed to open streaming file \"%s\" for reading.\n", starpakPath.c_str());
 			continue;
 		}
 
@@ -74,7 +79,7 @@ bool StreamCache_BuildFromGamePaks(const fs::path& directoryPath)
 
 		if (starpakFileHeader.magic != STARPAK_MAGIC)
 		{
-			Warning("CacheBuilder: StarPak file '%s' had invalid file magic; found %X, expected %X.\n", starpakPath.u8string().c_str(), starpakFileHeader.magic, STARPAK_MAGIC);
+			Warning("Streaming file \"%s\" had invalid file magic; expected %X, found %X.\n", starpakPath.c_str(), starpakFileHeader.magic, STARPAK_MAGIC);
 			continue;
 		}
 
@@ -92,18 +97,29 @@ bool StreamCache_BuildFromGamePaks(const fs::path& directoryPath)
 		starpakStream.Seek(starpakFileSize - (8 + starpakEntryHeadersSize), std::ios::beg);
 		starpakStream.Read(reinterpret_cast<char*>(starpakEntryHeaders.get()), starpakEntryHeadersSize);
 
+		const char* starpakFileName = strrchr(starpakPath.c_str(), '/');
+
+		if (starpakFileName)
+			starpakFileName += 1; // Skip the '/'.
+		else
+			starpakFileName = starpakPath.c_str();
+
+		std::string relativeStarpakPath("paks/Win64/");
+		relativeStarpakPath.append(starpakFileName);
+
+		const size_t starpakPathOffset = cacheFile.AddStarpakPathToCache(relativeStarpakPath);
+
 		for (size_t i = 0; i < starpakEntryCount; ++i)
 		{
 			const PakStreamSetEntry_s* entryHeader = &starpakEntryHeaders.get()[i];
 
-			if (entryHeader->dataSize <= 0) [[unlikely]] // not possible
+			if (entryHeader->dataSize == 0) [[unlikely]] // not possible
 				continue;
 			
-			if (entryHeader->offset < 0x1000) [[unlikely]] // also not possible
+			if (entryHeader->offset < STARPAK_DATABLOCK_ALIGNMENT) [[unlikely]] // also not possible
 				continue;
 
-			char* entryData = reinterpret_cast<char*>(_aligned_malloc(entryHeader->dataSize, 8));
-			//std::unique_ptr<char> entryData = std::make_unique<char>(new char[entryHeader->dataSize]);
+			char* const entryData = reinterpret_cast<char*>(_aligned_malloc(entryHeader->dataSize, 8));
 
 			starpakStream.Seek(entryHeader->offset, std::ios::beg);
 			starpakStream.Read(entryData, entryHeader->dataSize);
@@ -118,28 +134,26 @@ bool StreamCache_BuildFromGamePaks(const fs::path& directoryPath)
 
 			MurmurHash3_x64_128(entryData, static_cast<int>(entryHeader->dataSize), 0x165DCA75, &cacheEntry.hash);
 
-			cacheFile->cachedDataEntries.push_back(cacheEntry);
+			cacheFile.m_cachedDataEntries.push_back(cacheEntry);
 
 			_aligned_free(entryData);
 		}
 
 		starpakIndex++;
-
-		starpakStream.Close();
 	}
 
-	StreamCacheFileHeader_s cacheHeader = cacheFile->ConstructHeader();
+	StreamCacheFileHeader_s cacheHeader = cacheFile.ConstructHeader();
 
 	cacheFileStream.Write(cacheHeader);
 
-	for (const std::string& it : cacheFile->cachedStarpaks)
+	for (const std::string& it : cacheFile.m_cachedStarpaks)
 	{
 		cacheFileStream.WriteString(it, true);
 	}
 	
 	cacheFileStream.Seek(cacheHeader.dataEntriesOffset);
 
-	for (const StreamCacheDataEntry_s& dataEntry : cacheFile->cachedDataEntries)
+	for (const StreamCacheDataEntry_s& dataEntry : cacheFile.m_cachedDataEntries)
 	{
 		cacheFileStream.Write(dataEntry);
 	}

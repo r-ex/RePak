@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <utils/utils.h>
 
-#define STREAM_CACHE_FILE_MAGIC ('S'+('R'<<8)+('c'<<16)+('h'<<24))
+#define STREAM_CACHE_FILE_MAGIC ('S'+('R'<<8)+('m'<<16)+('p'<<24))
 #define STREAM_CACHE_FILE_MAJOR_VERSION 0
 #define STREAM_CACHE_FILE_MINOR_VERSION 0
 
@@ -35,19 +35,19 @@ static_assert(sizeof(StreamCacheDataEntry_s) == 0x30);
 class CStreamCacheBuilder
 {
 public:
-	CStreamCacheBuilder() : starpakBufSize(0) {};
+	CStreamCacheBuilder() : m_starpakBufSize(0) {};
 
 	// returns offset in starpak paths buffer to this path
 	size_t AddStarpakPathToCache(const std::string& path)
 	{
-		this->cachedStarpaks.push_back(path);
+		this->m_cachedStarpaks.push_back(path);
 
-		assert(this->cachedStarpaks.size() > 0 && this->cachedStarpaks.size() <= UINT32_MAX);
+		assert(this->m_cachedStarpaks.size() > 0 && this->m_cachedStarpaks.size() <= UINT32_MAX);
 
-		size_t pathOffset = this->starpakBufSize;
+		size_t pathOffset = this->m_starpakBufSize;
 
 		// add this path to the starpak buffer size
-		this->starpakBufSize += path.length() + 1;
+		this->m_starpakBufSize += path.length() + 1;
 
 		return pathOffset;
 	}
@@ -59,20 +59,20 @@ public:
 		fileHeader.magic = STREAM_CACHE_FILE_MAGIC;
 		fileHeader.majorVersion = STREAM_CACHE_FILE_MAJOR_VERSION;
 		fileHeader.minorVersion = STREAM_CACHE_FILE_MINOR_VERSION;
-		fileHeader.starpakPathBufferSize = starpakBufSize;
-		fileHeader.dataEntryCount = cachedDataEntries.size();
-		fileHeader.dataEntriesOffset = IALIGN4(sizeof(StreamCacheFileHeader_s) + starpakBufSize);
+		fileHeader.starpakPathBufferSize = m_starpakBufSize;
+		fileHeader.dataEntryCount = m_cachedDataEntries.size();
+		fileHeader.dataEntriesOffset = IALIGN4(sizeof(StreamCacheFileHeader_s) + m_starpakBufSize);
 
 		return fileHeader;
 	}
 
-	size_t starpakBufSize;
+	size_t m_starpakBufSize;
 
 	// vector of starpak paths relative to game root
 	// (i.e., paks/Win64/(name).starpak)
-	std::vector<std::string> cachedStarpaks;
+	std::vector<std::string> m_cachedStarpaks;
 
-	std::vector<StreamCacheDataEntry_s> cachedDataEntries;
+	std::vector<StreamCacheDataEntry_s> m_cachedDataEntries;
 };
 
-bool StreamCache_BuildFromGamePaks(const std::filesystem::path& directoryPath);
+bool StreamCache_BuildMapFromGamePaks(const char* const directoryPath);
