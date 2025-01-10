@@ -36,20 +36,20 @@ static std::vector<std::string> StreamCache_GetStarpakFilesFromDirectory(const c
 
 bool StreamCache_BuildMapFromGamePaks(const char* const directoryPath)
 {
-	fs::path cacheStreamPathFs(directoryPath);
-	cacheStreamPathFs.append("pc_stream.starmap");
+	fs::path starmapStream(directoryPath);
+	starmapStream.append("pc_roots.starmap");
 
-	const std::string cacheStreamPathStr = cacheStreamPathFs.string();
+	const std::string starmapStreamStr = starmapStream.string();
 
 	// open cache file at the start so we don't get thru the whole process and fail to write at the end
 	BinaryIO cacheFileStream;
 
-	if (!cacheFileStream.Open(cacheStreamPathStr, BinaryIO::Mode_e::Write))
-		Error("Failed to create stream map file \"%s\".\n", cacheStreamPathStr.c_str());
+	if (!cacheFileStream.Open(starmapStreamStr, BinaryIO::Mode_e::Write))
+		Error("Failed to create streaming map file \"%s\".\n", starmapStreamStr.c_str());
 
 	const std::vector<std::string> foundStarpakPaths = StreamCache_GetStarpakFilesFromDirectory(directoryPath);
 
-	Log("Found %zu streaming files to cache in directory \"%s\".\n", foundStarpakPaths.size(), cacheStreamPathStr.c_str());
+	Log("Found %zu streaming files to cache in directory \"%s\".\n", foundStarpakPaths.size(), starmapStreamStr.c_str());
 
 	// Start a timer for the cache builder process so that the user is notified when the tool finishes.
 	TIME_SCOPE("StreamCacheBuilder");
@@ -59,14 +59,6 @@ bool StreamCache_BuildMapFromGamePaks(const char* const directoryPath)
 
 	for (const std::string& starpakPath : foundStarpakPaths)
 	{
-#if _DEBUG
-		//printf("\n");
-		//TIME_SCOPE(starpakPath.u8string().c_str());
-		//Debug("CacheBuilder: Opening StarPak file '%s' (%lld/%lld) for reading.\n", starpakPath.u8string().c_str(), starpakIndex+1, foundStarpakPaths.size());
-#endif
-
-		Log("Adding streaming file \"%s\" (%zu/%zu) to the cache.\n", starpakPath.c_str(), starpakIndex+1, foundStarpakPaths.size());
-
 		BinaryIO starpakStream;
 
 		if (!starpakStream.Open(starpakPath, BinaryIO::Mode_e::Read))
@@ -79,13 +71,15 @@ bool StreamCache_BuildMapFromGamePaks(const char* const directoryPath)
 
 		if (starpakFileHeader.magic != STARPAK_MAGIC)
 		{
-			Warning("Streaming file \"%s\" had invalid file magic; expected %X, found %X.\n", starpakPath.c_str(), starpakFileHeader.magic, STARPAK_MAGIC);
+			Warning("Streaming file \"%s\" has an invalid file magic; expected %X, found %X.\n", starpakPath.c_str(), starpakFileHeader.magic, STARPAK_MAGIC);
 			continue;
 		}
 
+		Log("Adding streaming file \"%s\" (%zu/%zu) to the cache.\n", starpakPath.c_str(), starpakIndex + 1, foundStarpakPaths.size());
+
 		const size_t starpakFileSize = fs::file_size(starpakPath);
 
-		starpakStream.Seek(starpakFileSize - 8, std::ios::beg);
+		starpakStream.Seek(starpakFileSize - sizeof(uint64_t), std::ios::beg);
 
 		// get the number of data entries in this starpak file
 		const size_t starpakEntryCount = starpakStream.Read<size_t>();

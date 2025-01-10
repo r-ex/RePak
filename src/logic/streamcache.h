@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <utils/utils.h>
 
-#define STREAM_CACHE_FILE_MAGIC ('S'+('R'<<8)+('m'<<16)+('p'<<24))
+#define STREAM_CACHE_FILE_MAGIC ('S'+('R'<<8)+('M'<<16)+('p'<<24))
 #define STREAM_CACHE_FILE_MAJOR_VERSION 0
 #define STREAM_CACHE_FILE_MINOR_VERSION 0
 
