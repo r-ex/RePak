@@ -8,7 +8,7 @@ public:
 	void Init(const js::Document& doc, const char* const buildMapFile);
 
 	inline void AddFlags(const int flags) { m_buildFlags |= flags; }
-	inline bool IsFlagSet(int flag) const { return m_buildFlags & flag; };
+	inline bool IsFlagSet(const int flag) const { return m_buildFlags & flag; };
 
 	inline int GetPakVersion() const { return m_pakVersion; }
 

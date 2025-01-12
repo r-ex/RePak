@@ -50,7 +50,7 @@ public:
 	//----------------------------------------------------------------------------
 	// inlines
 	//----------------------------------------------------------------------------
-	inline bool IsFlagSet(int flag) const { return m_buildSettings->IsFlagSet(flag); };
+	inline bool IsFlagSet(const int flag) const { return m_buildSettings->IsFlagSet(flag); };
 
 	inline size_t GetAssetCount() const { return m_assets.size(); };
 	inline uint16_t GetNumPages() const { return m_pageBuilder.GetPageCount(); };
