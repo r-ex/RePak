@@ -203,11 +203,6 @@ struct PakAsset_t
 	// offset to any available streamed data
 	// starpakOffset    = "mandatory" starpak file offset
 	// optStarpakOffset = "optional" starpak file offset
-	union
-	{
-		int64_t packedStarpakOffset;
-	};
-
 	int64_t starpakOffset : 52 = -1;
 	int64_t starpakIndex : 12 = -1;
 	int64_t optStarpakOffset : 52 = -1;
