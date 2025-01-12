@@ -159,26 +159,7 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 		starpakIndex++;
 	}
 
-	StreamCacheFileHeader_s cacheHeader = ConstructHeader();
-
-	cacheFileStream.Write(cacheHeader);
-
-	for (const StreamCacheFileEntry_s& fileEntry : m_streamFiles)
-	{
-		cacheFileStream.Write(fileEntry.optional);
-		cacheFileStream.WriteString(fileEntry.path, true);
-	}
-	
-	cacheFileStream.Seek(cacheHeader.dataEntriesOffset);
-
-	for (const StreamCacheDataEntry_s& dataEntry : m_dataEntries)
-	{
-		cacheFileStream.Write(dataEntry);
-	}
-
-	cacheFileStream.Close();
-
-	return;
+	Save(cacheFileStream);
 }
 
 void CStreamCache::ParseMap(const char* const streamCacheFile)
@@ -342,4 +323,25 @@ void CStreamCache::Add(const StreamCacheFindParams_s& params, const int64_t offs
 	newDataEntry.pathIndex = newIndex;
 	newDataEntry.dataSize = params.size;
 	newDataEntry.hash = params.hash;
+}
+
+void CStreamCache::Save(BinaryIO& io)
+{
+	assert(io.IsWritable());
+
+	StreamCacheFileHeader_s cacheHeader = ConstructHeader();
+	io.Write(cacheHeader);
+
+	for (const StreamCacheFileEntry_s& fileEntry : m_streamFiles)
+	{
+		io.Write(fileEntry.optional);
+		io.WriteString(fileEntry.path, true);
+	}
+
+	io.Seek(cacheHeader.dataEntriesOffset);
+
+	for (const StreamCacheDataEntry_s& dataEntry : m_dataEntries)
+	{
+		io.Write(dataEntry);
+	}
 }

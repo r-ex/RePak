@@ -61,6 +61,8 @@ public:
 	bool Find(const StreamCacheFindParams_s& params, StreamCacheFindResult_s& result);
 	void Add(const StreamCacheFindParams_s& params, const int64_t offset);
 
+	void Save(BinaryIO& io);
+
 private:
 	std::vector<StreamCacheFileEntry_s> m_streamFiles;
 	std::vector<StreamCacheDataEntry_s> m_dataEntries;

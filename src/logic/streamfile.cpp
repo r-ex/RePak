@@ -45,7 +45,27 @@ void CStreamFileBuilder::Shutdown()
 	FinishStreamFileStream(STREAMING_SET_MANDATORY);
 	FinishStreamFileStream(STREAMING_SET_OPTIONAL);
 
-	// todo(amos): write out new stream cache here.
+	const char* const streamFile = m_mandatoryStreamFileName 
+		? m_mandatoryStreamFileName 
+		: m_optionalStreamFileName;
+
+	if (streamFile)
+	{
+		fs::path newCacheFileFs(m_buildSettings->GetWorkingDirectory());
+
+		newCacheFileFs.append(m_buildSettings->GetOutputPath());
+		newCacheFileFs.append(fs::path(streamFile).filename().string());
+
+		newCacheFileFs.replace_extension(".starmap");
+
+		const std::string newCacheFileStr = newCacheFileFs.string();
+		BinaryIO newCache;
+
+		if (newCache.Open(newCacheFileStr, BinaryIO::Mode_e::Write))
+			m_streamCache.Save(newCache);
+		else
+			Warning("Failed to write cache to streaming map file \"%s\".", newCacheFileStr.c_str());
+	}
 }
 
 //-----------------------------------------------------------------------------
