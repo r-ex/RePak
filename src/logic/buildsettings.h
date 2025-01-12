@@ -12,7 +12,7 @@ public:
 
 	inline int GetPakVersion() const { return m_pakVersion; }
 
-	inline const char* GetBuildMapPath() const { return m_buildMapPath.c_str(); }
+	inline const char* GetWorkingDirectory() const { return m_workingDirectory.c_str(); }
 	inline const char* GetOutputPath() const { return m_outputPath.c_str(); }
 
 	inline int GetCompressLevel() const { return m_compressLevel; }
@@ -25,6 +25,6 @@ private:
 	int m_compressLevel;
 	int m_compressWorkers;
 
-	std::string m_buildMapPath;
+	std::string m_workingDirectory;
 	std::string m_outputPath;
 };

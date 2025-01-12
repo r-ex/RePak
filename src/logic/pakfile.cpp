@@ -618,13 +618,10 @@ size_t CPakFileBuilder::EncodeStreamAndSwap(BinaryIO& io, const int compressLeve
 void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 {
 	// determine source asset directory from map file
-	if (!JSON_GetValue(doc, "assetsDir", m_assetPath))
-	{
-		Warning("No \"assetsDir\" field provided; assuming that everything is relative to the working directory.\n");
-		m_assetPath = ".\\";
-	}
-	else
-		Utils::ResolvePath(m_assetPath, m_buildSettings->GetBuildMapPath(), true);
+	const char* assetsDir = JSON_GetValueRequired<const char*>(doc, "assetsDir");
+
+	m_assetPath = m_buildSettings->GetWorkingDirectory();
+	m_assetPath.append(assetsDir);
 
 	this->SetVersion(static_cast<uint16_t>(m_buildSettings->GetPakVersion()));
 	const char* const pakName = JSON_GetValueOrDefault(doc, "name", DEFAULT_RPAK_NAME);

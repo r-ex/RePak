@@ -30,10 +30,9 @@ void CStreamFileBuilder::Init(const js::Document& doc, const bool useOptional)
 
 	if (JSON_GetValue(doc, "streamCache", m_streamCacheFileName))
 	{
-		std::string streamCacheDir;
-		Utils::ResolvePath(streamCacheDir, m_buildSettings->GetBuildMapPath(), false);
-
+		std::string streamCacheDir = m_buildSettings->GetWorkingDirectory();
 		streamCacheDir.append(m_streamCacheFileName);
+
 		m_streamCache.ParseMap(streamCacheDir.c_str());
 	}
 }

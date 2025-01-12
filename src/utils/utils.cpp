@@ -139,7 +139,7 @@ void Utils::ParseMapDocument(js::Document& doc, const char* const path)
     }
 }
 
-void Utils::ResolvePath(std::string& outPath, const std::filesystem::path& mapPath, const bool input)
+void Utils::ResolvePath(std::string& outPath, const std::filesystem::path& mapPath)
 {
     fs::path outputDirPath(outPath);
 
@@ -149,7 +149,7 @@ void Utils::ResolvePath(std::string& outPath, const std::filesystem::path& mapPa
             outPath = fs::canonical(mapPath.parent_path() / outputDirPath).string();
         }
         catch (const fs::filesystem_error& e) {
-            Error("Failed to resolve %s path: %s.\n", input ? "input" : "output", e.what());
+            Error("Failed to resolve path \"%s\": %s.\n", mapPath.string().c_str(), e.what());
         }
     }
     // else we just use whatever is in outPath.
