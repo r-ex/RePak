@@ -41,10 +41,6 @@ private:
 	BinaryIO m_mandatoryStreamFile;
 	BinaryIO m_optionalStreamFile;
 
-	// next available starpak data offset
-	uint64_t m_nextMandatoryStarpakOffset = STARPAK_DATABLOCK_ALIGNMENT;
-	uint64_t m_nextOptionalStarpakOffset = STARPAK_DATABLOCK_ALIGNMENT;
-
 	std::vector<PakStreamSetAssetEntry_s> m_mandatoryStreamingDataBlocks;
 	std::vector<PakStreamSetAssetEntry_s> m_optionalStreamingDataBlocks;
 };

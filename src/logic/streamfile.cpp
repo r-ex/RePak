@@ -136,6 +136,9 @@ void CStreamFileBuilder::AddStreamingDataEntry(const int64_t size, const uint8_t
 	if (!out.IsWritable())
 		Error("Attempted to write %s streaming asset without a stream file handle.\n", Pak_StreamSetToName(set));
 
+	const int64_t dataOffset = out.GetSize();
+	assert(dataOffset >= STARPAK_DATABLOCK_ALIGNMENT);
+
 	out.Write(data, size);
 	const int64_t paddedSize = IALIGN(size, STARPAK_DATABLOCK_ALIGNMENT);
 
@@ -146,19 +149,14 @@ void CStreamFileBuilder::AddStreamingDataEntry(const int64_t size, const uint8_t
 		out.Pad(paddingRemainder);
 	}
 
-	// todo: this is probably not needed, because the size of the stream should
-	// be the offset for the next offset as we pad it out to alignment boundary.
-	size_t& nextOffsetCounter = isMandatory ? m_nextMandatoryStarpakOffset : m_nextOptionalStarpakOffset;
-
 	std::vector<PakStreamSetAssetEntry_s>& dataBlockDescs = isMandatory ? m_mandatoryStreamingDataBlocks : m_optionalStreamingDataBlocks;
 	PakStreamSetAssetEntry_s& desc = dataBlockDescs.emplace_back();
 
-	desc.offset = nextOffsetCounter;
+	desc.offset = dataOffset;
 	desc.size = paddedSize;
 
 	outResults.streamFile = newStarPak;
-	outResults.offset = nextOffsetCounter;
+	outResults.offset = dataOffset;
 
-	m_streamCache.Add(params, nextOffsetCounter);
-	nextOffsetCounter += paddedSize;
+	m_streamCache.Add(params, dataOffset);
 }
