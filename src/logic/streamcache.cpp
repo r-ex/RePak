@@ -133,10 +133,10 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 			const PakStreamSetAssetEntry_s* entryHeader = &starpakEntryHeaders.get()[i];
 
 			if (entryHeader->size == 0) [[unlikely]] // not possible
-				continue;
+				Error("Stream entry #%lld has a size of 0; streaming file appears corrupt.\n", i);
 			
 			if (entryHeader->offset < STARPAK_DATABLOCK_ALIGNMENT) [[unlikely]] // also not possible
-				continue;
+				Error("Stream entry #%lld has an offset lower than %d; streaming file appears corrupt.\n", i, STARPAK_DATABLOCK_ALIGNMENT);
 
 			char* const entryData = reinterpret_cast<char*>(_aligned_malloc(entryHeader->size, 8));
 
