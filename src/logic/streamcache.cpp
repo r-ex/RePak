@@ -88,7 +88,7 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 
 		if (!starpakStream.Open(starpakPath, BinaryIO::Mode_e::Read))
 		{
-			Warning("Failed to open streaming file \"%s\" for reading.\n", starpakPath.c_str());
+			Error("Failed to open streaming file \"%s\" for reading.\n", starpakPath.c_str());
 			continue;
 		}
 
@@ -96,7 +96,7 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 
 		if (starpakFileHeader.magic != STARPAK_MAGIC)
 		{
-			Warning("Streaming file \"%s\" has an invalid file magic; expected %x, got %x.\n", starpakPath.c_str(), starpakFileHeader.magic, STARPAK_MAGIC);
+			Error("Streaming file \"%s\" has an invalid file magic; expected %x, got %x.\n", starpakPath.c_str(), starpakFileHeader.magic, STARPAK_MAGIC);
 			continue;
 		}
 
