@@ -118,7 +118,7 @@ void ShaderSet_InternalCreateSet(CPakFileBuilder* const pak, const char* const a
 
 	asset.InitAsset(
 		hdrChunk.GetPointer(), sizeof(ShaderSetAssetHeader_t),
-		PagePtr_t::NullPtr(), -1, -1, assetVersion, AssetType::SHDS);
+		PagePtr_t::NullPtr(), assetVersion, AssetType::SHDS);
 	asset.SetHeaderPointer(hdrChunk.data);
 
 	pak->FinishAsset();

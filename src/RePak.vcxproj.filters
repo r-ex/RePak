@@ -219,6 +219,12 @@
     <ClCompile Include="assets\texture_anim.cpp">
       <Filter>assets</Filter>
     </ClCompile>
+    <ClCompile Include="logic\streamfile.cpp">
+      <Filter>logic</Filter>
+    </ClCompile>
+    <ClCompile Include="logic\buildsettings.cpp">
+      <Filter>logic</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -544,6 +550,12 @@
     </ClInclude>
     <ClInclude Include="public\texture_anim.h">
       <Filter>assets</Filter>
+    </ClInclude>
+    <ClInclude Include="logic\streamfile.h">
+      <Filter>logic</Filter>
+    </ClInclude>
+    <ClInclude Include="logic\buildsettings.h">
+      <Filter>logic</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

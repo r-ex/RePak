@@ -1,3 +1,8 @@
+//=============================================================================//
+//
+// Pak streaming file data manager
+//
+//=============================================================================//
 #include <pch.h>
 #include <public/starpak.h>
 #include <utils/utils.h>
@@ -7,9 +12,11 @@
 #include "streamcache.h"
 #include <public/rpak.h>
 
-static std::vector<std::string> StreamCache_GetStarpakFilesFromDirectory(const char* const directoryPath)
+#define MURMUR_SEED 0x165DCA75
+
+static std::vector<StreamCacheFileEntry_s> StreamCache_GetStarpakFilesFromDirectory(const char* const directoryPath)
 {
-	std::vector<std::string> paths;
+	std::vector<StreamCacheFileEntry_s> paths;
 	for (auto& it : std::filesystem::directory_iterator(directoryPath))
 	{
 		const fs::path& entryPath = it.path();
@@ -17,19 +24,38 @@ static std::vector<std::string> StreamCache_GetStarpakFilesFromDirectory(const c
 		if (!entryPath.has_extension())
 			continue;
 
-		if (entryPath.extension() != ".starpak")
+		const fs::path fileNameFs = entryPath.filename();
+		const std::string fileName = fileNameFs.string();
+
+		const char* const fullExtension = strchr(fileName.c_str(), '.');
+
+		if (!fullExtension)
 			continue;
 
-		std::string newEntry = entryPath.string();
+		bool optional = false;
+
+		if (strcmp(fullExtension, ".starpak") != 0)
+		{
+			// This is the only way to check if a starpak is optional without
+			// parsing an rpak that uses it. All optional starpaks are marked
+			// with '.opt' so this is very robust and reliable.
+			if (strcmp(fullExtension, ".opt.starpak") != 0)
+				continue;
+
+			optional = true;
+		}
+
+		StreamCacheFileEntry_s& entry = paths.emplace_back();
+
+		entry.optional = optional;
+		entry.path = entryPath.string();
 
 		// Normalize the slashes.
-		for (char& c : newEntry)
+		for (char& c : entry.path)
 		{
 			if (c == '\\')
 				c = '/';
 		}
-
-		paths.push_back(newEntry);
 	}
 
 	return paths;
@@ -46,16 +72,18 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 	if (!cacheFileStream.Open(streamCacheFile, BinaryIO::Mode_e::Write))
 		Error("Failed to create streaming map file \"%s\".\n", streamCacheFile);
 
-	const std::vector<std::string> foundStarpakPaths = StreamCache_GetStarpakFilesFromDirectory(directoryPath.c_str());
+	const std::vector<StreamCacheFileEntry_s> foundStarpakPaths = StreamCache_GetStarpakFilesFromDirectory(directoryPath.c_str());
 
-	Log("Found %zu streaming files to cache in directory \"%s\".\n", foundStarpakPaths.size(), streamCacheFile);
+	Log("Found %zu streaming files to cache in directory \"%s\".\n", foundStarpakPaths.size(), directoryPath.c_str());
 
 	// Start a timer for the cache builder process so that the user is notified when the tool finishes.
 	TIME_SCOPE("StreamCacheBuilder");
 	size_t starpakIndex = 0;
 
-	for (const std::string& starpakPath : foundStarpakPaths)
+	for (const StreamCacheFileEntry_s& foundEntry : foundStarpakPaths)
 	{
+		const std::string& starpakPath = foundEntry.path;
+
 		BinaryIO starpakStream;
 
 		if (!starpakStream.Open(starpakPath, BinaryIO::Mode_e::Read))
@@ -68,7 +96,7 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 
 		if (starpakFileHeader.magic != STARPAK_MAGIC)
 		{
-			Warning("Streaming file \"%s\" has an invalid file magic; expected %X, found %X.\n", starpakPath.c_str(), starpakFileHeader.magic, STARPAK_MAGIC);
+			Warning("Streaming file \"%s\" has an invalid file magic; expected %x, got %x.\n", starpakPath.c_str(), starpakFileHeader.magic, STARPAK_MAGIC);
 			continue;
 		}
 
@@ -76,13 +104,13 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 
 		const size_t starpakFileSize = fs::file_size(starpakPath);
 
-		starpakStream.Seek(starpakFileSize - sizeof(uint64_t), std::ios::beg);
+		starpakStream.Seek(starpakFileSize - sizeof(int64_t), std::ios::beg);
 
 		// get the number of data entries in this starpak file
-		const size_t starpakEntryCount = starpakStream.Read<size_t>();
-		const size_t starpakEntryHeadersSize = sizeof(PakStreamSetEntry_s) * starpakEntryCount;
+		const int64_t starpakEntryCount = starpakStream.Read<int64_t>();
+		const size_t starpakEntryHeadersSize = sizeof(PakStreamSetAssetEntry_s) * starpakEntryCount;
 
-		std::unique_ptr<PakStreamSetEntry_s> starpakEntryHeaders = std::unique_ptr<PakStreamSetEntry_s>(new PakStreamSetEntry_s[starpakEntryCount]);
+		std::unique_ptr<PakStreamSetAssetEntry_s> starpakEntryHeaders = std::unique_ptr<PakStreamSetAssetEntry_s>(new PakStreamSetAssetEntry_s[starpakEntryCount]);
 
 		// go to the start of the entry structs
 		starpakStream.Seek(starpakFileSize - (8 + starpakEntryHeadersSize), std::ios::beg);
@@ -98,35 +126,33 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 		std::string relativeStarpakPath("paks/Win64/");
 		relativeStarpakPath.append(starpakFileName);
 
-		const size_t pathIndex = AddStarpakPathToCache(relativeStarpakPath);
+		const int64_t pathIndex = AddStarpakPathToCache(relativeStarpakPath, foundEntry.optional);
 
-		for (size_t i = 0; i < starpakEntryCount; ++i)
+		for (int64_t i = 0; i < starpakEntryCount; ++i)
 		{
-			const PakStreamSetEntry_s* entryHeader = &starpakEntryHeaders.get()[i];
+			const PakStreamSetAssetEntry_s* entryHeader = &starpakEntryHeaders.get()[i];
 
-			if (entryHeader->dataSize == 0) [[unlikely]] // not possible
+			if (entryHeader->size == 0) [[unlikely]] // not possible
 				continue;
 			
 			if (entryHeader->offset < STARPAK_DATABLOCK_ALIGNMENT) [[unlikely]] // also not possible
 				continue;
 
-			char* const entryData = reinterpret_cast<char*>(_aligned_malloc(entryHeader->dataSize, 8));
+			char* const entryData = reinterpret_cast<char*>(_aligned_malloc(entryHeader->size, 8));
 
 			starpakStream.Seek(entryHeader->offset, std::ios::beg);
-			starpakStream.Read(entryData, entryHeader->dataSize);
+			starpakStream.Read(entryData, entryHeader->size);
 
-			StreamCacheDataEntry_s cacheEntry;
-			cacheEntry.pathIndex = pathIndex;
+			StreamCacheDataEntry_s& cacheEntry = m_dataEntries.emplace_back();
+
 			cacheEntry.dataOffset = entryHeader->offset;
-			cacheEntry.dataSize = entryHeader->dataSize;
+			cacheEntry.pathIndex = pathIndex;
+			cacheEntry.dataSize = entryHeader->size;
 
 			// ideally we don't have entries over 2gb.
-			assert(entryHeader->dataSize < INT32_MAX);
+			assert(entryHeader->size < INT32_MAX);
 
-			MurmurHash3_x64_128(entryData, static_cast<int>(entryHeader->dataSize), 0x165DCA75, &cacheEntry.hash);
-
-			m_dataEntries.push_back(cacheEntry);
-
+			MurmurHash3_x64_128(entryData, static_cast<int>(entryHeader->size), MURMUR_SEED, &cacheEntry.hash);
 			_aligned_free(entryData);
 		}
 
@@ -137,9 +163,10 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 
 	cacheFileStream.Write(cacheHeader);
 
-	for (const std::string& it : m_streamPaths)
+	for (const StreamCacheFileEntry_s& fileEntry : m_streamFiles)
 	{
-		cacheFileStream.WriteString(it, true);
+		cacheFileStream.Write(fileEntry.optional);
+		cacheFileStream.WriteString(fileEntry.path, true);
 	}
 	
 	cacheFileStream.Seek(cacheHeader.dataEntriesOffset);
@@ -191,10 +218,15 @@ void CStreamCache::ParseMap(const char* const streamCacheFile)
 	}
 
 	// Page the data in.
-	m_streamPaths.resize(streamCacheHeader.streamingFileCount);
+	m_streamFiles.resize(streamCacheHeader.streamingFileCount);
 
 	for (size_t i = 0; i < streamCacheHeader.streamingFileCount; i++)
-		cacheFileStream.ReadString(m_streamPaths[i]);
+	{
+		StreamCacheFileEntry_s& entry = m_streamFiles[i];
+
+		cacheFileStream.Read(entry.optional);
+		cacheFileStream.ReadString(entry.path);
+	}
 
 	m_dataEntries.resize(streamCacheHeader.dataEntryCount);
 
@@ -202,18 +234,18 @@ void CStreamCache::ParseMap(const char* const streamCacheFile)
 	cacheFileStream.Read(m_dataEntries.data(), actualBlockSize);
 }
 
-uint64_t CStreamCache::AddStarpakPathToCache(const std::string& path)
+int64_t CStreamCache::AddStarpakPathToCache(const std::string& path, const bool optional)
 {
-	const uint64_t index = m_streamPaths.size();
-	m_streamPaths.push_back(path);
+	const int64_t index = static_cast<int64_t>(m_streamFiles.size());
+	m_streamFiles.push_back({ optional, path});
 
 	// We store the count into 12 bits, so we cannot have more than 4096.
 	// Realistically, we shouldn't ever exceed this as we should only
 	// deduplicate data across the 'all' and 'roots' starpaks.
-	assert(m_streamPaths.size() <= 4096);
+	assert(m_streamFiles.size() <= 4096);
 
 	// add this path to the starpak buffer size
-	m_starpakBufSize += path.length() + 1;
+	m_starpakBufSize += path.length() + 2; // 1 for the 'optional' bool, 1 for the null terminator.
 	return index;
 }
 
@@ -224,9 +256,90 @@ StreamCacheFileHeader_s CStreamCache::ConstructHeader() const
 	fileHeader.magic = STREAM_CACHE_FILE_MAGIC;
 	fileHeader.majorVersion = STREAM_CACHE_FILE_MAJOR_VERSION;
 	fileHeader.minorVersion = STREAM_CACHE_FILE_MINOR_VERSION;
-	fileHeader.streamingFileCount = m_streamPaths.size();
+	fileHeader.streamingFileCount = m_streamFiles.size();
 	fileHeader.dataEntryCount = m_dataEntries.size();
 	fileHeader.dataEntriesOffset = IALIGN4(sizeof(StreamCacheFileHeader_s) + m_starpakBufSize);
 
 	return fileHeader;
+}
+
+static bool SIMD_CompareM128i(const __m128i a, const __m128i b)
+{
+	const __m128i result = _mm_cmpeq_epi32(a, b); // Compare element-wise for equality (32-bit integers).
+	return _mm_movemask_epi8(result) == 0xFFFF; // Check if all elements are equal.
+}
+
+StreamCacheFindParams_s CStreamCache::CreateParams(const uint8_t* const data, const int64_t size, const char* const newStarpak, const bool newIsOptional)
+{
+	__m128i hash;
+	MurmurHash3_x64_128(data, static_cast<int>(size), MURMUR_SEED, &hash);
+
+	StreamCacheFindParams_s ret;
+
+	ret.hash = hash;
+	ret.size = size;
+	ret.newStarpak = newStarpak;
+	ret.newIsOptional = newIsOptional;
+
+	return ret;
+}
+
+bool CStreamCache::Find(const StreamCacheFindParams_s& params, StreamCacheFindResult_s& result)
+{
+	for (const StreamCacheDataEntry_s& entry : m_dataEntries)
+	{
+		if (entry.dataSize != params.size)
+			continue;
+
+		const StreamCacheFileEntry_s& file = m_streamFiles[entry.pathIndex];
+
+		if (file.optional != params.newIsOptional)
+			continue;
+
+		if (!SIMD_CompareM128i(entry.hash, params.hash))
+			continue;
+
+		result.fileEntry = &m_streamFiles[entry.pathIndex];
+		result.dataEntry = &entry;
+
+		return true;
+	}
+
+	return false;
+}
+
+void CStreamCache::Add(const StreamCacheFindParams_s& params, const int64_t offset)
+{
+	const StreamCacheFileEntry_s* pNewFileEntry = nullptr;
+	int64_t newIndex = -1;
+
+	for (const StreamCacheFileEntry_s& fileEntry : m_streamFiles)
+	{
+		newIndex++;
+
+		if (fileEntry.path.compare(params.newStarpak) != 0)
+			continue;
+
+		pNewFileEntry = &fileEntry;
+		break;
+	}
+
+	if (!pNewFileEntry)
+	{
+		newIndex = static_cast<int64_t>(m_streamFiles.size());
+		StreamCacheFileEntry_s& newFileEntry = m_streamFiles.emplace_back();
+
+		newFileEntry.optional = params.newIsOptional;
+		newFileEntry.path = params.newStarpak;
+
+		m_starpakBufSize += newFileEntry.path.size() + 2;
+		pNewFileEntry = &newFileEntry;
+	}
+
+	StreamCacheDataEntry_s& newDataEntry = m_dataEntries.emplace_back();
+
+	newDataEntry.dataOffset = offset;
+	newDataEntry.pathIndex = newIndex;
+	newDataEntry.dataSize = params.size;
+	newDataEntry.hash = params.hash;
 }

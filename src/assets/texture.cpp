@@ -78,9 +78,9 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
 
     // used for creating data buffers
     struct {
-        size_t staticSize;
-        size_t streamedSize;
-        size_t streamedOptSize;
+        int64_t staticSize;
+        int64_t streamedSize;
+        int64_t streamedOptSize;
     } mipSizes{};
 
     // parse input image file
@@ -316,31 +316,23 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     }
 
     // now time to add the higher level asset entry
-    uint64_t mandatoryStreamDataOffset = UINT64_MAX;
+    PakStreamSetEntry_s mandatoryStreamData;
 
     if (isStreamable && hdr->streamedMipLevels > 0)
-    {
-        PakStreamSetEntry_s de{ 0, mipSizes.streamedSize };
-        pak->AddStreamingDataEntry(de, (uint8_t*)streamedbuf, STREAMING_SET_MANDATORY);
-
-        mandatoryStreamDataOffset = de.offset;
-    }
+        mandatoryStreamData = pak->AddStreamingDataEntry(mipSizes.streamedSize, (uint8_t*)streamedbuf, STREAMING_SET_MANDATORY);
 
     delete[] streamedbuf;
 
-    uint64_t optionalStreamDataOffset = UINT64_MAX;
+    PakStreamSetEntry_s optionalStreamData;
 
     if (isStreamableOpt && hdr->optStreamedMipLevels > 0)
-    {
-        PakStreamSetEntry_s de{ 0, mipSizes.streamedOptSize };
-        pak->AddStreamingDataEntry(de, (uint8_t*)optstreamedbuf, STREAMING_SET_OPTIONAL);
-
-        optionalStreamDataOffset = de.offset;
-    }
+        optionalStreamData = pak->AddStreamingDataEntry(mipSizes.streamedOptSize, (uint8_t*)optstreamedbuf, STREAMING_SET_OPTIONAL);
 
     delete[] optstreamedbuf;
 
-    asset.InitAsset(hdrChunk.GetPointer(), sizeof(TextureAssetHeader_t), dataChunk.GetPointer(), mandatoryStreamDataOffset, optionalStreamDataOffset, TXTR_VERSION, AssetType::TXTR);
+    asset.InitAsset(hdrChunk.GetPointer(), sizeof(TextureAssetHeader_t), dataChunk.GetPointer(), TXTR_VERSION, AssetType::TXTR,
+        mandatoryStreamData.streamOffset, mandatoryStreamData.streamIndex, optionalStreamData.streamOffset, optionalStreamData.streamIndex);
+
     asset.SetHeaderPointer(hdrChunk.data);
 
     pak->FinishAsset();

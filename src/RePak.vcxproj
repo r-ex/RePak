@@ -23,10 +23,12 @@
     <ClCompile Include="assets\texture_anim.cpp" />
     <ClCompile Include="assets\uiatlas.cpp" />
     <ClCompile Include="assets\texture.cpp" />
+    <ClCompile Include="logic\buildsettings.cpp" />
     <ClCompile Include="logic\pakpage.cpp" />
     <ClCompile Include="logic\pakfile.cpp" />
     <ClCompile Include="logic\rtech.cpp" />
     <ClCompile Include="logic\streamcache.cpp" />
+    <ClCompile Include="logic\streamfile.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -162,11 +164,13 @@
     <ClInclude Include="assets\assets.h" />
     <ClInclude Include="common\const.h" />
     <ClInclude Include="common\decls.h" />
+    <ClInclude Include="logic\buildsettings.h" />
     <ClInclude Include="logic\pakpage.h" />
     <ClInclude Include="logic\pakfile.h" />
     <ClInclude Include="logic\rmem.h" />
     <ClInclude Include="logic\rtech.h" />
     <ClInclude Include="logic\streamcache.h" />
+    <ClInclude Include="logic\streamfile.h" />
     <ClInclude Include="math\color.h" />
     <ClInclude Include="math\vector.h" />
     <ClInclude Include="pch.h" />

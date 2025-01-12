@@ -60,7 +60,7 @@ static void TextureAnim_InternalAddTextureAnim(CPakFileBuilder* const pak, const
 
 	pHdr->layerCount = layerCount;
 
-	asset.InitAsset(hdrLump.GetPointer(), sizeof(TextureAnimAssetHeader_t), PagePtr_t::NullPtr(), -1, -1, TXAN_VERSION, AssetType::TXAN);
+	asset.InitAsset(hdrLump.GetPointer(), sizeof(TextureAnimAssetHeader_t), PagePtr_t::NullPtr(), TXAN_VERSION, AssetType::TXAN);
 	asset.SetHeaderPointer(hdrLump.data);
 
 	pak->FinishAsset();

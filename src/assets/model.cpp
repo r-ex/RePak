@@ -32,14 +32,14 @@ char* Model_ReadRMDLFile(const std::string& path, const uint64_t alignment = 64)
     return buf;
 }
 
-static char* Model_ReadVGFile(const std::string& path, size_t* const pFileSize)
+static char* Model_ReadVGFile(const std::string& path, int64_t* const pFileSize)
 {
     BinaryIO vgFile;
 
     if (!vgFile.Open(path, BinaryIO::Mode_e::Read))
         Error("Failed to open vertex group file \"%s\".\n", path.c_str());
 
-    const size_t fileSize = vgFile.GetSize();
+    const int64_t fileSize = vgFile.GetSize();
 
     if (fileSize < sizeof(VertexGroupHeader_t))
         Error("Invalid vertex group file \"%s\"; must be at least %zu bytes, found %zu.\n", path.c_str(), sizeof(VertexGroupHeader_t), fileSize);
@@ -155,7 +155,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
     }
 }
 
-static uint64_t Model_InternalAddVertexGroupData(CPakFileBuilder* const pak, PakPageLump_s* const hdrChunk, ModelAssetHeader_t* const modelHdr, studiohdr_t* const studiohdr, const std::string& rmdlFilePath)
+static void Model_InternalAddVertexGroupData(CPakFileBuilder* const pak, PakPageLump_s* const hdrChunk, ModelAssetHeader_t* const modelHdr, studiohdr_t* const studiohdr, const std::string& rmdlFilePath, PakStreamSetEntry_s& de)
 {
     modelHdr->totalVertexDataSize = studiohdr->vtxsize + studiohdr->vvdsize + studiohdr->vvcsize + studiohdr->vvwsize;
 
@@ -165,14 +165,14 @@ static uint64_t Model_InternalAddVertexGroupData(CPakFileBuilder* const pak, Pak
     // this data is a combined mutated version of the data from .vtx and .vvd in regular source models
     const std::string vgFilePath = Utils::ChangeExtension(rmdlFilePath, ".vg");
 
-    size_t vgFileSize = 0;
+    int64_t vgFileSize = 0;
     char* const vgBuf = Model_ReadVGFile(vgFilePath, &vgFileSize);
 
-    PakStreamSetEntry_s de{ 0, vgFileSize };
-    pak->AddStreamingDataEntry(de, (uint8_t*)vgBuf, STREAMING_SET_MANDATORY);
+    de = pak->AddStreamingDataEntry(vgFileSize, (uint8_t*)vgBuf, STREAMING_SET_MANDATORY);
+    const int64_t vgSizeAligned = IALIGN(vgFileSize, STARPAK_DATABLOCK_ALIGNMENT);
 
-    assert(de.dataSize <= UINT32_MAX);
-    modelHdr->streamedVertexDataSize = static_cast<uint32_t>(de.dataSize);
+    assert(vgSizeAligned <= UINT32_MAX);
+    modelHdr->streamedVertexDataSize = static_cast<uint32_t>(vgSizeAligned);
 
     // static props must have their vertex group data copied as permanent data in the pak file.
     if (studiohdr->IsStaticProp())
@@ -182,8 +182,6 @@ static uint64_t Model_InternalAddVertexGroupData(CPakFileBuilder* const pak, Pak
     }
     else
         delete[] vgBuf;
-
-    return de.offset;
 }
 
 extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFileBuilder* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
@@ -245,12 +243,10 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
     //
     // Starpak
     //
-    uint64_t streamedVgOffset;
+    PakStreamSetEntry_s streamedVg;
 
     if (pak->IsFlagSet(PF_KEEP_CLIENT))
-        streamedVgOffset = Model_InternalAddVertexGroupData(pak, &hdrChunk, pHdr, studiohdr, rmdlFilePath);
-    else
-        streamedVgOffset = UINT64_MAX;
+        Model_InternalAddVertexGroupData(pak, &hdrChunk, pHdr, studiohdr, rmdlFilePath, streamedVg);
 
     // the last chunk is the actual data chunk that contains the rmdl
     PakPageLump_s dataChunk = pak->CreatePageLump(studiohdr->length, SF_CPU, 64, rmdlBuf);
@@ -308,7 +304,7 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
         }
     }
 
-    asset.InitAsset(hdrChunk.GetPointer(), sizeof(ModelAssetHeader_t), PagePtr_t::NullPtr(), streamedVgOffset, -1, RMDL_VERSION, AssetType::RMDL);
+    asset.InitAsset(hdrChunk.GetPointer(), sizeof(ModelAssetHeader_t), PagePtr_t::NullPtr(), RMDL_VERSION, AssetType::RMDL, streamedVg.streamOffset, streamedVg.streamIndex);
     asset.SetHeaderPointer(hdrChunk.data);
 
     pak->FinishAsset();

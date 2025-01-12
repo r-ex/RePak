@@ -88,12 +88,12 @@ std::string Utils::ChangeExtension(const std::string& in, const std::string& ext
 //-----------------------------------------------------------------------------
 // purpose: parse json document and handle parsing errors
 //-----------------------------------------------------------------------------
-void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
+void Utils::ParseMapDocument(js::Document& doc, const char* const path)
 {
     std::ifstream ifs(path);
 
     if (!ifs.is_open())
-        Error("Couldn't open map file \"%s\".\n", path.string().c_str());
+        Error("Couldn't open map file \"%s\".\n", path);
 
     // begin json parsing
     js::IStreamWrapper jsonStreamWrapper{ ifs };
@@ -133,11 +133,29 @@ void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
 
         // this could probably be formatted nicer
         Error("Failed to parse map file %s: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n",
-            path.string().c_str(),
-            lineNum, columnNum,
+            path, lineNum, columnNum,
             GetParseError_En(doc.GetParseError()),
             lastLine.c_str(), curLine.c_str(), (std::string(columnNum, ' ') += '^').c_str());
     }
+}
+
+void Utils::ResolvePath(std::string& outPath, const std::filesystem::path& mapPath, const bool input)
+{
+    fs::path outputDirPath(outPath);
+
+    if (outputDirPath.is_relative() && mapPath.has_parent_path())
+    {
+        try {
+            outPath = fs::canonical(mapPath.parent_path() / outputDirPath).string();
+        }
+        catch (const fs::filesystem_error& e) {
+            Error("Failed to resolve %s path: %s.\n", input ? "input" : "output", e.what());
+        }
+    }
+    // else we just use whatever is in outPath.
+
+    // ensure that the path has a slash at the end
+    Utils::AppendSlash(outPath);
 }
 
 PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success)

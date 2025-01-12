@@ -61,7 +61,7 @@ void Assets::AddPatchAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid
     }
 
     // NOTE: the only Ptch asset in the game has guid 0x6fc6fa5ad8f8bc9c
-    asset.InitAsset(hdrChunk.GetPointer(), sizeof(PatchAssetHeader_t), PagePtr_t::NullPtr(), -1, -1, PTCH_VERSION, AssetType::PTCH);
+    asset.InitAsset(hdrChunk.GetPointer(), sizeof(PatchAssetHeader_t), PagePtr_t::NullPtr(), PTCH_VERSION, AssetType::PTCH);
     asset.SetHeaderPointer(hdrChunk.data);
 
     pak->FinishAsset();

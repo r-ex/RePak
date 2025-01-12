@@ -634,7 +634,7 @@ static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const Pa
 
     //////////////////////////////////////////
 
-    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, uberBufChunk.GetPointer(), -1, -1, 12, AssetType::MATL);
+    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, uberBufChunk.GetPointer(), 12, AssetType::MATL);
     asset.SetHeaderPointer(hdrChunk.data);
 
     pak->FinishAsset();
@@ -744,7 +744,7 @@ static void Material_InternalAddMaterialV15(CPakFileBuilder* const pak, const Pa
 
     //////////////////////////////////////////
 
-    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, uberBufChunk.GetPointer(), -1, -1, 15, AssetType::MATL);
+    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, uberBufChunk.GetPointer(), 15, AssetType::MATL);
     asset.SetHeaderPointer(hdrChunk.data);
 
     pak->FinishAsset();

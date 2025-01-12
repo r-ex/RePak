@@ -162,15 +162,20 @@ struct PakAsset_t
 		const PagePtr_t pHeadPtr,
 		const uint32_t nHeaderSize,
 		const PagePtr_t pCpuPtr,
-		const int64_t nStarpakOffset,
-		const int64_t nOptStarpakOffset,
 		const uint32_t nVersion,
-		const AssetType type)
+		const AssetType type,
+		const int64_t nStarpakOffset = -1,
+		const int64_t nStarpakIndex = -1,
+		const int64_t nOptStarpakOffset = -1,
+		const int64_t nOptStarpakIndex = -1
+	)
 	{
 		this->headPtr = pHeadPtr;
 		this->cpuPtr = pCpuPtr;
 		this->starpakOffset = nStarpakOffset;
+		this->starpakIndex = nStarpakIndex;
 		this->optStarpakOffset = nOptStarpakOffset;
+		this->optStarpakIndex = nOptStarpakIndex;
 		this->headDataSize = nHeaderSize;
 		this->version = nVersion;
 		this->id = type;
@@ -198,8 +203,15 @@ struct PakAsset_t
 	// offset to any available streamed data
 	// starpakOffset    = "mandatory" starpak file offset
 	// optStarpakOffset = "optional" starpak file offset
-	int64_t starpakOffset = -1;
-	int64_t optStarpakOffset = -1;
+	union
+	{
+		int64_t packedStarpakOffset;
+	};
+
+	int64_t starpakOffset : 52 = -1;
+	int64_t starpakIndex : 12 = -1;
+	int64_t optStarpakOffset : 52 = -1;
+	int64_t optStarpakIndex : 12 = -1;
 
 	uint16_t pageEnd = 0; // highest mem page used by this asset
 
@@ -279,6 +291,9 @@ public:
 			Error("Unexpected asset type for \"%s\". Expected '%.4s', found '%.4s'.\n", this->name.c_str(), expected, found);
 		}
 	}
+
+	FORCEINLINE int64_t GetPackedStreamOffset() const { return (starpakOffset & 0xFFFFFFFFFFFFF000) | (starpakIndex & 0xFFF); }
+	FORCEINLINE int64_t GetPackedOptStreamOffset() const { return (optStarpakOffset & 0xFFFFFFFFFFFFF000) | (optStarpakIndex & 0xFFF); }
 };
 
 //

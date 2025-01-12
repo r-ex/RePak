@@ -168,7 +168,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
         uvBuf.write(uiiu);
     }
 
-    asset.InitAsset(hdrLump.GetPointer(), sizeof(UIImageAtlasHeader_t), uvLump.GetPointer(), -1, -1, UIMG_VERSION, AssetType::UIMG);
+    asset.InitAsset(hdrLump.GetPointer(), sizeof(UIImageAtlasHeader_t), uvLump.GetPointer(), UIMG_VERSION, AssetType::UIMG);
     asset.SetHeaderPointer(hdrLump.data);
 
     pak->FinishAsset();

@@ -1,9 +1,25 @@
 #pragma once
 #include "public/rpak.h"
 #include "pakpage.h"
+#include "buildsettings.h"
+#include "streamfile.h"
+
+struct PakStreamSetEntry_s
+{
+	PakStreamSetEntry_s()
+	{
+		streamOffset = -1;
+		streamIndex = -1;
+	}
+
+	int64_t streamOffset : 52;
+	int64_t streamIndex : 12;
+};
 
 class CPakFileBuilder
 {
+	friend class CPakPage;
+
 	enum class AssetScope_e
 	{
 		kServerOnly,
@@ -12,7 +28,7 @@ class CPakFileBuilder
 	};
 
 public:
-	CPakFileBuilder() {};
+	CPakFileBuilder(const CBuildSettings* const buildSettings, CStreamFileBuilder* const streamBuilder);
 
 	//----------------------------------------------------------------------------
 	// assets
@@ -27,20 +43,16 @@ public:
 	void AddPointer(PakPageLump_s& pointerLump, const size_t pointerOffset, const PakPageLump_s& dataLump, const size_t dataOffset);
 	void AddPointer(PakPageLump_s& pointerLump, const size_t pointerOffset);
 
-	void AddStarpakReference(const std::string& path);
-	void AddOptStarpakReference(const std::string& path);
+	int64_t AddStreamingFileReference(const char* const path, const bool mandatory);
 
-	void AddStreamingDataEntry(PakStreamSetEntry_s& block, const uint8_t* const data, const PakStreamSet_e set);
+	PakStreamSetEntry_s AddStreamingDataEntry(const int64_t size, const uint8_t* const data, const PakStreamSet_e set);
 
 	//----------------------------------------------------------------------------
 	// inlines
 	//----------------------------------------------------------------------------
-	inline bool IsFlagSet(int flag) const { return m_buildFlags & flag; };
+	inline bool IsFlagSet(int flag) const { return m_buildSettings->IsFlagSet(flag); };
 
 	inline size_t GetAssetCount() const { return m_assets.size(); };
-	inline size_t GetMandatoryStreamingAssetCount() const { return m_mandatoryStreamingDataBlocks.size(); };
-	inline size_t GetOptionalStreamingAssetCount() const { return m_optionalStreamingDataBlocks.size(); };
-
 	inline uint16_t GetNumPages() const { return m_pageBuilder.GetPageCount(); };
 
 	inline uint32_t GetVersion() const { return m_Header.fileVersion; }
@@ -66,8 +78,6 @@ public:
 	inline std::string GetAssetPath() const { return m_assetPath; }
 	inline void SetAssetPath(const std::string& assetPath) { m_assetPath = assetPath; }
 
-	inline size_t GetNumStarpakPaths() const { return m_mandatoryStreamFilePaths.size(); }
-
 	inline size_t GetCompressedSize() const { return m_Header.compressedSize; }
 	inline size_t GetDecompressedSize() const { return m_Header.decompressedSize; }
 
@@ -76,9 +86,6 @@ public:
 
 	inline FILETIME GetFileTime() const { return m_Header.fileTime; }
 	inline void SetFileTime(FILETIME fileTime) { m_Header.fileTime = fileTime; }
-
-	inline void AddFlags(int flags) { m_buildFlags |= flags; }
-	inline void RemoveFlags(int flags) { m_buildFlags &= ~flags; }
 
 	//----------------------------------------------------------------------------
 	// rpak
@@ -142,22 +149,18 @@ public:
 		m_processingAsset = false;
 	};
 
-	void CreateStreamFileStream(const char* const path, const PakStreamSet_e set);
-	void FinishStreamFileStream(const PakStreamSet_e set);
-
-	void BuildFromMap(const string& mapPath);
+	void BuildFromMap(const js::Document& doc);
 
 private:
-	friend class CPakPage;
+	const CBuildSettings* m_buildSettings;
+	CStreamFileBuilder* m_streamBuilder;
 
-	int m_buildFlags = 0;
 	bool m_processingAsset = false;
 
 	PakHdr_t m_Header;
 
 	std::string m_pakFilePath;
 	std::string m_assetPath;
-	std::string m_outputPath;
 
 	std::vector<PakAsset_t> m_assets;
 	std::vector<PagePtr_t> m_pagePointers;
@@ -166,16 +169,6 @@ private:
 
 	std::vector<std::string> m_mandatoryStreamFilePaths;
 	std::vector<std::string> m_optionalStreamFilePaths;
-
-	std::vector<PakStreamSetEntry_s> m_mandatoryStreamingDataBlocks;
-	std::vector<PakStreamSetEntry_s> m_optionalStreamingDataBlocks;
-
-	BinaryIO m_mandatoryStreamFile;
-	BinaryIO m_optionalStreamFile;
-
-	// next available starpak data offset
-	uint64_t m_nextMandatoryStarpakOffset = STARPAK_DATABLOCK_ALIGNMENT;
-	uint64_t m_nextOptionalStarpakOffset = STARPAK_DATABLOCK_ALIGNMENT;
 };
 
 // if the asset already existed, the function will return true.
