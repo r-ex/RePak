@@ -1,5 +1,6 @@
 #pragma once
 
+extern const char* g_currentAsset;
 extern bool g_showDebugLogs;
 
 // non-fatal errors/issues

@@ -94,6 +94,8 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 	if (!assetPath)
 		Error("No path provided for an asset of type '%.4s'.\n", assetType);
 
+	g_currentAsset = assetPath;
+
 	HANDLE_ASSET_TYPE("txtr", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
 	HANDLE_ASSET_TYPE("txan", assetType, assetPath, AssetScope_e::kClientOnly, file, nullptr, Assets::AddTextureAnimAsset_v1);
 	HANDLE_ASSET_TYPE("uimg", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
@@ -109,6 +111,8 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 	HANDLE_ASSET_TYPE("arig", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddAnimRigAsset_v4);
 
 	HANDLE_ASSET_TYPE("Ptch", assetType, assetPath, AssetScope_e::kAll, file, Assets::AddPatchAsset, Assets::AddPatchAsset);
+
+	g_currentAsset = nullptr;
 
 	// If the function has not returned by this point, we have an unhandled asset type.
 	Error("Unhandled asset type '%.4s' provided for asset \"%s\".\n", assetType, assetPath);
