@@ -127,11 +127,11 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
         Error("Attempted to add a texture asset using an unsupported format type \"%s\".\n", pDxgiFormat);
 
     hdr->imageFormat = imageFormat;
-    Log("-> fmt: %s\n", pDxgiFormat);
+    Debug("-> fmt: %s\n", pDxgiFormat);
 
     hdr->width = static_cast<uint16_t>(ddsh.dwWidth);
     hdr->height = static_cast<uint16_t>(ddsh.dwHeight);
-    Log("-> dimensions: %ux%u\n", ddsh.dwWidth, ddsh.dwHeight);
+    Debug("-> dimensions: %ux%u\n", ddsh.dwWidth, ddsh.dwHeight);
 
     bool isStreamable = false; // does this texture require streaming? true if total size of mip levels would exceed 64KiB. can be forced to false.
     bool isStreamableOpt = false; // can this texture use optional starpaks? can only be set if pak is version v8
@@ -248,7 +248,7 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     }
 
     hdr->guid = assetGuid;
-    Log("-> total mipmaps permanent:mandatory:optional : %hhu:%hhu:%hhu\n", hdr->mipLevels, hdr->streamedMipLevels, hdr->optStreamedMipLevels);
+    Debug("-> total mipmaps permanent:mandatory:optional : %hhu:%hhu:%hhu\n", hdr->mipLevels, hdr->streamedMipLevels, hdr->optStreamedMipLevels);
 
     if (pak->IsFlagSet(PF_KEEP_DEV))
     {
@@ -345,7 +345,7 @@ bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGui
     if (existingAsset)
         return false; // already present in the pak.
 
-    Log("Auto-adding 'txtr' asset \"%s\".\n", assetPath);
+    Debug("Auto-adding 'txtr' asset \"%s\".\n", assetPath);
     Texture_InternalAddTexture(pak, assetGuid, assetPath, forceDisableStreaming);
 
     return true;

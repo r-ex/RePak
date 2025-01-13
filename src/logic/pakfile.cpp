@@ -54,7 +54,7 @@ bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* con
 
 	if (targetFunc)
 	{
-		Log("Adding '%s' asset \"%s\".\n", assetType, assetPath);
+		Debug("Adding '%s' asset \"%s\".\n", assetType, assetPath);
 
 		const steady_clock::time_point start = high_resolution_clock::now();
 		const PakGuid_t assetGuid = Pak_GetGuidOverridable(file, assetPath);
@@ -69,7 +69,7 @@ bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* con
 		const steady_clock::time_point stop = high_resolution_clock::now();
 
 		const microseconds duration = duration_cast<microseconds>(stop - start);
-		Log("...done; took %lld ms.\n", duration.count());
+		Debug("...done; took %lld ms.\n", duration.count());
 	}
 	else
 		Error("Asset type '%.4s' is not supported on pak version %hu.\n", assetType, fileVersion);
@@ -625,10 +625,10 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 	const char* const pakName = JSON_GetValueOrDefault(doc, "name", DEFAULT_RPAK_NAME);
 
 	// print parsed settings
-	Log("build settings:\n");
-	Log("version: %i\n", GetVersion());
-	Log("fileName: %s.rpak\n", pakName);
-	Log("assetsDir: %s\n", m_assetPath.c_str());
+	Debug("build settings:\n");
+	Debug("version: %i\n", GetVersion());
+	Debug("fileName: %s.rpak\n", pakName);
+	Debug("assetsDir: %s\n", m_assetPath.c_str());
 
 	// set build path
 	SetPath(std::string(m_buildSettings->GetOutputPath()) + pakName + ".rpak");
@@ -637,6 +637,8 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 	BinaryIO out;
 	if (!out.Open(m_pakFilePath, BinaryIO::Mode_e::ReadWriteCreate))
 		Error("Failed to open output pak file \"%s\".\n", m_pakFilePath.c_str());
+
+	Log("Building pak file \"%s\".\n", m_pakFilePath.c_str());
 
 	// write a placeholder header so we can come back and complete it
 	// when we have all the info
@@ -718,7 +720,7 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 
 	const ssize_t totalPakSize = out.GetSize();
 
-	Log("Written pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
+	Log("Built pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
 		m_pakFilePath.c_str(), GetAssetCount(), totalPakSize);
 
 	out.Close();

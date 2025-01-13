@@ -187,7 +187,7 @@ bool Shader_AutoAddShader(CPakFileBuilder* const pak, const char* const assetPat
 	if (existingAsset)
 		return false;
 
-	Log("Auto-adding 'shdr' asset \"%s\".\n", assetPath);
+	Debug("Auto-adding 'shdr' asset \"%s\".\n", assetPath);
 
 	const auto func = shaderAssetVersion == 8 ? Shader_AddShaderV8 : Shader_AddShaderV12;
 	func(pak, assetPath, shader, shaderGuid);

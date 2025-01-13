@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "logger.h"
 
+bool g_showDebugLogs = false;
+
 void Warning(_Printf_format_string_ const char* fmt, ...)
 {
 	va_list args;
@@ -37,7 +39,9 @@ void Log(_Printf_format_string_ const char* fmt, ...)
 
 void Debug(_Printf_format_string_ const char* fmt, ...)
 {
-#ifdef _DEBUG
+	if (!g_showDebugLogs)
+		return;
+
 	va_list args;
 	va_start(args, fmt);
 
@@ -46,7 +50,4 @@ void Debug(_Printf_format_string_ const char* fmt, ...)
 	vprintf(msg.c_str(), args);
 
 	va_end(args);
-#else
-	UNUSED(fmt);
-#endif
 }

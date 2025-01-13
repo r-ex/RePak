@@ -146,7 +146,7 @@ bool ShaderSet_AutoAddShaderSet(CPakFileBuilder* const pak, const PakGuid_t asse
 	if (existingAsset)
 		return false; // already present in the pak.
 
-	Log("Auto-adding 'shds' asset \"%s\".\n", assetPath);
+	Debug("Auto-adding 'shds' asset \"%s\".\n", assetPath);
 
 	if (assetVersion == 8)
 		ShaderSet_InternalAddShaderSet<ShaderSetAssetHeader_v8_t>(pak, assetGuid, assetPath, assetVersion);

@@ -46,4 +46,6 @@ void CBuildSettings::Init(const js::Document& doc, const char* const buildMapFil
 
 	if (m_compressLevel > 0)
 		m_compressWorkers = JSON_GetValueOrDefault(doc, "compressWorkers", 0);
+
+	g_showDebugLogs = JSON_GetValueOrDefault(doc, "showDebugInfo", false);
 }

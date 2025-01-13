@@ -64,9 +64,12 @@ void CStreamFileBuilder::Shutdown()
 		BinaryIO newCache;
 
 		if (newCache.Open(fullFilePath, BinaryIO::Mode_e::Write))
+		{
 			m_streamCache.Save(newCache);
+			Log("Saved cache to streaming map file \"%s\".\n", fullFilePath.c_str());
+		}
 		else
-			Warning("Failed to write cache to streaming map file \"%s\".\n", fullFilePath.c_str());
+			Warning("Failed to save cache to streaming map file \"%s\".\n", fullFilePath.c_str());
 	}
 }
 
@@ -88,6 +91,8 @@ void CStreamFileBuilder::CreateStreamFileStream(const char* const streamFilePath
 
 	if (!out.Open(fullFilePath, BinaryIO::Mode_e::Write))
 		Error("Failed to open %s streaming file \"%s\".\n", Pak_StreamSetToName(set), fullFilePath.c_str());
+
+	Log("Opened %s streaming file stream \"%s\".\n", Pak_StreamSetToName(set), fullFilePath.c_str());
 
 	// write out the header and pad it out for the first asset entry.
 	const PakStreamSetFileHeader_s srpkHeader{ STARPAK_MAGIC, STARPAK_VERSION };
@@ -121,7 +126,7 @@ void CStreamFileBuilder::FinishStreamFileStream(const PakStreamSet_e set)
 
 	const char* const streamFileName = isMandatory ? m_mandatoryStreamFileName : m_optionalStreamFileName;
 
-	Log("Written %s streaming file \"%s\" with %zu assets, totaling %zd bytes.\n",
+	Log("Built %s streaming file \"%s\" with %zu assets, totaling %zd bytes.\n",
 		Pak_StreamSetToName(set), streamFileName, entryCount, (ssize_t)out.GetSize());
 
 	out.Close();

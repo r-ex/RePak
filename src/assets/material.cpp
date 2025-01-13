@@ -804,7 +804,7 @@ bool Material_AutoAddMaterial(CPakFileBuilder* const pak, const PakGuid_t assetG
     if (existingAsset)
         return false; // already present in the pak; not added.
 
-    Log("Auto-adding 'matl' asset \"%s\".\n", assetPath);
+    Debug("Auto-adding 'matl' asset \"%s\".\n", assetPath);
     return Material_InternalAddMaterial(pak, assetGuid, assetPath, nullptr, assetVersion);
 }
 

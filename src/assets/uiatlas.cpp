@@ -157,12 +157,12 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
         const float uv0x = JSON_GetNumberRequired<float>(it, "posX") / pHdr->width;
         const float uv1x = JSON_GetNumberRequired<float>(it, "width") / pHdr->width;
 
-        Log("X: %f -> %f\n", uv0x, uv0x + uv1x);
+        Debug("X: %f -> %f\n", uv0x, uv0x + uv1x);
 
         const float uv0y = JSON_GetNumberRequired<float>(it, "posY") / pHdr->height;
         const float uv1y = JSON_GetNumberRequired<float>(it, "height") / pHdr->height;
 
-        Log("Y: %f -> %f\n", uv0y, uv0y + uv1y);
+        Debug("Y: %f -> %f\n", uv0y, uv0y + uv1y);
 
         uiiu.InitUIImageUV(uv0x, uv0y, uv1x, uv1y);
         uvBuf.write(uiiu);

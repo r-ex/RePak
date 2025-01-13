@@ -73,7 +73,7 @@ bool TextureAnim_AutoAddTextureAnim(CPakFileBuilder* const pak, const PakGuid_t 
 	if (existingAsset)
 		return false; // already present in the pak.
 
-	Log("Auto-adding 'txan' asset \"%s\".\n", assetPath);
+	Debug("Auto-adding 'txan' asset \"%s\".\n", assetPath);
 	TextureAnim_InternalAddTextureAnim(pak, assetGuid, assetPath);
 
 	return true;

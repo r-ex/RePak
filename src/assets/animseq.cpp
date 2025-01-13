@@ -96,7 +96,7 @@ PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFileBuilder* const pak, uint32_t* con
 
             if (!existingAsset)
             {
-                Log("Auto-adding 'aseq' asset \"%s\".\n", sequenceName);
+                Debug("Auto-adding 'aseq' asset \"%s\".\n", sequenceName);
                 AnimSeq_InternalAddAnimSeq(pak, guid, sequenceName);
             }
         }
