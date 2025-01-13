@@ -32,12 +32,12 @@ static void RePak_Shutdown(CBuildSettings& settings, CStreamFileBuilder& streamB
         streamBuilder.Shutdown();
 }
 
-static void RePak_ParseListedDocument(js::Document& doc, const char* const workingDirectory, const char* const docName)
+static void RePak_ParseListedDocument(js::Document& doc, const char* const docPath, const char* const docName)
 {
-    std::string absDocPath = workingDirectory;
-    absDocPath.append(docName);
+    std::string finalName = docName;
 
-    Utils::ParseMapDocument(doc, absDocPath.c_str());
+    Utils::ResolvePath(finalName, docPath);
+    Utils::ParseMapDocument(doc, finalName.c_str());
 }
 
 static void RePak_BuildSingle(const js::Document& doc, const char* const mapPath)
@@ -79,7 +79,7 @@ static void RePak_BuildFromList(const js::Document& doc, const js::Value& list, 
         }
 
         js::Document pakDoc;
-        RePak_ParseListedDocument(pakDoc, settings.GetWorkingDirectory(), pak.GetString());
+        RePak_ParseListedDocument(pakDoc, settings.GetBuildMapPath(), pak.GetString());
 
         CPakFileBuilder pakFile(&settings, &streamBuilder);
         pakFile.BuildFromMap(pakDoc);

@@ -154,8 +154,34 @@ void Utils::ResolvePath(std::string& outPath, const std::filesystem::path& mapPa
     }
     // else we just use whatever is in outPath.
 
-    // ensure that the path has a slash at the end
-    Utils::AppendSlash(outPath);
+    if (!strrchr(outPath.c_str(), '.'))
+    {
+        // ensure that the path has a slash at the end
+        Utils::AppendSlash(outPath);
+    }
+}
+
+const char* Utils::ExtractFileName(const char* const string)
+{
+    const size_t len = strlen(string);
+    const char* result = nullptr;
+
+    for (size_t i = (len - 1); i-- > 0;)
+    {
+        const char c = string[i];
+
+        if (c == '/' || c == '\\')
+        {
+            result = &string[i] + 1; // +1 to advance from slash.
+            break;
+        }
+    }
+
+    // No path, this is already the file name.
+    if (!result)
+        result = string;
+
+    return result;
 }
 
 PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success)

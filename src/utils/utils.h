@@ -13,6 +13,8 @@ namespace Utils
 
 	void ParseMapDocument(js::Document& doc, const char* const path);
 	void ResolvePath(std::string& outPath, const std::filesystem::path& mapPath);
+
+	const char* ExtractFileName(const char* const string);
 };
 
 extern PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success = nullptr);

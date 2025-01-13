@@ -30,10 +30,14 @@ void CStreamFileBuilder::Init(const js::Document& doc, const bool useOptional)
 
 	if (JSON_GetValue(doc, "streamCache", m_streamCacheFileName))
 	{
-		std::string streamCacheDir = m_buildSettings->GetWorkingDirectory();
-		streamCacheDir.append(m_streamCacheFileName);
+		fs::path streamCacheDirFs(m_streamCacheFileName);
+		std::string streamCacheDirStr = streamCacheDirFs.parent_path().string();
 
-		m_streamCache.ParseMap(streamCacheDir.c_str());
+		Utils::ResolvePath(streamCacheDirStr, m_buildSettings->GetBuildMapPath());
+		streamCacheDirStr.append(streamCacheDirFs.filename().string());
+
+		Log("Loading cache from streaming map file \"%s\".\n", streamCacheDirStr.c_str());
+		m_streamCache.ParseMap(streamCacheDirStr.c_str());
 	}
 }
 
@@ -51,20 +55,18 @@ void CStreamFileBuilder::Shutdown()
 
 	if (streamFile)
 	{
-		fs::path newCacheFileFs(m_buildSettings->GetWorkingDirectory());
+		const char* streamFileName = Utils::ExtractFileName(streamFile);
+		std::string fullFilePath = m_buildSettings->GetOutputPath();
 
-		newCacheFileFs.append(m_buildSettings->GetOutputPath());
-		newCacheFileFs.append(fs::path(streamFile).filename().string());
+		fullFilePath.append(streamFileName);
+		fullFilePath = Utils::ChangeExtension(fullFilePath, ".starmap");
 
-		newCacheFileFs.replace_extension(".starmap");
-
-		const std::string newCacheFileStr = newCacheFileFs.string();
 		BinaryIO newCache;
 
-		if (newCache.Open(newCacheFileStr, BinaryIO::Mode_e::Write))
+		if (newCache.Open(fullFilePath, BinaryIO::Mode_e::Write))
 			m_streamCache.Save(newCache);
 		else
-			Warning("Failed to write cache to streaming map file \"%s\".", newCacheFileStr.c_str());
+			Warning("Failed to write cache to streaming map file \"%s\".\n", fullFilePath.c_str());
 	}
 }
 
@@ -79,12 +81,7 @@ void CStreamFileBuilder::CreateStreamFileStream(const char* const streamFilePath
 	if (out.IsWritable())
 		return; // Already opened.
 
-	const char* streamFileName = strrchr(streamFilePath, '/');
-
-	if (!streamFileName)
-		streamFileName = streamFilePath;
-	else
-		streamFileName += 1; // advance from '/' to start of filename.
+	const char* streamFileName = Utils::ExtractFileName(streamFilePath);
 
 	std::string fullFilePath = m_buildSettings->GetOutputPath();
 	fullFilePath.append(streamFileName);

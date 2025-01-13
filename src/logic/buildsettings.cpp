@@ -23,11 +23,11 @@ void CBuildSettings::Init(const js::Document& doc, const char* const buildMapFil
 	if (m_pakVersion < 0)
 		Error("No \"version\" field provided.\n");
 
-	Utils::ResolvePath(m_workingDirectory, buildMapFile);
+	m_buildMapPath = buildMapFile;
 
 	// Determine final build path from map file.
-	const char* const outputDir = JSON_GetValueRequired<const char*>(doc, "outputDir");
-	m_outputPath = m_workingDirectory + outputDir;
+	m_outputPath = JSON_GetValueRequired<const char*>(doc, "outputDir");
+	Utils::ResolvePath(m_outputPath, m_buildMapPath);
 
 	// Create output directory if it does not exist yet.
 	fs::create_directories(m_outputPath);
