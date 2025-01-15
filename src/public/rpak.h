@@ -17,6 +17,10 @@
 
 #define PAK_MAX_STEM_PATH 512
 
+// max amount of streaming files that could be opened per set for a pak, so if a
+// pak uses more than one set, this number would be used per set.
+#define PAK_MAX_STREAMING_FILE_HANDLES_PER_SET 4
+
 #define TYPE_TXTR	MAKE_FOURCC('t', 'x', 't', 'r') // txtr
 #define TYPE_TXAN	MAKE_FOURCC('t', 'x', 'a', 'n') // txan
 #define TYPE_RMDL	MAKE_FOURCC('m', 'd', 'l', '_') // mdl_

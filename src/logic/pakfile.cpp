@@ -152,6 +152,16 @@ int64_t CPakFileBuilder::AddStreamingFileReference(const char* const path, const
 			return index;
 	}
 
+	// Check if we don't overflow the maximum the runtime supports per set.
+	// mandatory and optional are separate sets.
+	const size_t newSize = vec.size() + 1;
+
+	if (newSize > PAK_MAX_STREAMING_FILE_HANDLES_PER_SET)
+	{
+		Error("Out of room while adding %s streaming file \"%s\"; runtime has a limit of %zu, got %zu.\n",
+			path, PAK_MAX_STREAMING_FILE_HANDLES_PER_SET, newSize);
+	}
+
 	vec.push_back(path);
 	return count;
 }
