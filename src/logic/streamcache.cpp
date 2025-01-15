@@ -13,6 +13,7 @@
 #include <public/rpak.h>
 
 #define MURMUR_SEED 0x165DCA75
+//#define CHECK_FOR_DUPLICATES
 
 static std::vector<StreamCacheFileEntry_s> StreamCache_GetStarpakFilesFromDirectory(const char* const directoryPath)
 {
@@ -162,6 +163,42 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 	Save(cacheFileStream);
 }
 
+static bool SIMD_CompareM128i(const __m128i a, const __m128i b)
+{
+	const __m128i result = _mm_cmpeq_epi8(a, b); // Compare element-wise for equality (32-bit integers).
+	return _mm_movemask_epi8(result) == 0xFFFF; // Check if all elements are equal.
+}
+
+#ifdef CHECK_FOR_DUPLICATES
+struct DuplicateChecker
+{
+	DuplicateChecker(__m128i o)
+		: i(o) {}
+
+	inline bool operator<(const DuplicateChecker& o) const
+	{
+		const int64_t lowA = _mm_extract_epi64(i, 0);
+		const int64_t highA = _mm_extract_epi64(i, 1);
+		const int64_t lowB = _mm_extract_epi64(o.i, 0);
+		const int64_t highB = _mm_extract_epi64(o.i, 1);
+
+		if (highA == highB)
+			return lowA < lowB;
+
+		return highA < highB;
+	}
+
+	__m128i i;
+};
+
+static void PrintM128i64(__m128i in)
+{
+	alignas(16) uint64_t v[2];  // uint64_t might give format-string warnings with %llx; it's just long in some ABIs
+	_mm_store_si128(reinterpret_cast<__m128i*>(v), in);
+	printf("v2_u64: %llx %llx\n", v[0], v[1]);
+}
+#endif // CHECK_FOR_DUPLICATES
+
 void CStreamCache::ParseMap(const char* const streamCacheFile)
 {
 	BinaryIO cacheFileStream;
@@ -213,6 +250,23 @@ void CStreamCache::ParseMap(const char* const streamCacheFile)
 
 	cacheFileStream.SeekGet(streamCacheHeader.dataEntriesOffset);
 	cacheFileStream.Read(m_dataEntries.data(), actualBlockSize);
+
+#ifdef CHECK_FOR_DUPLICATES
+	std::set<DuplicateChecker> testSet;
+
+	for (auto& e : m_dataEntries)
+	{
+		auto p = testSet.insert(e.hash);
+
+		if (!p.second)
+		{
+			Warning("Detected duplicate hash entries!\n");
+
+			PrintM128i64(p.first->i);
+			PrintM128i64(e.hash);
+		}
+	}
+#endif // CHECK_FOR_DUPLICATES
 }
 
 int64_t CStreamCache::AddStarpakPathToCache(const std::string& path, const bool optional)
@@ -242,12 +296,6 @@ StreamCacheFileHeader_s CStreamCache::ConstructHeader() const
 	fileHeader.dataEntriesOffset = IALIGN4(sizeof(StreamCacheFileHeader_s) + m_starpakBufSize);
 
 	return fileHeader;
-}
-
-static bool SIMD_CompareM128i(const __m128i a, const __m128i b)
-{
-	const __m128i result = _mm_cmpeq_epi32(a, b); // Compare element-wise for equality (32-bit integers).
-	return _mm_movemask_epi8(result) == 0xFFFF; // Check if all elements are equal.
 }
 
 StreamCacheFindParams_s CStreamCache::CreateParams(const uint8_t* const data, const int64_t size, const char* const newStarpak, const bool newIsOptional)
