@@ -118,7 +118,7 @@ struct TextureAssetHeader_t : public TextureDesc_t
 
 	// d3d11 texture desc params
 	uint8_t  arraySize;
-	uint8_t  layerCount;
+	uint8_t  resourceFlags;
 
 	uint8_t  usageFlags;
 	uint8_t  mipLevels;
