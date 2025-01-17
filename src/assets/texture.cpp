@@ -218,8 +218,6 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
         mips.resize(ddsh.dwMipMapCount);
 
     size_t mipOffset = isDX10 ? 0x94 : 0x80; // add header length
-    unsigned int streamedMipCount = 0;
-
     bool firstTexture = true;
 
     for (auto& mips : textureArray)
@@ -263,15 +261,11 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
             // - texture arrays cannot be streamed, the mips for each texture
             //   must be equally mapped and they can only be stored permanently.
             // 
-            // - we cannot have more than 4 streamed mip levels; the engine can
-            //   only store up to 4 streamable mip handles per texture, anything
-            //   else must be stored as a permanent mip!
-            //
             // - there must always be at least 1 permanent mip level, regardless
             //   of its size. not adhering to this rule will result in a failure
             //   in ID3D11Device::CreateTexture2D during the runtime. we make
             //   sure that the smallest mip is always permanent (static) here.
-            if (arraySize == 1 && (streamedMipCount < MAX_STREAMED_TEXTURE_MIPS) && (mipLevel != (ddsh.dwMipMapCount - 1)))
+            if (arraySize == 1 && (mipLevel != (ddsh.dwMipMapCount - 1)))
             {
                 const mipType_e override = streamLayout.empty() 
                     ? mipType_e::INVALID 
@@ -296,8 +290,6 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
 
                         mipMap.mipType = mipType_e::STREAMED;
                     }
-
-                    streamedMipCount++;
                 }
             }
 
