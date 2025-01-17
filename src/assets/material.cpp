@@ -324,14 +324,14 @@ static void Material_AddUberData(CPakFileBuilder* const pak, MaterialAsset_t* co
     PakPageLump_s& uberBufChunk, size_t& staticBufSize)
 {
     const std::string uberPath = Material_GetUberPath(pak, matlAsset, mapEntry);
-    BinaryIO cpuFile;
+    BinaryIO uberFile;
 
-    if (cpuFile.Open(uberPath, BinaryIO::Mode_e::Read))
+    if (uberFile.Open(uberPath, BinaryIO::Mode_e::Read))
     {
-        staticBufSize = cpuFile.GetSize();
+        staticBufSize = uberFile.GetSize();
         uberBufChunk = pak->CreatePageLump(sizeof(MaterialCPUHeader) + staticBufSize, SF_CPU | SF_TEMP, 8);
 
-        cpuFile.Read(uberBufChunk.data + sizeof(MaterialCPUHeader), staticBufSize);
+        uberFile.Read(uberBufChunk.data + sizeof(MaterialCPUHeader), staticBufSize);
     }
     else
     {
