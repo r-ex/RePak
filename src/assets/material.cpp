@@ -750,8 +750,6 @@ static void Material_InternalAddMaterialV15(CPakFileBuilder* const pak, const Pa
     pak->FinishAsset();
 }
 
-extern bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath);
-
 static bool Material_InternalAddMaterial(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value* const mapEntry, const int assetVersion)
 {
     rapidjson::Document document;
