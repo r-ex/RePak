@@ -184,6 +184,62 @@ static void Model_InternalAddVertexGroupData(CPakFileBuilder* const pak, PakPage
         delete[] vgBuf;
 }
 
+static void Model_InternalHandleMaterials(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry, 
+    PakAsset_t& asset, studiohdr_t* const studiohdr, PakPageLump_s& dataChunk)
+{
+    // Material Overrides Handling
+    rapidjson::Value::ConstMemberIterator materialsIt;
+
+    // todo(amos): do we even want material overrides? shouldn't these need to
+    // be fixed in the studiomdl itself? there are reports of this causing many
+    // errors as the game tries to read the path from the mdl itself which this
+    // loop below doesn't update.
+    const bool hasMaterialOverrides = JSON_GetIterator(mapEntry, "$materials", JSONFieldType_e::kArray, materialsIt);
+    const rapidjson::Value* materialOverrides = hasMaterialOverrides ? &materialsIt->value : nullptr;
+
+    // handle material overrides register all material guids
+    for (int i = 0; i < studiohdr->numtextures; ++i)
+    {
+        mstudiotexture_t* const tex = studiohdr->pTexture(i);
+
+        if (hasMaterialOverrides)
+        {
+            rapidjson::Value::ConstArray materialArray = materialOverrides->GetArray();
+
+            if (materialArray.Size() > i)
+            {
+                const PakGuid_t guid = Pak_ParseGuid(materialArray[i]);
+
+                if (!guid)
+                    Error("Unable to parse material #%i.\n", i);
+
+                tex->guid = guid;
+            }
+        }
+
+        const size_t pos = (char*)tex - dataChunk.data;
+        const size_t offset = pos + offsetof(mstudiotexture_t, guid);
+
+        Pak_RegisterGuidRefAtOffset(tex->guid, offset, dataChunk, asset);
+        const PakAsset_t* const internalAsset = pak->GetAssetByGuid(tex->guid);
+
+        if (internalAsset)
+        {
+            // make sure referenced asset is a material for sanity
+            internalAsset->EnsureType(TYPE_MATL);
+
+            // model assets don't exist on r2 so we can be sure that this is a v8 pak (and therefore has v15 materials)
+            MaterialAssetHeader_v15_t* const matlHdr = reinterpret_cast<MaterialAssetHeader_v15_t*>(internalAsset->header);
+
+            if (matlHdr->materialType != studiohdr->materialType(i))
+            {
+                Error("Unexpected shader type for material in slot #%i, expected '%s', found '%s'.\n",
+                    i, s_materialShaderTypeNames[studiohdr->materialType(i)], s_materialShaderTypeNames[matlHdr->materialType]);
+            }
+        }
+    }
+}
+
 extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFileBuilder* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
 
 // page chunk structure and order:
@@ -245,64 +301,17 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
     //
     PakStreamSetEntry_s streamedVg;
 
-    if (pak->IsFlagSet(PF_KEEP_CLIENT))
+    const bool keepClientOnly = pak->IsFlagSet(PF_KEEP_CLIENT);
+
+    if (keepClientOnly)
         Model_InternalAddVertexGroupData(pak, &hdrChunk, pHdr, studiohdr, rmdlFilePath, streamedVg);
 
     // the last chunk is the actual data chunk that contains the rmdl
     PakPageLump_s dataChunk = pak->CreatePageLump(studiohdr->length, SF_CPU, 64, rmdlBuf);
     pak->AddPointer(hdrChunk, offsetof(ModelAssetHeader_t, pData), dataChunk, 0);
 
-    // Material Overrides Handling
-    rapidjson::Value::ConstMemberIterator materialsIt;
-
-    // todo(amos): do we even want material overrides? shouldn't these need to
-    // be fixed in the studiomdl itself? there are reports of this causing many
-    // errors as the game tries to read the path from the mdl itself which this
-    // loop below doesn't update.
-    const bool hasMaterialOverrides = JSON_GetIterator(mapEntry, "$materials", JSONFieldType_e::kArray, materialsIt);
-    const rapidjson::Value* materialOverrides = hasMaterialOverrides ? &materialsIt->value : nullptr;
-
-    // handle material overrides register all material guids
-    for (int i = 0; i < studiohdr->numtextures; ++i)
-    {
-        mstudiotexture_t* const tex = studiohdr->pTexture(i);
-
-        if (hasMaterialOverrides)
-        {
-            rapidjson::Value::ConstArray materialArray = materialOverrides->GetArray();
-
-            if (materialArray.Size() > i)
-            {
-                const PakGuid_t guid = Pak_ParseGuid(materialArray[i]);
-
-                if (!guid)
-                    Error("Unable to parse material #%i.\n", i);
-
-                tex->guid = guid;
-            }
-        }
-
-        const size_t pos = (char*)tex - dataChunk.data;
-        const size_t offset = pos + offsetof(mstudiotexture_t, guid);
-
-        Pak_RegisterGuidRefAtOffset(tex->guid, offset, dataChunk, asset);
-        const PakAsset_t* const internalAsset = pak->GetAssetByGuid(tex->guid);
-
-        if (internalAsset)
-        {
-            // make sure referenced asset is a material for sanity
-            internalAsset->EnsureType(TYPE_MATL);
-
-            // model assets don't exist on r2 so we can be sure that this is a v8 pak (and therefore has v15 materials)
-            MaterialAssetHeader_v15_t* const matlHdr = reinterpret_cast<MaterialAssetHeader_v15_t*>(internalAsset->header);
-
-            if (matlHdr->materialType != studiohdr->materialType(i))
-            {
-                Error("Unexpected shader type for material in slot #%i, expected '%s', found '%s'.\n",
-                    i, s_materialShaderTypeNames[studiohdr->materialType(i)], s_materialShaderTypeNames[matlHdr->materialType]);
-            }
-        }
-    }
+    if (keepClientOnly)
+        Model_InternalHandleMaterials(pak, mapEntry, asset, studiohdr, dataChunk);
 
     asset.InitAsset(hdrChunk.GetPointer(), sizeof(ModelAssetHeader_t), PagePtr_t::NullPtr(), RMDL_VERSION, AssetType::RMDL, streamedVg.streamOffset, streamedVg.streamIndex);
     asset.SetHeaderPointer(hdrChunk.data);
