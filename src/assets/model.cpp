@@ -277,24 +277,31 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
     //
     // Physics
     //
-    if (studiohdr->vphysize)
+    const bool physicsRequired = studiohdr->vphysize != 0;
+
+    BinaryIO phyInput;
+    const std::string physicsFile = Utils::ChangeExtension(rmdlFilePath, ".phy");
+
+    if (phyInput.Open(physicsFile, BinaryIO::Mode_e::Read))
     {
-        BinaryIO phyInput;
-        const std::string physicsFile = Utils::ChangeExtension(rmdlFilePath, ".phy");
-
-        if (!phyInput.Open(physicsFile, BinaryIO::Mode_e::Read))
-            Error("Failed to open physics asset \"%s\".\n", physicsFile.c_str());
-
         const size_t phyFileSize = phyInput.GetSize();
 
-        if (studiohdr->vphysize != phyFileSize)
-            Error("Expected physics file size is %zu, found physics asset of size %zu.\n", (size_t)studiohdr->vphysize, phyFileSize);
+        // If it exists, but is 0, then the file is truncated/corrupt.
+        // Still report the error even if physicsRequired is false as
+        // this is an indication there's more wrong.
+        if (!phyFileSize)
+            Error("Physics file \"%s\" appears truncated.\n", physicsFile.c_str());
+
+        if (physicsRequired && (studiohdr->vphysize != phyFileSize))
+            Error("Physics file \"%s\" has a size of %zu, but the model expected a size of %zu.\n", physicsFile.c_str(), (size_t)studiohdr->vphysize, phyFileSize);
 
         PakPageLump_s phyChunk = pak->CreatePageLump(phyFileSize, SF_CPU | SF_TEMP, 1);
         phyInput.Read(phyChunk.data, phyFileSize);
 
         pak->AddPointer(hdrChunk, offsetof(ModelAssetHeader_t, pPhyData), phyChunk, 0);
     }
+    else if (physicsRequired)
+        Error("Failed to open physics file \"%s\".\n", physicsFile.c_str());
 
     //
     // Starpak
