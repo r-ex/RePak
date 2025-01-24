@@ -24,16 +24,20 @@ static void SettingsAsset_OpenFile(CPakFileBuilder* const pak, const char* const
 
 extern void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const assetPath, rapidcsv::Document& document, SettingsLayoutParseResult_s& result);
 
-static int64_t FindColumnCell(const std::vector<std::string>& column, const char* const name)
+static int64_t FindColumnCell(const std::vector<std::string>& column, const char* const name, const int occurrence)
 {
     const int64_t numColumns = static_cast<int64_t>(column.size());
+    int numFound = 0;
 
     for (int64_t i = 0; i < numColumns; i++)
     {
         const std::string& entry = column[i];
 
         if (entry.compare(name) == 0)
-            return i;
+        {
+            if (numFound++ == occurrence)
+                return i;
+        }
     }
 
     return -1;
@@ -66,17 +70,22 @@ static JSONFieldType_e GetJsonMemberTypeForSettingsType(const SettingsFieldType_
 }
 
 static void SettingsAsset_CalcBufferSizes(const char* const layoutAsset, std::vector<SettingsAssetFieldEntry_s>& entryMap,
-    const SettingsLayoutParseResult_s& layoutData, const rapidjson::Value& entries, size_t& stringBufSize)
+    const SettingsLayoutParseResult_s& layoutData, const rapidjson::Value& entries, size_t& stringBufSize, size_t& guidBufSize)
 {
     uint32_t minValueBufSize = 0;
+    std::map<std::string, int> occurenceMap;
 
     for (const auto& it : entries.GetObject())
     {
         const char* const fieldName = it.name.GetString();
-        const int64_t cellIndex = FindColumnCell(layoutData.fieldNames, fieldName);
+        int& occurence = occurenceMap[fieldName];
+
+        const int64_t cellIndex = FindColumnCell(layoutData.fieldNames, fieldName, occurence);
 
         if (cellIndex == -1)
-            Error("Field \"%s\" does not exist in settings layout \"%s\".\n", fieldName, layoutAsset);
+            Error("Field \"%s\" with occurrence #%d does not exist in settings layout \"%s\".\n", fieldName, occurence, layoutAsset);
+
+        occurence++;
 
         const SettingsFieldType_e typeToUse = layoutData.typeMap[cellIndex];
         entryMap.push_back({&it.value, cellIndex });
