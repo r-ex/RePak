@@ -484,18 +484,12 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* const material, const std::st
     material->dxStates[1] = material->dxStates[0];
 }
 
-static bool Material_OpenFile(CPakFileBuilder* const pak, const char* const assetPath, rapidjson::Document& document)
+static void Material_OpenFile(CPakFileBuilder* const pak, const char* const assetPath, rapidjson::Document& document)
 {
     const string fileName = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
 
     if (!JSON_ParseFromFile(fileName.c_str(), "material asset", document))
-    {
-        // note(amos): once finished this must error on failure
-        //Error("Failed to open material asset \"%s\".\n", fileName.c_str());
-        return false;
-    }
-
-    return true;
+        Error("Failed to open material asset \"%s\".\n", fileName.c_str());
 }
 
 static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath,
@@ -750,29 +744,16 @@ static void Material_InternalAddMaterialV15(CPakFileBuilder* const pak, const Pa
     pak->FinishAsset();
 }
 
-static bool Material_InternalAddMaterial(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value* const mapEntry, const int assetVersion)
+static bool Material_InternalAddMaterial(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value* const /*mapEntry*/, const int assetVersion)
 {
     rapidjson::Document document;
-    const rapidjson::Value* matEntry;
-
-    if (Material_OpenFile(pak, assetPath, document))
-        matEntry = &document;
-    else
-    {
-        if (!mapEntry)
-        {
-            Warning("Unable to open material file \"%s\".\n", assetPath);
-            return false;
-        }
-
-        matEntry = mapEntry;
-    }
+    Material_OpenFile(pak, assetPath, document);
 
     rapidjson::Value::ConstMemberIterator texturesIt;
-    const bool hasTextures = JSON_GetIterator(*matEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
+    const bool hasTextures = JSON_GetIterator(document, "$textures", JSONFieldType_e::kObject, texturesIt);
 
     const size_t textureCount = hasTextures
-        ? Material_AddTextures(pak, *matEntry, texturesIt->value)
+        ? Material_AddTextures(pak, document, texturesIt->value)
         : 0; // note: no error as materials without textures do exist.
              // typically, these are prepass/vsm/etc materials.
 
@@ -781,16 +762,16 @@ static bool Material_InternalAddMaterial(CPakFileBuilder* const pak, const PakGu
     matlAsset.guid = assetGuid;
     matlAsset.path = Utils::ChangeExtension(assetPath, "");
 
-    Material_HandleShaderSet(pak, *matEntry, &matlAsset);
-    Material_HandleTextureAnimation(pak, *matEntry, &matlAsset);
+    Material_HandleShaderSet(pak, document, &matlAsset);
+    Material_HandleTextureAnimation(pak, document, &matlAsset);
 
-    matlAsset.FromJSON(*matEntry); // parse json inputs for matl header
-    matlAsset.SetupDepthMaterials(pak, *matEntry);
+    matlAsset.FromJSON(document); // parse json inputs for matl header
+    matlAsset.SetupDepthMaterials(pak, document);
 
     if (assetVersion == 12)
-        Material_InternalAddMaterialV12(pak, assetGuid, assetPath, matlAsset, *matEntry, texturesIt, textureCount);
+        Material_InternalAddMaterialV12(pak, assetGuid, assetPath, matlAsset, document, texturesIt, textureCount);
     else
-        Material_InternalAddMaterialV15(pak, assetGuid, assetPath, matlAsset, *matEntry, texturesIt, textureCount);
+        Material_InternalAddMaterialV15(pak, assetGuid, assetPath, matlAsset, document, texturesIt, textureCount);
 
     return true;
 }
