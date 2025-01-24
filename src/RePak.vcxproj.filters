@@ -225,6 +225,12 @@
     <ClCompile Include="logic\buildsettings.cpp">
       <Filter>logic</Filter>
     </ClCompile>
+    <ClCompile Include="assets\settings.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
+    <ClCompile Include="assets\settings_layout.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -556,6 +562,12 @@
     </ClInclude>
     <ClInclude Include="logic\buildsettings.h">
       <Filter>logic</Filter>
+    </ClInclude>
+    <ClInclude Include="public\settings.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\settings_layout.h">
+      <Filter>public</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

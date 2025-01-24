@@ -27,6 +27,8 @@
 #define TYPE_UIMG	MAKE_FOURCC('u', 'i', 'm', 'g') // uimg
 #define TYPE_PTCH	MAKE_FOURCC('P', 't', 'c', 'h') // Ptch
 #define TYPE_DTBL	MAKE_FOURCC('d', 't', 'b', 'l') // dtbl
+#define TYPE_STLT	MAKE_FOURCC('s', 't', 'l', 't') // stlt
+#define TYPE_STGS	MAKE_FOURCC('s', 't', 'g', 's') // stgs
 #define TYPE_MATL	MAKE_FOURCC('m', 'a', 't', 'l') // matl
 #define TYPE_ASEQ	MAKE_FOURCC('a', 's', 'e', 'q') // aseq
 #define TYPE_ARIG	MAKE_FOURCC('a', 'r', 'i', 'g') // arig
@@ -43,6 +45,8 @@ enum class AssetType : uint32_t
 	UIMG = TYPE_UIMG, // ui image atlas
 	PTCH = TYPE_PTCH, // patch
 	DTBL = TYPE_DTBL, // datatable
+	STLT = TYPE_STLT, // settings layout
+	STGS = TYPE_STGS, // settings
 	MATL = TYPE_MATL, // material
 	ASEQ = TYPE_ASEQ, // animation sequence
 	ARIG = TYPE_ARIG, // animation rig
