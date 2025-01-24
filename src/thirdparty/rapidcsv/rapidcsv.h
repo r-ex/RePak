@@ -1488,7 +1488,6 @@ namespace rapidcsv
       return rownames;
     }
 
-  private:
     void ReadCsv()
     {
       std::ifstream stream;
@@ -1567,6 +1566,7 @@ namespace rapidcsv
       }
     }
 
+  private:
     void ParseCsv(std::istream& pStream, std::streamsize p_FileLength)
     {
       const std::streamsize bufLength = 64 * 1024;
