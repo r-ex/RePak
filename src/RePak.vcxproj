@@ -335,6 +335,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <TreatWarningAsError>true</TreatWarningAsError>
       <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "RAPIDJSON_PARSE_DEFAULT_FLAGS=kParseIterativeFlag|kParseValidateEncodingFlag" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "RAPIDJSON_PARSE_DEFAULT_FLAGS=kParseCommentsFlag|kParseIterativeFlag|kParseValidateEncodingFlag" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -359,6 +360,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <TreatWarningAsError>true</TreatWarningAsError>
       <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "RAPIDJSON_PARSE_DEFAULT_FLAGS=kParseIterativeFlag|kParseValidateEncodingFlag" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "RAPIDJSON_PARSE_DEFAULT_FLAGS=kParseCommentsFlag|kParseIterativeFlag|kParseValidateEncodingFlag" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
