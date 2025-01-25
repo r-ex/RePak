@@ -105,6 +105,7 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 	HANDLE_ASSET_TYPE("shds", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
 
 	HANDLE_ASSET_TYPE("dtbl", assetType, assetPath, AssetScope_e::kAll, file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
+	HANDLE_ASSET_TYPE("stlt", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddSettingsLayout_v0);
 	HANDLE_ASSET_TYPE("stgs", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddSettingsAsset_v1);
 
 	HANDLE_ASSET_TYPE("mdl_", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddModelAsset_v9);
