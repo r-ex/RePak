@@ -11,7 +11,7 @@ struct SettingsAssetHeader_s
 	char* name;
 
 	char* stringData;
-	uint32_t uniqueID;
+	uint32_t uniqueId;
 
 	char unk_24[4]; // padding most likely
 

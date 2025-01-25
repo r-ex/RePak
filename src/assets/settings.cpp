@@ -6,9 +6,6 @@
 #undef GetObject
 
 //
-// Settings asset todo:
-// - asset fields must be added as a dependency field for this settings asset.
-// 
 // Settings layout todo:
 // - handle arrays
 // - pack layouts
@@ -241,7 +238,7 @@ static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, c
     setHdr->settingsLayoutGuid = layoutGuid;
     Pak_RegisterGuidRefAtOffset(layoutGuid, offsetof(SettingsAssetHeader_s, settingsLayoutGuid), hdrLump, asset);
 
-    setHdr->uniqueID = JSON_GetNumberRequired<uint32_t>(settings, "uniqueID");
+    setHdr->uniqueId = JSON_GetNumberRequired<uint32_t>(settings, "uniqueId");
 
     std::vector<SettingsAssetFieldEntry_s> entryMap;
     rapidjson::Value::ConstMemberIterator setIt;
