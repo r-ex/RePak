@@ -28,6 +28,8 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #include "common/decls.h"
 #include "common/const.h"
 
+#include "math/common.h"
+
 #include "logic/rmem.h"
 #include "logic/rtech.h"
 
@@ -38,9 +40,3 @@ namespace rapidjson { typedef ::std::size_t SizeType; }
 #include "utils/logger.h"
 
 #define UNUSED(x)	(void)(x)
-
-template <typename T>
-FORCEINLINE bool IsPowerOfTwo(T x)
-{
-	return (x & (x - 1)) == 0;
-}
