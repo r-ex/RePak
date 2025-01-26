@@ -19,7 +19,7 @@ static void SettingsAsset_OpenFile(CPakFileBuilder* const pak, const char* const
         Error("Failed to open settings asset \"%s\".\n", fileName.c_str());
 }
 
-extern void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const assetPath, rapidcsv::Document& document, SettingsLayoutParseResult_s& result);
+extern void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const assetPath, rapidcsv::Document& document, SettingsLayoutParseResult_s& result, const bool isRoot);
 
 static int64_t FindColumnCell(const std::vector<std::string>& column, const char* const name, const int occurrence)
 {
@@ -227,7 +227,7 @@ static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, c
     const char* const layoutAsset = JSON_GetValueRequired<const char*>(settings, "layoutAsset");
 
     SettingsLayoutParseResult_s layoutData;
-    SettingsLayout_ParseLayout(pak, layoutAsset, layout, layoutData);
+    SettingsLayout_ParseLayout(pak, layoutAsset, layout, layoutData, true);
 
     PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
     PakPageLump_s hdrLump = pak->CreatePageLump(sizeof(SettingsAssetHeader_s), SF_HEAD, 8);
