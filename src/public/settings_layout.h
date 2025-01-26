@@ -99,4 +99,5 @@ static const char* s_settingsFieldTypeNames[] = {
 };
 
 extern uint32_t SettingsLayout_GetFieldSizeForType(const SettingsFieldType_e type);
+extern uint32_t SettingsLayout_GetFieldAlignmentForType(const SettingsFieldType_e type);
 extern SettingsFieldType_e SettingsLayout_GetFieldTypeForString(const char* const typeName);

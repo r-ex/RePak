@@ -27,6 +27,28 @@ uint32_t SettingsLayout_GetFieldSizeForType(const SettingsFieldType_e type)
     }
 }
 
+uint32_t SettingsLayout_GetFieldAlignmentForType(const SettingsFieldType_e type)
+{
+    switch (type)
+    {
+    case SettingsFieldType_e::ST_Bool:
+        return 1;
+    case SettingsFieldType_e::ST_Int:
+    case SettingsFieldType_e::ST_Float:
+    case SettingsFieldType_e::ST_Float2:
+    case SettingsFieldType_e::ST_Float3:
+        return 4;
+    case SettingsFieldType_e::ST_String:
+    case SettingsFieldType_e::ST_Asset:
+    case SettingsFieldType_e::ST_Asset_2:
+    case SettingsFieldType_e::ST_StaticArray:
+    case SettingsFieldType_e::ST_DynamicArray:
+        return 8;
+
+    default: return 0;
+    }
+}
+
 SettingsFieldType_e SettingsLayout_GetFieldTypeForString(const char* const typeName)
 {
     for (unsigned short i = 0; i < ARRAYSIZE(s_settingsFieldTypeNames); i++)
@@ -74,13 +96,14 @@ void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const as
         if (numFieldNames != numTypeNames || numTypeNames != numOffsets)
         {
             Error("Sub settings layout column count mismatch (%zu != %zu || %zu != %zu).\n",
-                numFieldNames, numTypeNames, numTypeNames, numOffsets, numOffsets);
+                numFieldNames, numTypeNames, numTypeNames, numOffsets);
         }
     }
 
     result.typeMap.resize(numTypeNames);
+    uint32_t lastFieldAlign = 0;
 
-    for(size_t i = 0; i < numTypeNames; i++)
+    for (size_t i = 0; i < numTypeNames; i++)
     {
         const std::string& typeName = result.typeNames[i];
         const SettingsFieldType_e typeToUse = SettingsLayout_GetFieldTypeForString(typeName.c_str());
@@ -91,6 +114,18 @@ void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const as
             Error("Settings layout field \"%s\" uses unknown type \"%s\".\n", fieldName.c_str(), typeName.c_str());
         }
 
+        const uint32_t curTypeAlign = SettingsLayout_GetFieldAlignmentForType(typeToUse);
+
+        // All fields in the settings layout must be sorted by their alignments.
+        // Fields with higher alignments must come first as to avoid padding which
+        // the original assets do not support, so we follow the same scheme here.
+        if (i > 0 && curTypeAlign > lastFieldAlign)
+        {
+            Error("Settings layout field \"%s\" is of type %s which has an alignment of %u, but the previous field was aligned to %u; padding is not allowed.\n",
+                result.fieldNames[i].c_str(), s_settingsFieldTypeNames[typeToUse], curTypeAlign, lastFieldAlign);
+        }
+
+        lastFieldAlign = curTypeAlign;
         result.typeMap[i] = typeToUse;
     }
 
