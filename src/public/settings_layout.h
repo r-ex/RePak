@@ -49,7 +49,8 @@ struct SettingsLayoutParseResult_s
 {
 	SettingsLayoutParseResult_s()
 		: arrayElemCount(1)
-		, highestSubLayoutIndex(1)
+		, subLayoutCount(0)
+		, highestSubLayoutIndex(0)
 		, extraDataSizeIndex(0)
 		, usedValueBufferSize(0)
 		, totalValueBufferSize(0)
@@ -66,6 +67,7 @@ struct SettingsLayoutParseResult_s
 	std::vector<SettingsFieldType_e> typeMap;
 
 	int arrayElemCount;
+	uint32_t subLayoutCount;
 
 	uint32_t highestSubLayoutIndex;
 	uint32_t extraDataSizeIndex;
@@ -82,7 +84,7 @@ struct SettingsLayoutParseResult_s
 struct SettingsLayoutAsset_s
 {
 	SettingsLayoutParseResult_s rootLayout;
-	std::vector<SettingsLayoutParseResult_s> subLayouts;
+	std::vector<SettingsLayoutAsset_s> subLayouts;
 };
 
 static const char* s_settingsFieldTypeNames[] = {
