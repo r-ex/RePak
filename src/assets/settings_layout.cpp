@@ -4,9 +4,7 @@
 
 //
 // layout todo:
-// - check if table is empty (error out)
 // - array elem count must be -1 for dynamic arrays?
-// - make sure sub layout indices cannot extend beyond provided table count
 //
 
 // Maximum number of retries to find a good hashing configuration
@@ -43,18 +41,18 @@ uint32_t SettingsLayout_GetFieldAlignmentForType(const SettingsFieldType_e type)
     switch (type)
     {
     case SettingsFieldType_e::ST_Bool:
-        return 1;
+        return sizeof(bool);
     case SettingsFieldType_e::ST_Int:
     case SettingsFieldType_e::ST_Float:
     case SettingsFieldType_e::ST_Float2:
     case SettingsFieldType_e::ST_Float3:
-        return 4;
+        return sizeof(float);
     case SettingsFieldType_e::ST_String:
     case SettingsFieldType_e::ST_Asset:
     case SettingsFieldType_e::ST_Asset_2:
     case SettingsFieldType_e::ST_StaticArray:
     case SettingsFieldType_e::ST_DynamicArray:
-        return 8;
+        return sizeof(void*);
 
     default: return 0;
     }
@@ -194,18 +192,22 @@ void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const as
     document.ReadCsv(datatableStream);
 
     result.fieldNames = document.GetColumn<std::string>(0);
+    const size_t numFieldNames = result.fieldNames.size();
+
+    if (!numFieldNames)
+        Error("Settings layout table \"%s\" is empty.\n", settingsLayoutFile.c_str());
+
     result.typeNames = document.GetColumn<std::string>(1);
     result.offsetMap = document.GetColumn<uint32_t>(2);
     result.indexMap = document.GetColumn<uint32_t>(3);
 
-    const size_t numFieldNames = result.fieldNames.size();
     const size_t numTypeNames = result.typeNames.size();
     const size_t numOffsets = result.offsetMap.size();
     const size_t numIndices = result.indexMap.size();
 
     if (numFieldNames != numTypeNames || numTypeNames != numOffsets || numOffsets != numIndices)
     {
-        Error("Root settings layout column count mismatch (%zu != %zu || %zu != %zu || %zu != %zu).\n",
+        Error("Settings layout column count mismatch (%zu != %zu || %zu != %zu || %zu != %zu).\n",
             numFieldNames, numTypeNames, numTypeNames, numOffsets, numOffsets, numIndices);
     }
 
@@ -247,7 +249,7 @@ void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const as
 
             if (numSubLayouts && curLayoutIndex <= lastUsedSublayout)
             {
-                Error("Settings layout field \"%s\" is mapped to sub layout #%u, but the previous array was already using this index.\n",
+                Error("Settings layout field \"%s\" is mapped to sub-layout #%u, but the previous array was already using this index.\n",
                     result.fieldNames[i].c_str(), curLayoutIndex);
             }
 
@@ -301,7 +303,7 @@ void SettingsLayout_ParseMap(CPakFileBuilder* const pak, const char* const asset
     rootParseResult.totalValueBufferSize = JSON_GetValueRequired<uint32_t>(document, "size");
     rootParseResult.arrayElemCount = JSON_GetValueRequired<uint32_t>(document, "elementCount");
 
-    // Parse the root layout and figure out what the highest sub layout index is.
+    // Parse the root layout and figure out what the highest sub-layout index is.
     rapidcsv::Document rootLayoutTable;
 
     SettingsLayout_ParseLayout(pak, assetPath, rootLayoutTable, rootParseResult);
@@ -316,16 +318,32 @@ void SettingsLayout_ParseMap(CPakFileBuilder* const pak, const char* const asset
         const uint32_t numSubLayouts = static_cast<uint32_t>(subLayoutArray.Size());
 
         if (rootParseResult.subLayoutCount != numSubLayouts)
-            Error("Root settings layout requested %u sub layouts, got %u.\n", rootParseResult.highestSubLayoutIndex, numSubLayouts);
+        {
+            Error("Settings layout \"%s\" requested %u sub-layouts, but only %u were listed.\n",
+                settingsLayoutFile.c_str(), rootParseResult.highestSubLayoutIndex, numSubLayouts);
+        }
 
         for (uint32_t i = 0; i < numSubLayouts; i++)
         {
-            const rapidjson::Value& obj = subLayoutArray[i];
-            const char* const subPath = JSON_GetValueRequired<const char*>(obj, "path");
+            const rapidjson::Value& subPath = subLayoutArray[i];
+            
+            if (!subPath.IsString())
+            {
+                Error("Settings layout \"%s\" contains a sub-layout at index #%u that is not of type %s.\n",
+                    settingsLayoutFile.c_str(), i, JSON_TypeToString(JSONFieldType_e::kString));
+            }
 
             SettingsLayoutAsset_s& subAsset = asset.subLayouts.emplace_back();
-            SettingsLayout_ParseMap(pak, subPath, subAsset);
+            SettingsLayout_ParseMap(pak, subPath.GetString(), subAsset);
         }
+    }
+
+    const uint32_t parsedSubLayouts = static_cast<uint32_t>(asset.subLayouts.size());
+
+    if (rootParseResult.subLayoutCount != parsedSubLayouts)
+    {
+        Error("Settings layout \"%s\" listed %u sub-layouts, but only %u were parsed.\n",
+            settingsLayoutFile.c_str(), rootParseResult.subLayoutCount, parsedSubLayouts);
     }
 }
 
@@ -437,7 +455,7 @@ static void SettingsLayout_WriteLayoutRecursive(CPakFileBuilder* const pak, cons
         pak->AddPointer(dataLump, rootIndex + offsetof(SettingsLayoutHeader_s, fieldNames), dataLump, layoutMemory.curStringBufIndex);
 
         // Increment by the header size, anything past this will either be the
-        // sub layouts if this layout has any, or the next layout outside this
+        // sub-layouts if this layout has any, or the next layout outside this
         // scope.
         layoutMemory.curSubHeadersBufIndex += sizeof(SettingsLayoutHeader_s);
 
