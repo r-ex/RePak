@@ -84,7 +84,7 @@ static uint32_t SettingsFieldFinder_HashFieldName(const char* const name, const 
         lastChar = *curChar;
     }
 
-    return hash;
+    return hash ^ (hash >> 4);
 }
 
 static uint32_t SettingsFieldFinder_GetFieldNameBucket(const char* const name, const uint32_t stepScale, const uint32_t seed, const uint32_t tableSize)
@@ -92,7 +92,7 @@ static uint32_t SettingsFieldFinder_GetFieldNameBucket(const char* const name, c
     const uint32_t hash = SettingsFieldFinder_HashFieldName(name, stepScale, seed);
     const uint32_t bucketMask = tableSize - 1;
 
-    return (hash ^ (hash >> 4)) & bucketMask;
+    return hash & bucketMask;
 }
 
 static void SettingsLayout_ComputeHashParameters(SettingsLayoutParseResult_s& result)
