@@ -62,7 +62,7 @@ struct SettingsLayoutParseResult_s
 	std::vector<std::string> typeNames;
 	std::vector<uint32_t> offsetMap;
 	std::vector<uint32_t> indexMap;
-
+	std::vector<uint32_t> bucketMap;
 	std::vector<SettingsFieldType_e> typeMap;
 
 	int arrayElemCount;

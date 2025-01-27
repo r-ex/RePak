@@ -2,6 +2,10 @@
 #include "assets.h"
 #include "public/settings_layout.h"
 
+// Maximum number of retries to find a good hashing configuration
+// with the least amount of collisions.
+#define SETTINGS_LAYOUT_MAX_HASH_RETRIES 128
+
 uint32_t SettingsLayout_GetFieldSizeForType(const SettingsFieldType_e type)
 {
     switch (type)
@@ -58,6 +62,110 @@ SettingsFieldType_e SettingsLayout_GetFieldTypeForString(const char* const typeN
     }
 
     return SettingsFieldType_e::ST_Invalid;
+}
+
+static uint32_t SettingsFieldFinder_HashFieldName(const char* const name, const uint32_t stepScale, const uint32_t seed)
+{
+    uint32_t hash = 0;
+    uint32_t it;
+    char lastChar = *name;
+    char store;
+
+    for (const char* curChar = name; *curChar; hash = seed + it + store)
+    {
+        ++curChar;
+        it = hash * stepScale;
+        store = lastChar;
+        lastChar = *curChar;
+    }
+
+    return hash;
+}
+
+static uint32_t SettingsFieldFinder_GetFieldNameBucket(const char* const name, const uint32_t stepScale, const uint32_t seed, const uint32_t tableSize)
+{
+    const uint32_t hash = SettingsFieldFinder_HashFieldName(name, stepScale, seed);
+    const uint32_t bucketMask = tableSize - 1;
+
+    return (hash ^ (hash >> 4)) & bucketMask;
+}
+
+static void SettingsLayout_ComputeHashParameters(SettingsLayoutParseResult_s& result)
+{
+    const size_t numFields = result.fieldNames.size();
+
+    const uint32_t numBuckets = static_cast<uint32_t>(NextPowerOfTwo(numFields + 1));
+    const uint32_t bucketMask = numBuckets - 1;
+
+    uint32_t bestStepScale = 1;
+    uint32_t bestSeed = 0;
+    uint32_t minCollisions = UINT32_MAX; // Track the minimum number of collisions.
+
+    std::vector<uint32_t> bestBucketMap(numFields, 0);
+
+    for (uint32_t retryCount = 0; retryCount < SETTINGS_LAYOUT_MAX_HASH_RETRIES; retryCount++)
+    {
+        const uint32_t currentStepScale = retryCount * 2 + 1;
+        const uint32_t currentSeed = retryCount;
+
+        std::vector<bool> collisionVec(numBuckets, false);
+        std::vector<uint32_t> bucketMap(numFields, 0);
+
+        uint32_t currentCollisions = 0;
+
+        for (size_t i = 0; i < numFields; i++)
+        {
+            const std::string& fieldName = result.fieldNames[i];
+            const uint32_t bucket = SettingsFieldFinder_GetFieldNameBucket(fieldName.c_str(), currentStepScale, currentSeed, numBuckets);
+
+            if (collisionVec[bucket])
+            {
+                currentCollisions++;
+
+                // Note(amos): collisions are expected, the game does linear
+                // probing to minimize the number of string comparisons while
+                // trying to solve these. We must place our field contiguously
+                // after the colliding bucket index, at the first free bucket
+                // as the lookup in SettingsFieldFinder_FindFieldByName() stops
+                // when it encounters an empty bucket.
+                for (size_t j = 1; j < numBuckets; j++)
+                {
+                    const uint32_t curBucket = (bucket+j) & bucketMask;
+
+                    if (collisionVec[curBucket])
+                        continue;
+
+                    collisionVec[curBucket] = true;
+                    bucketMap[i] = curBucket;
+
+                    break;
+                }
+            }
+            else
+            {
+                collisionVec[bucket] = true;
+                bucketMap[i] = bucket;
+            }
+        }
+
+        // Check if this configuration is better than the previous best.
+        if (currentCollisions < minCollisions)
+        {
+            minCollisions = currentCollisions;
+            bestStepScale = currentStepScale;
+            bestSeed = currentSeed;
+
+            bestBucketMap = bucketMap;
+
+            if (minCollisions == 0)
+                break; // No collisions at all, stop early.
+        }
+    }
+
+    result.bucketMap = std::move(bestBucketMap);
+    result.hashTableSize = numBuckets;
+    result.hashStepScale = bestStepScale;
+    result.hashSeed = bestSeed;
 }
 
 void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const assetPath, rapidcsv::Document& document, SettingsLayoutParseResult_s& result, const bool isRoot)
@@ -146,8 +254,6 @@ void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const as
         nextOffset = curOffset + SettingsLayout_GetFieldSizeForType(result.typeMap[i]);
     }
 
-    result.hashTableSize = static_cast<uint32_t>(NextPowerOfTwo(numFieldNames+1));
-
     // The last offset + its type size is the total value buffer size.
     result.usedValueBufferSize = nextOffset;
 }
@@ -208,55 +314,67 @@ void SettingsLayout_ParseMap(CPakFileBuilder* const pak, const char* const asset
     }
 }
 
-static void SettingsLayout_InitializeHeader(SettingsLayoutHeader_s* const header, const SettingsLayoutParseResult_s& parse)
+static void SettingsLayout_InitializeRootHeader(SettingsLayoutHeader_s* const header, const SettingsLayoutParseResult_s& parse)
 {
     header->hashTableSize = parse.hashTableSize;
     header->fieldCount = static_cast<uint32_t>(parse.fieldNames.size());
     header->extraDataSizeIndex = parse.extraDataSizeIndex;
     header->hashStepScale = parse.hashStepScale;
     header->hashSeed = parse.hashSeed;
+
+    header->arrayElemCount = 1;
+    header->layoutSize = parse.totalValueBufferSize;
 }
 
 static void SettingsLayout_CalculateBufferSizes(const SettingsLayoutAsset_s& layoutAsset, size_t& outFieldBufSize, size_t& outSubHeadersBufSize, size_t& outStringBufLen)
 {
     const SettingsLayoutParseResult_s& rootParseResult = layoutAsset.rootLayout;
+    outFieldBufSize += (rootParseResult.hashTableSize * sizeof(SettingsField_s));
 
     // Note(amos): the root layout has its header in a separate HEAD page,
     // we therefore shouldn't count its header size in.
     for (const std::string& fieldName : rootParseResult.fieldNames)
-    {
-        outFieldBufSize += sizeof(SettingsField_s);
         outStringBufLen += fieldName.size() + 1;
-    }
+
+    // Note(amos): string buf len must be total + 1 per settings layout because
+    // the first field to be written in the settings layout will have the
+    // smallest offset into the string buffer, but its offset cannot be 0 as
+    // the runtime uses that to check if the field isn't a NULL field in the
+    // function SettingsFieldFinder_FindFieldByName(). So the first byte in the
+    // string buffer must be a placeholder byte to offset the first field name
+    // entry to make it non-null.
+    outStringBufLen += 1;
 
     for (const SettingsLayoutParseResult_s& subParseResult : layoutAsset.subLayouts)
     {
+        outFieldBufSize += (subParseResult.hashTableSize * sizeof(SettingsField_s));
         outSubHeadersBufSize += sizeof(SettingsLayoutHeader_s);
 
         for (const std::string& fieldName : subParseResult.fieldNames)
-        {
-            outFieldBufSize += sizeof(SettingsField_s);
             outStringBufLen += fieldName.size() + 1;
-        }
+
+        outStringBufLen += 1;
     }
 }
 
 static void SettingsLayout_WriteFieldData(PakPageLump_s& dataLump, SettingsLayoutParseResult_s& parse,
     size_t& curFieldBufIndex, size_t& curStringBufIndex, size_t& numStringBytesWritten)
 {
+    // +1 for string place holder, see comment in SettingsLayout_CalculateBufferSizes().
+    curStringBufIndex += 1;
+
     const size_t numFields = parse.fieldNames.size();
     const bool hasSubLayouts = parse.indexMap.size() > 0;
 
     for (size_t i = 0; i < numFields; i++)
     {
-        SettingsField_s* const field = reinterpret_cast<SettingsField_s*>(&dataLump.data[curFieldBufIndex]);
+        const uint32_t bucketIndex = (parse.bucketMap[i] * sizeof(SettingsField_s));
+        SettingsField_s* const field = reinterpret_cast<SettingsField_s*>(&dataLump.data[curFieldBufIndex + bucketIndex]);
 
         field->type = parse.typeMap[i];
         field->nameOffset = static_cast<uint16_t>(numStringBytesWritten);
         field->valueOffset = parse.offsetMap[i];
         field->subLayoutIndex = hasSubLayouts ? parse.indexMap[i] : 0;
-
-        curFieldBufIndex += sizeof(SettingsField_s);
 
         const std::string& fieldName = parse.fieldNames[i];
         const size_t fieldNameLen = fieldName.size() + 1;
@@ -266,6 +384,8 @@ static void SettingsLayout_WriteFieldData(PakPageLump_s& dataLump, SettingsLayou
         curStringBufIndex += fieldNameLen;
         numStringBytesWritten += fieldNameLen;
     }
+
+    curFieldBufIndex += parse.hashTableSize * sizeof(SettingsField_s);
 }
 
 static void SettingsLayout_WriteData(CPakFileBuilder* const pak, PakPageLump_s& dataLump, SettingsLayoutParseResult_s& parse,
@@ -286,7 +406,6 @@ static void SettingsLayout_WriteData(CPakFileBuilder* const pak, PakPageLump_s& 
     pak->AddPointer(dataLump, curSubHeadersIndex + offsetof(SettingsLayoutHeader_s, fieldNames), dataLump, curStringBufIndex);
 
     curSubHeadersIndex += sizeof(SettingsLayoutHeader_s);
-
     SettingsLayout_WriteFieldData(dataLump, parse, curFieldBufIndex, curStringBufIndex, numStringBytesWritten);
 }
 
@@ -299,7 +418,12 @@ static void SettingsLayout_InternalAddLayoutAsset(CPakFileBuilder* const pak, co
     PakPageLump_s hdrLump = pak->CreatePageLump(sizeof(SettingsLayoutHeader_s), SF_HEAD, 8);
 
     SettingsLayoutHeader_s* const layoutHeader = reinterpret_cast<SettingsLayoutHeader_s*>(hdrLump.data);
-    SettingsLayout_InitializeHeader(layoutHeader, layoutAsset.rootLayout);
+
+    SettingsLayout_ComputeHashParameters(layoutAsset.rootLayout);
+    SettingsLayout_InitializeRootHeader(layoutHeader, layoutAsset.rootLayout);
+
+    for (SettingsLayoutParseResult_s& subLayout : layoutAsset.subLayouts)
+        SettingsLayout_ComputeHashParameters(subLayout);
 
     size_t outFieldBufSize = 0, outSubHeadersBufSize = 0, outStringBufLen = 0;
     SettingsLayout_CalculateBufferSizes(layoutAsset, outFieldBufSize, outSubHeadersBufSize, outStringBufLen);
@@ -322,13 +446,14 @@ static void SettingsLayout_InternalAddLayoutAsset(CPakFileBuilder* const pak, co
     pak->AddPointer(hdrLump, offsetof(SettingsLayoutHeader_s, subHeaders), dataLump, curSubHeadersBufIndex);
 
     // Write out the root layout data.
-    size_t numRootStringBufBytes = 0;
+    size_t numRootStringBufBytes = 1;
     SettingsLayout_WriteFieldData(dataLump, layoutAsset.rootLayout, curFieldBufIndex, curStringBufIndex, numRootStringBufBytes);
 
     // Write out all the sub layout data.
     for (size_t i = 0; i < layoutAsset.subLayouts.size(); i++)
     {
-        size_t numSubStringBufBytes = 0;
+        size_t numSubStringBufBytes = 1;
+
         SettingsLayout_WriteData(pak, dataLump, layoutAsset.subLayouts[i], 
             curFieldBufIndex, curSubHeadersBufIndex, curStringBufIndex, numSubStringBufBytes);
     }
