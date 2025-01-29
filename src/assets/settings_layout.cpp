@@ -29,8 +29,9 @@ uint32_t SettingsLayout_GetFieldSizeForType(const SettingsFieldType_e type)
     case SettingsFieldType_e::ST_Asset:
     case SettingsFieldType_e::ST_Asset_2:
     case SettingsFieldType_e::ST_StaticArray:
-    case SettingsFieldType_e::ST_DynamicArray:
         return sizeof(PagePtr_t);
+    case SettingsFieldType_e::ST_DynamicArray:
+        return sizeof(SettingsDynamicArray_s);
 
     default: return 0;
     }
@@ -181,7 +182,7 @@ static void SettingsLayout_ComputeHashParametersRecursive(SettingsLayoutAsset_s&
         SettingsLayout_ComputeHashParametersRecursive(subLayout);
 }
 
-void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const assetPath, rapidcsv::Document& document, SettingsLayoutParseResult_s& result)
+static void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const assetPath, rapidcsv::Document& document, SettingsLayoutParseResult_s& result)
 {
     const std::string settingsLayoutFile = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".csv");
     std::ifstream datatableStream(settingsLayoutFile);

@@ -24,8 +24,13 @@ struct SettingsAssetHeader_s
 };
 static_assert(sizeof(SettingsAssetHeader_s) == 72);
 
-struct SettingsAssetFieldEntry_s
+struct SettingsAsset_s
 {
-	const rapidjson::Value* val;
-	int64_t cellIndex;
+	const rapidjson::Value* value;
+	const SettingsLayoutAsset_s* layout;
+
+	size_t bufferBase;
+
+	std::vector<int64_t> fieldIndexMap;
+	std::vector<SettingsAsset_s> subAssets;
 };

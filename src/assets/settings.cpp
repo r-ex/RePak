@@ -1,14 +1,16 @@
 #include "pch.h"
 #include "assets.h"
+#include "public/settings_layout.h"
 #include "public/settings.h"
-#include <public/settings_layout.h>
 
 #undef GetObject
 
 //
-// Settings layout todo:
-// - handle arrays
-// - pack layouts
+// Settings asset todo:
+// - handle static arrays
+// - make sure all fields in settings layout are defined and initialized in settings asset
+//      (error checking on this is currently disabled to make debugging and development
+//      easier, but in the runtime, not initializing these results in undefined behavior most likely.)
 //
 
 static void SettingsAsset_OpenFile(CPakFileBuilder* const pak, const char* const assetPath, rapidjson::Document& document)
@@ -18,8 +20,6 @@ static void SettingsAsset_OpenFile(CPakFileBuilder* const pak, const char* const
     if (!JSON_ParseFromFile(fileName.c_str(), "settings asset", document))
         Error("Failed to open settings asset \"%s\".\n", fileName.c_str());
 }
-
-extern void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const assetPath, rapidcsv::Document& document, SettingsLayoutParseResult_s& result);
 
 static int64_t FindColumnCell(const std::vector<std::string>& column, const char* const name, const int occurrence)
 {
@@ -66,91 +66,136 @@ static JSONFieldType_e GetJsonMemberTypeForSettingsType(const SettingsFieldType_
     }
 }
 
-static void SettingsAsset_CalcBufferSizes(const char* const layoutAsset, std::vector<SettingsAssetFieldEntry_s>& entryMap,
-    const SettingsLayoutParseResult_s& layoutData, const rapidjson::Value& entries, size_t& stringBufSize, size_t& guidBufSize)
+struct SettingsAssetMemory_s
 {
-    uint32_t minValueBufSize = 0;
+    inline size_t GetTotalBufferSize() const
+    {
+        return guidBufSize + valueBufSize + stringBufSize;
+    }
+
+    inline void InitCurrentIndices()
+    {
+        curGuidBufIndex = 0;
+        valueBufIndex = guidBufSize;
+        curStringBufIndex = guidBufSize + valueBufSize;
+    }
+
+    size_t guidBufSize;
+    size_t curGuidBufIndex;
+
+    size_t valueBufSize;
+    size_t valueBufIndex;
+
+    size_t stringBufSize;
+    size_t curStringBufIndex;
+};
+
+static void SettingsAsset_InitializeAndMap(const char* const layoutAssetPath, SettingsAsset_s& settingsAsset,
+    const SettingsLayoutAsset_s& layoutAsset, const rapidjson::Value& value, SettingsAssetMemory_s& settingsMemory)
+{
+    settingsAsset.value = &value;
+    settingsAsset.layout = &layoutAsset;
+
+    settingsAsset.bufferBase = settingsMemory.valueBufSize;
+    settingsMemory.valueBufSize += layoutAsset.rootLayout.totalValueBufferSize;
+
     std::map<std::string, int> occurenceMap;
 
-    for (const auto& it : entries.GetObject())
+    for (const auto& it : value.GetObject())
     {
         const char* const fieldName = it.name.GetString();
         int& occurence = occurenceMap[fieldName];
 
-        const int64_t cellIndex = FindColumnCell(layoutData.fieldNames, fieldName, occurence);
+        const int64_t cellIndex = FindColumnCell(layoutAsset.rootLayout.fieldNames, fieldName, occurence);
 
         if (cellIndex == -1)
-            Error("Field \"%s\" with occurrence #%d does not exist in settings layout \"%s\".\n", fieldName, occurence, layoutAsset);
+            Error("Field \"%s\" with occurrence #%d does not exist in settings layout \"%s\".\n", fieldName, occurence, layoutAssetPath);
 
         occurence++;
+        settingsAsset.fieldIndexMap.push_back(cellIndex);
 
-        const SettingsFieldType_e typeToUse = layoutData.typeMap[cellIndex];
-        entryMap.push_back({&it.value, cellIndex });
+        const SettingsFieldType_e typeToUse = layoutAsset.rootLayout.typeMap[cellIndex];
 
         const JSONFieldType_e expectJsonType = GetJsonMemberTypeForSettingsType(typeToUse);
         const JSONFieldType_e hasJsonType = JSON_ExtractType(it.value);
 
         if (hasJsonType != expectJsonType)
-            Error("Field \"%s\" is detected as type %s, but layout expects %s for settings field type %s.\n",
+        {
+            Error("Field \"%s\" is detected as type %s, but layout expects type %s for settings field type %s.\n",
                 fieldName, JSON_TypeToString(hasJsonType), JSON_TypeToString(expectJsonType), s_settingsFieldTypeNames[typeToUse]);
-
-        // Calculate the buffer sizes
-        minValueBufSize += SettingsLayout_GetFieldSizeForType(typeToUse);
+        }
 
         if (expectJsonType == JSONFieldType_e::kString)
         {
-            stringBufSize += it.value.GetStringLength() + 1; // +1 for the null char.
+            settingsMemory.stringBufSize += it.value.GetStringLength() + 1; // +1 for the null char.
 
             // Note(amos): only precached asset fields need to have their value
             // hashed and stored as a GUID dependency. Only on string types.
             if (typeToUse == SettingsFieldType_e::ST_Asset)
-                guidBufSize += sizeof(PakGuid_t);
+                settingsMemory.guidBufSize += sizeof(PakGuid_t);
+        }
+
+        // Recursively process all arrays and nested arrays.
+        if (hasJsonType == JSONFieldType_e::kArray)
+        {
+            const SettingsLayoutAsset_s& subLayout = layoutAsset.subLayouts[layoutAsset.rootLayout.indexMap[cellIndex]];
+            const rapidjson::Value::ConstArray array = it.value.GetArray();
+
+            if (typeToUse == SettingsFieldType_e::ST_StaticArray)
+            {
+                const uint32_t arraySize = static_cast<uint32_t>(array.Size());
+                const uint32_t layoutArraySize = subLayout.rootLayout.arrayElemCount;
+
+                if (arraySize != layoutArraySize)
+                {
+                    Error("Field \"%s\" is defined as a static array of size %u, but listed array has a size of %u.\n",
+                        fieldName, layoutArraySize, arraySize);
+                }
+            }
+
+            for (const rapidjson::Value& nit : array)
+            {
+                SettingsAsset_s& subAsset = settingsAsset.subAssets.emplace_back();
+                SettingsAsset_InitializeAndMap(layoutAssetPath, subAsset, subLayout, nit, settingsMemory);
+            }
         }
     }
-
-    //assert(entryMap.size() == entries.Size());
-
-    if (minValueBufSize > layoutData.totalValueBufferSize)
-        Error("Value buffer overflow; settings layout has a maximum of %u while settings asset requires a minimum of %u.\n", 
-            layoutData.totalValueBufferSize, minValueBufSize);
 }
 
 static void SettingsAsset_WriteStringValue(const char* const string, const size_t stringLen, const size_t valueOffset,
-    CPakFileBuilder* const pak, PakPageLump_s& dataLump, size_t& currentStringIndex)
+    CPakFileBuilder* const pak, PakPageLump_s& dataLump, SettingsAssetMemory_s& settingsMemory)
 {
-    pak->AddPointer(dataLump, valueOffset, dataLump, currentStringIndex);
+    pak->AddPointer(dataLump, valueOffset, dataLump, settingsMemory.curStringBufIndex);
 
     const size_t strBufLen = stringLen+1; // +1 for null char.
-    memcpy(&dataLump.data[currentStringIndex], string, strBufLen);
+    memcpy(&dataLump.data[settingsMemory.curStringBufIndex], string, strBufLen);
 
-    currentStringIndex += strBufLen;
+    settingsMemory.curStringBufIndex += strBufLen;
 }
 
 static void SettingsAsset_WriteAssetValue(const char* const string, const size_t stringLen, const size_t valueOffset,
-    PakAsset_t& asset, CPakFileBuilder* const pak, PakPageLump_s& dataLump, size_t& currentGuidIndex, size_t& currentStringIndex)
+    PakAsset_t& asset, CPakFileBuilder* const pak, PakPageLump_s& dataLump, SettingsAssetMemory_s& settingsMemory)
 {
     const PakGuid_t assetGuid = RTech::StringToGuid(string);
-    *(PakGuid_t*)reinterpret_cast<char*>(&dataLump.data[currentGuidIndex]) = assetGuid;
+    *(PakGuid_t*)reinterpret_cast<char*>(&dataLump.data[settingsMemory.curGuidBufIndex]) = assetGuid;
 
-    Pak_RegisterGuidRefAtOffset(assetGuid, currentGuidIndex, dataLump, asset);
-    currentGuidIndex += sizeof(PakGuid_t);
+    Pak_RegisterGuidRefAtOffset(assetGuid, settingsMemory.curGuidBufIndex, dataLump, asset);
+    settingsMemory.curGuidBufIndex += sizeof(PakGuid_t);
 
-    SettingsAsset_WriteStringValue(string, stringLen, valueOffset, pak, dataLump, currentStringIndex);
+    SettingsAsset_WriteStringValue(string, stringLen, valueOffset, pak, dataLump, settingsMemory);
 }
 
-static void SettingsAsset_WriteVectorValue(const SettingsLayoutParseResult_s& layoutData, const SettingsAssetFieldEntry_s& entry,
+static void SettingsAsset_WriteVectorValue(const char* const value, const char* const fieldName,
     const size_t valueOffset, const bool isVec2, PakPageLump_s& dataLump)
 {
     std::cmatch sm; // get values from format "<x,y>", or "<x,y,z>".
-    const char* const value = entry.val->GetString();
-
-    std::regex_search(value, sm, std::regex(isVec2 ? "<(.*),(.*)>" : "<(.*),(.*),(.*)>"));
+    const bool result = std::regex_search(value, sm, std::regex(isVec2 ? "<(.*),(.*)>" : "<(.*),(.*),(.*)>"));
 
     // 0 - all
     // 1 - x
     // 2 - y
     // 3 - z (if !isVec2)
-    if (sm.size() == (isVec2 ? 3 : 4))
+    if (result && (sm.size() == (isVec2 ? 3 : 4)))
     {
         Vector3* const vec = reinterpret_cast<Vector3*>(&dataLump.data[valueOffset]);
         vec->x = static_cast<float>(atof(sm[1].str().c_str()));
@@ -161,110 +206,141 @@ static void SettingsAsset_WriteVectorValue(const SettingsLayoutParseResult_s& la
     }
     else
     {
-        const string& fieldName = layoutData.fieldNames[entry.cellIndex];
         const char* const targetType = isVec2 ? "float2" : "float3";
-
-        Error("Field \"%s\" has value '%s' that cannot be parsed as %s.\n", fieldName.c_str(), value, targetType);
+        Error("Field \"%s\" has value '%s' that cannot be parsed as %s.\n", fieldName, value, targetType);
     }
 }
 
-static void SettingsAsset_WriteValue(const SettingsLayoutParseResult_s& layoutData, const SettingsAssetFieldEntry_s& entry, PakAsset_t& asset,
-    CPakFileBuilder* const pak, PakPageLump_s& dataLump, const size_t valueBaseIndex, size_t& currentGuidIndex, size_t& currentStringIndex)
+static void SettingsAsset_WriteValues(const SettingsLayoutAsset_s& layoutAsset, SettingsAsset_s& settingsAsset, 
+    SettingsAssetMemory_s& settingsMemory, PakAsset_t& asset, CPakFileBuilder* const pak, PakPageLump_s& dataLump)
 {
-    const int64_t cellIndex = entry.cellIndex;
-    const uint32_t valueOffset = layoutData.offsetMap[cellIndex];
-    const SettingsFieldType_e fieldType = layoutData.typeMap[cellIndex];
+    size_t fieldIndex = 0;
+    size_t arrayIndex = 0;
 
-    const size_t targetOffset = valueBaseIndex + valueOffset;
+    // Counts the number of bytes we need to skip on top of the current layout
+    // buffer size in order to index into the buffer for the new array data.
+    uint32_t layoutBufSkipBytes = 0;
 
-    switch (fieldType)
+    for (const auto& it : settingsAsset.value->GetObject())
     {
-    case SettingsFieldType_e::ST_Bool:
-        *(bool*)&dataLump.data[targetOffset] = entry.val->GetBool();
-        break;
-    case SettingsFieldType_e::ST_Int:
-        *(int*)&dataLump.data[targetOffset] = entry.val->GetInt();
-        break;
-    case SettingsFieldType_e::ST_Float:
-        *(float*)&dataLump.data[targetOffset] = entry.val->GetFloat();
-        break;
-    case SettingsFieldType_e::ST_Float2:
-        SettingsAsset_WriteVectorValue(layoutData, entry, targetOffset, true, dataLump);
-        break;
-    case SettingsFieldType_e::ST_Float3:
-        SettingsAsset_WriteVectorValue(layoutData, entry, targetOffset, false, dataLump);
-        break;
-    case SettingsFieldType_e::ST_Asset:
-        SettingsAsset_WriteAssetValue(entry.val->GetString(), entry.val->GetStringLength(),
-            targetOffset, asset, pak, dataLump, currentGuidIndex, currentStringIndex);
-        break;
-    case SettingsFieldType_e::ST_String:
-    case SettingsFieldType_e::ST_Asset_2:
-        SettingsAsset_WriteStringValue(entry.val->GetString(), entry.val->GetStringLength(),
-            targetOffset, pak, dataLump, currentStringIndex);
-        break;
+        const int64_t cellIndex = settingsAsset.fieldIndexMap[fieldIndex++];
+
+        const uint32_t localValueOffset = layoutAsset.rootLayout.offsetMap[cellIndex];
+        const size_t targetOffset = settingsAsset.bufferBase + settingsMemory.valueBufIndex + localValueOffset;
+
+        const std::string& fieldName = layoutAsset.rootLayout.fieldNames[cellIndex];
+        const SettingsFieldType_e fieldType = layoutAsset.rootLayout.typeMap[cellIndex];
+
+        switch (fieldType)
+        {
+        case SettingsFieldType_e::ST_Bool:
+            *(bool*)&dataLump.data[targetOffset] = it.value.GetBool();
+            break;
+        case SettingsFieldType_e::ST_Int:
+            *(int*)&dataLump.data[targetOffset] = it.value.GetInt();
+            break;
+        case SettingsFieldType_e::ST_Float:
+            *(float*)&dataLump.data[targetOffset] = it.value.GetFloat();
+            break;
+        case SettingsFieldType_e::ST_Float2:
+            SettingsAsset_WriteVectorValue(it.value.GetString(), fieldName.c_str(), targetOffset, true, dataLump);
+            break;
+        case SettingsFieldType_e::ST_Float3:
+            SettingsAsset_WriteVectorValue(it.value.GetString(), fieldName.c_str(), targetOffset, false, dataLump);
+            break;
+        case SettingsFieldType_e::ST_Asset:
+            SettingsAsset_WriteAssetValue(it.value.GetString(), it.value.GetStringLength(), targetOffset, asset, pak, dataLump, settingsMemory);
+            break;
+        case SettingsFieldType_e::ST_String:
+        case SettingsFieldType_e::ST_Asset_2:
+            SettingsAsset_WriteStringValue(it.value.GetString(), it.value.GetStringLength(), targetOffset, pak, dataLump, settingsMemory);
+            break;
+        case SettingsFieldType_e::ST_StaticArray:
+            break;
+        case SettingsFieldType_e::ST_DynamicArray:
+        {
+            const rapidjson::Value::ConstArray dynArray = it.value.GetArray();
+
+            const uint32_t arraySize = static_cast<uint32_t>(dynArray.Size());
+            const uint32_t layoutSize = layoutAsset.rootLayout.totalValueBufferSize;
+
+            SettingsDynamicArray_s* const dynHdr = reinterpret_cast<SettingsDynamicArray_s*>(&dataLump.data[targetOffset]);
+
+            dynHdr->arraySize = arraySize;
+            dynHdr->arrayOffset = layoutSize + layoutBufSkipBytes;
+
+            layoutBufSkipBytes += layoutSize * arraySize;
+
+            const SettingsLayoutAsset_s& subLayout = layoutAsset.subLayouts[layoutAsset.rootLayout.indexMap[cellIndex]];
+
+            // Values in array are already attached to the settings block at this stage.
+            // We should only traverse the array from here.
+            for (auto nit = dynArray.begin(); nit != dynArray.End(); ++nit)
+            {
+                SettingsAsset_s& subAsset = settingsAsset.subAssets[arrayIndex++];
+                SettingsAsset_WriteValues(subLayout, subAsset, settingsMemory, asset, pak, dataLump);
+            }
+
+            break;
+        }
+        }
     }
 }
 
-static void SettingsAsset_WriteValues(const SettingsLayoutParseResult_s& layoutData, const std::vector<SettingsAssetFieldEntry_s>& entryMap, PakAsset_t& asset,
-    CPakFileBuilder* const pak, PakPageLump_s& dataLump, const size_t guidBaseIndex, const size_t valueBaseIndex, const size_t stringBaseIndex)
-{
-    const size_t entryCount = entryMap.size();
-
-    size_t curGuidPos = guidBaseIndex;
-    size_t curStringPos = stringBaseIndex;
-
-    for (size_t i = 0; i < entryCount; i++)
-        SettingsAsset_WriteValue(layoutData, entryMap[i], asset, pak, dataLump, valueBaseIndex, curGuidPos, curStringPos);
-}
+extern void SettingsLayout_ParseMap(CPakFileBuilder* const pak, const char* const assetPath, SettingsLayoutAsset_s& asset);
 
 static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
     rapidjson::Document settings;
     SettingsAsset_OpenFile(pak, assetPath, settings);
 
-    rapidcsv::Document layout;
-    const char* const layoutAsset = JSON_GetValueRequired<const char*>(settings, "layoutAsset");
+    const char* const layoutAssetPath = JSON_GetValueRequired<const char*>(settings, "layoutAsset");
 
-    SettingsLayoutParseResult_s layoutData;
-    SettingsLayout_ParseLayout(pak, layoutAsset, layout, layoutData);
+    SettingsLayoutAsset_s layoutAsset;
+    SettingsLayout_ParseMap(pak, layoutAssetPath, layoutAsset);
 
     PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
     PakPageLump_s hdrLump = pak->CreatePageLump(sizeof(SettingsAssetHeader_s), SF_HEAD, 8);
 
     SettingsAssetHeader_s* const setHdr = reinterpret_cast<SettingsAssetHeader_s*>(hdrLump.data);
-    const PakGuid_t layoutGuid = RTech::StringToGuid(layoutAsset);
+    const PakGuid_t layoutGuid = RTech::StringToGuid(layoutAssetPath);
 
     setHdr->settingsLayoutGuid = layoutGuid;
     Pak_RegisterGuidRefAtOffset(layoutGuid, offsetof(SettingsAssetHeader_s, settingsLayoutGuid), hdrLump, asset);
 
     setHdr->uniqueId = JSON_GetNumberRequired<uint32_t>(settings, "uniqueId");
 
-    std::vector<SettingsAssetFieldEntry_s> entryMap;
     rapidjson::Value::ConstMemberIterator setIt;
 
     JSON_GetRequired(settings, "settings", JSONFieldType_e::kObject, setIt);
     const rapidjson::Value& entries = setIt->value;
 
-    size_t stringBufSize = 0, guidBufSize = 0;
-    SettingsAsset_CalcBufferSizes(layoutAsset, entryMap, layoutData, entries, stringBufSize, guidBufSize);
+    SettingsAsset_s settingsAsset;
+    SettingsAssetMemory_s settingsMemory{};
 
-    const size_t assetNameBufLen = IALIGN8(strlen(assetPath)+1);
-    PakPageLump_s dataLump = pak->CreatePageLump(assetNameBufLen + guidBufSize + layoutData.totalValueBufferSize + stringBufSize, SF_CPU, 8);
+    SettingsAsset_InitializeAndMap(layoutAssetPath, settingsAsset, layoutAsset, entries, settingsMemory);
 
-    memcpy(dataLump.data, assetPath, assetNameBufLen);
+    const size_t assetNameBufLen = strlen(assetPath)+1;
+    settingsMemory.stringBufSize += assetNameBufLen;
 
-    const size_t guidBaseIdx = assetNameBufLen;
-    const size_t valueBaseIdx = assetNameBufLen + guidBufSize;
-    const size_t stringBaseIdx = assetNameBufLen + guidBufSize + layoutData.totalValueBufferSize;
+    settingsMemory.InitCurrentIndices();
+    const size_t totalPageSize = settingsMemory.GetTotalBufferSize();
 
-    SettingsAsset_WriteValues(layoutData, entryMap, asset, pak, dataLump, guidBaseIdx, valueBaseIdx, stringBaseIdx);
+    // todo: check if layout val buffer is larger and if so max it to that.
+    PakPageLump_s dataLump = pak->CreatePageLump(totalPageSize, SF_CPU, 8);
+    const size_t assetNameOffset = totalPageSize - assetNameBufLen;
 
-    pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, name), dataLump, 0);
-    pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, valueData), dataLump, valueBaseIdx);
-    pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, stringData), dataLump, stringBaseIdx);
+    memcpy(&dataLump.data[assetNameOffset], assetPath, assetNameBufLen);
 
-    setHdr->valueBufSize = layoutData.totalValueBufferSize;
+    pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, name), dataLump, assetNameOffset);
+    pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, valueData), dataLump, settingsMemory.valueBufIndex);
+    pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, stringData), dataLump, settingsMemory.curStringBufIndex);
+
+    SettingsAsset_WriteValues(layoutAsset, settingsAsset, settingsMemory, asset, pak, dataLump);
+
+    // todo: does this also count the arrays and dynamic array values?
+    // if yes, calculate the size in SettingsAsset_InitializeAndMap().
+    //setHdr->valueBufSize = layoutAsset.totalValueBufferSize;
 
     asset.InitAsset(hdrLump.GetPointer(), sizeof(SettingsAssetHeader_s), PagePtr_t::NullPtr(), STGS_VERSION, AssetType::STGS);
     asset.SetHeaderPointer(hdrLump.data);

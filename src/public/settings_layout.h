@@ -24,6 +24,13 @@ struct SettingsField_s
 	uint32_t subLayoutIndex : 8;
 };
 
+struct SettingsDynamicArray_s
+{
+	uint32_t arraySize;   // Can be 0, since dynamic arrays are meant to be growable in the runtime.
+	uint32_t arrayOffset; // The offset is always relative from this SettingsDynamicArray_s struct.
+};
+static_assert(sizeof(SettingsDynamicArray_s) == 8);
+
 struct SettingsLayoutHeader_s
 {
 	PagePtr_t name;
