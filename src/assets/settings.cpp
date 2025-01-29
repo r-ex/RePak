@@ -145,15 +145,6 @@ static void SettingsAsset_InitializeAndMap(const char* const layoutAssetPath, Se
             const SettingsLayoutAsset_s& subLayout = layoutAsset.subLayouts[layoutAsset.rootLayout.indexMap[cellIndex]];
             const rapidjson::Value::ConstArray array = it.value.GetArray();
 
-            // For dynamic arrays, this will remain SIZE_MAX which means
-            // that this loop assigns the buffer base to current layout
-            // buffer size + skipBytes as the base for dynamic arrays
-            // is always after this layout buffer + the number of layouts
-            // we've already processed and copied in. For static arrays,
-            // their values are inline within our current layout and we
-            // should therefore set this to the current buffer base to
-            // make subsequent iterations write values into the right
-            // offsets.
             size_t bufferBaseOverride = SIZE_MAX;
 
             if (typeToUse == SettingsFieldType_e::ST_StaticArray)
@@ -167,13 +158,29 @@ static void SettingsAsset_InitializeAndMap(const char* const layoutAssetPath, Se
                         fieldName, layoutArraySize, arraySize);
                 }
 
+                // Static arrays use predefined offsets within parent layout.
                 bufferBaseOverride = settingsAsset.bufferBase + layoutAsset.rootLayout.offsetMap[cellIndex];
             }
+            else
+            {
+                // Note(amos): allocate buffer upfront as we would otherwise end up
+                // interleaving nested array items into our parent array which is
+                // not allowed. All array elements must be contiguous.
+                const size_t arrayMemorySize = array.Size() * subLayout.rootLayout.totalValueBufferSize;
+                const size_t arrayBufferBase = settingsMemory.valueBufSize;
+
+                settingsMemory.valueBufSize += arrayMemorySize;
+                bufferBaseOverride = arrayBufferBase;
+            }
+
+            size_t elementOffset = 0;
 
             for (const rapidjson::Value& nit : array)
             {
                 SettingsAsset_s& subAsset = settingsAsset.subAssets.emplace_back();
-                SettingsAsset_InitializeAndMap(layoutAssetPath, subAsset, subLayout, nit, settingsMemory, bufferBaseOverride);
+                SettingsAsset_InitializeAndMap(layoutAssetPath, subAsset, subLayout, nit, settingsMemory, bufferBaseOverride + elementOffset);
+
+                elementOffset += subLayout.rootLayout.totalValueBufferSize;
             }
         }
     }
@@ -234,10 +241,6 @@ static void SettingsAsset_WriteValues(const SettingsLayoutAsset_s& layoutAsset, 
     size_t fieldIndex = 0;
     size_t arrayIndex = 0;
 
-    // Counts the number of bytes we need to skip on top of the current layout
-    // buffer size in order to index into the buffer for the new array data.
-    uint32_t layoutBufSkipBytes = 0;
-
     for (const auto& it : settingsAsset.value->GetObject())
     {
         const int64_t cellIndex = settingsAsset.fieldIndexMap[fieldIndex++];
@@ -297,19 +300,23 @@ static void SettingsAsset_WriteValues(const SettingsLayoutAsset_s& layoutAsset, 
             const uint32_t layoutSize = layoutAsset.rootLayout.totalValueBufferSize;
 
             SettingsDynamicArray_s* const dynHdr = reinterpret_cast<SettingsDynamicArray_s*>(&dataLump.data[targetOffset]);
-
             dynHdr->arraySize = arraySize;
-            dynHdr->arrayOffset = layoutSize + layoutBufSkipBytes;
-
-            layoutBufSkipBytes += layoutSize * arraySize;
 
             const SettingsLayoutAsset_s& subLayout = layoutAsset.subLayouts[layoutAsset.rootLayout.indexMap[cellIndex]];
+            bool initOffset = false;
 
             // Values in array are already attached to the settings block at this stage.
             // We should only traverse the array from here.
             for (auto nit = dynArray.begin(); nit != dynArray.End(); ++nit)
             {
                 SettingsAsset_s& subAsset = settingsAsset.subAssets[arrayIndex++];
+
+                if (!initOffset)
+                {
+                    dynHdr->arrayOffset = static_cast<uint32_t>(subAsset.bufferBase - settingsAsset.bufferBase);
+                    initOffset = true;
+                }
+
                 SettingsAsset_WriteValues(subLayout, subAsset, settingsMemory, asset, pak, dataLump);
             }
 
