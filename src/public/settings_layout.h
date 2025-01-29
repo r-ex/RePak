@@ -55,11 +55,12 @@ static_assert(sizeof(SettingsLayoutHeader_s) == 72);
 struct SettingsLayoutParseResult_s
 {
 	SettingsLayoutParseResult_s()
-		: arrayElemCount(1)
+		: subHeadersBufBase(0)
+		, curSubHeaderBufIndex(0)
+		, arrayElemCount(0)
 		, subLayoutCount(0)
 		, highestSubLayoutIndex(0)
 		, extraDataSizeIndex(0)
-		, usedValueBufferSize(0)
 		, totalValueBufferSize(0)
 		, hashSeed(0)
 		, hashTableSize(0)
@@ -73,13 +74,15 @@ struct SettingsLayoutParseResult_s
 	std::vector<uint32_t> bucketMap;
 	std::vector<SettingsFieldType_e> typeMap;
 
+	size_t subHeadersBufBase;
+	size_t curSubHeaderBufIndex;
+
 	int arrayElemCount;
 	uint32_t subLayoutCount;
 
 	uint32_t highestSubLayoutIndex;
 	uint32_t extraDataSizeIndex;
 
-	uint32_t usedValueBufferSize;
 	uint32_t totalValueBufferSize;
 
 	// These vars are for fast field name lookup in the runtime.

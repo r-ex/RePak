@@ -28,12 +28,10 @@ uint32_t SettingsLayout_GetFieldSizeForType(const SettingsFieldType_e type)
     case SettingsFieldType_e::ST_String:
     case SettingsFieldType_e::ST_Asset:
     case SettingsFieldType_e::ST_Asset_2:
-    case SettingsFieldType_e::ST_StaticArray:
-        return sizeof(PagePtr_t);
     case SettingsFieldType_e::ST_DynamicArray:
         return sizeof(SettingsDynamicArray_s);
 
-    default: return 0;
+    default: assert(0); return 0;
     }
 }
 
@@ -51,11 +49,10 @@ uint32_t SettingsLayout_GetFieldAlignmentForType(const SettingsFieldType_e type)
     case SettingsFieldType_e::ST_String:
     case SettingsFieldType_e::ST_Asset:
     case SettingsFieldType_e::ST_Asset_2:
-    case SettingsFieldType_e::ST_StaticArray:
     case SettingsFieldType_e::ST_DynamicArray:
         return sizeof(void*);
 
-    default: return 0;
+    default: assert(0); return 0;
     }
 }
 
@@ -182,7 +179,7 @@ static void SettingsLayout_ComputeHashParametersRecursive(SettingsLayoutAsset_s&
         SettingsLayout_ComputeHashParametersRecursive(subLayout);
 }
 
-static void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const assetPath, rapidcsv::Document& document, SettingsLayoutParseResult_s& result)
+static void SettingsLayout_ParseTable(CPakFileBuilder* const pak, const char* const assetPath, rapidcsv::Document& document, SettingsLayoutParseResult_s& result)
 {
     const std::string settingsLayoutFile = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".csv");
     std::ifstream datatableStream(settingsLayoutFile);
@@ -199,21 +196,18 @@ static void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* c
         Error("Settings layout table \"%s\" is empty.\n", settingsLayoutFile.c_str());
 
     result.typeNames = document.GetColumn<std::string>(1);
-    result.offsetMap = document.GetColumn<uint32_t>(2);
-    result.indexMap = document.GetColumn<uint32_t>(3);
+    result.indexMap = document.GetColumn<uint32_t>(2);
 
     const size_t numTypeNames = result.typeNames.size();
-    const size_t numOffsets = result.offsetMap.size();
     const size_t numIndices = result.indexMap.size();
 
-    if (numFieldNames != numTypeNames || numTypeNames != numOffsets || numOffsets != numIndices)
+    if (numFieldNames != numTypeNames || numTypeNames != numIndices)
     {
-        Error("Settings layout column count mismatch (%zu != %zu || %zu != %zu || %zu != %zu).\n",
-            numFieldNames, numTypeNames, numTypeNames, numOffsets, numOffsets, numIndices);
+        Error("Settings layout column count mismatch (%zu != %zu || %zu != %zu).\n",
+            numFieldNames, numTypeNames, numTypeNames, numIndices);
     }
 
     result.typeMap.resize(numTypeNames);
-    uint32_t lastFieldAlign = 0;
 
     uint32_t lastUsedSublayout = 0;
     uint32_t numSubLayouts = 0;
@@ -229,18 +223,6 @@ static void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* c
             Error("Settings layout field \"%s\" uses unknown type \"%s\".\n", fieldName.c_str(), typeName.c_str());
         }
 
-        const uint32_t curTypeAlign = SettingsLayout_GetFieldAlignmentForType(typeToUse);
-
-        // All fields in the settings layout must be sorted by their alignments.
-        // Fields with higher alignments must come first as to avoid padding which
-        // the original assets do not support, so we follow the same scheme here.
-        if (i > 0 && curTypeAlign > lastFieldAlign)
-        {
-            Error("Settings layout field \"%s\" is of type %s which has an alignment of %u, but the previous field was aligned to %u; padding is not allowed.\n",
-                result.fieldNames[i].c_str(), s_settingsFieldTypeNames[typeToUse], curTypeAlign, lastFieldAlign);
-        }
-
-        lastFieldAlign = curTypeAlign;
         result.typeMap[i] = typeToUse;
 
         if (typeToUse == SettingsFieldType_e::ST_StaticArray || 
@@ -260,38 +242,9 @@ static void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* c
 
     result.subLayoutCount = numSubLayouts;
     result.highestSubLayoutIndex = numSubLayouts;
-
-    // Get the total layout value buffer size, and make sure we don't have any
-    // overlapping fields.
-    uint32_t nextOffset = 0;
-
-    for (size_t i = 0; i < numOffsets; i++)
-    {
-        const uint32_t curOffset = result.offsetMap[i];
-
-        if (curOffset < nextOffset)
-        {
-            const std::string& fieldName = result.fieldNames[i];
-            Error("Settings layout field \"%s\" has an offset that overlaps (%u < %u).\n", fieldName.c_str(), curOffset, nextOffset);
-        }
-
-        nextOffset = curOffset + SettingsLayout_GetFieldSizeForType(result.typeMap[i]);
-    }
-
-    // The last offset + its type size is the total value buffer size.
-    result.usedValueBufferSize = nextOffset;
 }
 
-static void SettingsLayout_ValidateBufferUsage(const SettingsLayoutParseResult_s& parseResult)
-{
-    if (parseResult.usedValueBufferSize > parseResult.totalValueBufferSize)
-    {
-        Error("Parsed settings layout's value buffer usage is larger than total room available (%u > %u).\n",
-            parseResult.usedValueBufferSize, parseResult.totalValueBufferSize);
-    }
-}
-
-void SettingsLayout_ParseMap(CPakFileBuilder* const pak, const char* const assetPath, SettingsLayoutAsset_s& asset)
+static void SettingsLayout_ParseMap(CPakFileBuilder* const pak, const char* const assetPath, SettingsLayoutAsset_s& asset)
 {
     const std::string settingsLayoutFile = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
     rapidjson::Document document;
@@ -300,15 +253,11 @@ void SettingsLayout_ParseMap(CPakFileBuilder* const pak, const char* const asset
         Error("Failed to open settings layout \"%s\".\n", settingsLayoutFile.c_str());
 
     SettingsLayoutParseResult_s& rootParseResult = asset.rootLayout;
-
-    rootParseResult.totalValueBufferSize = JSON_GetValueRequired<uint32_t>(document, "size");
-    rootParseResult.arrayElemCount = JSON_GetValueRequired<uint32_t>(document, "elementCount");
+    rootParseResult.arrayElemCount = max(JSON_GetValueOrDefault(document, "elementCount", (uint32_t)1), 1);
 
     // Parse the root layout and figure out what the highest sub-layout index is.
     rapidcsv::Document rootLayoutTable;
-
-    SettingsLayout_ParseLayout(pak, assetPath, rootLayoutTable, rootParseResult);
-    SettingsLayout_ValidateBufferUsage(rootParseResult);
+    SettingsLayout_ParseTable(pak, assetPath, rootLayoutTable, rootParseResult);
 
     if (rootParseResult.subLayoutCount > 0)
     {
@@ -348,6 +297,83 @@ void SettingsLayout_ParseMap(CPakFileBuilder* const pak, const char* const asset
     }
 }
 
+static void SettingsLayout_BuildOffsetMap(SettingsLayoutAsset_s& layoutAsset)
+{
+    // Here we need to parse everything in the hierarchy first, starting at the
+    // deepest object. If we have static arrays we need to know the size before
+    // we build out the root offset map.
+    for (SettingsLayoutAsset_s& subLayout : layoutAsset.subLayouts)
+        SettingsLayout_BuildOffsetMap(subLayout);
+
+    SettingsLayoutParseResult_s& root = layoutAsset.rootLayout;
+
+    const size_t numFields = root.fieldNames.size();
+    root.offsetMap.resize(numFields);
+
+    // Padding is only allowed on static arrays to make sure we align the next
+    // field to its boundary, since the only alternative is to force the user
+    // to pad it out manually.
+    bool verifyPadding = false;
+    uint32_t lastFieldAlign = 0;
+
+    for (size_t i = 0; i < numFields; i++)
+    {
+        const SettingsFieldType_e typeToUse = root.typeMap[i];
+        uint32_t typeSize = 0;
+
+        if (typeToUse == SettingsFieldType_e::ST_StaticArray)
+        {
+            const uint32_t subLayoutIndex = root.indexMap[i];
+            typeSize = layoutAsset.subLayouts[subLayoutIndex].rootLayout.totalValueBufferSize;
+
+            verifyPadding = true;
+        }
+        else
+        {
+            // At this stage we know what is dynamic and what isn't, dynamic
+            // arrays must have this set to -1 as its size is determined by
+            // the SettingsDynamicArray_s::size.
+            if (typeToUse == SettingsFieldType_e::ST_DynamicArray)
+            {
+                const uint32_t subLayoutIndex = root.indexMap[i];
+                layoutAsset.subLayouts[subLayoutIndex].rootLayout.arrayElemCount = -1;
+            }
+
+            const uint32_t curTypeAlign = SettingsLayout_GetFieldAlignmentForType(typeToUse);
+
+            if (verifyPadding)
+            {
+                root.totalValueBufferSize = IALIGN(root.totalValueBufferSize, curTypeAlign);
+                verifyPadding = false;
+            }
+            else
+            {
+                // All fields in the settings layout must be sorted by their alignments.
+                // Fields with higher alignments must come first as to avoid padding which
+                // the original assets do not support on non-static arrays, so we follow
+                // the same scheme here.
+                if (lastFieldAlign > 0 && curTypeAlign > lastFieldAlign)
+                {
+                    Error("Settings layout field \"%s\" is of type %s which has an alignment of %u, but the previous field was aligned to %u; padding is not allowed.\n",
+                        root.fieldNames[i].c_str(), s_settingsFieldTypeNames[typeToUse], curTypeAlign, lastFieldAlign);
+                }
+            }
+
+            lastFieldAlign = curTypeAlign;
+            typeSize = SettingsLayout_GetFieldSizeForType(typeToUse);
+        }
+
+        root.offsetMap[i] = root.totalValueBufferSize;
+        root.totalValueBufferSize += typeSize;
+    }
+}
+
+void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const assetPath, SettingsLayoutAsset_s& layoutAsset)
+{
+    SettingsLayout_ParseMap(pak, assetPath, layoutAsset);
+    SettingsLayout_BuildOffsetMap(layoutAsset);
+}
+
 static void SettingsLayout_InitializeHeader(SettingsLayoutHeader_s* const header, const SettingsLayoutParseResult_s& parse)
 {
     header->hashTableSize = parse.hashTableSize;
@@ -370,22 +396,23 @@ struct SettingsLayoutMemory_s
     inline void InitCurrentIndices()
     {
         curFieldBufIndex = 0;
-        curSubHeadersBufIndex = outFieldBufSize;
+        subHeadersBufIndex = outFieldBufSize;
         curStringBufIndex = outFieldBufSize + outSubHeadersBufSize;
     }
 
     size_t outFieldBufSize;
-    size_t outSubHeadersBufSize;
-    size_t outStringBufLen;
-
     size_t curFieldBufIndex;
-    size_t curSubHeadersBufIndex;
+
+    size_t outSubHeadersBufSize;
+    size_t subHeadersBufIndex;
+
+    size_t outStringBufLen;
     size_t curStringBufIndex;
 };
 
-static void SettingsLayout_CalculateBufferSizes(const SettingsLayoutAsset_s& layoutAsset, SettingsLayoutMemory_s& layoutMemory, const bool isInitialRoot)
+static void SettingsLayout_CalculateBufferSizes(SettingsLayoutAsset_s& layoutAsset, SettingsLayoutMemory_s& layoutMemory, size_t& bufBaseIndexer, const bool isInitialRoot)
 {
-    const SettingsLayoutParseResult_s& rootParseResult = layoutAsset.rootLayout;
+    SettingsLayoutParseResult_s& rootParseResult = layoutAsset.rootLayout;
 
     layoutMemory.outFieldBufSize += (rootParseResult.hashTableSize * sizeof(SettingsField_s));
 
@@ -406,8 +433,16 @@ static void SettingsLayout_CalculateBufferSizes(const SettingsLayoutAsset_s& lay
     // entry to make it non-null.
     layoutMemory.outStringBufLen += 1;
 
-    for (const SettingsLayoutAsset_s& subLayout : layoutAsset.subLayouts)
-        SettingsLayout_CalculateBufferSizes(subLayout, layoutMemory, false);
+    const size_t subLayoutCount = layoutAsset.subLayouts.size();
+
+    if (subLayoutCount > 0)
+    {
+        rootParseResult.subHeadersBufBase = bufBaseIndexer;
+        bufBaseIndexer += layoutAsset.subLayouts.size() * sizeof(SettingsLayoutHeader_s);
+
+        for (SettingsLayoutAsset_s& subLayout : layoutAsset.subLayouts)
+            SettingsLayout_CalculateBufferSizes(subLayout, layoutMemory, bufBaseIndexer, false);
+    }
 }
 
 static void SettingsLayout_WriteFieldData(PakPageLump_s& dataLump, const SettingsLayoutParseResult_s& parse, size_t& numStringBytesWritten, SettingsLayoutMemory_s& layoutMemory)
@@ -440,42 +475,42 @@ static void SettingsLayout_WriteFieldData(PakPageLump_s& dataLump, const Setting
     layoutMemory.curFieldBufIndex += parse.hashTableSize * sizeof(SettingsField_s);
 }
 
-static void SettingsLayout_WriteLayoutRecursive(CPakFileBuilder* const pak, const SettingsLayoutAsset_s& layoutAsset, 
-    SettingsLayoutMemory_s& layoutMemory, PakPageLump_s& dataLump, const bool isInitialRoot)
+static void SettingsLayout_WriteLayoutRecursive(CPakFileBuilder* const pak, SettingsLayoutAsset_s& layoutAsset,
+    SettingsLayoutMemory_s& layoutMemory, PakPageLump_s& dataLump, SettingsLayoutParseResult_s* const parent)
 {
-    const SettingsLayoutParseResult_s& parse = layoutAsset.rootLayout;
+    SettingsLayoutParseResult_s& parse = layoutAsset.rootLayout;
 
-    if (!isInitialRoot)
+    if (parent)
     {
-        SettingsLayoutHeader_s* const header = reinterpret_cast<SettingsLayoutHeader_s*>(&dataLump.data[layoutMemory.curSubHeadersBufIndex]);
-        SettingsLayout_InitializeHeader(header, parse);
+        const size_t rootIndex = layoutMemory.subHeadersBufIndex + parent->subHeadersBufBase + parent->curSubHeaderBufIndex;
+        SettingsLayoutHeader_s* const header = reinterpret_cast<SettingsLayoutHeader_s*>(&dataLump.data[rootIndex]);
 
-        const size_t rootIndex = layoutMemory.curSubHeadersBufIndex;
+        SettingsLayout_InitializeHeader(header, parse);
 
         pak->AddPointer(dataLump, rootIndex + offsetof(SettingsLayoutHeader_s, fieldMap), dataLump, layoutMemory.curFieldBufIndex);
         pak->AddPointer(dataLump, rootIndex + offsetof(SettingsLayoutHeader_s, fieldNames), dataLump, layoutMemory.curStringBufIndex);
 
-        // Increment by the header size, anything past this will either be the
-        // sub-layouts if this layout has any, or the next layout outside this
-        // scope.
-        layoutMemory.curSubHeadersBufIndex += sizeof(SettingsLayoutHeader_s);
+        parent->curSubHeaderBufIndex += sizeof(SettingsLayoutHeader_s);
 
         if (!layoutAsset.subLayouts.empty())
-            pak->AddPointer(dataLump, rootIndex + offsetof(SettingsLayoutHeader_s, subHeaders), dataLump, layoutMemory.curSubHeadersBufIndex);
+        {
+            const size_t subIndex = layoutMemory.subHeadersBufIndex + parse.subHeadersBufBase + parse.curSubHeaderBufIndex;
+            pak->AddPointer(dataLump, rootIndex + offsetof(SettingsLayoutHeader_s, subHeaders), dataLump, subIndex);
+        }
     }
 
     // +1 for string place holder, see comment in SettingsLayout_CalculateBufferSizes().
     size_t numRootStringBufBytes = 1;
     SettingsLayout_WriteFieldData(dataLump, parse, numRootStringBufBytes, layoutMemory);
 
-    for (const SettingsLayoutAsset_s& subLayout : layoutAsset.subLayouts)
-        SettingsLayout_WriteLayoutRecursive(pak, subLayout, layoutMemory, dataLump, false);
+    for (SettingsLayoutAsset_s& subLayout : layoutAsset.subLayouts)
+        SettingsLayout_WriteLayoutRecursive(pak, subLayout, layoutMemory, dataLump, &parse);
 }
 
 static void SettingsLayout_InternalAddLayoutAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
     SettingsLayoutAsset_s layoutAsset;
-    SettingsLayout_ParseMap(pak, assetPath, layoutAsset);
+    SettingsLayout_ParseLayout(pak, assetPath, layoutAsset);
 
     PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
     PakPageLump_s hdrLump = pak->CreatePageLump(sizeof(SettingsLayoutHeader_s), SF_HEAD, 8);
@@ -483,7 +518,9 @@ static void SettingsLayout_InternalAddLayoutAsset(CPakFileBuilder* const pak, co
     SettingsLayout_ComputeHashParametersRecursive(layoutAsset);
 
     SettingsLayoutMemory_s layoutMemory{};
-    SettingsLayout_CalculateBufferSizes(layoutAsset, layoutMemory, true);
+    size_t headersBufIndexer = 0;
+
+    SettingsLayout_CalculateBufferSizes(layoutAsset, layoutMemory, headersBufIndexer, true);
 
     // The asset name is only stored for the root layout.
     const size_t assetNameBufLen = strlen(assetPath) + 1;
@@ -505,9 +542,9 @@ static void SettingsLayout_InternalAddLayoutAsset(CPakFileBuilder* const pak, co
     pak->AddPointer(hdrLump, offsetof(SettingsLayoutHeader_s, fieldNames), dataLump, layoutMemory.curStringBufIndex);
 
     if (!layoutAsset.subLayouts.empty())
-        pak->AddPointer(hdrLump, offsetof(SettingsLayoutHeader_s, subHeaders), dataLump, layoutMemory.curSubHeadersBufIndex);
+        pak->AddPointer(hdrLump, offsetof(SettingsLayoutHeader_s, subHeaders), dataLump, layoutMemory.subHeadersBufIndex);
 
-    SettingsLayout_WriteLayoutRecursive(pak, layoutAsset, layoutMemory, dataLump, true);
+    SettingsLayout_WriteLayoutRecursive(pak, layoutAsset, layoutMemory, dataLump, nullptr);
 
     asset.InitAsset(hdrLump.GetPointer(), sizeof(SettingsLayoutHeader_s), PagePtr_t::NullPtr(), STLT_VERSION, AssetType::STLT);
     asset.SetHeaderPointer(hdrLump.data);

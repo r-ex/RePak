@@ -7,7 +7,6 @@
 
 //
 // Settings asset todo:
-// - handle static arrays
 // - make sure all fields in settings layout are defined and initialized in settings asset
 //      (error checking on this is currently disabled to make debugging and development
 //      easier, but in the runtime, not initializing these results in undefined behavior most likely.)
@@ -91,13 +90,18 @@ struct SettingsAssetMemory_s
 };
 
 static void SettingsAsset_InitializeAndMap(const char* const layoutAssetPath, SettingsAsset_s& settingsAsset,
-    const SettingsLayoutAsset_s& layoutAsset, const rapidjson::Value& value, SettingsAssetMemory_s& settingsMemory)
+    const SettingsLayoutAsset_s& layoutAsset, const rapidjson::Value& value, SettingsAssetMemory_s& settingsMemory, const size_t bufferBase)
 {
     settingsAsset.value = &value;
     settingsAsset.layout = &layoutAsset;
 
-    settingsAsset.bufferBase = settingsMemory.valueBufSize;
-    settingsMemory.valueBufSize += layoutAsset.rootLayout.totalValueBufferSize;
+    if (bufferBase != SIZE_MAX)
+        settingsAsset.bufferBase = bufferBase;
+    else
+    {
+        settingsAsset.bufferBase = settingsMemory.valueBufSize;
+        settingsMemory.valueBufSize += layoutAsset.rootLayout.totalValueBufferSize;
+    }
 
     std::map<std::string, int> occurenceMap;
 
@@ -141,6 +145,17 @@ static void SettingsAsset_InitializeAndMap(const char* const layoutAssetPath, Se
             const SettingsLayoutAsset_s& subLayout = layoutAsset.subLayouts[layoutAsset.rootLayout.indexMap[cellIndex]];
             const rapidjson::Value::ConstArray array = it.value.GetArray();
 
+            // For dynamic arrays, this will remain SIZE_MAX which means
+            // that this loop assigns the buffer base to current layout
+            // buffer size + skipBytes as the base for dynamic arrays
+            // is always after this layout buffer + the number of layouts
+            // we've already processed and copied in. For static arrays,
+            // their values are inline within our current layout and we
+            // should therefore set this to the current buffer base to
+            // make subsequent iterations write values into the right
+            // offsets.
+            size_t bufferBaseOverride = SIZE_MAX;
+
             if (typeToUse == SettingsFieldType_e::ST_StaticArray)
             {
                 const uint32_t arraySize = static_cast<uint32_t>(array.Size());
@@ -151,12 +166,14 @@ static void SettingsAsset_InitializeAndMap(const char* const layoutAssetPath, Se
                     Error("Field \"%s\" is defined as a static array of size %u, but listed array has a size of %u.\n",
                         fieldName, layoutArraySize, arraySize);
                 }
+
+                bufferBaseOverride = settingsAsset.bufferBase + layoutAsset.rootLayout.offsetMap[cellIndex];
             }
 
             for (const rapidjson::Value& nit : array)
             {
                 SettingsAsset_s& subAsset = settingsAsset.subAssets.emplace_back();
-                SettingsAsset_InitializeAndMap(layoutAssetPath, subAsset, subLayout, nit, settingsMemory);
+                SettingsAsset_InitializeAndMap(layoutAssetPath, subAsset, subLayout, nit, settingsMemory, bufferBaseOverride);
             }
         }
     }
@@ -256,7 +273,22 @@ static void SettingsAsset_WriteValues(const SettingsLayoutAsset_s& layoutAsset, 
             SettingsAsset_WriteStringValue(it.value.GetString(), it.value.GetStringLength(), targetOffset, pak, dataLump, settingsMemory);
             break;
         case SettingsFieldType_e::ST_StaticArray:
+        {
+            // Note(amos): array elem count was already checked in SettingsAsset_InitializeAndMap().
+            // No need to do it again here.
+            const rapidjson::Value::ConstArray statArray = it.value.GetArray();
+            const SettingsLayoutAsset_s& subLayout = layoutAsset.subLayouts[layoutAsset.rootLayout.indexMap[cellIndex]];
+
+            // Values in array are already attached to the settings block at this stage.
+            // We should only traverse the array from here.
+            for (auto nit = statArray.begin(); nit != statArray.End(); ++nit)
+            {
+                SettingsAsset_s& subAsset = settingsAsset.subAssets[arrayIndex++];
+                SettingsAsset_WriteValues(subLayout, subAsset, settingsMemory, asset, pak, dataLump);
+            }
+
             break;
+        }
         case SettingsFieldType_e::ST_DynamicArray:
         {
             const rapidjson::Value::ConstArray dynArray = it.value.GetArray();
@@ -287,7 +319,7 @@ static void SettingsAsset_WriteValues(const SettingsLayoutAsset_s& layoutAsset, 
     }
 }
 
-extern void SettingsLayout_ParseMap(CPakFileBuilder* const pak, const char* const assetPath, SettingsLayoutAsset_s& asset);
+extern void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const assetPath, SettingsLayoutAsset_s& layoutAsset);
 
 static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
@@ -297,7 +329,7 @@ static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, c
     const char* const layoutAssetPath = JSON_GetValueRequired<const char*>(settings, "layoutAsset");
 
     SettingsLayoutAsset_s layoutAsset;
-    SettingsLayout_ParseMap(pak, layoutAssetPath, layoutAsset);
+    SettingsLayout_ParseLayout(pak, layoutAssetPath, layoutAsset);
 
     PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
     PakPageLump_s hdrLump = pak->CreatePageLump(sizeof(SettingsAssetHeader_s), SF_HEAD, 8);
@@ -308,7 +340,7 @@ static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, c
     setHdr->settingsLayoutGuid = layoutGuid;
     Pak_RegisterGuidRefAtOffset(layoutGuid, offsetof(SettingsAssetHeader_s, settingsLayoutGuid), hdrLump, asset);
 
-    setHdr->uniqueId = JSON_GetNumberRequired<uint32_t>(settings, "uniqueId");
+    setHdr->uniqueId = JSON_GetNumberOrDefault(settings, "uniqueId", (uint32_t)0);
 
     rapidjson::Value::ConstMemberIterator setIt;
 
@@ -318,7 +350,7 @@ static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, c
     SettingsAsset_s settingsAsset;
     SettingsAssetMemory_s settingsMemory{};
 
-    SettingsAsset_InitializeAndMap(layoutAssetPath, settingsAsset, layoutAsset, entries, settingsMemory);
+    SettingsAsset_InitializeAndMap(layoutAssetPath, settingsAsset, layoutAsset, entries, settingsMemory, SIZE_MAX);
 
     const size_t assetNameBufLen = strlen(assetPath)+1;
     settingsMemory.stringBufSize += assetNameBufLen;
