@@ -57,6 +57,7 @@ struct SettingsLayoutParseResult_s
 	SettingsLayoutParseResult_s()
 		: subHeadersBufBase(0)
 		, curSubHeaderBufIndex(0)
+		, alignment(0)
 		, arrayElemCount(0)
 		, subLayoutCount(0)
 		, highestSubLayoutIndex(0)
@@ -76,6 +77,8 @@ struct SettingsLayoutParseResult_s
 
 	size_t subHeadersBufBase;
 	size_t curSubHeaderBufIndex;
+
+	uint32_t alignment;
 
 	int arrayElemCount;
 	uint32_t subLayoutCount;

@@ -324,7 +324,10 @@ static void SettingsLayout_BuildOffsetMap(SettingsLayoutAsset_s& layoutAsset)
         if (typeToUse == SettingsFieldType_e::ST_StaticArray)
         {
             const uint32_t subLayoutIndex = root.indexMap[i];
-            typeSize = layoutAsset.subLayouts[subLayoutIndex].rootLayout.totalValueBufferSize;
+            SettingsLayoutParseResult_s& sub = layoutAsset.subLayouts[subLayoutIndex].rootLayout;
+
+            sub.totalValueBufferSize = IALIGN(sub.totalValueBufferSize, sub.alignment);
+            typeSize = sub.arrayElemCount * sub.totalValueBufferSize;
 
             verifyPadding = true;
         }
@@ -336,10 +339,16 @@ static void SettingsLayout_BuildOffsetMap(SettingsLayoutAsset_s& layoutAsset)
             if (typeToUse == SettingsFieldType_e::ST_DynamicArray)
             {
                 const uint32_t subLayoutIndex = root.indexMap[i];
-                layoutAsset.subLayouts[subLayoutIndex].rootLayout.arrayElemCount = -1;
+                SettingsLayoutParseResult_s& sub = layoutAsset.subLayouts[subLayoutIndex].rootLayout;
+
+                sub.arrayElemCount = -1;
+                sub.totalValueBufferSize = IALIGN(sub.totalValueBufferSize, sub.alignment);
             }
 
             const uint32_t curTypeAlign = SettingsLayout_GetFieldAlignmentForType(typeToUse);
+
+            if (curTypeAlign > root.alignment)
+                root.alignment = curTypeAlign;
 
             if (verifyPadding)
             {
