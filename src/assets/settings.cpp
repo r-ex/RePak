@@ -295,9 +295,7 @@ static void SettingsAsset_WriteValues(const SettingsLayoutAsset_s& layoutAsset, 
         case SettingsFieldType_e::ST_DynamicArray:
         {
             const rapidjson::Value::ConstArray dynArray = it.value.GetArray();
-
             const uint32_t arraySize = static_cast<uint32_t>(dynArray.Size());
-            const uint32_t layoutSize = layoutAsset.rootLayout.totalValueBufferSize;
 
             SettingsDynamicArray_s* const dynHdr = reinterpret_cast<SettingsDynamicArray_s*>(&dataLump.data[targetOffset]);
             dynHdr->arraySize = arraySize;
