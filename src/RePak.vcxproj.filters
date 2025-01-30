@@ -554,9 +554,6 @@
     <ClInclude Include="logic\streamcache.h">
       <Filter>logic</Filter>
     </ClInclude>
-    <ClInclude Include="public\texture_anim.h">
-      <Filter>assets</Filter>
-    </ClInclude>
     <ClInclude Include="logic\streamfile.h">
       <Filter>logic</Filter>
     </ClInclude>
@@ -571,6 +568,9 @@
     </ClInclude>
     <ClInclude Include="math\common.h">
       <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="public\texture_anim.h">
+      <Filter>public</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
