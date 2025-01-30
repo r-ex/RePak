@@ -2,11 +2,6 @@
 #include "assets.h"
 #include "public/settings_layout.h"
 
-//
-// layout todo:
-// - array elem count must be -1 for dynamic arrays?
-//
-
 // Maximum number of retries to find a good hashing configuration
 // with the least amount of collisions.
 #define SETTINGS_LAYOUT_MAX_HASH_RETRIES 128
