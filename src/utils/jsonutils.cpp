@@ -30,7 +30,7 @@ bool JSON_ParseFromFile(const char* const assetPath, const char* const debugName
     jsonStream.Read(bufptr, fileSize);
     bufptr[fileSize] = '\0';
 
-    if (document.Parse(bufptr).HasParseError())
+    if (document.Parse(bufptr, fileSize).HasParseError())
     {
         g_jsonErrorCallback("%s: %s parse error at position %zu: [%s].\n", __FUNCTION__, debugName,
             document.GetErrorOffset(), rapidjson::GetParseError_En(document.GetParseError()));
