@@ -92,6 +92,15 @@ struct SettingsAssetMemory_s
 static void SettingsAsset_InitializeAndMap(const char* const layoutAssetPath, SettingsAsset_s& settingsAsset,
     const SettingsLayoutAsset_s& layoutAsset, const rapidjson::Value& value, SettingsAssetMemory_s& settingsMemory, const size_t bufferBase)
 {
+    if (!value.IsObject())
+        Error("Settings asset object using settings layout \"%s\" was not an object.\n", layoutAssetPath);
+
+    const size_t numSettingsFields = value.GetObject().MemberCount();
+    const size_t numLayoutFields = layoutAsset.rootLayout.fieldNames.size();
+
+    if (numSettingsFields != numLayoutFields)
+        Error("Settings asset has %zu fields, but settings layout \"%s\" lists %zu fields.\n", numSettingsFields, layoutAssetPath, numLayoutFields);
+
     settingsAsset.value = &value;
     settingsAsset.layout = &layoutAsset;
 
