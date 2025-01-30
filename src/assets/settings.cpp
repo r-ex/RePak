@@ -4,6 +4,7 @@
 #include "public/settings.h"
 
 #undef GetObject
+#define SETTINGS_MODS_FIELD "modNames"
 
 static void SettingsAsset_OpenFile(CPakFileBuilder* const pak, const char* const assetPath, rapidjson::Document& document)
 {
@@ -62,18 +63,22 @@ struct SettingsAssetMemory_s
 {
     inline size_t GetTotalBufferSize() const
     {
-        return guidBufSize + valueBufSize + stringBufSize;
+        return guidBufSize + modNamesPtrBufSize + valueBufSize + stringBufSize;
     }
 
     inline void InitCurrentIndices()
     {
         curGuidBufIndex = 0;
-        valueBufIndex = guidBufSize;
-        curStringBufIndex = guidBufSize + valueBufSize;
+        curModNamesPtrBufIndex = guidBufSize;
+        valueBufIndex = guidBufSize + modNamesPtrBufSize;
+        curStringBufIndex = guidBufSize + modNamesPtrBufSize + valueBufSize;
     }
 
     size_t guidBufSize;
     size_t curGuidBufIndex;
+
+    size_t modNamesPtrBufSize;
+    size_t curModNamesPtrBufIndex;
 
     size_t valueBufSize;
     size_t valueBufIndex;
@@ -185,6 +190,26 @@ static void SettingsAsset_InitializeAndMap(const char* const layoutAssetPath, Se
                 elementOffset += subLayout.rootLayout.totalValueBufferSize;
             }
         }
+    }
+}
+
+static void SettingsAsset_CalculateModNamesBuffers(const rapidjson::Value& modNamesValue, SettingsAssetMemory_s& settingsMemory)
+{
+    const rapidjson::Value::ConstArray array = modNamesValue.GetArray();
+    size_t elemIndex = 0;
+
+    for (const rapidjson::Value& elem : array)
+    {
+        if (!elem.IsString())
+        {
+            Error("Settings asset has mod name at index #%zu that is of type %s, but %s was expected.\n",
+                elemIndex, JSON_TypeToString(JSON_ExtractType(elem)), JSON_TypeToString(JSONFieldType_e::kString));
+        }
+
+        settingsMemory.modNamesPtrBufSize += sizeof(PagePtr_t);
+        settingsMemory.stringBufSize += elem.GetStringLength() + 1;
+
+        elemIndex++;
     }
 }
 
@@ -326,6 +351,22 @@ static void SettingsAsset_WriteValues(const SettingsLayoutAsset_s& layoutAsset, 
     }
 }
 
+static void SettingsLayout_WriteModNames(CPakFileBuilder* const pak, const rapidjson::Value& modNamesValue, SettingsAssetMemory_s& settingsMemory, PakPageLump_s& dataLump)
+{
+    const rapidjson::Value::ConstArray array = modNamesValue.GetArray();
+
+    for (const rapidjson::Value& elem : array)
+    {
+        const size_t stringBufLen = elem.GetStringLength() + 1;
+        memcpy(&dataLump.data[settingsMemory.curStringBufIndex], elem.GetString(), stringBufLen);
+
+        pak->AddPointer(dataLump, settingsMemory.curModNamesPtrBufIndex, dataLump, settingsMemory.curStringBufIndex);
+
+        settingsMemory.curModNamesPtrBufIndex += sizeof(PagePtr_t);
+        settingsMemory.curStringBufIndex += stringBufLen;
+    }
+}
+
 extern void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const assetPath, SettingsLayoutAsset_s& layoutAsset);
 
 static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath)
@@ -358,6 +399,25 @@ static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, c
     SettingsAssetMemory_s settingsMemory{};
 
     SettingsAsset_InitializeAndMap(layoutAssetPath, settingsAsset, layoutAsset, entries, settingsMemory, SIZE_MAX);
+    setHdr->valueBufSize = static_cast<uint32_t>(settingsMemory.valueBufSize);
+
+    rapidjson::Value::ConstMemberIterator modIt;
+    const bool hasModNames = JSON_GetIterator(settings, SETTINGS_MODS_FIELD, modIt);
+
+    if (hasModNames)
+    {
+        if (!modIt->value.IsArray())
+        {
+            Error("Settings asset contains mods array field \"%s\" and is of type %s, but %s was expected.\n",
+                SETTINGS_MODS_FIELD, JSON_TypeToString(JSON_ExtractType(modIt->value)), JSON_TypeToString(JSONFieldType_e::kArray));
+        }
+
+        if (modIt->value.GetArray().Empty())
+            Error("Settings asset contains mods array field \"%s\" that is empty.\n", SETTINGS_MODS_FIELD);
+
+        SettingsAsset_CalculateModNamesBuffers(modIt->value, settingsMemory);
+        setHdr->modNameCount = static_cast<uint32_t>(modIt->value.GetArray().Size());
+    }
 
     const size_t assetNameBufLen = strlen(assetPath)+1;
     settingsMemory.stringBufSize += assetNameBufLen;
@@ -365,21 +425,22 @@ static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, c
     settingsMemory.InitCurrentIndices();
     const size_t totalPageSize = settingsMemory.GetTotalBufferSize();
 
-    // todo: check if layout val buffer is larger and if so max it to that.
     PakPageLump_s dataLump = pak->CreatePageLump(totalPageSize, SF_CPU, 8);
     const size_t assetNameOffset = totalPageSize - assetNameBufLen;
 
     memcpy(&dataLump.data[assetNameOffset], assetPath, assetNameBufLen);
 
-    pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, name), dataLump, assetNameOffset);
     pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, valueData), dataLump, settingsMemory.valueBufIndex);
+    pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, name), dataLump, assetNameOffset);
     pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, stringData), dataLump, settingsMemory.curStringBufIndex);
+
+    if (hasModNames)
+        pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, modNames), dataLump, settingsMemory.curModNamesPtrBufIndex);
 
     SettingsAsset_WriteValues(layoutAsset, settingsAsset, settingsMemory, asset, pak, dataLump);
 
-    // todo: does this also count the arrays and dynamic array values?
-    // if yes, calculate the size in SettingsAsset_InitializeAndMap().
-    //setHdr->valueBufSize = layoutAsset.totalValueBufferSize;
+    if (hasModNames)
+        SettingsLayout_WriteModNames(pak, modIt->value, settingsMemory, dataLump);
 
     asset.InitAsset(hdrLump.GetPointer(), sizeof(SettingsAssetHeader_s), PagePtr_t::NullPtr(), STGS_VERSION, AssetType::STGS);
     asset.SetHeaderPointer(hdrLump.data);

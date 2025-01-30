@@ -15,12 +15,14 @@ struct SettingsAssetHeader_s
 
 	char unk_24[4]; // padding most likely
 
-	char** modNames;
+	const char** modNames;
 
 	void* unk_30;
 
-	int valueBufSize;
-	char unk_38[12];
+	uint32_t valueBufSize;
+	int unknown1;
+	uint32_t modNameCount;
+	int unknown3;
 };
 static_assert(sizeof(SettingsAssetHeader_s) == 72);
 
