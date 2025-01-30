@@ -5,13 +5,6 @@
 
 #undef GetObject
 
-//
-// Settings asset todo:
-// - make sure all fields in settings layout are defined and initialized in settings asset
-//      (error checking on this is currently disabled to make debugging and development
-//      easier, but in the runtime, not initializing these results in undefined behavior most likely.)
-//
-
 static void SettingsAsset_OpenFile(CPakFileBuilder* const pak, const char* const assetPath, rapidjson::Document& document)
 {
     const string fileName = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
