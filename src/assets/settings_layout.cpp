@@ -198,8 +198,8 @@ static void SettingsLayout_ParseTable(CPakFileBuilder* const pak, const char* co
 
     if (numFieldNames != numTypeNames || numTypeNames != numIndices)
     {
-        Error("Settings layout column count mismatch (%zu != %zu || %zu != %zu).\n",
-            numFieldNames, numTypeNames, numTypeNames, numIndices);
+        Error("Settings layout table \"%s\" has columns with mismatching row counts (%zu != %zu || %zu != %zu).\n",
+            settingsLayoutFile.c_str(), numFieldNames, numTypeNames, numTypeNames, numIndices);
     }
 
     result.typeMap.resize(numTypeNames);
@@ -215,7 +215,8 @@ static void SettingsLayout_ParseTable(CPakFileBuilder* const pak, const char* co
         if (typeToUse == SettingsFieldType_e::ST_Invalid)
         {
             const std::string& fieldName = result.fieldNames[i];
-            Error("Settings layout field \"%s\" uses unknown type \"%s\".\n", fieldName.c_str(), typeName.c_str());
+            Error("Settings layout table \"%s\" contains field \"%s\" that is using an unknown type \"%s\".\n",
+                settingsLayoutFile.c_str(), fieldName.c_str(), typeName.c_str());
         }
 
         result.typeMap[i] = typeToUse;
@@ -227,8 +228,8 @@ static void SettingsLayout_ParseTable(CPakFileBuilder* const pak, const char* co
 
             if (numSubLayouts && curLayoutIndex <= lastUsedSublayout)
             {
-                Error("Settings layout field \"%s\" is mapped to sub-layout #%u, but the previous array was already using this index.\n",
-                    result.fieldNames[i].c_str(), curLayoutIndex);
+                Error("Settings layout table \"%s\" contains field \"%s\" that is mapped to sub-layout #%u, but this index has already been used.\n",
+                    settingsLayoutFile.c_str(), result.fieldNames[i].c_str(), curLayoutIndex);
             }
 
             lastUsedSublayout = numSubLayouts++;
