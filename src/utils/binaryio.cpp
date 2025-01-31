@@ -294,7 +294,7 @@ void BinaryIO::Pad(const size_t count)
 
 	while (remainder)
 	{
-		const size_t writeCount = (std::min)(count, PAD_BUF_SIZE);
+		const size_t writeCount = (std::min)(remainder, PAD_BUF_SIZE);
 		Write(s_padBuf, writeCount);
 
 		remainder -= writeCount;
