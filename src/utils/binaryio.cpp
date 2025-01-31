@@ -55,7 +55,7 @@ bool BinaryIO::Open(const char* const filePath, const Mode_e mode)
 		m_stream.close();
 	}
 
-	m_stream.open(filePath, GetInternalStreamMode(mode));
+	m_stream.open(filePath, m_flags);
 
 	if (!m_stream.is_open() || !m_stream.good())
 	{
