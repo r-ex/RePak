@@ -176,7 +176,7 @@ static void SettingsLayout_ComputeHashParametersRecursive(SettingsLayoutAsset_s&
         SettingsLayout_ComputeHashParametersRecursive(subLayout);
 }
 
-static void SettingsLayout_ParseTable(CPakFileBuilder* const pak, const char* const assetPath, rapidcsv::Document& document, SettingsLayoutParseResult_s& result)
+static void SettingsLayout_ParseTable(CPakFileBuilder* const pak, const char* const assetPath, SettingsLayoutParseResult_s& result)
 {
     const std::string settingsLayoutFile = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".csv");
     std::ifstream datatableStream(settingsLayoutFile);
@@ -184,7 +184,7 @@ static void SettingsLayout_ParseTable(CPakFileBuilder* const pak, const char* co
     if (!datatableStream.is_open())
         Error("Failed to open settings layout table \"%s\".\n", settingsLayoutFile.c_str());
 
-    document.ReadCsv(datatableStream);
+    rapidcsv::Document document(datatableStream);
 
     result.fieldNames = document.GetColumn<std::string>(0);
     const size_t numFieldNames = result.fieldNames.size();
@@ -254,8 +254,7 @@ static void SettingsLayout_ParseMap(CPakFileBuilder* const pak, const char* cons
     rootParseResult.arrayElemCount = max(JSON_GetValueOrDefault(document, "elementCount", (uint32_t)1), 1);
 
     // Parse the root layout and figure out what the highest sub-layout index is.
-    rapidcsv::Document rootLayoutTable;
-    SettingsLayout_ParseTable(pak, assetPath, rootLayoutTable, rootParseResult);
+    SettingsLayout_ParseTable(pak, assetPath, rootParseResult);
 
     if (rootParseResult.subLayoutCount > 0)
     {
