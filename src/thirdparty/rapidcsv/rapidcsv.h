@@ -2,9 +2,9 @@
  * rapidcsv.h
  *
  * URL:      https://github.com/d99kris/rapidcsv
- * Version:  8.84
+ * Version:  8.85
  *
- * Copyright (C) 2017-2024 Kristofer Berggren
+ * Copyright (C) 2017-2025 Kristofer Berggren
  * All rights reserved.
  *
  * rapidcsv is distributed under the BSD 3-Clause license, see LICENSE for details.
@@ -860,9 +860,10 @@ namespace rapidcsv
      */
     size_t GetColumnCount(const size_t pRowIdx) const
     {
-      const int count = static_cast<int>((mData.size() > 0) ? mData.at(pRowIdx).size() : 0) -
-        (mLabelParams.mRowNameIdx + 1);
-      return (count >= 0) ? static_cast<size_t>(count) : 0;
+        const size_t firstRow = static_cast<size_t>((mLabelParams.mColumnNameIdx >= 0) ? mLabelParams.mColumnNameIdx : 0);
+        const int count = static_cast<int>(((pRowIdx > firstRow) && (mData.size() > firstRow)) ? mData.at(pRowIdx).size() : 0) -
+            (mLabelParams.mRowNameIdx + 1);
+        return (count >= 0) ? static_cast<size_t>(count) : 0;
     }
 
     /**
@@ -871,7 +872,10 @@ namespace rapidcsv
      */
     size_t GetColumnCount() const
     {
-      return GetColumnCount(0);
+      const size_t firstRow = static_cast<size_t>((mLabelParams.mColumnNameIdx >= 0) ? mLabelParams.mColumnNameIdx : 0);
+      const int count = static_cast<int>((mData.size() > firstRow) ? mData.at(firstRow).size() : 0) -
+        (mLabelParams.mRowNameIdx + 1);
+      return (count >= 0) ? static_cast<size_t>(count) : 0;
     }
 
     /**
@@ -1488,6 +1492,7 @@ namespace rapidcsv
       return rownames;
     }
 
+  private:
     void ReadCsv()
     {
       std::ifstream stream;
@@ -1566,7 +1571,6 @@ namespace rapidcsv
       }
     }
 
-  private:
     void ParseCsv(std::istream& pStream, std::streamsize p_FileLength)
     {
       const std::streamsize bufLength = 64 * 1024;
