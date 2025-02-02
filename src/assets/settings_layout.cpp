@@ -253,7 +253,9 @@ static void SettingsLayout_ParseMap(CPakFileBuilder* const pak, const char* cons
         Error("Failed to open settings layout \"%s\".\n", settingsLayoutFile.c_str());
 
     SettingsLayoutParseResult_s& rootParseResult = asset.rootLayout;
-    rootParseResult.arrayElemCount = max(JSON_GetValueOrDefault(document, "elementCount", (uint32_t)1), 1);
+
+    rootParseResult.arrayElemCount = max(JSON_GetValueOrDefault(document, "elementCount", 1u), 1u);
+    rootParseResult.extraDataSizeIndex = JSON_GetValueRequired<uint32_t>(document, "extraDataSizeIndex");
 
     // Parse the root layout and figure out what the highest sub-layout index is.
     SettingsLayout_ParseTable(pak, assetPath, rootParseResult);
