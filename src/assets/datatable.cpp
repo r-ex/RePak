@@ -63,11 +63,18 @@ static size_t DataTable_SetupRows(const rapidcsv::Document& doc, datatable_t* co
 
         if (DataTable_IsStringType(type))
         {
+            const bool isPrecachedAsset = type == dtblcoltype_t::Asset;
+
             for (uint32_t j = 0; j < dtblHdr->numRows; ++j)
             {
                 // this can be std::string since we only deal with the string types here
                 std::vector<std::string> row = doc.GetRow<std::string>(j);
-                tmp.rowStringValueBufSize += row[i].length() + 1;
+                const size_t strLen = row[i].length();
+
+                if (isPrecachedAsset && strLen > 0)
+                    tmp.guidRefBufSize += sizeof(PakGuid_t);
+
+                tmp.rowStringValueBufSize += strLen + 1;
             }
         }
 
@@ -208,10 +215,11 @@ static void DataTable_SetupValues(CPakFileBuilder* const pak, PakAsset_t& asset,
             case dtblcoltype_t::AssetNoPrecache:
             {
                 const std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx, col.type);
+                const size_t valBufLen = val.length()+1;
 
                 // dtblcoltype_t::Asset types must be precached, add guid dependency
                 // that needs to be resolved in the runtime before this asset is parsed.
-                if (col.type == dtblcoltype_t::Asset)
+                if (valBufLen > 1 && col.type == dtblcoltype_t::Asset)
                 {
                     const PakGuid_t assetGuid = RTech::StringToGuid(val.c_str());
                     const size_t guidRefOffset = guidRefBufBase + curGuidRefIndex;
@@ -222,13 +230,12 @@ static void DataTable_SetupValues(CPakFileBuilder* const pak, PakAsset_t& asset,
                     curGuidRefIndex += sizeof(PakGuid_t);
                 }
 
-                const size_t valBufLen = val.length() + 1;
                 memcpy(pStringBuf, val.c_str(), valBufLen);
-
                 valbuf.write(dataChunk.GetPointer(stringValueBase + (pStringBuf - pStringBufBase)));
-                pak->AddPointer(dataChunk, podValueBase + valueOffset);
 
+                pak->AddPointer(dataChunk, podValueBase + valueOffset);
                 pStringBuf += valBufLen;
+
                 break;
             }
             }
