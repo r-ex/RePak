@@ -26,8 +26,8 @@ struct SettingsField_s
 
 struct SettingsFieldMap_s
 {
-	uint16_t fieldIndex;
-	uint16_t nameIndex;
+	uint16_t fieldBucketIndex;
+	uint16_t debugTextIndex;
 };
 
 struct SettingsDynamicArray_s
@@ -76,6 +76,7 @@ struct SettingsLayoutParseResult_s
 
 	std::vector<std::string> fieldNames;
 	std::vector<std::string> typeNames;
+	std::vector<std::string> debugTexts;
 	std::vector<uint32_t> offsetMap;
 	std::vector<uint32_t> indexMap;
 	std::vector<uint32_t> bucketMap;

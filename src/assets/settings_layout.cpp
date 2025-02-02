@@ -194,14 +194,16 @@ static void SettingsLayout_ParseTable(CPakFileBuilder* const pak, const char* co
 
     result.typeNames = document.GetColumn<std::string>(1);
     result.indexMap = document.GetColumn<uint32_t>(2);
+    result.debugTexts = document.GetColumn<std::string>(3);
 
     const size_t numTypeNames = result.typeNames.size();
     const size_t numIndices = result.indexMap.size();
+    const size_t numDebugTexts = result.debugTexts.size();
 
-    if (numFieldNames != numTypeNames || numTypeNames != numIndices)
+    if (numFieldNames != numTypeNames || numTypeNames != numIndices || numIndices != numDebugTexts)
     {
-        Error("Settings layout table \"%s\" has columns with mismatching row counts (%zu != %zu || %zu != %zu).\n",
-            settingsLayoutFile.c_str(), numFieldNames, numTypeNames, numTypeNames, numIndices);
+        Error("Settings layout table \"%s\" has columns with mismatching row counts (%zu != %zu || %zu != %zu || %zu != %zu).\n",
+            settingsLayoutFile.c_str(), numFieldNames, numTypeNames, numTypeNames, numIndices, numIndices, numDebugTexts);
     }
 
     result.typeMap.resize(numTypeNames);
@@ -396,14 +398,15 @@ struct SettingsLayoutMemory_s
 {
     inline size_t GetTotalBufferSize() const
     {
-        return outFieldBufSize + outSubHeadersBufSize + outStringBufLen;
+        return outFieldBufSize + outSubHeadersBufSize + outFieldMapSize + outStringBufLen;
     }
 
     inline void InitCurrentIndices()
     {
         curFieldBufIndex = 0;
-        subHeadersBufIndex = outFieldBufSize;
-        curStringBufIndex = outFieldBufSize + outSubHeadersBufSize;
+        subHeadersBufIndex = curFieldBufIndex + outFieldBufSize;
+        curFieldMapIndex = subHeadersBufIndex + outSubHeadersBufSize;
+        curStringBufIndex = curFieldMapIndex + outFieldMapSize;
     }
 
     size_t outFieldBufSize;
@@ -411,6 +414,9 @@ struct SettingsLayoutMemory_s
 
     size_t outSubHeadersBufSize;
     size_t subHeadersBufIndex;
+
+    size_t outFieldMapSize;
+    size_t curFieldMapIndex;
 
     size_t outStringBufLen;
     size_t curStringBufIndex;
@@ -427,8 +433,13 @@ static void SettingsLayout_CalculateBufferSizes(SettingsLayoutAsset_s& layoutAss
     if (!isInitialRoot)
         layoutMemory.outSubHeadersBufSize += sizeof(SettingsLayoutHeader_s);
 
+    layoutMemory.outFieldMapSize += rootParseResult.fieldNames.size() * sizeof(SettingsFieldMap_s);
+
     for (const std::string& fieldName : rootParseResult.fieldNames)
         layoutMemory.outStringBufLen += fieldName.size() + 1;
+
+    for (const std::string& debugText : rootParseResult.debugTexts)
+        layoutMemory.outStringBufLen += debugText.size() + 1;
 
     // Note(amos): string buf len must be total + 1 per settings layout because
     // the first field to be written in the settings layout will have the
@@ -461,7 +472,8 @@ static void SettingsLayout_WriteFieldData(PakPageLump_s& dataLump, const Setting
 
     for (size_t i = 0; i < numFields; i++)
     {
-        const uint32_t bucketIndex = (parse.bucketMap[i] * sizeof(SettingsField_s));
+        const uint32_t localBucket = parse.bucketMap[i];
+        const uint32_t bucketIndex = (localBucket * sizeof(SettingsField_s));
         SettingsField_s* const field = reinterpret_cast<SettingsField_s*>(&dataLump.data[layoutMemory.curFieldBufIndex + bucketIndex]);
 
         field->type = parse.typeMap[i];
@@ -476,9 +488,24 @@ static void SettingsLayout_WriteFieldData(PakPageLump_s& dataLump, const Setting
 
         layoutMemory.curStringBufIndex += fieldNameLen;
         numStringBytesWritten += fieldNameLen;
+
+        const size_t mapIndex = i * sizeof(SettingsFieldMap_s);
+        SettingsFieldMap_s* const map = reinterpret_cast<SettingsFieldMap_s*>(&dataLump.data[layoutMemory.curFieldMapIndex + mapIndex]);
+
+        map->fieldBucketIndex = static_cast<uint16_t>(localBucket);
+        map->debugTextIndex = static_cast<uint16_t>(numStringBytesWritten);
+
+        const std::string& debugText = parse.debugTexts[i];
+        const size_t debugTextLen = debugText.size() + 1;
+
+        memcpy(&dataLump.data[layoutMemory.curStringBufIndex], debugText.c_str(), debugTextLen);
+
+        layoutMemory.curStringBufIndex += debugTextLen;
+        numStringBytesWritten += debugTextLen;
     }
 
     layoutMemory.curFieldBufIndex += parse.hashTableSize * sizeof(SettingsField_s);
+    layoutMemory.curFieldMapIndex += parse.fieldNames.size() * sizeof(SettingsFieldMap_s);
 }
 
 static void SettingsLayout_WriteLayoutRecursive(CPakFileBuilder* const pak, SettingsLayoutAsset_s& layoutAsset,
@@ -494,6 +521,7 @@ static void SettingsLayout_WriteLayoutRecursive(CPakFileBuilder* const pak, Sett
         SettingsLayout_InitializeHeader(header, parse);
 
         pak->AddPointer(dataLump, rootIndex + offsetof(SettingsLayoutHeader_s, fieldData), dataLump, layoutMemory.curFieldBufIndex);
+        pak->AddPointer(dataLump, rootIndex + offsetof(SettingsLayoutHeader_s, fieldMap), dataLump, layoutMemory.curFieldMapIndex);
         pak->AddPointer(dataLump, rootIndex + offsetof(SettingsLayoutHeader_s, fieldNames), dataLump, layoutMemory.curStringBufIndex);
 
         parent->curSubHeaderBufIndex += sizeof(SettingsLayoutHeader_s);
@@ -545,6 +573,7 @@ static void SettingsLayout_InternalAddLayoutAsset(CPakFileBuilder* const pak, co
 
     pak->AddPointer(hdrLump, offsetof(SettingsLayoutHeader_s, name), dataLump, assetNameOffset);
     pak->AddPointer(hdrLump, offsetof(SettingsLayoutHeader_s, fieldData), dataLump, layoutMemory.curFieldBufIndex);
+    pak->AddPointer(hdrLump, offsetof(SettingsLayoutHeader_s, fieldMap), dataLump, layoutMemory.curFieldMapIndex);
     pak->AddPointer(hdrLump, offsetof(SettingsLayoutHeader_s, fieldNames), dataLump, layoutMemory.curStringBufIndex);
 
     if (!layoutAsset.subLayouts.empty())
