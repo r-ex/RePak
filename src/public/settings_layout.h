@@ -76,7 +76,7 @@ struct SettingsLayoutParseResult_s
 
 	std::vector<std::string> fieldNames;
 	std::vector<std::string> typeNames;
-	std::vector<std::string> debugTexts;
+	std::vector<std::string> helpTexts;
 	std::vector<uint32_t> offsetMap;
 	std::vector<uint32_t> indexMap;
 	std::vector<uint32_t> bucketMap;

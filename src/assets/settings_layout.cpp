@@ -194,16 +194,16 @@ static void SettingsLayout_ParseTable(CPakFileBuilder* const pak, const char* co
 
     result.typeNames = document.GetColumn<std::string>(1);
     result.indexMap = document.GetColumn<uint32_t>(2);
-    result.debugTexts = document.GetColumn<std::string>(3);
+    result.helpTexts = document.GetColumn<std::string>(3);
 
     const size_t numTypeNames = result.typeNames.size();
     const size_t numIndices = result.indexMap.size();
-    const size_t numDebugTexts = result.debugTexts.size();
+    const size_t numHelpTexts = result.helpTexts.size();
 
-    if (numFieldNames != numTypeNames || numTypeNames != numIndices || numIndices != numDebugTexts)
+    if (numFieldNames != numTypeNames || numTypeNames != numIndices || numIndices != numHelpTexts)
     {
         Error("Settings layout table \"%s\" has columns with mismatching row counts (%zu != %zu || %zu != %zu || %zu != %zu).\n",
-            settingsLayoutFile.c_str(), numFieldNames, numTypeNames, numTypeNames, numIndices, numIndices, numDebugTexts);
+            settingsLayoutFile.c_str(), numFieldNames, numTypeNames, numTypeNames, numIndices, numIndices, numHelpTexts);
     }
 
     result.typeMap.resize(numTypeNames);
@@ -438,7 +438,7 @@ static void SettingsLayout_CalculateBufferSizes(SettingsLayoutAsset_s& layoutAss
     for (const std::string& fieldName : rootParseResult.fieldNames)
         layoutMemory.outStringBufLen += fieldName.size() + 1;
 
-    for (const std::string& debugText : rootParseResult.debugTexts)
+    for (const std::string& debugText : rootParseResult.helpTexts)
         layoutMemory.outStringBufLen += debugText.size() + 1;
 
     // Note(amos): string buf len must be total + 1 per settings layout because
@@ -495,7 +495,7 @@ static void SettingsLayout_WriteFieldData(PakPageLump_s& dataLump, const Setting
         map->fieldBucketIndex = static_cast<uint16_t>(localBucket);
         map->debugTextIndex = static_cast<uint16_t>(numStringBytesWritten);
 
-        const std::string& debugText = parse.debugTexts[i];
+        const std::string& debugText = parse.helpTexts[i];
         const size_t debugTextLen = debugText.size() + 1;
 
         memcpy(&dataLump.data[layoutMemory.curStringBufIndex], debugText.c_str(), debugTextLen);
