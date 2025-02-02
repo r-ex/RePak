@@ -493,7 +493,7 @@ static void SettingsLayout_WriteLayoutRecursive(CPakFileBuilder* const pak, Sett
 
         SettingsLayout_InitializeHeader(header, parse);
 
-        pak->AddPointer(dataLump, rootIndex + offsetof(SettingsLayoutHeader_s, fieldMap), dataLump, layoutMemory.curFieldBufIndex);
+        pak->AddPointer(dataLump, rootIndex + offsetof(SettingsLayoutHeader_s, fieldData), dataLump, layoutMemory.curFieldBufIndex);
         pak->AddPointer(dataLump, rootIndex + offsetof(SettingsLayoutHeader_s, fieldNames), dataLump, layoutMemory.curStringBufIndex);
 
         parent->curSubHeaderBufIndex += sizeof(SettingsLayoutHeader_s);
@@ -544,7 +544,7 @@ static void SettingsLayout_InternalAddLayoutAsset(CPakFileBuilder* const pak, co
     SettingsLayout_InitializeHeader(layoutHeader, layoutAsset.rootLayout);
 
     pak->AddPointer(hdrLump, offsetof(SettingsLayoutHeader_s, name), dataLump, assetNameOffset);
-    pak->AddPointer(hdrLump, offsetof(SettingsLayoutHeader_s, fieldMap), dataLump, layoutMemory.curFieldBufIndex);
+    pak->AddPointer(hdrLump, offsetof(SettingsLayoutHeader_s, fieldData), dataLump, layoutMemory.curFieldBufIndex);
     pak->AddPointer(hdrLump, offsetof(SettingsLayoutHeader_s, fieldNames), dataLump, layoutMemory.curStringBufIndex);
 
     if (!layoutAsset.subLayouts.empty())

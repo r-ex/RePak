@@ -24,6 +24,12 @@ struct SettingsField_s
 	uint32_t subLayoutIndex : 8;
 };
 
+struct SettingsFieldMap_s
+{
+	uint16_t fieldIndex;
+	uint16_t nameIndex;
+};
+
 struct SettingsDynamicArray_s
 {
 	uint32_t arraySize;   // Can be 0, since dynamic arrays are meant to be growable in the runtime.
@@ -34,8 +40,8 @@ static_assert(sizeof(SettingsDynamicArray_s) == 8);
 struct SettingsLayoutHeader_s
 {
 	PagePtr_t name;
-	PagePtr_t fieldMap;
-	PagePtr_t unk_10; // seems unused, needs research.
+	PagePtr_t fieldData; // SettingsField_s
+	PagePtr_t fieldMap;  // SettingsFieldMap_s
 
 	uint32_t hashTableSize;
 	uint32_t fieldCount;
@@ -46,7 +52,7 @@ struct SettingsLayoutHeader_s
 	// -1 on dynamic arrays?
 	int arrayElemCount;
 	int layoutSize;
-	int unk_34; // seems unused, needs research.
+	int unk_34; // seems unused, needs research, always 0, most likely padding.
 	PagePtr_t fieldNames;
 	PagePtr_t subHeaders; // points to an array of SettingsLayoutHeader_s
 };
