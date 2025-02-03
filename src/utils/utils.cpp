@@ -85,60 +85,6 @@ std::string Utils::ChangeExtension(const std::string& in, const std::string& ext
 	return std::filesystem::path(in).replace_extension(ext).string();
 }
 
-//-----------------------------------------------------------------------------
-// purpose: parse json document and handle parsing errors
-//-----------------------------------------------------------------------------
-void Utils::ParseMapDocument(js::Document& doc, const char* const path)
-{
-    std::ifstream ifs(path);
-
-    if (!ifs.is_open())
-        Error("Couldn't open map file \"%s\".\n", path);
-
-    // begin json parsing
-    js::IStreamWrapper jsonStreamWrapper{ ifs };
-    doc.ParseStream<js::ParseFlag::kParseCommentsFlag | js::ParseFlag::kParseTrailingCommasFlag>(jsonStreamWrapper);
-
-    // handle parse errors
-    if (doc.HasParseError()) {
-        int lineNum = 1;
-        int columnNum = 0;
-        std::string lastLine = "";
-        std::string curLine = "";
-
-        size_t offset = doc.GetErrorOffset();
-        ifs.clear();
-        ifs.seekg(0, std::ios::beg);
-        js::IStreamWrapper isw{ ifs };
-
-        for (int i = 0; ; i++)
-        {
-            const char c = isw.Take();
-            curLine.push_back(c);
-            if (c == '\n')
-            {
-                if (i >= offset)
-                    break;
-                lastLine = curLine;
-                curLine = "";
-                lineNum++;
-                columnNum = 0;
-            }
-            else
-            {
-                if (i < offset)
-                    columnNum++;
-            }
-        }
-
-        // this could probably be formatted nicer
-        Error("Failed to parse map file %s: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n",
-            path, lineNum, columnNum,
-            GetParseError_En(doc.GetParseError()),
-            lastLine.c_str(), curLine.c_str(), (std::string(columnNum, ' ') += '^').c_str());
-    }
-}
-
 void Utils::ResolvePath(std::string& outPath, const std::filesystem::path& mapPath)
 {
     fs::path outputDirPath(outPath);

@@ -37,7 +37,7 @@ static void RePak_ParseListedDocument(js::Document& doc, const char* const docPa
     std::string finalName = docName;
 
     Utils::ResolvePath(finalName, docPath);
-    Utils::ParseMapDocument(doc, finalName.c_str());
+    JSON_ParseFromFile(finalName.c_str(), "listed build map", doc);
 }
 
 static void RePak_BuildSingle(const js::Document& doc, const char* const mapPath)
@@ -106,7 +106,7 @@ static void RePak_HandleBuild(const char* const arg)
         // load and parse map file, this file is essentially the
         // control file; deciding what is getting packed, etc..
         js::Document doc;
-        Utils::ParseMapDocument(doc, arg);
+        JSON_ParseFromFile(arg, "main build map", doc);
 
         js::Value::ConstMemberIterator paksIt;
 
