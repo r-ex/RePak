@@ -53,9 +53,6 @@ static size_t DataTable_SetupRows(const rapidcsv::Document& doc, datatable_t* co
         if (type == dtblcoltype_t::INVALID)
             DataTable_ReportInvalidDataTypeError(typeString.c_str(), dtblHdr->numRows, i);
 
-        if (type == dtblcoltype_t::Asset)
-            tmp.guidRefBufSize += sizeof(PakGuid_t) * dtblHdr->numRows;
-
         const size_t curTypeAlign = DataTable_GetAlignmentForType(type);
 
         if (curTypeAlign > highestTypeAlign)
