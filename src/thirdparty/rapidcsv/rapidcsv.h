@@ -860,10 +860,9 @@ namespace rapidcsv
      */
     size_t GetColumnCount(const size_t pRowIdx) const
     {
-        const size_t firstRow = static_cast<size_t>((mLabelParams.mColumnNameIdx >= 0) ? mLabelParams.mColumnNameIdx : 0);
-        const int count = static_cast<int>(((pRowIdx > firstRow) && (mData.size() > firstRow)) ? mData.at(pRowIdx).size() : 0) -
-            (mLabelParams.mRowNameIdx + 1);
-        return (count >= 0) ? static_cast<size_t>(count) : 0;
+      const int count = static_cast<int>((mData.size() > 0) ? mData.at(pRowIdx).size() : 0) -
+        (mLabelParams.mRowNameIdx + 1);
+      return (count >= 0) ? static_cast<size_t>(count) : 0;
     }
 
     /**
