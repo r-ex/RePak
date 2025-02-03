@@ -11,26 +11,17 @@
 //-----------------------------------------------------------------------------
 bool JSON_ParseFromFile(const char* const assetPath, const char* const debugName, rapidjson::Document& document)
 {
-    BinaryIO jsonStream;
+    std::ifstream ifs(assetPath);
 
-    if (!jsonStream.Open(assetPath, BinaryIO::Mode_e::Read))
-        return false;
-
-    const ssize_t fileSize = jsonStream.GetSize();
-
-    if (!fileSize)
+    if (!ifs)
     {
-        g_jsonErrorCallback("%s: %s was empty.\n", __FUNCTION__, debugName);
+        g_jsonErrorCallback("%s: couldn't open %s file.\n", __FUNCTION__, debugName);
         return false;
     }
 
-    std::unique_ptr<char[]> uniquebuf(new char[fileSize + 1]);
-    char* const bufptr = uniquebuf.get();
+    rapidjson::IStreamWrapper jsonStreamWrapper(ifs);
 
-    jsonStream.Read(bufptr, fileSize);
-    bufptr[fileSize] = '\0';
-
-    if (document.Parse(bufptr, fileSize).HasParseError())
+    if (document.ParseStream(jsonStreamWrapper).HasParseError())
     {
         g_jsonErrorCallback("%s: %s parse error at position %zu: [%s].\n", __FUNCTION__, debugName,
             document.GetErrorOffset(), rapidjson::GetParseError_En(document.GetParseError()));
