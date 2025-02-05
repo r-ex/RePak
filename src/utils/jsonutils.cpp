@@ -9,13 +9,18 @@
 //-----------------------------------------------------------------------------
 // Purpose: parsing a json file from stream.
 //-----------------------------------------------------------------------------
-bool JSON_ParseFromFile(const char* const assetPath, const char* const debugName, rapidjson::Document& document)
+bool JSON_ParseFromFile(const char* const assetPath, const char* const debugName, rapidjson::Document& document, const bool mandatory)
 {
     std::ifstream ifs(assetPath);
 
     if (!ifs)
     {
-        g_jsonErrorCallback("%s: couldn't open %s file.\n", __FUNCTION__, debugName);
+        // Note: mandatory only prevents the error if the file doesn't exist,
+        // if there are parsing or validation problems, we will still error as
+        // these are considered unintentional problems.
+        if (mandatory)
+            g_jsonErrorCallback("%s: couldn't open %s file.\n", __FUNCTION__, debugName);
+
         return false;
     }
 

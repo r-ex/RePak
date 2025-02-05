@@ -10,7 +10,7 @@ static void SettingsAsset_OpenFile(CPakFileBuilder* const pak, const char* const
 {
     const string fileName = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
 
-    if (!JSON_ParseFromFile(fileName.c_str(), "settings asset", document))
+    if (!JSON_ParseFromFile(fileName.c_str(), "settings asset", document, true))
         Error("Failed to open settings asset \"%s\".\n", fileName.c_str());
 }
 

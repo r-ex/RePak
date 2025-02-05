@@ -44,7 +44,7 @@ static void Texture_ProcessMetaData(CPakFileBuilder* const pak, const char* cons
     const std::string metaFilePath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
     rapidjson::Document document;
 
-    if (!JSON_ParseFromFile(metaFilePath.c_str(), "texture metadata", document))
+    if (!JSON_ParseFromFile(metaFilePath.c_str(), "texture metadata", document, false))
         return;
 
     rapidjson::Value::ConstMemberIterator streamLayoutIt;

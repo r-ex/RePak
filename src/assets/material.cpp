@@ -488,7 +488,7 @@ static void Material_OpenFile(CPakFileBuilder* const pak, const char* const asse
 {
     const string fileName = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
 
-    if (!JSON_ParseFromFile(fileName.c_str(), "material asset", document))
+    if (!JSON_ParseFromFile(fileName.c_str(), "material asset", document, true))
         Error("Failed to open material asset \"%s\".\n", fileName.c_str());
 }
 

@@ -249,7 +249,7 @@ static void SettingsLayout_ParseMap(CPakFileBuilder* const pak, const char* cons
     const std::string settingsLayoutFile = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
     rapidjson::Document document;
 
-    if (!JSON_ParseFromFile(settingsLayoutFile.c_str(), "settings layout", document))
+    if (!JSON_ParseFromFile(settingsLayoutFile.c_str(), "settings layout", document, true))
         Error("Failed to open settings layout \"%s\".\n", settingsLayoutFile.c_str());
 
     SettingsLayoutParseResult_s& rootParseResult = asset.rootLayout;
