@@ -231,6 +231,9 @@
     <ClCompile Include="assets\settings_layout.cpp">
       <Filter>assets</Filter>
     </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_preSplit.c">
+      <Filter>thirdparty\zstandard\compress</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -571,6 +574,9 @@
     </ClInclude>
     <ClInclude Include="public\texture_anim.h">
       <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\zstd\compress\zstd_preSplit.h">
+      <Filter>thirdparty\zstandard\compress</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

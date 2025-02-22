@@ -119,6 +119,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_preSplit.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="thirdparty\zstd\decompress\huf_decompress.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -261,6 +265,7 @@
     <ClInclude Include="thirdparty\zstd\compress\zstd_ldm.h" />
     <ClInclude Include="thirdparty\zstd\compress\zstd_ldm_geartab.h" />
     <ClInclude Include="thirdparty\zstd\compress\zstd_opt.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_preSplit.h" />
     <ClInclude Include="thirdparty\zstd\decompress\zstd_ddict.h" />
     <ClInclude Include="thirdparty\zstd\decompress\zstd_decompress_block.h" />
     <ClInclude Include="thirdparty\zstd\decompress\zstd_decompress_internal.h" />
