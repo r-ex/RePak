@@ -189,7 +189,7 @@ inline JSONFieldType_e JSON_GetTypeForType()
     else if constexpr (std::is_same<T, std::string>::value)
         return JSONFieldType_e::kString;
     else
-        static_assert(false, "Cannot classify data type; unsupported.");
+        static_assert(std::is_same_v<T, void>, "Cannot classify data type; unsupported.");
 }
 
 //-----------------------------------------------------------------------------
@@ -389,7 +389,7 @@ inline bool JSON_StringToNumber(const char* const str, const size_t len, V& num)
     else if constexpr (std::is_same<V, double>::value)
         num = strtod(str, &end);
     else
-        static_assert(false, "Cannot classify numeric type; unsupported.");
+        static_assert(std::is_same_v<V, void>, "Cannot classify numeric type; unsupported.");
 
     return end == &str[len];
 }
