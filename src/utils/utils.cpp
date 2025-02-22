@@ -152,7 +152,7 @@ PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success)
     return 0;
 }
 
-PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, const char* const member, bool* const success)
+PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, rapidjson::Value::StringRefType member, bool* const success)
 {
     rapidjson::Value::ConstMemberIterator it;
 
@@ -163,7 +163,7 @@ PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, const char* const member, b
     return 0;
 }
 
-PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const PakGuid_t fallback)
+PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, rapidjson::Value::StringRefType member, const PakGuid_t fallback)
 {
     bool success;
     const PakGuid_t guid = Pak_ParseGuid(val, member, &success);
@@ -174,7 +174,7 @@ PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const me
     return fallback;
 }
 
-PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const char* const fallback)
+PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, rapidjson::Value::StringRefType member, const char* const fallback)
 {
     bool success;
     const PakGuid_t guid = Pak_ParseGuid(val, member, &success);
@@ -185,13 +185,13 @@ PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const me
     return RTech::StringToGuid(fallback);
 }
 
-PakGuid_t Pak_ParseGuidRequired(const rapidjson::Value& val, const char* const member)
+PakGuid_t Pak_ParseGuidRequired(const rapidjson::Value& val, rapidjson::Value::StringRefType member)
 {
     bool success;
     const PakGuid_t guid = Pak_ParseGuid(val, member, &success);
 
     if (!success)
-        Error("%s: failed to parse field \"%s\".\n", __FUNCTION__, member);
+        Error("%s: failed to parse field \"%s\".\n", __FUNCTION__, member.s);
 
     return guid;
 }
@@ -237,7 +237,7 @@ PakGuid_t Pak_ParseGuidFromObject(const rapidjson::Value& val, const char* const
     return RTech::StringToGuid(outAssetName);
 }
 
-PakGuid_t Pak_ParseGuidFromMap(const rapidjson::Value& mapEntry, const char* const fieldName,
+PakGuid_t Pak_ParseGuidFromMap(const rapidjson::Value& mapEntry, rapidjson::Value::StringRefType fieldName,
     const char* const debugName, const char*& outAssetName, const bool requiredField)
 {
     rapidjson::Value::ConstMemberIterator it;

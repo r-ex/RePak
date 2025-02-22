@@ -196,9 +196,9 @@ inline JSONFieldType_e JSON_GetTypeForType()
 // Purpose: checks if the member exists and if its value is of type provided
 //-----------------------------------------------------------------------------
 template <class T>
-inline bool JSON_HasMemberAndIsOfType(const T& data, const char* const member, const JSONFieldType_e type)
+inline bool JSON_HasMemberAndIsOfType(const T& data, typename T::StringRefType member, const JSONFieldType_e type)
 {
-    const T::ConstMemberIterator it = data.FindMember(member);
+    const T::ConstMemberIterator it = data.FindMember(rapidjson::Value(member));
 
     if (it != data.MemberEnd())
     {
@@ -213,9 +213,9 @@ inline bool JSON_HasMemberAndIsOfType(const T& data, const char* const member, c
 //          aforementioned condition is met
 //-----------------------------------------------------------------------------
 template <class T>
-inline bool JSON_GetIterator(const T& data, const char* const member, typename T::ConstMemberIterator& out)
+inline bool JSON_GetIterator(const T& data, typename T::StringRefType member, typename T::ConstMemberIterator& out)
 {
-    const T::ConstMemberIterator it = data.FindMember(member);
+    const T::ConstMemberIterator it = data.FindMember(rapidjson::Value(member));
 
     if (it != data.MemberEnd())
     {
@@ -233,10 +233,10 @@ inline bool JSON_GetIterator(const T& data, const char* const member, typename T
 //          are met
 //-----------------------------------------------------------------------------
 template <class T>
-inline bool JSON_GetIterator(const T& data, const char* const member,
+inline bool JSON_GetIterator(const T& data, typename T::StringRefType member,
     const JSONFieldType_e type, typename T::ConstMemberIterator& out)
 {
-    const T::ConstMemberIterator it = data.FindMember(member);
+    const T::ConstMemberIterator it = data.FindMember(rapidjson::Value(member));
 
     if (it != data.MemberEnd())
     {
@@ -252,17 +252,17 @@ inline bool JSON_GetIterator(const T& data, const char* const member,
 }
 
 template <class T>
-inline bool JSON_GetRequired(const T& data, const char* const member, typename T::ConstMemberIterator& out)
+inline bool JSON_GetRequired(const T& data, typename T::StringRefType member, typename T::ConstMemberIterator& out)
 {
     if (JSON_GetIterator(data, member, out))
         return true;
 
-    g_jsonErrorCallback("%s: unable to find field \"%s\".\n", __FUNCTION__, member);
+    g_jsonErrorCallback("%s: unable to find field \"%s\".\n", __FUNCTION__, member.s);
     return false;
 }
 
 template <class T>
-inline bool JSON_GetRequired(const T& data, const char* const member,
+inline bool JSON_GetRequired(const T& data, typename T::StringRefType member,
     const JSONFieldType_e type, typename T::ConstMemberIterator& out)
 {
     rapidjson::Document::ConstMemberIterator it;
@@ -276,7 +276,7 @@ inline bool JSON_GetRequired(const T& data, const char* const member,
         }
 
         g_jsonErrorCallback("%s: field \"%s\" is of type %s, but accessor expected type %s.\n",
-            __FUNCTION__, member, JSON_TypeToString(it->value), JSON_TypeToString(type));
+            __FUNCTION__, member.s, JSON_TypeToString(it->value), JSON_TypeToString(type));
         return false;
     }
 
@@ -289,7 +289,7 @@ inline bool JSON_GetRequired(const T& data, const char* const member,
 //          are met
 //-----------------------------------------------------------------------------
 template <class T, class V>
-inline bool JSON_GetValue(const T& data, const char* const member, const JSONFieldType_e type, V& out)
+inline bool JSON_GetValue(const T& data, typename T::StringRefType member, const JSONFieldType_e type, V& out)
 {
     rapidjson::Document::ConstMemberIterator it;
 
@@ -308,7 +308,7 @@ inline bool JSON_GetValue(const T& data, const char* const member, const JSONFie
 //          and sets 'out' to its value if all aforementioned conditions are met
 //-----------------------------------------------------------------------------
 template <class T, class V>
-inline bool JSON_GetValue(const T& data, const char* const member, V& out)
+inline bool JSON_GetValue(const T& data, typename T::StringRefType member, V& out)
 {
     rapidjson::Document::ConstMemberIterator it;
 
@@ -322,13 +322,15 @@ inline bool JSON_GetValue(const T& data, const char* const member, V& out)
     return false;
 }
 template <class T>
-inline bool JSON_GetValue(const T& data, const char* const member, std::string& out)
+inline bool JSON_GetValue(const T& data, typename T::StringRefType member, std::string& out)
 {
-    const char* stringVal;
+    rapidjson::Document::ConstMemberIterator it;
 
-    if (JSON_GetValue(data, member, JSONFieldType_e::kString, stringVal))
+    if (JSON_GetIterator(data, member, JSONFieldType_e::kString, it))
     {
-        out = stringVal;
+        const rapidjson::Value& val = it->value;
+        out.assign(val.GetString(), val.GetStringLength());
+
         return true;
     }
 
@@ -341,7 +343,7 @@ inline bool JSON_GetValue(const T& data, const char* const member, std::string& 
 //          else the provided default gets returned
 //-----------------------------------------------------------------------------
 template <class T, class V>
-inline V JSON_GetValueOrDefault(const T& data, const char* const member, const V def)
+inline V JSON_GetValueOrDefault(const T& data, typename T::StringRefType member, const V def)
 {
     V val;
 
@@ -359,7 +361,7 @@ inline V JSON_GetValueOrDefault(const T& data, const char* const member, const V
 //          else the error callback gets called
 //-----------------------------------------------------------------------------
 template <class V, class T>
-inline V JSON_GetValueRequired(const T& data, const char* const member)
+inline V JSON_GetValueRequired(const T& data, typename T::StringRefType member)
 {
     rapidjson::Document::ConstMemberIterator it;
 
@@ -374,24 +376,46 @@ inline V JSON_GetValueRequired(const T& data, const char* const member)
 template <class V>
 inline bool JSON_StringToNumber(const char* const str, const size_t len, V& num)
 {
-    char* end = nullptr;
+    const char* const end = &str[len];
+    std::from_chars_result result;
 
-    if constexpr (std::is_same<V, int32_t>::value)
-        num = strtol(str, &end, 0);
-    else if constexpr (std::is_same<V, int64_t>::value)
-        num = strtoll(str, &end, 0);
-    else if constexpr (std::is_same<V, uint32_t>::value)
-        num = strtoul(str, &end, 0);
-    else if constexpr (std::is_same<V, uint64_t>::value)
-        num = strtoull(str, &end, 0);
-    else if constexpr (std::is_same<V, float>::value)
-        num = static_cast<float>(strtod(str, &end));
-    else if constexpr (std::is_same<V, double>::value)
-        num = strtod(str, &end);
+    if constexpr ((std::is_same<V, int32_t>::value) || (std::is_same<V, int64_t>::value) ||
+        (std::is_same<V, uint32_t>::value) || (std::is_same<V, uint64_t>::value))
+    {
+        int ofs = 0;
+        int base = 10;
+
+        // Note: char_conv doesn't auto detect the base, and it expects the
+        // numeric string without the "0x" (base16) or "0b" (base8) prefix.
+        if (len > 1)
+        {
+            if (str[0] == '0')
+            {
+                if (str[1] == 'x' || str[1] == 'X')
+                {
+                    ofs = 2; // Hexadecimal, skip "0x".
+                    base = 16;
+                }
+                else if (str[1] == 'b' || str[1] == 'B')
+                {
+                    ofs = 2; // Binary, skip "0b".
+                    base = 2;
+                }
+                else // Octal doesn't need skipping.
+                    base = 8;
+            }
+        }
+
+        result = std::from_chars(&str[ofs], end, num, base);
+    }
+    else if constexpr ((std::is_same<V, float>::value) || (std::is_same<V, double>::value))
+    {
+        result = std::from_chars(str, end, num, std::chars_format::general);
+    }
     else
         static_assert(std::is_same_v<V, void>, "Cannot classify numeric type; unsupported.");
 
-    return end == &str[len];
+    return (result.ptr == end) && (result.ec == std::errc());
 }
 
 //-----------------------------------------------------------------------------
@@ -414,7 +438,7 @@ inline bool JSON_ParseNumber(const T& data, V& num)
     return false;
 }
 template <class T, class V>
-inline bool JSON_ParseNumber(const T& data, const char* const member, V& num)
+inline bool JSON_ParseNumber(const T& data, typename T::StringRefType member, V& num)
 {
     rapidjson::Document::ConstMemberIterator it;
 
@@ -427,7 +451,7 @@ inline bool JSON_ParseNumber(const T& data, const char* const member, V& num)
 }
 
 template <class T, class V>
-inline bool JSON_ParseNumberRequired(const T& data, const char* const member, V& num)
+inline bool JSON_ParseNumberRequired(const T& data, typename T::StringRefType member, V& num)
 {
     rapidjson::Document::ConstMemberIterator it;
 
@@ -438,7 +462,7 @@ inline bool JSON_ParseNumberRequired(const T& data, const char* const member, V&
             return true;
         }
 
-        g_jsonErrorCallback("%s: unable to parse field \"%s\".\n", __FUNCTION__, member);
+        g_jsonErrorCallback("%s: unable to parse field \"%s\".\n", __FUNCTION__, member.s);
         return false;
     }
 
@@ -451,7 +475,7 @@ inline bool JSON_ParseNumberRequired(const T& data, const char* const member, V&
 //          else the provided default gets returned
 //-----------------------------------------------------------------------------
 template <class T, class V>
-inline V JSON_GetNumberOrDefault(const T& data, const char* const member, V def)
+inline V JSON_GetNumberOrDefault(const T& data, typename T::StringRefType member, V def)
 {
     V num;
 
@@ -469,7 +493,7 @@ inline V JSON_GetNumberOrDefault(const T& data, const char* const member, V def)
 //          else the error callback gets called
 //-----------------------------------------------------------------------------
 template <class V, class T>
-inline V JSON_GetNumberRequired(const T& data, const char* const member)
+inline V JSON_GetNumberRequired(const T& data, typename T::StringRefType member)
 {
     V num;
 

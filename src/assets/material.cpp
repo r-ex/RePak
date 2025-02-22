@@ -80,8 +80,9 @@ static void Material_AddTextureRefs(CPakFileBuilder* const pak, PakPageLump_s& d
         const size_t bindPoint = strtoull(start, &end, 0);
 
         const rapidjson::Value& val = it->value;
+        const size_t strlen = it->name.GetStringLength();
 
-        if (end != &start[it->name.GetStringLength()])
+        if (end != &start[strlen])
             Error("Unable to determine bind point for texture #%zu.\n", bindPoint);
 
         bool success;
@@ -170,16 +171,16 @@ static void Material_SetDXStates(const rapidjson::Value& mapEntry, MaterialDXSta
     }
 }
 
-static const char* const Material_GetPassMaterialKeyForType(const RenderPassMaterial_e type)
+static bool Material_GetPassMaterialKeyForType(const rapidjson::Value& mapEntry, const RenderPassMaterial_e type, rapidjson::Value::ConstMemberIterator& it)
 {
     switch (type)
     {
-    case DEPTH_SHADOW:       return "$depthShadowMaterial";
-    case DEPTH_PREPASS:      return "$depthPrepassMaterial";
-    case DEPTH_VSM:          return "$depthVSMMaterial";
-    case DEPTH_SHADOW_TIGHT: return "$depthShadowTightMaterial";
-    case COL_PASS:           return "$colpassMaterial";
-    default: assert(0); return nullptr;
+    case DEPTH_SHADOW:       return JSON_GetIterator(mapEntry, "$depthShadowMaterial", it);
+    case DEPTH_PREPASS:      return JSON_GetIterator(mapEntry, "$depthPrepassMaterial", it);
+    case DEPTH_VSM:          return JSON_GetIterator(mapEntry, "$depthVSMMaterial", it);
+    case DEPTH_SHADOW_TIGHT: return JSON_GetIterator(mapEntry, "$depthShadowTightMaterial", it);
+    case COL_PASS:           return JSON_GetIterator(mapEntry, "$colpassMaterial", it);
+    default: assert(0); return false;
     }
 }
 
@@ -221,10 +222,8 @@ void MaterialAsset_t::SetupDepthMaterials(CPakFileBuilder* const pak, const rapi
         const RenderPassMaterial_e depthMatType = (RenderPassMaterial_e)i;
         PakGuid_t& passMaterial = passMaterials[i];
 
-        const char* const fieldName = Material_GetPassMaterialKeyForType(depthMatType);
         rapidjson::Value::ConstMemberIterator it;
-
-        if (!JSON_GetIterator(mapEntry, fieldName, it))
+        if (!Material_GetPassMaterialKeyForType(mapEntry, depthMatType, it))
         {
             // Use code_private depth materials if user didn't explicitly defined or nulled the field.
             passMaterial = Material_DetermineDefaultDepthMaterial(depthMatType, materialType, dxStates[0].rasterizerFlags);
