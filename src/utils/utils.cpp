@@ -43,7 +43,7 @@ size_t Utils::PadBuffer(char** buf, size_t size, size_t alignment)
 // purpose: write vector of strings to the specified BinaryIO instance
 // returns: length of data written
 //-----------------------------------------------------------------------------
-size_t Utils::WriteStringVector(BinaryIO& out, std::vector<std::string>& dataVector)
+size_t Utils::WriteStringVector(BinaryIO& out, const std::vector<std::string>& dataVector)
 {
 	size_t lenTotal = 0;
 	for (auto it = dataVector.begin(); it != dataVector.end(); ++it)
@@ -93,7 +93,7 @@ void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
     std::ifstream ifs(path);
 
     if (!ifs.is_open())
-        Error("couldn't open map file.\n");
+        Error("Couldn't open map file \"%s\".\n", path.string().c_str());
 
     // begin json parsing
     js::IStreamWrapper jsonStreamWrapper{ ifs };
@@ -132,9 +132,158 @@ void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
         }
 
         // this could probably be formatted nicer
-        Error("Failed to parse map file: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n",
+        Error("Failed to parse map file %s: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n",
+            path.string().c_str(),
             lineNum, columnNum,
             GetParseError_En(doc.GetParseError()),
             lastLine.c_str(), curLine.c_str(), (std::string(columnNum, ' ') += '^').c_str());
     }
+}
+
+PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success)
+{
+    PakGuid_t guid;
+
+    // Try parsing it out from number
+    if (JSON_ParseNumber(val, guid))
+    {
+        if (success) *success = true;
+        return guid;
+    }
+
+    // Parse it from string
+    if (val.IsString())
+    {
+        if (success) *success = true;
+        return RTech::StringToGuid(val.GetString());
+    }
+
+    if (success) *success = false;
+    return 0;
+}
+
+PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, const char* const member, bool* const success)
+{
+    rapidjson::Value::ConstMemberIterator it;
+
+    if (JSON_GetIterator(val, member, it))
+        return Pak_ParseGuid(it->value, success);
+
+    if (success) *success = false;
+    return 0;
+}
+
+PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const PakGuid_t fallback)
+{
+    bool success;
+    const PakGuid_t guid = Pak_ParseGuid(val, member, &success);
+
+    if (success)
+        return guid;
+
+    return fallback;
+}
+
+PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const char* const fallback)
+{
+    bool success;
+    const PakGuid_t guid = Pak_ParseGuid(val, member, &success);
+
+    if (success)
+        return guid;
+
+    return RTech::StringToGuid(fallback);
+}
+
+PakGuid_t Pak_ParseGuidRequired(const rapidjson::Value& val, const char* const member)
+{
+    bool success;
+    const PakGuid_t guid = Pak_ParseGuid(val, member, &success);
+
+    if (!success)
+        Error("%s: failed to parse field \"%s\".\n", __FUNCTION__, member);
+
+    return guid;
+}
+
+//-----------------------------------------------------------------------------
+// purpose: check if we have an override guid, and return that, else compute it
+//          from the given asset path.
+// NOTE   : this should be the only function used to get guids for asset entries
+//-----------------------------------------------------------------------------
+PakGuid_t Pak_GetGuidOverridable(const rapidjson::Value& mapEntry, const char* const assetPath)
+{
+    PakGuid_t assetGuid;
+
+    if (JSON_ParseNumber(mapEntry, "$guid", assetGuid))
+    {
+        if (assetGuid == 0)
+            Error("%s: invalid GUID override provided for asset \"%s\".\n", __FUNCTION__, assetPath);
+
+        return assetGuid;
+    }
+
+    return RTech::StringToGuid(assetPath);
+}
+
+// If the field was defined as a string, outAssetName will point to the asset's name
+PakGuid_t Pak_ParseGuidFromObject(const rapidjson::Value& val, const char* const debugName,
+    const char*& outAssetName)
+{
+    PakGuid_t resultGuid;
+
+    if (JSON_ParseNumber(val, resultGuid))
+        return resultGuid;
+
+    if (!val.IsString())
+        Error("%s: %s is of unsupported type; expected %s or %s, found %s.\n", __FUNCTION__, debugName,
+            JSON_TypeToString(JSONFieldType_e::kUint64), JSON_TypeToString(JSONFieldType_e::kString),
+            JSON_TypeToString(JSON_ExtractType(val)));
+
+    if (val.GetStringLength() == 0)
+        Error("%s: %s was defined as an invalid empty string.\n", __FUNCTION__, debugName);
+
+    outAssetName = val.GetString();
+    return RTech::StringToGuid(outAssetName);
+}
+
+PakGuid_t Pak_ParseGuidFromMap(const rapidjson::Value& mapEntry, const char* const fieldName,
+    const char* const debugName, const char*& outAssetName, const bool requiredField)
+{
+    rapidjson::Value::ConstMemberIterator it;
+
+    if (requiredField)
+        JSON_GetRequired(mapEntry, fieldName, it);
+    else
+    {
+        if (!JSON_GetIterator(mapEntry, fieldName, it))
+            return 0;
+    }
+
+    return Pak_ParseGuidFromObject(it->value, debugName, outAssetName);
+}
+
+size_t Pak_ExtractAssetStem(const char* const assetPath, char* const outBuf, const size_t outBufLen)
+{
+    // skip 'texture/'
+    const char* bufPos = strchr(assetPath, '/');
+
+    if (!bufPos)
+        bufPos = assetPath;
+    else
+        bufPos += 1; // skip the '/'.
+
+    // copy until '.rpak' or '\0'
+    size_t i = 0;
+    while (*bufPos != '\0' && *bufPos != '.')
+    {
+        if (i == outBufLen)
+            Error("%s: ran out of space on %s.\n", __FUNCTION__, assetPath);
+
+        outBuf[i++] = *bufPos;
+        bufPos++;
+    }
+
+    outBuf[i] = '\0';
+    return i;
 }

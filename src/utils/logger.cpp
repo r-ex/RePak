@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "logger.h"
 
-void Warning(const char* fmt, ...)
+void Warning(_Printf_format_string_ const char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
@@ -13,7 +13,7 @@ void Warning(const char* fmt, ...)
 	va_end(args);
 }
 
-void Error(const char* fmt, ...)
+void Error(_Printf_format_string_ const char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
@@ -27,7 +27,7 @@ void Error(const char* fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
-void Log(const char* fmt, ...)
+void Log(_Printf_format_string_ const char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
@@ -35,7 +35,7 @@ void Log(const char* fmt, ...)
 	va_end(args);
 }
 
-void Debug(const char* fmt, ...)
+void Debug(_Printf_format_string_ const char* fmt, ...)
 {
 #ifdef _DEBUG
 	va_list args;

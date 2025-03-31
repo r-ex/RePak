@@ -46,7 +46,7 @@ struct ShaderAssetHeader_v8_t
     eShaderType type;
 
     char unk_9[3];
-    int unk_C; // some count of sorts
+    int numShaderBuffers; // some count of sorts
 
     PagePtr_t unk_10; // void*
     PagePtr_t shaderInputFlags; // int64*
@@ -68,7 +68,7 @@ struct ShaderByteCode_t
     PagePtr_t data;
     uint32_t dataSize;
 
-    uint32_t unk;
+    uint32_t inputSignatureBlobSize;
 
     // only exists in vertex shaders. shader writing code handles this by forcing the size to be 16 bytes (instead of 24)
     // on non-vertex shaders

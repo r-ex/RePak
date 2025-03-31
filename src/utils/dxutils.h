@@ -3,26 +3,25 @@
 // dds id
 #define DDS_MAGIC ((' '<<24)+('S'<<16)+('D'<<8)+'D') // dds 'magic', placed before 'dwSize'
 
+// dds flags
+#define DDS_FOURCC        0x00000004  // DDPF_FOURCC
+#define DDS_RGB           0x00000040  // DDPF_RGB
+#define DDS_RGBA          0x00000041  // DDPF_RGB | DDPF_ALPHAPIXELS
+#define DDS_LUMINANCE     0x00020000  // DDPF_LUMINANCE
+#define DDS_LUMINANCEA    0x00020001  // DDPF_LUMINANCE | DDPF_ALPHAPIXELS
+#define DDS_ALPHAPIXELS   0x00000001  // DDPF_ALPHAPIXELS
+#define DDS_ALPHA         0x00000002  // DDPF_ALPHA
+#define DDS_PAL8          0x00000020  // DDPF_PALETTEINDEXED8
+#define DDS_PAL8A         0x00000021  // DDPF_PALETTEINDEXED8 | DDPF_ALPHAPIXELS
+#define DDS_BUMPLUMINANCE 0x00040000  // DDPF_BUMPLUMINANCE
+#define DDS_BUMPDUDV      0x00080000  // DDPF_BUMPDUDV
+#define DDS_BUMPDUDVA     0x00080001  // DDPF_BUMPDUDV | DDPF_ALPHAPIXELS
+
 // Shader structure reference: https://github.com/microsoft/D3D12TranslationLayer/blob/master/DxbcParser/include/BlobContainer.h
 // D3D12TranslationLayer is licensed under the MIT License, Copyright (c) Microsoft Corporation.
 // Read the license at https://github.com/microsoft/D3D12TranslationLayer/blob/master/LICENSE
 #define DXBC_FOURCC_NAME      (('C'<<24)+('B'<<16)+('X'<<8)+'D')
 #define DXBC_FOURCC_RDEF_NAME (('F'<<24)+('E'<<16)+('D'<<8)+'R')
-
-// pixelformat flags
-#define DDPF_ALPHAPIXELS 0x1
-#define DDPF_ALPHA 0x2
-#define DDPF_FOURCC 0x4
-#define DDPF_RGB 0x40
-#define DDPF_YUV 0x200
-#define DDPF_LUMINANCE 0x20000
-
-// dds flags
-#define DDS_FOURCC DDPF_FOURCC
-#define DDS_ALPHA DDPF_ALPHA
-#define DDS_RGB DDPF_RGB
-#define DDS_LUMINANCE DDPF_LUMINANCE
-#define DDS_RGBA DDPF_RGB | DDPF_ALPHAPIXELS
 
 struct DDS_PIXELFORMAT {
 	DWORD dwSize;
@@ -176,11 +175,8 @@ struct ParsedDXShaderData_t
 class DXUtils
 {
 public:
-	static DXGI_FORMAT GetFormatFromHeader(const DDS_HEADER& hdr);
+	static DXGI_FORMAT GetFormatFromHeader(const DDS_HEADER& hdr) noexcept;
 	static const char* GetFormatAsString(DXGI_FORMAT fmt);
 
 	static bool GetParsedShaderData(const char* bytecode, size_t bytecodeLen, ParsedDXShaderData_t* outData);
-
-private:
-	static DXGI_FORMAT GetFormatFromHeaderEx(const DDS_HEADER& hdr);
 };

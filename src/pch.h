@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <iostream>
 #include <unordered_map>
+#include <set>
 //#include <sysinfoapi.h>
 #include <vector>
 #include <cstdint>
@@ -15,9 +16,14 @@
 
 #include <rapidcsv/rapidcsv.h>
 
+// Use 64bit size types for RapidJSON
+#define RAPIDJSON_NO_SIZETYPEDEFINE
+namespace rapidjson { typedef ::std::size_t SizeType; }
+
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
-#include "rapidjson/prettywriter.h"
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/error/en.h>
 
 #include "common/decls.h"
 #include "common/const.h"
@@ -32,3 +38,9 @@
 #include "utils/logger.h"
 
 #define UNUSED(x)	(void)(x)
+
+template <typename T>
+FORCEINLINE bool IsPowerOfTwo(T x)
+{
+	return (x & (x - 1)) == 0;
+}

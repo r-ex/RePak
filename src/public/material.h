@@ -4,7 +4,7 @@
 #define MAT_DX_STATE_COUNT 2 // the same for r2 and r5
 #define MAT_BLEND_STATE_COUNT 8 // r2 is 4
 
-enum MaterialShaderType_t : uint8_t
+enum MaterialShaderType_e : uint8_t
 {
 	RGDU = 0x0,
 	RGDP = 0x1,
@@ -36,40 +36,52 @@ static const char* s_materialShaderTypeNames[] = {
 	"ptcs",
 };
 
-static const std::map<int, MaterialShaderType_t> s_materialShaderTypeMap
+inline MaterialShaderType_e Material_ShaderTypeFromString(const std::string& str, const unsigned int assetVersion)
 {
-	// static props
-	{'udgr', RGDU}, // rgdu
-	{'pdgr', RGDP}, // rgdp
-	{'cdgr', RGDC}, // rgdc
+	// note: for titanfall 2 materials, we only need 3 bytes for 'fix', 'gen',
+	// etc, the fourth byte is a null. for apex materials, we need 4 bytes for
+	// 'sknp', 'ptcu', etc and the 5th byte is a null. so we just check on 3 to
+	// make sure we never overflow when we read the data out directly as an int.
+	if (str.length() < 3)
+		return _TYPE_INVALID;
 
-	// non-static models
-	{'unks', SKNU}, // sknu
-	{'pnks', SKNP}, // sknp
-	{'cnks', SKNC}, // sknc
+	const int type = *reinterpret_cast<const int*>(str.c_str());
 
-	// world/geo models
-	{'udlw', WLDU}, // wldu
-	{'cdlw', WLDC}, // wldc
+	if (assetVersion >= 15)
+	{
+		switch (type)
+		{
+			// static props
+		case 'udgr': return RGDU; // rgdu
+		case 'pdgr': return RGDP; // rgdp
+		case 'cdgr': return RGDC; // rgdc
 
-	// particles
-	{'uctp', PTCU}, // ptcu
-	{'sctp', PTCS}, // ptcs
+			// non-static models
+		case 'unks': return SKNU; // sknu
+		case 'pnks': return SKNP; // sknp
+		case 'cnks': return SKNC; // sknc
 
-	// r2 materials
-	{'neg', _TYPE_LEGACY}, // gen
-	{'dlw', _TYPE_LEGACY}, // wld
-	{'xif', _TYPE_LEGACY}, // fix
-	{'nks', _TYPE_LEGACY}, // skn
-};
+			// world/geo models
+		case 'udlw': return WLDU; // wldu
+		case 'cdlw': return WLDC; // wldc
 
-
-inline MaterialShaderType_t Material_ShaderTypeFromString(std::string& str)
-{
-	int type = *reinterpret_cast<const int*>(str.c_str());
-
-	if (s_materialShaderTypeMap.count(type) != 0)
-		return s_materialShaderTypeMap.at(type);
+			// particles
+		case 'uctp': return PTCU; // ptcu
+		case 'sctp': return PTCS; // ptcs
+		}
+	}
+	else
+	{
+		switch (type)
+		{
+			// r2 materials
+		case 'neg': // gen
+		case 'dlw': // wld
+		case 'xif': // fix
+		case 'nks': // skn
+			return _TYPE_LEGACY;
+		}
+	}
 
 	return _TYPE_INVALID;
 }
@@ -134,7 +146,7 @@ struct __declspec(align(16)) MaterialDXState_v15_t
 	// bitfield defining a D3D11_RENDER_TARGET_BLEND_DESC for each of the 8 possible DX render targets
 	MaterialBlendState_t blendStates[MAT_BLEND_STATE_COUNT];
 
-	uint32_t unk;
+	uint32_t blendStateMask;
 
 	// flags to determine how the D3D11_DEPTH_STENCIL_DESC is defined for this material
 	uint16_t depthStencilFlags;
@@ -150,7 +162,7 @@ struct __declspec(align(16)) MaterialDXState_v12_t
 	// r2 only supports 4 render targets?
 	MaterialBlendState_t blendStates[4];
 
-	uint32_t unk; // 0x5
+	uint32_t blendStateMask; // 0x5
 	uint16_t depthStencilFlags; // different render settings, such as opacity and transparency.
 	uint16_t rasterizerFlags; // how the face is drawn, culling, wireframe, etc.
 
@@ -158,8 +170,6 @@ struct __declspec(align(16)) MaterialDXState_v12_t
 };
 static_assert(sizeof(MaterialDXState_v12_t) == 0x20);
 #pragma warning(pop)
-
-#pragma pack(push, 1)
 
 // bunch this up into a struct for ease of access and readability
 struct uvTransform_t
@@ -353,10 +363,8 @@ struct GenericShaderBuffer
 	float c_L0_perfSpecColor[3];
 	float c_L1_perfSpecColor[3];
 
-	MaterialShaderBufferV12 GenericV12()
+	void Generic(MaterialShaderBufferV12& out)
 	{
-		MaterialShaderBufferV12 out{};
-
 		out.c_uv1 = this->c_uv1;
 		out.c_uv2 = this->c_uv2;
 		out.c_uv3 = this->c_uv3;
@@ -379,14 +387,10 @@ struct GenericShaderBuffer
 		{
 			out.c_emissiveTint[i] = this->c_L0_emissiveTint[i];
 		}
-
-		return out;
 	}
 
-	MaterialShaderBufferV15 GenericV15()
+	void Generic(MaterialShaderBufferV15& out)
 	{
-		MaterialShaderBufferV15 out{};
-
 		out.c_uv1 = this->c_uv1;
 		out.c_uv2 = this->c_uv2;
 		out.c_uv3 = this->c_uv3;
@@ -411,8 +415,6 @@ struct GenericShaderBuffer
 		{
 			out.c_L0_emissiveTint[i] = this->c_L0_emissiveTint[i];
 		}
-
-		return out;
 	}
 };
 
@@ -421,26 +423,42 @@ struct GenericShaderBuffer
 #pragma warning(push)
 #pragma warning(disable : 4324)
 
+enum RenderPassMaterial_e
+{
+	DEPTH_SHADOW,
+	DEPTH_PREPASS,
+	DEPTH_VSM,
+	DEPTH_SHADOW_TIGHT,
+	COL_PASS,
+
+	RENDER_PASS_MAT_COUNT,
+};
+
+static inline const char* s_renderPassMaterialNames[] = {
+	"depth shadow",
+	"depth prepass",
+	"depth variance shadow map",
+	"depth shadow tight",
+	"color pass"
+};
+
 struct __declspec(align(16)) MaterialAssetHeader_v12_t
 {
 	uint64_t vftableReserved; // Gets set to CMaterialGlue vtbl ptr
 	char gap_8[0x8]; // unused?
-	uint64_t guid; // guid of this material asset
+	PakGuid_t guid; // guid of this material asset
 
 	PagePtr_t materialName; // pointer to partial asset path
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
 
-	uint64_t depthShadowMaterial;
-	uint64_t depthPrepassMaterial;
-	uint64_t depthVSMMaterial;
-	uint64_t colpassMaterial;
+	PakGuid_t passMaterials[RENDER_PASS_MAT_COUNT-1]; // -1 because v12 does not have shadow_tight.
 
 	// these blocks dont seem to change often but are the same?
 	// these blocks relate to different render filters and flags. still not well understood.
 	MaterialDXState_v12_t dxStates[2];
 
-	uint64_t shaderSet; // guid of the shaderset asset that this material uses
+	PakGuid_t shaderSet; // guid of the shaderset asset that this material uses
 
 	PagePtr_t textureHandles; // TextureGUID Map
 	PagePtr_t streamingTextureHandles; // Streamable TextureGUID Map
@@ -452,16 +470,17 @@ struct __declspec(align(16)) MaterialAssetHeader_v12_t
 	uint64_t unk_B0; // haven't observed anything here.
 
 	// seems to be 0xFBA63181 for loadscreens
-	uint32_t unk_B8; // no clue tbh, 0xFBA63181
+	uint32_t features; // no clue tbh, 0xFBA63181
 
 	uint32_t unk_BC; // this might actually be "Alignment"
 
-	uint64_t flags2;
+	uint32_t flags;
+	uint32_t flags2;
 
 	short width;
 	short height;
 
-	uint32_t unk_CC; // likely alignment
+	short depth;
 
 	/* flags
 	0x050300 for loadscreens, 0x1D0300 for normal materials.
@@ -475,19 +494,15 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 	uint64_t vftableReserved; // reserved for virtual function table pointer (when copied into native CMaterialGlue)
 
 	char gap_8[0x8]; // unused?
-	uint64_t guid; // guid of this material asset
+	PakGuid_t guid; // guid of this material asset
 
 	PagePtr_t materialName; // pointer to partial asset path
 	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
 	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
 
-	uint64_t depthShadowMaterial;
-	uint64_t depthPrepassMaterial;
-	uint64_t depthVSMMaterial;
-	uint64_t depthShadowTightMaterial;
-	uint64_t colpassMaterial;
+	PakGuid_t passMaterials[RENDER_PASS_MAT_COUNT];
 
-	uint64_t shaderSet; // guid of the shaderset asset that this material uses
+	PakGuid_t shaderSet; // guid of the shaderset asset that this material uses
 
 	PagePtr_t textureHandles; // ptr to array of texture guids
 	PagePtr_t streamingTextureHandles; // ptr to array of streamable texture guids (empty at build time)
@@ -503,69 +518,80 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 
 	uint32_t unk_7C;
 
-	uint32_t unk_80;// = 0x1F5A92BD; // REQUIRED but why?
+	// most materials have this set as '0x1F5A92BD', PTCS/PTCU
+	// materials have it set as 0x75C8DF6F typically, and in
+	// the V12 struct above, it was noted that load screens
+	// have it set to 0xFBA63181. possibly just some flags
+	// used internally to display features or something in
+	// their editor, as i haven't found a single use case of
+	// this var in the engine yet. but it might rely on a bunch
+	// of other flags so this remains unconfirmed for now.
+	uint32_t features;
 
+	// these are 2 shorts in the engine, seems to be some mask.
+	// these 2 shorts are initialized in the runtime, so we have
+	// to leave them empty in repak (they are also null on the
+	// original rpaks).
 	uint32_t unk_84;
 
-	uint64_t flags2;
+	uint32_t flags;
+	uint32_t flags2;
 
 	MaterialDXState_v15_t dxStates[2]; // seems to be used for setting up some D3D states?
 
 	uint16_t numAnimationFrames; // used in CMaterialGlue::GetNumAnimationFrames (0x1403B4250), which is called from GetSpriteInfo @ 0x1402561FC
-	MaterialShaderType_t materialType;
-	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
+	MaterialShaderType_e materialType;
+	uint8_t uberBufferFlags; // used for setting up buffers in Pak_UpdateMaterialAsset for the CMaterialGlue instance.
 
-	//char pad_00F4[0x4];
+	char pad_00F4[0x4];
 
-	uint64_t textureAnimation;
+	PakGuid_t textureAnimation;
 };
 static_assert(sizeof(MaterialAssetHeader_v15_t) == 256);
+
+#pragma pack(push, 1)
 
 struct MaterialAsset_t
 {
 	int assetVersion;
 
-	uint64_t guid; // guid of this material asset
+	PakGuid_t guid; // guid of this material asset
 
-	const char* materialAssetPath;
-	PagePtr_t materialName; // pointer to partial asset path
-	PagePtr_t surfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
-	PagePtr_t surfaceProp2; // pointer to surfaceprop2 
+	PakGuid_t passMaterials[RENDER_PASS_MAT_COUNT];
 
-	uint64_t depthShadowMaterial;
-	uint64_t depthPrepassMaterial;
-	uint64_t depthVSMMaterial;
-	uint64_t depthShadowTightMaterial;
-	uint64_t colpassMaterial;
-
-	uint64_t shaderSet = 0; // guid of the shaderset asset that this material uses
+	PakGuid_t shaderSet = 0; // guid of the shaderset asset that this material uses
 
 	uint16_t numAnimationFrames;
-	uint64_t textureAnimation;
-
-	PagePtr_t textureHandles; // ptr to array of texture guids
-	PagePtr_t streamingTextureHandles; // ptr to array of streamable texture guids (empty at build time)
+	PakGuid_t textureAnimation;
 
 	short width;
 	short height;
 	short depth;
 
-	uint32_t unk; // 0x1F5A92BD, REQUIRED but why?
+	uint32_t unk_7C;
+	uint32_t features; // 0x1F5A92BD, REQUIRED but why?
 
 	char samplers[4];
-	uint64_t flags2;
+
+	uint32_t flags;
+	uint32_t flags2;
 
 	MaterialDXState_v15_t dxStates[MAT_DX_STATE_COUNT]; // seems to be used for setting up some D3D states?
 
-	std::string materialTypeStr;
-	MaterialShaderType_t materialType;
+	MaterialShaderType_e materialType;
+	uint8_t uberBufferFlags;
 
-	//std::string name;
+	std::string materialTypeStr;
+
+	std::string name;
 	std::string surface;
 	std::string surface2;
 
-	void SetupDepthMaterialOverrides(const rapidjson::Value& mapEntry);
-	void FromJSON(rapidjson::Value& mapEntry);
+	// the path to the material without the .rpak extension
+	std::string path;
+
+	void SetupDepthMaterials(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry);
+	void FromJSON(const rapidjson::Value& mapEntry);
 
 	void WriteToBuffer(char* buf)
 	{
@@ -575,27 +601,25 @@ struct MaterialAsset_t
 
 			matl->guid = this->guid;
 
-			matl->materialName = this->materialName;
-			matl->surfaceProp = this->surfaceProp;
-			matl->surfaceProp2 = this->surfaceProp2;
+			matl->passMaterials[DEPTH_SHADOW] = this->passMaterials[DEPTH_SHADOW];
+			matl->passMaterials[DEPTH_PREPASS] = this->passMaterials[DEPTH_PREPASS];
+			matl->passMaterials[DEPTH_VSM] = this->passMaterials[DEPTH_VSM];
 
-			matl->depthShadowMaterial = this->depthShadowMaterial;
-			matl->depthPrepassMaterial = this->depthPrepassMaterial;
-			matl->depthVSMMaterial = this->depthVSMMaterial;
-			matl->colpassMaterial = this->colpassMaterial;
+			// note: DEPTH_SHADOW_TIGHT is mapped to COL_PASS because unlike v15, v12 
+			// doesn't have shadow_tight, colpass uses its space instead.
+			matl->passMaterials[DEPTH_SHADOW_TIGHT] = this->passMaterials[COL_PASS];
+
 			matl->shaderSet = this->shaderSet;
-
-			matl->textureHandles = this->textureHandles;
-			matl->streamingTextureHandles = this->streamingTextureHandles;
 
 			matl->width = this->width;
 			matl->height = this->height;
-			// matl->depth = this->depth;
+			matl->depth = this->depth;
 
-			matl->unk_B8 = this->unk;
+			matl->features = this->features;
 
 			memcpy(matl->samplers, this->samplers, sizeof(matl->samplers));
 			//matl->samplers = this->samplers;
+			matl->flags = this->flags;
 			matl->flags2 = this->flags2;
 
 			for (int i = 0; i < 2; i++)
@@ -605,7 +629,7 @@ struct MaterialAsset_t
 				matl->dxStates[i].blendStates[2] = this->dxStates[i].blendStates[2];
 				matl->dxStates[i].blendStates[3] = this->dxStates[i].blendStates[3];
 
-				matl->dxStates[i].unk = this->dxStates[i].unk;
+				matl->dxStates[i].blendStateMask = this->dxStates[i].blendStateMask;
 				matl->dxStates[i].depthStencilFlags = this->dxStates[i].depthStencilFlags;
 				matl->dxStates[i].rasterizerFlags = this->dxStates[i].rasterizerFlags;
 			}
@@ -616,30 +640,27 @@ struct MaterialAsset_t
 
 			matl->guid = this->guid;
 
-			matl->materialName = this->materialName;
-			matl->surfaceProp = this->surfaceProp;
-			matl->surfaceProp2 = this->surfaceProp2;
+			matl->passMaterials[DEPTH_SHADOW] = this->passMaterials[DEPTH_SHADOW];
+			matl->passMaterials[DEPTH_PREPASS] = this->passMaterials[DEPTH_PREPASS];
+			matl->passMaterials[DEPTH_VSM] = this->passMaterials[DEPTH_VSM];
+			matl->passMaterials[DEPTH_SHADOW_TIGHT] = this->passMaterials[DEPTH_SHADOW_TIGHT];
+			matl->passMaterials[COL_PASS] = this->passMaterials[COL_PASS];
 
-			matl->depthShadowMaterial = this->depthShadowMaterial;
-			matl->depthPrepassMaterial = this->depthPrepassMaterial;
-			matl->depthVSMMaterial = this->depthVSMMaterial;
-			matl->depthShadowTightMaterial = this->depthShadowTightMaterial;
-			matl->colpassMaterial = this->colpassMaterial;
 			matl->shaderSet = this->shaderSet;
-
-			matl->textureHandles = this->textureHandles;
-			matl->streamingTextureHandles = this->streamingTextureHandles;
 
 			matl->width = this->width;
 			matl->height = this->height;
-			// matl->depth = this->depth;
+			matl->depth = this->depth;
 
-			matl->unk_80 = this->unk;
+			matl->unk_7C = this->unk_7C;
+			matl->features = this->features;
 
 			memcpy(matl->samplers, this->samplers, sizeof(matl->samplers));
+			matl->flags = this->flags;
 			matl->flags2 = this->flags2;
 
 			matl->materialType = this->materialType;
+			matl->uberBufferFlags = this->uberBufferFlags;
 
 			matl->textureAnimation = this->textureAnimation;
 			matl->numAnimationFrames = this->numAnimationFrames;
@@ -651,7 +672,7 @@ struct MaterialAsset_t
 					matl->dxStates[i].blendStates[targetIdx] = this->dxStates[i].blendStates[targetIdx];
 				}
 
-				matl->dxStates[i].unk = this->dxStates[i].unk;
+				matl->dxStates[i].blendStateMask = this->dxStates[i].blendStateMask;
 				matl->dxStates[i].depthStencilFlags = this->dxStates[i].depthStencilFlags;
 				matl->dxStates[i].rasterizerFlags = this->dxStates[i].rasterizerFlags;
 			}
@@ -660,12 +681,12 @@ struct MaterialAsset_t
 };
 
 #pragma warning(pop)
+#pragma pack(pop)
 
 // header struct for the material asset cpu data
 struct MaterialCPUHeader
 {
-	PagePtr_t  dataPtr; // points to the rest of the cpu data. shader buffer.
+	PagePtr_t dataPtr; // points to the rest of the cpu data. shader buffer.
 	uint32_t dataSize;
-	uint32_t unk_C; // every unknown is now either datasize, version, or flags. enum?
+	uint32_t version;
 };
-#pragma pack(pop)

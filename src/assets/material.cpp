@@ -3,412 +3,48 @@
 #include "public/material.h"
 
 #undef GetObject
-// we need to take better account of textures once asset caching becomes a thing
-void Material_CreateTextures(CPakFile* pak, rapidjson::Value& mapEntry)
+
+extern bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming);
+
+// returns true if a texture was added to the pak, false if we just use a guid ref
+static bool Material_CheckAndAddTexture(CPakFileBuilder* const pak, const rapidjson::Value& texture, const int index, const bool disableStreaming)
 {
-    if (JSON_IS_ARRAY(mapEntry, "textures"))
-    {
-        for (auto& it : mapEntry["textures"].GetArray())
-        {
-            if (!it.IsString())
-                continue;
-
-            if (it.GetStringLength() == 0)
-                continue;
-
-            // check if texture string is an asset guid (e.g., "0x5DCAT")
-            if (RTech::ParseGUIDFromString(it.GetString()))
-                continue;
-
-            Assets::AddTextureAsset(pak, 0, it.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"), true);
-        }
-    }
-    else if (JSON_IS_OBJECT(mapEntry, "textures"))
-    {
-        for (auto& it : mapEntry["textures"].GetObject())
-        {
-            if (!it.value.IsString())
-                continue;
-
-            if (it.value.GetStringLength() == 0)
-                continue;
-
-            // check if texture string is an asset guid (e.g., "0x5DCAT")
-            if (RTech::ParseGUIDFromString(it.value.GetString()))
-                continue;
-
-            Assets::AddTextureAsset(pak, 0, it.value.GetString(), JSON_GET_BOOL(mapEntry, "disableStreaming"), true);
-        }
-    }
-
-}
-
-#define DEFAULT_UNK_FLAGS 0x4
-#define DEFAULT_DEPTH_STENCIL_FLAGS 0x17
-#define DEFAULT_RASTERIZER_FLAGS 0x6
-
-static bool ParseDXStateFlags(const rapidjson::Value& mapEntry, int& unkFlags, int& depthStencilFlags, int& rasterizerFlags)
-{
-    // dx flags
-    // !!!temp!!! - these should be replaced by proper flag string parsing when possible
-    unkFlags = DEFAULT_UNK_FLAGS;
-    depthStencilFlags = DEFAULT_DEPTH_STENCIL_FLAGS;
-    rasterizerFlags = DEFAULT_RASTERIZER_FLAGS; // CULL_BACK
-
-    JSON_GetValue(mapEntry, "unkFlags", JSONFieldType_e::kNumber, unkFlags);
-    JSON_GetValue(mapEntry, "depthStencilFlags", JSONFieldType_e::kNumber, depthStencilFlags);
-    JSON_GetValue(mapEntry, "rasterizerFlags", JSONFieldType_e::kNumber, rasterizerFlags);
-
-    return true;
-}
-
-template <size_t BLEND_STATE_COUNT>
-static bool ParseBlendStateFlags(const rapidjson::Value& mapEntry, unsigned int blendStates[BLEND_STATE_COUNT])
-{
-    rapidjson::Document::ConstMemberIterator blendStatesIt;
-    const bool hasField = JSON_GetIterator(mapEntry, "blendStates", blendStatesIt);
-
-    if (!hasField)
+    // check if texture string is an asset guid (e.g., "0x5DCAT")
+    // if it is then we don't add it here as its a reference.
+    PakGuid_t textureGuid;
+    if (JSON_ParseNumber(texture, textureGuid))
         return false;
 
-    const rapidjson::Value& blendStateJson = blendStatesIt->value;
+    if (texture.GetStringLength() == 0)
+        Error("Texture defined in slot #%i was empty.\n", index);
 
-    if (blendStateJson.IsArray())
-    {
-        const rapidjson::Value::ConstArray blendStateElems = blendStateJson.GetArray();
-        const int numBlendStates = static_cast<int>(blendStateElems.Size());
-
-        if (numBlendStates != BLEND_STATE_COUNT)
-        {
-            Error("Expected %i blend state flags, found %i\n", BLEND_STATE_COUNT, numBlendStates);
-            return false;
-        }
-
-        for (int i = 0; i < numBlendStates; i++)
-        {
-            const rapidjson::Value& obj = blendStateElems[i];
-            const rapidjson::Type type = obj.GetType();
-
-            if (type == rapidjson::kNumberType)
-                blendStates[i] = obj.GetUint();
-            else if (type == rapidjson::kStringType)
-            {
-                const char* const startPtr = obj.GetString();
-                char* endPtr;
-
-                const unsigned int result = strtoul(startPtr, &endPtr, 16);
-
-                if (endPtr != &startPtr[obj.GetStringLength()])
-                {
-                    Error("Failed parsing blend state flag #%i (%s)\n", (int)i, startPtr);
-                    return false;
-                }
-
-                blendStates[i] = result;
-            }
-            else
-            {
-                Error("Unsupported type for blend state flag #i (got %s, expected %s)\n", (int)i,
-                    JSON_TypeToString(type), JSON_TypeToString(rapidjson::kStringType));
-
-                return false;
-            }
-        }
-    }
-    else if (blendStateJson.IsString()) // Split the flags from provided string.
-    {
-        const std::vector<std::string> blendStateElems = Utils::StringSplit(blendStateJson.GetString(), ' ');
-        const int numBlendStates = static_cast<int>(blendStateElems.size());
-
-        if (numBlendStates != BLEND_STATE_COUNT)
-        {
-            Error("Expected %i blend state flags, found %i\n", BLEND_STATE_COUNT, numBlendStates);
-            return false;
-        }
-
-        for (int i = 0; i < BLEND_STATE_COUNT; i++)
-        {
-            const std::string& val = blendStateElems[i];
-
-            const char* const startPtr = val.c_str();
-            char* endPtr;
-
-            const unsigned int result = strtoul(startPtr, &endPtr, 16);
-
-            if (endPtr != &startPtr[val.length()])
-            {
-                Error("Failed parsing blend state flag #%i (%s)\n", i, startPtr);
-                return false;
-            }
-            else
-                blendStates[i] = result;
-        }
-    }
-    else
-    {
-        Error("Unsupported type for blend state flags (got %s, expected %s or %s)\n",
-            JSON_TypeToString(blendStateJson.GetType()), JSON_TypeToString(rapidjson::kArrayType),
-            JSON_TypeToString(rapidjson::kStringType));
-
-        return false;
-    }
-
-    return true;
+    const char* const texturePath = texture.GetString();
+    return Texture_AutoAddTexture(pak, RTech::StringToGuid(texturePath), texturePath, disableStreaming);
 }
 
-template <typename MaterialDXState_t>
-static void SetDXStates(const rapidjson::Value& mapEntry, MaterialDXState_t dxStates[MAT_DX_STATE_COUNT])
+static short Material_CreateTextures(CPakFileBuilder* const pak, const rapidjson::Value& textures, const bool disableStreaming)
 {
-    int unkFlags, depthStencilFlags, rasterizerFlags;
-    ParseDXStateFlags(mapEntry, unkFlags, depthStencilFlags, rasterizerFlags);
+    short numTexturesAdded = 0;
+    int i = 0;
 
-    static const int totalBlendStateCount = ARRAYSIZE(dxStates[0].blendStates);
-
-    unsigned int blendStateMap[totalBlendStateCount];
-    const bool hasBlendStates = ParseBlendStateFlags<totalBlendStateCount>(mapEntry, blendStateMap);
-
-    for (int i = 0; i < MAT_DX_STATE_COUNT; i++)
+    for (const auto& texture : textures.GetObject())
     {
-        MaterialDXState_t& dxState = dxStates[i];
-
-        dxState.unk = unkFlags;
-        dxState.depthStencilFlags = (uint16_t)depthStencilFlags;
-        dxState.rasterizerFlags = (uint16_t)rasterizerFlags;
-
-        for (int j = 0; j < ARRAYSIZE(dxState.blendStates); j++)
-        {
-            MaterialBlendState_t& blendState = dxState.blendStates[j];
-
-            if (!hasBlendStates) // Default it off.
-            {
-                // todo(amos): is there a reason we default to setting all
-                // bits for renderTargetWriteMask ?
-                blendState = MaterialBlendState_t(0xF0000000);
-                continue;
-            }
-
-            blendState = MaterialBlendState_t(blendStateMap[j]);
-        }
+        if (Material_CheckAndAddTexture(pak, texture.value, i++, disableStreaming))
+            numTexturesAdded++;
     }
+
+    return numTexturesAdded;
 }
 
-void MaterialAsset_t::SetupDepthMaterialOverrides(const rapidjson::Value& mapEntry)
+static size_t Material_GetHighestTextureBindPoint(const rapidjson::Value& textures)
 {
-    std::string depthPath;
+    size_t max = 0;
 
-    if (JSON_IS_NULL(mapEntry, "depthShadowMaterial"))
+    for (const auto& it : textures.GetObject())
     {
-        this->depthShadowMaterial = NULL;
-    }
-    else if (JSON_IS_STR(mapEntry, "depthShadowMaterial"))
-    {
-        depthPath = "material/" + mapEntry["depthShadowMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
-        this->depthShadowMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
-    }
+        char* end;
+        const size_t index = strtoull(it.name.GetString(), &end, 0);
 
-    if (JSON_IS_NULL(mapEntry, "depthPrepassMaterial"))
-    {
-        this->depthPrepassMaterial = NULL;
-    }
-    else if (JSON_IS_STR(mapEntry, "depthPrepassMaterial"))
-    {
-        depthPath = "material/" + mapEntry["depthPrepassMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
-        this->depthPrepassMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
-    }
-
-    if (JSON_IS_NULL(mapEntry, "depthVSMMaterial"))
-    {
-        this->depthVSMMaterial = NULL;
-    }
-    else if (JSON_IS_STR(mapEntry, "depthVSMMaterial"))
-    {
-        depthPath = "material/" + mapEntry["depthVSMMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
-        this->depthVSMMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
-    }
-
-    if (JSON_IS_NULL(mapEntry, "depthShadowTightMaterial"))
-    {
-        this->depthShadowTightMaterial = NULL;
-    }
-    else if (JSON_IS_STR(mapEntry, "depthShadowTightMaterial"))
-    {
-        depthPath = "material/" + mapEntry["depthShadowTightMaterial"].GetStdString() + "_" + this->materialTypeStr + ".rpak";
-        this->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
-    }
-}
-
-// ideally replace these with material file funcs
-void MaterialAsset_t::FromJSON(rapidjson::Value& mapEntry)
-{
-    // default type on v12 assets is "skn"
-    // default type on v15 assets is "sknp"
-    std::string defaultMaterialType = this->assetVersion <= 12 ? "skn" : "sknp";
-    this->materialTypeStr = JSON_GET_STR(mapEntry, "type", defaultMaterialType);
-    
-    this->materialType = Material_ShaderTypeFromString(this->materialTypeStr);
-
-    // material max dimensions
-    this->width = (short)JSON_GET_INT(mapEntry, "width", 0); // Set material width.
-    this->height = (short)JSON_GET_INT(mapEntry, "height", 0); // Set material height.
-
-    // temp samplers !!!
-    // this will be done a bit better when material files become real
-    // for now this is the only real way of doing it so meh
-    uint32_t nSamplers = 0x1D0300;
-
-    if (JSON_IS_STR(mapEntry, "samplers")) // Set samplers properly. Responsible for texture stretching, tiling etc.
-        nSamplers = strtoul(("0x" + mapEntry["samplers"].GetStdString()).c_str(), NULL, 0);
-
-    memcpy(this->samplers, &nSamplers, sizeof(nSamplers));
-
-    // more tradition vmt like flags
-    if (JSON_IS_STR(mapEntry, "flags2")) // This does a lot of very important stuff.
-        this->flags2 = strtoull(("0x" + mapEntry["flags2"].GetStdString()).c_str(), NULL, 0);
-    else
-        this->flags2 = (0x56000020 | 0x10000000000000); // beeg flag is used on most things
-
-    SetDXStates(mapEntry, dxStates);
-
-    // surfaces are defined in scripts/surfaceproperties.txt or scripts/surfaceproperties.rson
-    this->surface = JSON_GET_STR(mapEntry, "surface", "default");
-
-    // used for blend materials and the like
-    this->surface2 = JSON_GET_STR(mapEntry, "surface2", "");
-
-    if (this->materialTypeStr == "wld")
-        Warning("WLD materials do not have generic depth materials. Make sure that you have set them to null or have created your own.\n");
-
-    // optional depth material overrides
-    // probably should add types and prefixes
-    std::string depthPath{};
-
-    // defaults
-    //depthPath = "material/code_private/depth_shadow_" + ((rasterizerFlags & 0x4 && !(rasterizerFlags & 0x2)) ? "frontculled_" : "") + this->materialTypeStr + ".rpak";
-    depthPath = "material/code_private/depth_shadow_" + this->materialTypeStr + ".rpak";
-    this->depthShadowMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
-
-    //depthPath = "material/code_private/depth_prepass_" + ((rasterizerFlags & 0x2 && !(rasterizerFlags & 0x4)) ? "twosided_" : "") + this->materialTypeStr + ".rpak";
-    depthPath = "material/code_private/depth_prepass_" + this->materialTypeStr + ".rpak";
-    this->depthPrepassMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
-
-    depthPath = "material/code_private/depth_vsm_" + this->materialTypeStr + ".rpak";
-    this->depthVSMMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
-
-    depthPath = "material/code_private/depth_shadow_tight_" + this->materialTypeStr + ".rpak";
-    this->depthShadowTightMaterial = RTech::GetAssetGUIDFromString(depthPath.c_str());
-
-    this->SetupDepthMaterialOverrides(mapEntry);
-
-
-    // get referenced colpass material if exists
-    if (JSON_IS_STR(mapEntry, "colpass"))
-    {
-        std::string colpassPath = "material/" + mapEntry["colpass"].GetStdString()+ "_" + this->materialTypeStr + ".rpak"; // auto add type? remove if disagree. materials never have their types in names so I don't think this should be expected?
-        this->colpassMaterial = RTech::StringToGuid(colpassPath.c_str());
-    }
-
-
-    // optional shaderset override
-    if (JSON_IS_STR(mapEntry, "shaderset"))
-        this->shaderSet = RTech::GetAssetGUIDFromString(mapEntry["shaderset"].GetString(), true);
-
-    // this is more desirable but would break guid input
-    /*if (JSON_IS_STR(mapEntry, "shaderset"))
-    {
-        std::string shadersetPath = "shaderset/" + mapEntry["shaderset"].GetStdString() + ".rpak";
-        this->shaderSet = RTech::GetAssetGUIDFromString(shadersetPath.c_str());
-    }*/
-
-    // texan
-    if (JSON_IS_STR(mapEntry, "textureAnimation"))
-        this->textureAnimation = RTech::GetAssetGUIDFromString(mapEntry["textureAnimation"].GetString());
-}
-
-// shader parsing eventually
-void Material_SetupDXBufferFromJson(GenericShaderBuffer* shaderBuf, rapidjson::Value& mapEntry)
-{
-    if (mapEntry.HasMember("emissiveTint"))
-    {
-        for (int i = 0; i < 3; i++)
-        {
-            auto& EmissiveFloat = mapEntry["emissiveTint"].GetArray()[i];
-
-            shaderBuf->c_L0_emissiveTint[i] = EmissiveFloat.GetFloat();
-        }
-    }
-
-    if (mapEntry.HasMember("albedoTint"))
-    {
-        for (int i = 0; i < 3; i++)
-        {
-            auto& EmissiveFloat = mapEntry["albedoTint"].GetArray()[i];
-
-            shaderBuf->c_L0_albedoTint[i] = EmissiveFloat.GetFloat();
-        }
-    }
-
-    if (mapEntry.HasMember("opacity"))
-        shaderBuf->c_opacity = mapEntry["opacity"].GetFloat();
-
-    // spec tint is not really needed currently
-
-    if (mapEntry.HasMember("uv1"))
-    {
-        for (int i = 0; i < 6; i++)
-        {
-            auto& UVFloat = mapEntry["uv1"].GetArray()[i];
-
-            *shaderBuf->c_uv1.pFloat(i) = UVFloat.GetFloat();
-        }
-    }
-
-    if (mapEntry.HasMember("uv2"))
-    {
-        for (int i = 0; i < 6; i++)
-        {
-            auto& UVFloat = mapEntry["uv2"].GetArray()[i];
-
-            *shaderBuf->c_uv2.pFloat(i) = UVFloat.GetFloat();
-        }
-    }
-
-    if (mapEntry.HasMember("uv3"))
-    {
-        for (int i = 0; i < 6; i++)
-        {
-            auto& UVFloat = mapEntry["uv3"].GetArray()[i];
-
-            *shaderBuf->c_uv3.pFloat(i) = UVFloat.GetFloat();
-        }
-    }
-
-    if (mapEntry.HasMember("uv4"))
-    {
-        for (int i = 0; i < 6; i++)
-        {
-            auto& UVFloat = mapEntry["uv4"].GetArray()[i];
-
-            *shaderBuf->c_uv4.pFloat(i) = UVFloat.GetFloat();
-        }
-    }
-
-    if (mapEntry.HasMember("uv5"))
-    {
-        for (int i = 0; i < 6; i++)
-        {
-            auto& UVFloat = mapEntry["uv5"].GetArray()[i];
-
-            *shaderBuf->c_uv5.pFloat(i) = UVFloat.GetFloat();
-        }
-    }
-}
-
-size_t Material_GetHighestTextureBindPoint(rapidjson::Value& mapEntry)
-{
-    uint32_t max = 0;
-    for (auto& it : mapEntry["textures"].GetObject())
-    {
-        uint32_t index = static_cast<uint32_t>(atoi(it.name.GetString()));
         if (index > max)
             max = index;
     }
@@ -416,45 +52,384 @@ size_t Material_GetHighestTextureBindPoint(rapidjson::Value& mapEntry)
     return max;
 }
 
-size_t Material_AddTextures(CPakFile* pak, rapidjson::Value& mapEntry)
+static size_t Material_AddTextures(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry, const rapidjson::Value& textures)
 {
-    Material_CreateTextures(pak, mapEntry);
+    const bool disableStreaming = JSON_GetValueOrDefault(mapEntry, "disableStreaming", false);
+    Material_CreateTextures(pak, textures, disableStreaming);
 
-    size_t textureCount = 0;
-    if (JSON_IS_ARRAY(mapEntry, "textures"))
+    // textureSlotCount determines the total number of texture slots in the assigned shaderset.
+    // shaderset has a texture input count variable that is used when looping over the texture array
+    // and since we can't modify that from here, we have to rely on the user to set this properly!
+    const size_t textureCount = JSON_GetValueOrDefault(mapEntry, "textureSlotCount", 0ull);
+
+    return max(textureCount, Material_GetHighestTextureBindPoint(textures) + 1);
+}
+
+// there are 2 texture guid blocks, one for permanent and one for streaming.
+// we only set the permanent guid refs here, the streaming block is reserved
+// for the runtime, which gets initialized at Pak_UpdateMaterialAsset.
+static void Material_AddTextureRefs(CPakFileBuilder* const pak, PakPageLump_s& dataChunk, char* const dataBuf, PakAsset_t& asset,
+                                     const rapidjson::Value& textures, const size_t alignedPathSize)
+{
+    size_t curIndex = 0;
+
+    for (auto it = textures.MemberBegin(); it != textures.MemberEnd(); it++, curIndex++)
     {
-        textureCount = mapEntry["textures"].GetArray().Size();
+        const char* const start = it->name.GetString();
+        char* end;
+        const size_t bindPoint = strtoull(start, &end, 0);
+
+        const rapidjson::Value& val = it->value;
+
+        if (end != &start[it->name.GetStringLength()])
+            Error("Unable to determine bind point for texture #%zu.\n", bindPoint);
+
+        bool success;
+        const PakGuid_t textureGuid = Pak_ParseGuid(val, &success);
+
+        if (!success)
+            Error("Unable to parse texture #%zu.\n", bindPoint);
+
+        reinterpret_cast<PakGuid_t*>(dataBuf)[bindPoint] = textureGuid;
+        const size_t offset = alignedPathSize + (bindPoint * sizeof(PakGuid_t));
+
+        Pak_RegisterGuidRefAtOffset(textureGuid, offset, dataChunk, asset);
+
+        if (!pak->GetAssetByGuid(textureGuid))
+            Warning("Unable to find texture #%zu within the local assets.\n", bindPoint);
     }
-    else if (JSON_IS_OBJECT(mapEntry, "textures"))
+}
+
+static bool Material_ParseDXStateFlags(const rapidjson::Value& mapEntry, int& blendStateMask, int& depthStencilFlags, int& rasterizerFlags)
+{
+    JSON_ParseNumberRequired(mapEntry, "blendStateMask", blendStateMask);
+    JSON_ParseNumberRequired(mapEntry, "depthStencilFlags", depthStencilFlags);
+    JSON_ParseNumberRequired(mapEntry, "rasterizerFlags", rasterizerFlags);
+
+    return true;
+}
+
+template <size_t BLEND_STATE_COUNT>
+static void Material_ParseBlendStateFlags(const rapidjson::Value& mapEntry, unsigned int blendStates[BLEND_STATE_COUNT])
+{
+    rapidjson::Document::ConstMemberIterator blendStatesIt;
+    JSON_GetRequired(mapEntry, "blendStates", blendStatesIt);
+
+    const rapidjson::Value& blendStateJson = blendStatesIt->value;
+
+    if (!blendStateJson.IsArray())
     {
-        // uncomment and replace if manually specified texture slot counts are required
-        // i don't think it's entirely necessary though, as really the material should only need
-        // to have as many slots as the highest non-null texture
+        Error("Unsupported type for blend state flags (expected %s, got %s).\n",
+            JSON_InternalTypeToString(blendStateJson.GetType()), JSON_InternalTypeToString(rapidjson::kArrayType));
+    }
 
-        // ok! it is necessary
-        // shaderset has a texture input count variable that is used when looping over the texture array
-        // and since we can't modify that from here, we have to rely on the user to set this properly!
-        textureCount = JSON_GET_UINT(mapEntry, "textureSlotCount", 0);
+    const rapidjson::Value::ConstArray blendStateElems = blendStateJson.GetArray();
+    const size_t numBlendStates = blendStateElems.Size();
 
-        textureCount = max(textureCount, Material_GetHighestTextureBindPoint(mapEntry) + 1);
+    if (numBlendStates != BLEND_STATE_COUNT)
+    {
+        Error("Expected %zu blend state flags, found %zu.\n", BLEND_STATE_COUNT, numBlendStates);
+    }
+
+    for (size_t i = 0; i < numBlendStates; i++)
+    {
+        const rapidjson::Value& obj = blendStateElems[i];
+        uint32_t blendState;
+
+        if (!JSON_ParseNumber(obj, blendState))
+            Error("Failed parsing blend state flag #%zu.\n", i);
+
+        blendStates[i] = blendState;
+    }
+}
+
+template <typename MaterialDXState_t>
+static void Material_SetDXStates(const rapidjson::Value& mapEntry, MaterialDXState_t dxStates[MAT_DX_STATE_COUNT])
+{
+    int blendStateMask, depthStencilFlags, rasterizerFlags;
+    Material_ParseDXStateFlags(mapEntry, blendStateMask, depthStencilFlags, rasterizerFlags);
+
+    static const int totalBlendStateCount = ARRAYSIZE(dxStates[0].blendStates);
+
+    unsigned int blendStateMap[totalBlendStateCount];
+    Material_ParseBlendStateFlags<totalBlendStateCount>(mapEntry, blendStateMap);
+
+    for (int i = 0; i < MAT_DX_STATE_COUNT; i++)
+    {
+        MaterialDXState_t& dxState = dxStates[i];
+
+        dxState.blendStateMask = blendStateMask;
+        dxState.depthStencilFlags = (uint16_t)depthStencilFlags;
+        dxState.rasterizerFlags = (uint16_t)rasterizerFlags;
+
+        for (int j = 0; j < ARRAYSIZE(dxState.blendStates); j++)
+        {
+            MaterialBlendState_t& blendState = dxState.blendStates[j];
+            blendState = MaterialBlendState_t(blendStateMap[j]);
+        }
+    }
+}
+
+static const char* const Material_GetPassMaterialKeyForType(const RenderPassMaterial_e type)
+{
+    switch (type)
+    {
+    case DEPTH_SHADOW:       return "$depthShadowMaterial";
+    case DEPTH_PREPASS:      return "$depthPrepassMaterial";
+    case DEPTH_VSM:          return "$depthVSMMaterial";
+    case DEPTH_SHADOW_TIGHT: return "$depthShadowTightMaterial";
+    case COL_PASS:           return "$colpassMaterial";
+    default: assert(0); return nullptr;
+    }
+}
+
+static PakGuid_t Material_DetermineDefaultDepthMaterial(const RenderPassMaterial_e depthType, const MaterialShaderType_e shaderType, const int rasterizerFlags)
+{
+    switch (depthType)
+    {
+    case DEPTH_SHADOW:
+        return RTech::StringToGuid(Utils::VFormat("material/code_private/depth_shadow%s_%s.rpak", 
+            ((rasterizerFlags & 0x4) && !(rasterizerFlags & 0x2)) ? "_frontculled" : "", s_materialShaderTypeNames[shaderType]).c_str());
+    case DEPTH_PREPASS:
+        return RTech::StringToGuid(Utils::VFormat("material/code_private/depth_prepass%s_%s.rpak", 
+            ((rasterizerFlags & 0x2) && !(rasterizerFlags & 0x4)) ? "_twosided" : "", s_materialShaderTypeNames[shaderType]).c_str());
+    case DEPTH_VSM:
+        return RTech::StringToGuid(Utils::VFormat("material/code_private/depth_vsm_%s.rpak", s_materialShaderTypeNames[shaderType]).c_str());
+    case DEPTH_SHADOW_TIGHT:
+        return RTech::StringToGuid(Utils::VFormat("material/code_private/depth_shadow_tight_%s.rpak", s_materialShaderTypeNames[shaderType]).c_str());
+    case COL_PASS:
+        return 0; // the default for colpass is 0.
+    default:
+        // code bug
+        assert(0);
+        return 0;
+    }
+}
+
+bool Material_AutoAddMaterial(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion);
+
+void MaterialAsset_t::SetupDepthMaterials(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry)
+{
+    if (this->materialTypeStr == "wld")
+        Warning("WLD materials do not have generic depth materials, make sure that you have set them to 0 or have created your own.\n");
+
+    // titanfall 2 (v12) doesn't have depth_tight, so it has 1 less depth material.
+    const int depthMatCount = this->assetVersion >= 15 ? RENDER_PASS_MAT_COUNT : (RENDER_PASS_MAT_COUNT - 1);
+
+    for (int i = 0; i < depthMatCount; i++)
+    {
+        const RenderPassMaterial_e depthMatType = (RenderPassMaterial_e)i;
+        PakGuid_t& passMaterial = passMaterials[i];
+
+        const char* const fieldName = Material_GetPassMaterialKeyForType(depthMatType);
+        rapidjson::Value::ConstMemberIterator it;
+
+        if (!JSON_GetIterator(mapEntry, fieldName, it))
+        {
+            // Use code_private depth materials if user didn't explicitly defined or nulled the field.
+            passMaterial = Material_DetermineDefaultDepthMaterial(depthMatType, materialType, dxStates[0].rasterizerFlags);
+            continue;
+        }
+
+        // Titanfall 2 doesn't have depth tight, which is the last depth material,
+        // and color pass is always the last; skip depth tight if its Titanfall 2.
+        const int debugNameIndex = i == (depthMatCount - 1) ? COL_PASS : i;
+        const char* materialPath = nullptr;
+
+        passMaterial = Pak_ParseGuidFromObject(it->value, s_renderPassMaterialNames[debugNameIndex], materialPath);
+
+        if (!materialPath)
+            continue;
+
+        Material_AutoAddMaterial(pak, passMaterial, materialPath, this->assetVersion);
+    }
+}
+
+static inline void CheckCountOrError(const rapidjson::Value::ConstArray& elements, const size_t expectedCount, const char* const fieldName)
+{
+    const size_t elemCount = elements.Size();
+
+    if (elemCount != expectedCount)
+        Error("Expected %zu elements for field \"%s\", found %zu.\n", expectedCount, fieldName, elemCount);
+}
+
+/*
+* note(amos): commented for now until we can parse shaders and set all fields
+*             correctly. currently, when we fall back to this when a cpu asset
+*             hasn't been found the material will always end up looking incorrect.
+static inline void Material_SetTintOverrides(const rapidjson::Value& mapEntry, const char* const fieldName, float tintVars[3])
+{
+    rapidjson::Value::ConstMemberIterator it;
+
+    if (JSON_GetIterator(mapEntry, fieldName, JSONFieldType_e::kArray, it))
+    {
+        const rapidjson::Value::ConstArray elements = it->value.GetArray();
+        CheckCountOrError(elements, 3, fieldName);
+
+        for (int i = 0; i < 3; i++)
+            tintVars[i] = elements[i].GetFloat();
+    }
+}
+
+static inline void Material_SetUVOverrides(const rapidjson::Value& mapEntry, const char* const fieldName, uvTransform_t& transform)
+{
+    rapidjson::Value::ConstMemberIterator it;
+
+    if (JSON_GetIterator(mapEntry, fieldName, JSONFieldType_e::kArray, it))
+    {
+        const rapidjson::Value::ConstArray elements = it->value.GetArray();
+        CheckCountOrError(elements, 6, fieldName);
+
+        for (int i = 0; i < 6; i++)
+            *transform.pFloat(i) = elements[i].GetFloat();
+    }
+}
+
+// shader parsing eventually
+static void Material_SetupDXBufferFromJson(GenericShaderBuffer* shaderBuf, const rapidjson::Value& mapEntry)
+{
+    float layerBlendRamp;
+
+    if (JSON_GetValue(mapEntry, "layerBlendRamp", layerBlendRamp))
+        shaderBuf->c_layerBlendRamp = layerBlendRamp;
+
+    float opacity;
+
+    if (JSON_GetValue(mapEntry, "opacity", opacity))
+        shaderBuf->c_opacity = opacity;
+
+    Material_SetTintOverrides(mapEntry, "emissiveTint", shaderBuf->c_L0_emissiveTint);
+    Material_SetTintOverrides(mapEntry, "albedoTint", shaderBuf->c_L0_albedoTint);
+    Material_SetTintOverrides(mapEntry, "perfSpecColor", shaderBuf->c_L0_perfSpecColor);
+
+    Material_SetUVOverrides(mapEntry, "uv1", shaderBuf->c_uv1);
+    Material_SetUVOverrides(mapEntry, "uv2", shaderBuf->c_uv2);
+    Material_SetUVOverrides(mapEntry, "uv3", shaderBuf->c_uv3);
+    Material_SetUVOverrides(mapEntry, "uv4", shaderBuf->c_uv4);
+    Material_SetUVOverrides(mapEntry, "uv5", shaderBuf->c_uv5);
+}
+*/
+
+
+static std::string Material_GetUberPath(CPakFileBuilder* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry)
+{
+    const char* path; // is user hasn't specified an uber path, load the one from the material path.
+    const bool hasPath = JSON_GetValue(mapEntry, "$uber", path);
+
+    return Utils::VFormat("%s%s.uber", pak->GetAssetPath().c_str(), hasPath ? path : matlAsset->path.c_str());
+}
+
+template <typename MaterialShaderBuffer_t>
+static void Material_AddUberData(CPakFileBuilder* const pak, MaterialAsset_t* const matlAsset, const rapidjson::Value& mapEntry,
+    PakPageLump_s& uberBufChunk, size_t& staticBufSize)
+{
+    const std::string uberPath = Material_GetUberPath(pak, matlAsset, mapEntry);
+    BinaryIO cpuFile;
+
+    if (cpuFile.Open(uberPath, BinaryIO::Mode_e::Read))
+    {
+        staticBufSize = cpuFile.GetSize();
+        uberBufChunk = pak->CreatePageLump(sizeof(MaterialCPUHeader) + staticBufSize, SF_CPU | SF_TEMP, 8);
+
+        cpuFile.Read(uberBufChunk.data + sizeof(MaterialCPUHeader), staticBufSize);
     }
     else
     {
-        Warning("Trying to add material with no textures. Skipping asset...\n"); // shouldn't this be possible though??
-        return 0;
-    }
+        Error("Failed to open uber asset \"%s\".\n", uberPath.c_str());
 
-    return textureCount;
+        // todo(amos): do we want this? without the uber, the material will always look incorrect/dark
+        // when we fall back here. disabled the code for now in favor of an error as this prevents a
+        // ton of confusion and questions from users when the material ends up looking incorrect.
+        // 
+        // Warning("Failed to open uber asset \"%s\"; using generic buffer\n", cpuPath.c_str());
+        // 
+        //staticBufSize = sizeof(MaterialShaderBuffer_t);
+        //uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + staticBufSize, SF_CPU | SF_TEMP, 8);
+
+        ///* SETUP DX SHADER BUF */
+        //GenericShaderBuffer genericShaderBuf{};
+        //Material_SetupDXBufferFromJson(&genericShaderBuf, mapEntry);
+
+        //MaterialShaderBuffer_t shaderBuf;
+        //genericShaderBuf.Generic(shaderBuf);
+        ///* SETUP DX SHADER BUF */
+
+        //memcpy(uberBufChunk.Data() + sizeof(MaterialCPUHeader), shaderBuf.AsCharPtr(), staticBufSize);
+    }
 }
 
-void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& presetName)
+extern bool ShaderSet_AutoAddShaderSet(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion);
+
+static void Material_HandleShaderSet(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry, MaterialAsset_t* const material)
 {
-    // default value for presetName is "none"
-    if (presetName == "none")
-        return;
+    const char* shaderSetName = nullptr;
+    material->shaderSet = Pak_ParseGuidFromMap(mapEntry, "shaderSet", "shader set", shaderSetName, true);
 
+    if (shaderSetName)
+        ShaderSet_AutoAddShaderSet(pak, material->shaderSet, shaderSetName, material->assetVersion == 12 ? 8 : 11);
+}
+
+extern bool TextureAnim_AutoAddTextureAnim(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath);
+
+static void Material_HandleTextureAnimation(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry, MaterialAsset_t* const material)
+{
+    const char* textureAnimName = nullptr;
+    material->textureAnimation = Pak_ParseGuidFromMap(mapEntry, "$textureAnimation", "texture animation", textureAnimName, false);
+
+    if (textureAnimName)
+        TextureAnim_AutoAddTextureAnim(pak, material->textureAnimation, textureAnimName);
+}
+
+void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
+{
+    this->materialTypeStr = JSON_GetValueRequired<const char*>(mapEntry, "shaderType");
+    this->materialType = Material_ShaderTypeFromString(this->materialTypeStr, this->assetVersion);
+
+    if (this->materialType == MaterialShaderType_e::_TYPE_INVALID)
+        Error("Material shader type '%s' is unsupported.\n", this->materialTypeStr.c_str());
+
+    // this only seems to be in apex? heavily affects how the buffers are setup
+    // and which one is selected at Pak_LoadMaterialAsset(). Func sub_1403B4680
+    // also checks if this flag is '4' and materialType is 'PTCS'. The material
+    // "particle/smoke/smoke_charge02_close" (PTCU) for instance, has this set
+    // to 4, and 4 uses a different global buffer if this (flag & 253) != 0
+    if (this->assetVersion == 15)
+        this->uberBufferFlags = (uint8_t)JSON_GetNumberRequired<int>(mapEntry, "uberBufferFlags");
+
+    // material max dimensions
+    this->width = (short)JSON_GetNumberRequired<int>(mapEntry, "width"); // Set material width.
+    this->height = (short)JSON_GetNumberRequired<int>(mapEntry, "height"); // Set material height.
+    this->depth = (short)JSON_GetNumberRequired<int>(mapEntry, "depth");
+
+    // base material glue flags. defaults are flags used on most materials.
+    this->flags = JSON_GetNumberRequired<uint32_t>(mapEntry, "glueFlags");
+    this->flags2 = JSON_GetNumberRequired<uint32_t>(mapEntry, "glueFlags2");
+
+    // the partial name of the material, e.g. "debug/debugempty" (without material/ and _<shaderType>.rpak)
+    this->name = JSON_GetValueRequired<const char*>(mapEntry, "name");
+
+    // surfaces are defined in scripts/surfaceproperties.txt or scripts/surfaceproperties.rson
+    this->surface = JSON_GetValueRequired<const char*>(mapEntry, "surfaceProp");
+
+    // used for blend materials and the like
+    this->surface2 = JSON_GetValueRequired<const char*>(mapEntry, "surfaceProp2");
+
+    // This seems to be set on all materials, i haven't it being used yet in
+    // the engine by hardware breakpointing it. but given that it was
+    // preinitialized in the pak file, and the possible fact that various
+    // other flags might dictate when and if this gets used, it must be
+    // provided by the user.
+    this->features = JSON_GetNumberRequired<uint32_t>(mapEntry, "features");
+
+    // Set samplers properly. Responsible for texture stretching, tiling etc.
+    *(uint32_t*)this->samplers = JSON_GetNumberRequired<uint32_t>(mapEntry, "samplers");
+
+    Material_SetDXStates(mapEntry, dxStates);
+}
+
+void Material_SetTitanfall2Preset(MaterialAsset_t* const material, const std::string& presetName)
+{
     MaterialDXState_v15_t& dxState = material->dxStates[0];
-
     bool useDefaultBlendStates = true;
 
     if (presetName == "ironsight")
@@ -481,11 +456,11 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
         dxState.blendStates[2] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
         dxState.blendStates[3] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
 
-        dxState.unk = 4;
+        dxState.blendStateMask = 4;
     }
     else
     {
-        Warning("Unexpected preset name '%s' for material '%s'. Ignoring preset.\n", presetName.c_str(), material->materialAssetPath);
+        Error("Unexpected preset name \"%s\".\n", presetName.c_str());
         return;
     }
 
@@ -502,62 +477,55 @@ void Material_SetTitanfall2Preset(MaterialAsset_t* material, const std::string& 
         // 0x00138286
         dxState.blendStates[3] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0);
 
-        dxState.unk = 5;
+        dxState.blendStateMask = 5;
     }
 
     // copy all settings to the second dx state
     material->dxStates[1] = material->dxStates[0];
 }
 
-// VERSION 7
-void Assets::AddMaterialAsset_v12(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
+static bool Material_OpenFile(CPakFileBuilder* const pak, const char* const assetPath, rapidjson::Document& document)
 {
-    Log("Adding matl asset '%s'\n", assetPath);
+    const string fileName = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
 
-    std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
-
-    size_t textureCount = Material_AddTextures(pak, mapEntry);
-
-    MaterialAsset_t* matlAsset = new MaterialAsset_t{};
-    matlAsset->assetVersion = 12; // set asset as a titanfall 2 material
-    matlAsset->materialAssetPath = assetPath;
-
-    // header data chunk and generic struct
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
-
-
-    // some var declaration
-    short externalDependencyCount = 0; // number of dependencies ouside this pak
-    size_t textureRefSize = textureCount * 8; // size of the texture guid section.
-
-    // parse json inputs for matl header
-    matlAsset->FromJSON(mapEntry);
-
-    // used only for string to guid
-    std::string fullAssetPath = "material/" + sAssetPath + "_" + matlAsset->materialTypeStr + ".rpak"; // Make full rpak asset path.
-    matlAsset->guid = RTech::StringToGuid(fullAssetPath.c_str()); // Convert full rpak asset path to guid and set it in the material header.
-    
-    // !!!R2 SPECIFIC!!!
+    if (!JSON_ParseFromFile(fileName.c_str(), "material asset", document))
     {
-        CPakDataChunk nameChunk = pak->CreateDataChunk(sAssetPath.size() + 1, SF_DEV | SF_CPU, 1);
-
-        sprintf_s(nameChunk.Data(), sAssetPath.length() + 1, "%s", sAssetPath.c_str());
-
-        matlAsset->materialName = nameChunk.GetPointer();
-
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, materialName)));
+        // note(amos): once finished this must error on failure
+        //Error("Failed to open material asset \"%s\".\n", fileName.c_str());
+        return false;
     }
 
-    if (matlAsset->materialType != _TYPE_LEGACY)
-        Error("Material type '%s' is not supported on version 12 (Titanfall 2) assets\n", matlAsset->materialTypeStr.c_str());
+    return true;
+}
 
-    matlAsset->unk = matlAsset->materialTypeStr == "gen" ? 0xFBA63181 : 0x40D33E8F;
+static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath,
+    MaterialAsset_t& matlAsset, const rapidjson::Value& matEntry, const rapidjson::Value::ConstMemberIterator texturesIt, const size_t textureCount)
+{
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
 
-    if ((matlAsset->materialTypeStr == "fix" || matlAsset->materialTypeStr == "skn"))
+    // header data chunk and generic struct
+    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(MaterialAssetHeader_v12_t), SF_HEAD, 16);
+
+    // some var declaration
+    size_t textureRefSize = textureCount * sizeof(PakGuid_t); // size of the texture guid section.
+
+    // !!!R2 SPECIFIC!!!
+    {
+        const size_t nameBufLen = matlAsset.name.length() + 1;
+        PakPageLump_s nameChunk = pak->CreatePageLump(nameBufLen, SF_CPU | SF_DEV, 1);
+
+        memcpy(nameChunk.data, matlAsset.name.c_str(), nameBufLen);
+        pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v12_t, materialName), nameChunk, 0);
+    }
+
+    if (matlAsset.materialType != _TYPE_LEGACY)
+        Error("Material type '%s' is not supported on version 12 (Titanfall 2) assets.\n", matlAsset.materialTypeStr.c_str());
+
+    if ((matlAsset.materialTypeStr == "fix" || matlAsset.materialTypeStr == "skn"))
     {
         for (int i = 0; i < 2; ++i)
         {
-            MaterialDXState_v15_t& dxState = matlAsset->dxStates[i];
+            MaterialDXState_v15_t& dxState = matlAsset.dxStates[i];
 
             dxState.blendStates[0] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
             dxState.blendStates[1] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
@@ -569,7 +537,7 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, const char* assetPath, rapidjso
     {
         for (int i = 0; i < 2; ++i)
         {
-            MaterialDXState_v15_t& dxState = matlAsset->dxStates[i];
+            MaterialDXState_v15_t& dxState = matlAsset.dxStates[i];
 
             dxState.blendStates[0] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
             dxState.blendStates[1] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
@@ -578,468 +546,276 @@ void Assets::AddMaterialAsset_v12(CPakFile* pak, const char* assetPath, rapidjso
         }
     }
 
-    const size_t dataBufSize = (textureRefSize * 2) + (matlAsset->surface.length() + 1) + (mapEntry.HasMember("surface2") ? matlAsset->surface2.length() + 1 : 0);
+    const size_t surfaceProp1Size = !matlAsset.surface.empty() ? (matlAsset.surface.length() + 1) : 0;
+    const size_t surfaceProp2Size = !matlAsset.surface2.empty() ? (matlAsset.surface2.length() + 1) : 0;
 
-    if (JSON_IS_STR(mapEntry, "preset"))
+    const size_t dataBufSize = (textureRefSize * 2) + surfaceProp1Size + surfaceProp2Size;
+
+    const char* presetValue;
+
+    if (JSON_GetValue(matEntry, "$preset", presetValue))
     {
         // get presets for dxstate, derived from existing r2 materials
-        Material_SetTitanfall2Preset(matlAsset, JSON_GET_STR(mapEntry, "preset", "none"));
+        Material_SetTitanfall2Preset(&matlAsset, presetValue);
     }
 
     // asset data
-    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
+    PakPageLump_s dataChunk = pak->CreatePageLump(dataBufSize, SF_CPU, 8);
 
-    char* dataBuf = dataChunk.Data();
+    char* dataBuf = dataChunk.data;
 
-    std::vector<PakGuidRefHdr_t> guids{};
-
-    if (mapEntry["textures"].IsArray())
+    if (textureCount)
     {
-        int textureIdx = 0;
-        for (auto& it : mapEntry["textures"].GetArray())
-        {
-            uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
-
-            *(uint64_t*)dataBuf = textureGuid;
-
-            if (textureGuid != 0) // only deal with dependencies if the guid is not 0
-            {
-                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer((textureIdx * sizeof(uint64_t)))); // register guid for this texture reference
-
-                PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
-
-                if (txtrAsset)
-                    pak->SetCurrentAssetAsDependentForAsset(txtrAsset);
-                else
-                {
-                    externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
-                    Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
-                }
-            }
-
-            dataBuf += sizeof(uint64_t);
-            textureIdx++;
-        }
-    }
-    else if (mapEntry["textures"].IsObject())
-    {
-        for (auto& it : mapEntry["textures"].GetObject())
-        {
-            uint32_t bindPoint = static_cast<uint32_t>(atoi(it.name.GetString()));
-
-            // this should always be true but might as well check
-            assert(bindPoint < textureCount);
-
-            uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.value.GetString(), true); // get texture guid
-
-            reinterpret_cast<uint64_t*>(dataBuf)[bindPoint] = textureGuid;
-
-            if (textureGuid != 0) // only deal with dependencies if the guid is not 0
-            {
-                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer((bindPoint * sizeof(uint64_t)))); // register guid for this texture reference
-
-                PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
-
-                if (txtrAsset)
-                    pak->SetCurrentAssetAsDependentForAsset(txtrAsset);
-                else
-                {
-                    externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
-                    Warning("unable to find texture '%s' (%i) for material '%s' within the local assets\n", it.value.GetString(), bindPoint, assetPath);
-                }
-            }
-        }
-        dataBuf += textureRefSize;
+        Material_AddTextureRefs(pak, dataChunk, dataBuf, asset, texturesIt->value, 0);
+        dataBuf += (textureRefSize * 2);
     }
 
-    dataBuf += textureRefSize; // [rika]: already calculated, no need to do it again.
-
-    // write the surface name into the buffer
-    snprintf(dataBuf, matlAsset->surface.length() + 1, "%s", matlAsset->surface.c_str());
-
-    // write surface2 name into the buffer if used
-    if (matlAsset->surface2.length() > 0)
+    // write the surface names into the buffer
+    if (surfaceProp1Size)
     {
-        dataBuf += (matlAsset->surface.length() + 1);
-        snprintf(dataBuf, matlAsset->surface2.length() + 1, "%s", matlAsset->surface2.c_str());
+        memcpy(dataBuf, matlAsset.surface.c_str(), surfaceProp1Size);
+        dataBuf += surfaceProp1Size;
+    }
+
+    if (surfaceProp2Size)
+    {
+        memcpy(dataBuf, matlAsset.surface2.c_str(), surfaceProp2Size);
+        dataBuf += surfaceProp2Size;
     }
 
     // ===============================
     // fill out the rest of the header
-    
+
     size_t currentDataBufOffset = 0;
-    
-    matlAsset->textureHandles = dataChunk.GetPointer(currentDataBufOffset);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, textureHandles)));
+
+    pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v12_t, textureHandles), dataChunk, currentDataBufOffset);
     currentDataBufOffset += textureRefSize;
 
-    matlAsset->streamingTextureHandles = dataChunk.GetPointer(currentDataBufOffset);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, streamingTextureHandles)));
+    pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v12_t, streamingTextureHandles), dataChunk, currentDataBufOffset);
     currentDataBufOffset += textureRefSize;
 
-
-    matlAsset->surfaceProp = dataChunk.GetPointer(currentDataBufOffset);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, surfaceProp)));
-    currentDataBufOffset += matlAsset->surface.length() + 1;
-
-    if (matlAsset->surface2.length() > 0)
+    if (surfaceProp1Size)
     {
-        matlAsset->surfaceProp2 = dataChunk.GetPointer(currentDataBufOffset);
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, surfaceProp2)));
-        currentDataBufOffset += matlAsset->surface2.length() + 1;
+        pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v12_t, surfaceProp), dataChunk, currentDataBufOffset);
+        currentDataBufOffset += surfaceProp1Size;
     }
 
-    //bool bColpass = false; // is this colpass material? how do you determine this
-
-    // loop thru referenced assets (depth materials, colpass material) note: shaderset isn't inline with these vars in r2, so we set it after
-    for (int i = 0; i < 3; ++i)
+    if (surfaceProp2Size)
     {
-        uint64_t guid = *((uint64_t*)&matlAsset->depthShadowMaterial + i);
-
-        if (guid != 0)
-        {
-            pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, depthShadowMaterial) + (i * 8)));
-
-            PakAsset_t* asset = pak->GetAssetByGuid(guid, nullptr, true);
-
-            if (asset)
-                pak->SetCurrentAssetAsDependentForAsset(asset);
-            else
-                externalDependencyCount++;
-        }
+        pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v12_t, surfaceProp2), dataChunk, currentDataBufOffset);
+        currentDataBufOffset += surfaceProp2Size;
     }
 
-    // do colpass here because of how MaterialAsset_t is setup
-    if (matlAsset->colpassMaterial != 0)
-    {
-        pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, colpassMaterial)));
+    // register referenced assets (depth materials, colpass material, shader sets)
 
-        PakAsset_t* asset = pak->GetAssetByGuid(matlAsset->colpassMaterial, nullptr, true);
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[0], offsetof(MaterialAssetHeader_v12_t, passMaterials[0]), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[1], offsetof(MaterialAssetHeader_v12_t, passMaterials[1]), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[2], offsetof(MaterialAssetHeader_v12_t, passMaterials[2]), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[3], offsetof(MaterialAssetHeader_v12_t, passMaterials[3]), hdrChunk, asset);
 
-        if (asset)
-            pak->SetCurrentAssetAsDependentForAsset(asset);
-        else
-            externalDependencyCount++;
-    }
-
-    // shaderset, see note above
-    if (matlAsset->shaderSet != 0)
-    {
-        pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v12_t, shaderSet)));
-
-        PakAsset_t* asset = pak->GetAssetByGuid(matlAsset->shaderSet, nullptr, true);
-
-        if (asset)
-            pak->SetCurrentAssetAsDependentForAsset(asset);
-        else
-            externalDependencyCount++;
-    }
+    Pak_RegisterGuidRefAtOffset(matlAsset.shaderSet, offsetof(MaterialAssetHeader_v12_t, shaderSet), hdrChunk, asset);
 
     // write header now that we are done setting it up
-    matlAsset->WriteToBuffer(hdrChunk.Data());
+    matlAsset.WriteToBuffer(hdrChunk.data);
 
     //////////////////////////////////////////
     /// cpu
-    std::string cpuPath = pak->GetAssetPath() + JSON_GET_STR(mapEntry, "cpuPath", sAssetPath + "_" + matlAsset->materialTypeStr + ".cpu");
+    size_t dxStaticBufSize = 0;
+    PakPageLump_s uberBufChunk;
 
-    /* SETUP DX SHADER BUF */
-    GenericShaderBuffer genericShaderBuf{};
-    
-    Material_SetupDXBufferFromJson(&genericShaderBuf, mapEntry);
+    Material_AddUberData<MaterialShaderBufferV12>(pak, &matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
 
-    MaterialShaderBufferV12 shaderBuf = genericShaderBuf.GenericV12();
-    /* SETUP DX SHADER BUF */
-
-    uint64_t dxStaticBufSize = 0;
-    CPakDataChunk uberBufChunk;
-    if (FILE_EXISTS(cpuPath))
-    {
-        dxStaticBufSize = Utils::GetFileSize(cpuPath);
-
-        uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + dxStaticBufSize, SF_CPU | SF_TEMP, 8);
-
-        std::ifstream cpuIn(cpuPath, std::ios::in | std::ios::binary);
-        cpuIn.read(uberBufChunk.Data() + sizeof(MaterialCPUHeader), dxStaticBufSize);
-        cpuIn.close();
-    }
-    else
-    {
-        dxStaticBufSize = sizeof(MaterialShaderBufferV12);
-        uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + dxStaticBufSize, SF_CPU | SF_TEMP, 8);
-
-        memcpy(uberBufChunk.Data() + sizeof(MaterialCPUHeader), shaderBuf.AsCharPtr(), dxStaticBufSize);
-    }
-
-    MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
-    cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
+    MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.data);
     cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
-    cpuhdr->unk_C = 3; // unsure what this value actually is but it changes
+    cpuhdr->version = 3; // unsure what this value actually is but some cpu headers have
+    // different values. the engine doesn't seem to use it however.
 
-    pak->AddPointer(uberBufChunk.GetPointer(offsetof(MaterialCPUHeader, dataPtr)));
+    pak->AddPointer(uberBufChunk, offsetof(MaterialCPUHeader, dataPtr), uberBufChunk, sizeof(MaterialCPUHeader));
 
     //////////////////////////////////////////
 
-    PakAsset_t asset;
+    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, uberBufChunk.GetPointer(), -1, -1, 12, AssetType::MATL);
+    asset.SetHeaderPointer(hdrChunk.data);
 
-    asset.InitAsset(matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
-    asset.version = 12;
+    pak->FinishAsset();
+}
 
-    asset.pageEnd = pak->GetNumPages();
+static void Material_InternalAddMaterialV15(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, 
+    MaterialAsset_t& matlAsset, const rapidjson::Value& matEntry, const rapidjson::Value::ConstMemberIterator texturesIt, const size_t textureCount)
+{
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
 
-    asset.remainingDependencyCount = static_cast<short>((guids.size() - externalDependencyCount) + 1); // plus one for the asset itself (I think)
-  
-    asset.AddGuids(&guids);
+    // header data chunk and generic struct
+    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
 
-    pak->PushAsset(asset);
+    // some var declaration
+    size_t textureRefSize = textureCount * sizeof(PakGuid_t); // size of the texture guid section.
 
-    Log("\n");
+    const size_t nameBufLen = matlAsset.name.length() + 1;
 
-    delete matlAsset;
+    const size_t surfaceProp1Size = !matlAsset.surface.empty() ? (matlAsset.surface.length() + 1) : 0;
+    const size_t surfaceProp2Size = !matlAsset.surface2.empty() ? (matlAsset.surface2.length() + 1) : 0;
+
+    const size_t alignedPathSize = IALIGN8(nameBufLen);
+    const size_t dataBufSize = alignedPathSize + (textureRefSize * 2) + surfaceProp1Size + surfaceProp2Size;
+
+    // asset data
+    PakPageLump_s dataChunk = pak->CreatePageLump(dataBufSize, SF_CPU, 8);
+    char* dataBuf = dataChunk.data;
+
+    // write asset name into the start of the buffer
+    memcpy(dataBuf, matlAsset.name.c_str(), nameBufLen);
+    dataBuf += alignedPathSize;
+
+    if (textureCount)
+    {
+        Material_AddTextureRefs(pak, dataChunk, dataBuf, asset, texturesIt->value, alignedPathSize);
+        dataBuf += (textureRefSize * 2);
+    }
+
+    // write the surface names into the buffer
+    if (surfaceProp1Size)
+    {
+        memcpy(dataBuf, matlAsset.surface.c_str(), surfaceProp1Size);
+        dataBuf += surfaceProp1Size;
+    }
+
+    if (surfaceProp2Size)
+    {
+        memcpy(dataBuf, matlAsset.surface2.c_str(), surfaceProp2Size);
+        dataBuf += surfaceProp2Size;
+    }
+
+
+    // ===============================
+    // fill out the rest of the header
+
+    size_t currentDataBufOffset = 0;
+
+    pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v15_t, materialName), dataChunk, currentDataBufOffset);
+    currentDataBufOffset += alignedPathSize;
+
+    pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v15_t, textureHandles), dataChunk, currentDataBufOffset);
+    currentDataBufOffset += textureRefSize;
+
+    pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v15_t, streamingTextureHandles), dataChunk, currentDataBufOffset);
+    currentDataBufOffset += textureRefSize;
+
+    if (surfaceProp1Size)
+    {
+        pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v15_t, surfaceProp), dataChunk, currentDataBufOffset);
+        currentDataBufOffset += surfaceProp1Size;
+    }
+
+    if (surfaceProp2Size)
+    {
+        pak->AddPointer(hdrChunk, offsetof(MaterialAssetHeader_v15_t, surfaceProp2), dataChunk, currentDataBufOffset);
+        currentDataBufOffset += surfaceProp2Size;
+    }
+
+    // loop thru referenced assets (depth materials, colpass material)
+    for (int i = 0; i < RENDER_PASS_MAT_COUNT; ++i)
+    {
+        const PakGuid_t guid = matlAsset.passMaterials[i];
+        const size_t offset = offsetof(MaterialAssetHeader_v15_t, passMaterials[i]);
+
+        Pak_RegisterGuidRefAtOffset(guid, offset, hdrChunk, asset);
+    }
+
+    Pak_RegisterGuidRefAtOffset(matlAsset.shaderSet, offsetof(MaterialAssetHeader_v15_t, shaderSet), hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.textureAnimation, offsetof(MaterialAssetHeader_v15_t, textureAnimation), hdrChunk, asset);
+
+    // write header now that we are done setting it up
+    matlAsset.WriteToBuffer(hdrChunk.data);
+
+    //////////////////////////////////////////
+    /// cpu
+    size_t dxStaticBufSize = 0;
+    PakPageLump_s uberBufChunk;
+
+    Material_AddUberData<MaterialShaderBufferV15>(pak, &matlAsset, matEntry, uberBufChunk, dxStaticBufSize);
+
+    MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.data);
+    cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
+    cpuhdr->version = 3; // unsure what this value actually is but some cpu headers have
+                         // different values. the engine doesn't seem to use it however.
+
+    pak->AddPointer(uberBufChunk, offsetof(MaterialCPUHeader, dataPtr), uberBufChunk, sizeof(MaterialCPUHeader));
+
+    //////////////////////////////////////////
+
+    asset.InitAsset(hdrChunk.GetPointer(), hdrChunk.size, uberBufChunk.GetPointer(), -1, -1, 15, AssetType::MATL);
+    asset.SetHeaderPointer(hdrChunk.data);
+
+    pak->FinishAsset();
+}
+
+extern bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath);
+
+static bool Material_InternalAddMaterial(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value* const mapEntry, const int assetVersion)
+{
+    rapidjson::Document document;
+    const rapidjson::Value* matEntry;
+
+    if (Material_OpenFile(pak, assetPath, document))
+        matEntry = &document;
+    else
+    {
+        if (!mapEntry)
+        {
+            Warning("Unable to open material file \"%s\".\n", assetPath);
+            return false;
+        }
+
+        matEntry = mapEntry;
+    }
+
+    rapidjson::Value::ConstMemberIterator texturesIt;
+    const bool hasTextures = JSON_GetIterator(*matEntry, "$textures", JSONFieldType_e::kObject, texturesIt);
+
+    const size_t textureCount = hasTextures
+        ? Material_AddTextures(pak, *matEntry, texturesIt->value)
+        : 0; // note: no error as materials without textures do exist.
+             // typically, these are prepass/vsm/etc materials.
+
+    MaterialAsset_t matlAsset{};
+    matlAsset.assetVersion = assetVersion;
+    matlAsset.guid = assetGuid;
+    matlAsset.path = Utils::ChangeExtension(assetPath, "");
+
+    Material_HandleShaderSet(pak, *matEntry, &matlAsset);
+    Material_HandleTextureAnimation(pak, *matEntry, &matlAsset);
+
+    matlAsset.FromJSON(*matEntry); // parse json inputs for matl header
+    matlAsset.SetupDepthMaterials(pak, *matEntry);
+
+    if (assetVersion == 12)
+        Material_InternalAddMaterialV12(pak, assetGuid, assetPath, matlAsset, *matEntry, texturesIt, textureCount);
+    else
+        Material_InternalAddMaterialV15(pak, assetGuid, assetPath, matlAsset, *matEntry, texturesIt, textureCount);
+
+    return true;
+}
+
+bool Material_AutoAddMaterial(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const int assetVersion)
+{
+    PakAsset_t* const existingAsset = pak->GetAssetByGuid(assetGuid, nullptr, true);
+
+    if (existingAsset)
+        return false; // already present in the pak; not added.
+
+    Log("Auto-adding 'matl' asset \"%s\".\n", assetPath);
+    return Material_InternalAddMaterial(pak, assetGuid, assetPath, nullptr, assetVersion);
+}
+
+// VERSION 7
+void Assets::AddMaterialAsset_v12(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+{
+    Material_InternalAddMaterial(pak, assetGuid, assetPath, &mapEntry, 12);
 }
 
 // VERSION 8
-void Assets::AddMaterialAsset_v15(CPakFile* pak, const char* assetPath, rapidjson::Value& mapEntry)
+void Assets::AddMaterialAsset_v15(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
-    Log("Adding matl asset '%s'\n", assetPath);
-
-    std::string sAssetPath = std::string(assetPath); // hate this var name, love that it is different for every asset
-
-    size_t textureCount = Material_AddTextures(pak, mapEntry);
-
-    MaterialAsset_t* matlAsset = new MaterialAsset_t{};
-    matlAsset->assetVersion = 15;
-    matlAsset->materialAssetPath = assetPath;
-
-    // header data chunk and generic struct
-    CPakDataChunk hdrChunk = pak->CreateDataChunk(sizeof(MaterialAssetHeader_v15_t), SF_HEAD, 16);
-
-    // some var declaration
-    short externalDependencyCount = 0; // number of dependencies ouside this pak
-    size_t textureRefSize = textureCount * 8; // size of the texture guid section.
-
-    // parse json inputs for matl header
-    matlAsset->FromJSON(mapEntry);
-
-    // used only for string to guid
-    std::string fullAssetPath = "material/" + sAssetPath + "_" + matlAsset->materialTypeStr + ".rpak"; // Make full rpak asset path.
-    matlAsset->guid = RTech::StringToGuid(fullAssetPath.c_str()); // Convert full rpak asset path to guid and set it in the material header.
-
-    const size_t alignedPathSize = IALIGN4(sAssetPath.length() + 1);
-    const size_t dataBufSize = alignedPathSize + (textureRefSize * 2) + (matlAsset->surface.length() + 1) + (mapEntry.HasMember("surface2") ? matlAsset->surface2.length() + 1 : 0);
-
-    // asset data
-    CPakDataChunk dataChunk = pak->CreateDataChunk(dataBufSize, SF_CPU /*| SF_CLIENT*/, 8);
-
-    char* dataBuf = dataChunk.Data();
-
-    // write asset name into the start of the buffer
-    snprintf(dataBuf, sAssetPath.length() + 1, "%s", assetPath);
-    dataBuf += alignedPathSize;
-
-    std::vector<PakGuidRefHdr_t> guids{};
-
-    if (mapEntry["textures"].IsArray())
-    {
-        int textureIdx = 0;
-        for (auto& it : mapEntry["textures"].GetArray())
-        {
-            uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.GetString(), true); // get texture guid
-
-            *(uint64_t*)dataBuf = textureGuid;
-
-            if (textureGuid != 0) // only deal with dependencies if the guid is not 0
-            {
-                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (textureIdx * sizeof(uint64_t)))); // register guid for this texture reference
-
-                PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
-
-                if (txtrAsset)
-                    pak->SetCurrentAssetAsDependentForAsset(txtrAsset);
-                else
-                {
-                    externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
-                    Warning("unable to find texture '%s' for material '%s' within the local assets\n", it.GetString(), assetPath);
-                }
-            }
-
-            dataBuf += sizeof(uint64_t);
-            textureIdx++;
-        }
-    }
-    else if (mapEntry["textures"].IsObject())
-    {
-        for (auto& it : mapEntry["textures"].GetObject())
-        {
-            uint32_t bindPoint = static_cast<uint32_t>(atoi(it.name.GetString()));
-
-            uint64_t textureGuid = RTech::GetAssetGUIDFromString(it.value.GetString(), true); // get texture guid
-
-            reinterpret_cast<uint64_t*>(dataBuf)[bindPoint] = textureGuid;
-
-            if (textureGuid != 0) // only deal with dependencies if the guid is not 0
-            {
-                pak->AddGuidDescriptor(&guids, dataChunk.GetPointer(alignedPathSize + (bindPoint * sizeof(uint64_t)))); // register guid for this texture reference
-
-                PakAsset_t* txtrAsset = pak->GetAssetByGuid(textureGuid, nullptr);
-
-                if (txtrAsset)
-                    pak->SetCurrentAssetAsDependentForAsset(txtrAsset);
-                else
-                {
-                    externalDependencyCount++; // if the asset doesn't exist in the pak it has to be external, or missing
-                    Warning("unable to find texture '%s' (%i) for material '%s' within the local assets\n", it.value.GetString(), bindPoint, assetPath);
-                }
-            }
-        }
-        dataBuf += textureRefSize;
-    }
-
-    dataBuf += textureRefSize; // [rika]: already calculated, no need to do it again.
-
-    // write the surface name into the buffer
-    snprintf(dataBuf, matlAsset->surface.length() + 1, "%s", matlAsset->surface.c_str());
-
-    // write surface2 name into the buffer if used
-    if (matlAsset->surface2.length() > 0)
-    {
-        dataBuf += (matlAsset->surface.length() + 1);
-        snprintf(dataBuf, matlAsset->surface2.length() + 1, "%s", matlAsset->surface2.c_str());
-    }
-
-
-    // ===============================
-    // fill out the rest of the header
-
-    size_t currentDataBufOffset = 0;
-
-    matlAsset->materialName = dataChunk.GetPointer();
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, materialName)));
-    currentDataBufOffset += alignedPathSize;
-
-    matlAsset->textureHandles = dataChunk.GetPointer(currentDataBufOffset);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, textureHandles)));
-    currentDataBufOffset += textureRefSize;
-
-    matlAsset->streamingTextureHandles = dataChunk.GetPointer(currentDataBufOffset);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, streamingTextureHandles)));
-    currentDataBufOffset += textureRefSize;
-
-
-    matlAsset->surfaceProp = dataChunk.GetPointer(currentDataBufOffset);
-    pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, surfaceProp)));
-    currentDataBufOffset += matlAsset->surface.length() + 1;
-
-    if (matlAsset->surface2.length() > 0)
-    {
-        matlAsset->surfaceProp2 = dataChunk.GetPointer(currentDataBufOffset);
-        pak->AddPointer(hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, surfaceProp2)));
-        currentDataBufOffset += matlAsset->surface2.length() + 1;
-    }
-
-    //bool bColpass = false; // is this colpass material? how do you determine this
-
-    // loop thru referenced assets (depth materials, colpass material) note: shaderset isn't inline with these vars in r2, so we set it after
-    for (int i = 0; i < 6; ++i)
-    {
-        uint64_t guid = *((uint64_t*)&matlAsset->depthShadowMaterial + i);
-
-        if (guid != 0)
-        {
-            pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, depthShadowMaterial) + (i * 8)));
-
-            PakAsset_t* asset = pak->GetAssetByGuid(guid, nullptr, true);
-
-            if (asset)
-                pak->SetCurrentAssetAsDependentForAsset(asset);
-            else
-                externalDependencyCount++;
-        }
-    }
-
-    // texan
-    if (matlAsset->textureAnimation != 0)
-    {
-        pak->AddGuidDescriptor(&guids, hdrChunk.GetPointer(offsetof(MaterialAssetHeader_v15_t, textureAnimation)));
-
-        PakAsset_t* asset = pak->GetAssetByGuid(matlAsset->colpassMaterial, nullptr, true);
-
-        if (asset)
-            pak->SetCurrentAssetAsDependentForAsset(asset);
-        else
-            externalDependencyCount++;
-    }
-
-    matlAsset->unk = 0x1F5A92BD; // set a quirky little guy
-
-    // write header now that we are done setting it up
-    matlAsset->WriteToBuffer(hdrChunk.Data());
-
-    //////////////////////////////////////////
-    /// cpu
-    uint64_t dxStaticBufSize = 0;
-
-    // temp, should be moved to setting things in material files when those exist
-    std::string cpuPath = pak->GetAssetPath() + JSON_GET_STR(mapEntry, "cpuPath", sAssetPath + "_" + matlAsset->materialTypeStr + ".cpu");
-
-    // also bad temp
-    if (mapEntry.HasMember("cpu") && mapEntry["cpu"].IsString())
-    {
-        cpuPath = pak->GetAssetPath() + mapEntry["cpu"].GetStdString() + ".cpu";
-    }
-
-    /* SETUP DX SHADER BUF */
-    GenericShaderBuffer genericShaderBuf{};
-
-    Material_SetupDXBufferFromJson(&genericShaderBuf, mapEntry);
-
-    MaterialShaderBufferV15 shaderBuf = genericShaderBuf.GenericV15();
-    /* SETUP DX SHADER BUF */
-
-    CPakDataChunk uberBufChunk;
-    if (FILE_EXISTS(cpuPath))
-    {
-        dxStaticBufSize = Utils::GetFileSize(cpuPath);
-
-        uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + dxStaticBufSize, SF_CPU | SF_TEMP, 16);
-
-        std::ifstream cpuIn(cpuPath, std::ios::in | std::ios::binary);
-        cpuIn.read(uberBufChunk.Data() + sizeof(MaterialCPUHeader), dxStaticBufSize);
-        cpuIn.close();
-    }
-    else
-    {
-        dxStaticBufSize = sizeof(MaterialShaderBufferV15);
-        uberBufChunk = pak->CreateDataChunk(sizeof(MaterialCPUHeader) + dxStaticBufSize, SF_CPU | SF_TEMP, 16);
-
-        memcpy(uberBufChunk.Data() + sizeof(MaterialCPUHeader), shaderBuf.AsCharPtr(), dxStaticBufSize);
-    }
-
-    MaterialCPUHeader* cpuhdr = reinterpret_cast<MaterialCPUHeader*>(uberBufChunk.Data());
-    cpuhdr->dataPtr = uberBufChunk.GetPointer(sizeof(MaterialCPUHeader));
-    cpuhdr->dataSize = (uint32_t)dxStaticBufSize;
-
-    pak->AddPointer(uberBufChunk.GetPointer(offsetof(MaterialCPUHeader, dataPtr)));
-
-    //////////////////////////////////////////
-
-    PakAsset_t asset;
-
-
-    asset.InitAsset(matlAsset->guid, hdrChunk.GetPointer(), hdrChunk.GetSize(), uberBufChunk.GetPointer(), UINT64_MAX, UINT64_MAX, AssetType::MATL);
-    asset.SetHeaderPointer(hdrChunk.Data());
-    asset.version = 15;
-
-    asset.pageEnd = pak->GetNumPages();
-    //asset.remainingDependencyCount = static_cast<short>((guids.size() - externalDependencyCount) + 1); // plus one for the asset itself (I think)
-
-    // HACKHACK: i don't really understand what the value of this needs to be, so i have set this back to a (very) incorrect value that at least doesn't crash
-    asset.remainingDependencyCount = static_cast<short>((0i16 - externalDependencyCount) + 1);
-
-    asset.AddGuids(&guids);
-
-    pak->PushAsset(asset);
-
-    Log("\n");
-
-    delete matlAsset;
+    Material_InternalAddMaterial(pak, assetGuid, assetPath, &mapEntry, 15);
 }

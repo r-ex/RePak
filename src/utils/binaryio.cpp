@@ -7,9 +7,7 @@
 //-----------------------------------------------------------------------------
 BinaryIO::BinaryIO()
 {
-	m_size = 0;
-	m_mode = Mode_e::None;
-	m_flags = 0;
+	Reset();
 }
 
 //-----------------------------------------------------------------------------
@@ -79,14 +77,23 @@ bool BinaryIO::Open(const char* const filePath, const Mode_e mode)
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: resets the state
+//-----------------------------------------------------------------------------
+void BinaryIO::Reset()
+{
+	m_size = 0;
+	m_skip = 0;
+	m_mode = Mode_e::None;
+	m_flags = 0;
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: closes the stream
 //-----------------------------------------------------------------------------
 void BinaryIO::Close()
 {
 	m_stream.close();
-	m_size = 0;
-	m_mode = Mode_e::None;
-	m_flags = 0;
+	Reset();
 }
 
 //-----------------------------------------------------------------------------
@@ -102,12 +109,12 @@ void BinaryIO::Flush()
 // Purpose: gets the position of the current character in the stream
 // Output : std::streampos
 //-----------------------------------------------------------------------------
-std::streampos BinaryIO::TellGet()
+std::streamoff BinaryIO::TellGet()
 {
 	assert(IsReadMode());
 	return m_stream.tellg();
 }
-std::streampos BinaryIO::TellPut()
+std::streamoff BinaryIO::TellPut()
 {
 	assert(IsWriteMode());
 	return m_stream.tellp();
@@ -118,25 +125,23 @@ std::streampos BinaryIO::TellPut()
 // Input  : offset - 
 //			way - 
 //-----------------------------------------------------------------------------
-void BinaryIO::SeekGet(const std::streampos offset, const std::ios_base::seekdir way)
+void BinaryIO::SeekGet(const std::streamoff offset, const std::ios_base::seekdir way)
 {
 	assert(IsReadMode());
 	m_stream.seekg(offset, way);
 }
-void BinaryIO::SeekPut(const std::streampos offset, const std::ios_base::seekdir way)
+//-----------------------------------------------------------------------------
+// NOTE: if you seek beyond the end of the file to try and pad it out, use the
+// Pad() method instead as the behavior of seek is operating system dependent
+//-----------------------------------------------------------------------------
+void BinaryIO::SeekPut(const std::streamoff offset, const std::ios_base::seekdir way)
 {
 	assert(IsWriteMode());
 
+	CalcSkipDelta(offset, way);
 	m_stream.seekp(offset, way);
-	const std::streampos newOffset = m_stream.tellp();
-
-	// seekp writes padding when we go beyond eof, therefore we should update
-	// the size in case this happens.
-	if (newOffset > m_size)
-		m_size = newOffset;
-
 }
-void BinaryIO::Seek(const std::streampos offset, const std::ios_base::seekdir way)
+void BinaryIO::Seek(const std::streamoff offset, const std::ios_base::seekdir way)
 {
 	if (IsReadMode())
 		SeekGet(offset, way);
@@ -157,7 +162,7 @@ const std::filebuf* BinaryIO::GetData() const
 // Purpose: returns the data size
 // Output : std::streampos
 //-----------------------------------------------------------------------------
-const std::streampos BinaryIO::GetSize() const
+const std::streamoff BinaryIO::GetSize() const
 {
 	return m_size;
 }
@@ -259,16 +264,119 @@ bool BinaryIO::ReadString(char* const buf, const size_t len)
 // Input  : &input - 
 // Output : true on success, false otherwise
 //-----------------------------------------------------------------------------
-bool BinaryIO::WriteString(const std::string& input)
+bool BinaryIO::WriteString(const std::string& input, const bool nullterminate)
 {
 	if (!IsWritable())
 		return false;
 
 	const char* const text = input.c_str();
-	const size_t len = input.length();
+	const size_t len = input.length() + nullterminate;
 
 	m_stream.write(text, len);
-	m_size += len;
+	CalcAddDelta(len);
 
 	return true;
+}
+
+// limit number of io calls and allocations by just using this static buffer
+// for padding out the stream.
+static constexpr size_t PAD_BUF_SIZE = 4096;
+const static char s_padBuf[PAD_BUF_SIZE];
+
+//-----------------------------------------------------------------------------
+// Purpose: pads the out stream up to count bytes
+// Input  : count - 
+//-----------------------------------------------------------------------------
+void BinaryIO::Pad(const size_t count)
+{
+	assert(count > 0);
+	size_t remainder = count;
+
+	while (remainder)
+	{
+		const size_t writeCount = (std::min)(count, PAD_BUF_SIZE);
+		Write(s_padBuf, writeCount);
+
+		remainder -= writeCount;
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: makes sure that the size gets incremented if we exceeded the end of
+//          the stream with the delta amount
+//-----------------------------------------------------------------------------
+void BinaryIO::CalcAddDelta(const size_t count)
+{
+	if (m_skip > 0)
+	{
+		m_skip -= count;
+
+		if (m_skip < 0)
+		{
+			m_size += -m_skip; // Add the overshoot to the file size.
+			m_skip = 0;
+		}
+	}
+	else
+		m_size += count;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: if we seek backwards, and then write new data, we should not add
+//          this to the total output size of the stream as we modify and not
+//          add. we have to keep by how much we shifted backwards and advanced
+//          forward until we can start adding again.
+//-----------------------------------------------------------------------------
+void BinaryIO::CalcSkipDelta(const std::streamoff offset, const std::ios_base::seekdir way)
+{
+	switch (way)
+	{
+	case std::ios_base::beg:
+	{
+		if (offset < 0)
+		{
+			assert(false && "Negative offset in std::ios_base::beg is invalid.");
+			return;
+		}
+
+		if (offset > m_size)
+		{
+			m_size = offset;
+			m_skip = 0;
+		}
+		else
+			m_skip = m_size - offset;
+		break;
+	}
+	case std::ios_base::cur:
+	{
+		if (offset > 0)
+			CalcAddDelta(offset);
+		else
+			m_skip += -offset;
+		break;
+	}
+	case std::ios_base::end:
+	{
+		if (offset >= 0)
+		{
+			m_size += offset;
+			m_skip = 0;
+		}
+		else
+			m_skip += -offset;
+		break;
+	}
+	default:
+		assert(false && "Unsupported seek direction.");
+		break;
+	}
+
+	// Ensure m_skip is non-negative, this can happen if you call this method
+	// with cur or end, and a negative value who's absolute value is greater
+	// than the total stream size. If you hit this, you have a bug somewhere.
+	assert(m_skip >= 0);
+
+	if (m_skip < 0)
+		m_skip = 0;
 }

@@ -1,29 +1,49 @@
 #pragma once
 
-#ifndef MAKE_FOURCC
-#define MAKE_FOURCC(a,b,c,d) ((d<<24)+(c<<16)+(b<<8)+a)
-#endif
+#define STARPAK_MAGIC (('k'<<24)+('P'<<16)+('R'<<8)+'S')
+#define STARPAK_VERSION 1
+#define STARPAK_EXTENSION ".starpak"
 
-#define STARPAK_FILE_MAGIC MAKE_FOURCC('S', 'R', 'P', 'k')
+// data blocks in starpaks are all aligned to 4096 bytes, including
+// the header which gets filled with 0xCB after the magic and version
+#define STARPAK_DATABLOCK_ALIGNMENT 4096
+#define STARPAK_DATABLOCK_ALIGNMENT_PADDING 0xCB
 
 // starpak header
-struct StarpakFileHeader_t
+struct PakStreamSetFileHeader_s
 {
 	int magic;
 	int version;
 };
 
-// entry struct for the table at the end of starpak files
-struct StarpakEntry_t
-{
-	size_t dataOffset;
-	size_t dataSize;
-};
-
-// internal data structure for referencing streaming data to be written
-struct StreamableDataEntry
+// contains the offset and size of a data entry within the starpak
+// offset must be larger than 0x1000 (4096), as the beginning of 
+// the file is filled with 0xCB until that point
+// 
+// there is an array of these structures at the end of the file that point to each data entry
+// array size is equal to the value of the 64-bit unsigned integer in the last 8 bytes of the file
+struct PakStreamSetEntry_s
 {
 	uint64_t offset;
 	uint64_t dataSize;
-	uint8_t* pData;
 };
+
+enum PakStreamSet_e
+{
+	STREAMING_SET_MANDATORY = 0,
+	STREAMING_SET_OPTIONAL,
+
+	// number of streaming sets
+	STREAMING_SET_COUNT
+};
+
+static inline const char* Pak_StreamSetToName(const PakStreamSet_e set)
+{
+	switch (set)
+	{
+	case STREAMING_SET_MANDATORY: return "mandatory";
+	case STREAMING_SET_OPTIONAL: return "optional";
+	}
+
+	return "invalid";
+}

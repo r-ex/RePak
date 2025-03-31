@@ -13,11 +13,12 @@ const char startupVersion[] = {
 int main(int argc, char** argv)
 {
     printf(startupVersion);
+    g_jsonErrorCallback = Error;
 
     if (argc < 2)
         Error("invalid usage\n");
 
-    CPakFile pakFile(8);
+    CPakFileBuilder pakFile;
     pakFile.BuildFromMap(argv[1]);
 
     return EXIT_SUCCESS;

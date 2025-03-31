@@ -6,7 +6,7 @@ struct AnimRigAssetHeader_t
 	PagePtr_t data;
 	PagePtr_t name;
 	char gap_10[4];
-	int sequenceCount;
+	uint32_t sequenceCount;
 	PagePtr_t pSequences;
 	char gap_20[8];
 };

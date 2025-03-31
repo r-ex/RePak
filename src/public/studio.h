@@ -8,7 +8,7 @@
 struct mstudiotexture_t
 {
 	uint32_t pathoffset;
-	uint64_t guid;
+	PakGuid_t guid;
 };
 
 // modified source engine studio mdl header struct
@@ -183,9 +183,9 @@ struct studiohdr_t
 	int vvcindex; // VVC / IDCV 
 	int vphyindex; // VPHY / IVPS
 
-	int vtxsize;
-	int vvdsize;
-	int vvcsize;
+	int vtxsize; // mesh strip data size
+	int vvdsize; // vertex data data size
+	int vvcsize; // vertex color data size
 	int vphysize; // still used in models using vg
 
 	// unk2_v54[3] is the chunk after following unkindex2's chunk
@@ -199,13 +199,13 @@ struct studiohdr_t
 
 	int unk3_v54[3];
 
-	int unkindex4; // chunk before unkindex3 sometimes
+	int bvh4index; // chunk before unkindex3 sometimes
 
-	int unk4_v54[3]; // same as unk3_v54_v121
+	short unk4_v54[2]; // same as unk3_v54_v121
 
-	//int vgindex; // 0tVG
-	//int unksize; // might be offset
-	//int unksize1; // might be offset
+	// new in apex for verts that have more than three weights
+	int vvwindex; // vertex weight 
+	int vvwsize;
 };
 
 struct mstudioseqdesc_t
@@ -285,7 +285,7 @@ struct mstudioseqdesc_t
 
 struct mstudioautolayer_t
 {
-	uint64_t guid; // hashed aseq guid asset
+	PakGuid_t guid; // hashed aseq guid asset
 
 	short iSequence;
 	short iPose;
@@ -341,17 +341,17 @@ struct ModelAssetHeader_t
 	uint32_t animRigCount = 0;
 
 	// size of the data kept in starpak
-	uint32_t unkDataSize = 0;
-	uint32_t alignedStreamingSize = 0; // full size of the starpak entry, aligned to 4096.
+	uint32_t totalVertexDataSize = 0; // full size of the vtx, vvd, vvc and vvw combined.
+	uint32_t streamedVertexDataSize = 0; // full size of the starpak entry, aligned to 4096.
 
 	uint64_t Padding6 = 0;
+	uint64_t Padding7 = 0;
+	uint64_t Padding8 = 0;
 
 	// number of anim sequences directly associated with this model
 	uint32_t sequenceCount = 0;
 	PagePtr_t pSequences;
 
-	uint64_t Padding7 = 0;
-	uint64_t Padding8 = 0;
 	uint64_t Padding9 = 0;
 };
 static_assert(sizeof(ModelAssetHeader_t) == 120);

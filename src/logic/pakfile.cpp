@@ -1,6 +1,6 @@
 //=============================================================================//
 //
-// purpose: pakfile system
+// Pak file builder and management class
 //
 //=============================================================================//
 
@@ -11,161 +11,191 @@
 #include "thirdparty/zstd/zstd.h"
 #include "thirdparty/zstd/decompress/zstd_decompress_internal.h"
 
-bool CPakFile::AddJSONAsset(const char* type, rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
+bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* const assetType, const char* const assetPath,
+							const AssetScope_e assetScope, const rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
 {
-	if (file["$type"].GetStdString() == type)
+	if (strcmp(targetType, assetType) != 0)
+		return false;
+
+	switch (assetScope)
 	{
-		AssetTypeFunc_t targetFunc = nullptr;
-		const short fileVersion = this->m_Header.fileVersion;
-
-		switch (fileVersion)
-		{
-		case 7:
-		{
-			targetFunc = func_r2;
-			break;
-		}
-		case 8:
-		{
-			targetFunc = func_r5;
-			break;
-		}
-		}
-
-		if (targetFunc)
-			targetFunc(this, file["path"].GetString(), file);
-		else
-			Warning("Asset type '%s' is not supported on RPak version %i\n", type, fileVersion);
-
-		// Asset type has been handled.
-		return true;
+	case AssetScope_e::kServerOnly:
+		if (!IsFlagSet(PF_KEEP_SERVER))
+			return true;
+		break;
+	case AssetScope_e::kClientOnly:
+		if (!IsFlagSet(PF_KEEP_CLIENT))
+			return true;
+		break;
 	}
-	else return false;
+
+	AssetTypeFunc_t targetFunc = nullptr;
+	const uint16_t fileVersion = this->m_Header.fileVersion;
+
+	switch (fileVersion)
+	{
+	case 7:
+	{
+		targetFunc = func_r2;
+		break;
+	}
+	case 8:
+	{
+		targetFunc = func_r5;
+		break;
+	}
+	}
+
+	if (targetFunc)
+	{
+		Log("Adding '%s' asset \"%s\".\n", assetType, assetPath);
+
+		const steady_clock::time_point start = high_resolution_clock::now();
+		const PakGuid_t assetGuid = Pak_GetGuidOverridable(file, assetPath);
+
+		uint32_t slotIndex;
+		const PakAsset_t* const existingAsset = GetAssetByGuid(assetGuid, &slotIndex, true);
+
+		if (existingAsset)
+			Error("'%s' asset \"%s\" with GUID 0x%llX was already added in slot #%u.\n", assetType, assetPath, assetGuid, slotIndex);
+
+		targetFunc(this, assetGuid, assetPath, file);
+		const steady_clock::time_point stop = high_resolution_clock::now();
+
+		const microseconds duration = duration_cast<microseconds>(stop - start);
+		Log("...done; took %lld ms.\n", duration.count());
+	}
+	else
+		Error("Asset type '%.4s' is not supported on pak version %hu.\n", assetType, fileVersion);
+
+	// Asset type has been handled.
+	return true;
 }
 
-#define HANDLE_ASSET_TYPE(type, asset, func_r2, func_r5) if (AddJSONAsset(type, asset, func_r2, func_r5)) return;
+#define HANDLE_ASSET_TYPE(targetType, assetType, assetPath, assetScope, asset, func_r2, func_r5) if (AddJSONAsset(targetType, assetType, assetPath, assetScope, asset, func_r2, func_r5)) return;
 
 //-----------------------------------------------------------------------------
 // purpose: installs asset types and their callbacks
 //-----------------------------------------------------------------------------
-void CPakFile::AddAsset(rapidjson::Value& file)
+void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 {
-	HANDLE_ASSET_TYPE("txtr", file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
-	HANDLE_ASSET_TYPE("uimg", file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
-	HANDLE_ASSET_TYPE("Ptch", file, Assets::AddPatchAsset, Assets::AddPatchAsset);
-	HANDLE_ASSET_TYPE("dtbl", file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
-	HANDLE_ASSET_TYPE("matl", file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
-	HANDLE_ASSET_TYPE("rmdl", file, nullptr, Assets::AddModelAsset_v9);
-	HANDLE_ASSET_TYPE("aseq", file, nullptr, Assets::AddAnimSeqAsset_v7);
-	HANDLE_ASSET_TYPE("arig", file, nullptr, Assets::AddAnimRigAsset_v4);
+	const char* const assetType = JSON_GetValueOrDefault(file, "_type", static_cast<const char*>(nullptr));
+	const char* const assetPath = JSON_GetValueOrDefault(file, "_path", static_cast<const char*>(nullptr));
 
-	HANDLE_ASSET_TYPE("shds", file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
-	HANDLE_ASSET_TYPE("shdr", file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
+	if (!assetType)
+		Error("No type provided for asset \"%s\".\n", assetPath ? assetPath : "(unknown)");
 
-	// If the function has not returned by this point, we have an invalid asset type name.
-	Error("Invalid asset type '%s' provided for asset '%s'.\n", JSON_GET_STR(file, "$type", "(invalid)"), JSON_GET_STR(file, "path", "(unknown)"));
+	if (!assetPath)
+		Error("No path provided for an asset of type '%.4s'.\n", assetType);
+
+	HANDLE_ASSET_TYPE("txtr", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
+	HANDLE_ASSET_TYPE("txan", assetType, assetPath, AssetScope_e::kClientOnly, file, nullptr, Assets::AddTextureAnimAsset_v1);
+	HANDLE_ASSET_TYPE("uimg", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
+	HANDLE_ASSET_TYPE("matl", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
+
+	HANDLE_ASSET_TYPE("shds", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
+	HANDLE_ASSET_TYPE("shdr", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
+
+	HANDLE_ASSET_TYPE("dtbl", assetType, assetPath, AssetScope_e::kAll, file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
+
+	HANDLE_ASSET_TYPE("mdl_", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddModelAsset_v9);
+	HANDLE_ASSET_TYPE("aseq", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddAnimSeqAsset_v7);
+	HANDLE_ASSET_TYPE("arig", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddAnimRigAsset_v4);
+
+	HANDLE_ASSET_TYPE("Ptch", assetType, assetPath, AssetScope_e::kAll, file, Assets::AddPatchAsset, Assets::AddPatchAsset);
+
+	// If the function has not returned by this point, we have an unhandled asset type.
+	Error("Unhandled asset type '%.4s' provided for asset \"%s\".\n", assetType, assetPath);
 }
 
 //-----------------------------------------------------------------------------
-// purpose: adds page pointer to descriptor
+// purpose: adds page pointer to the pak file
 //-----------------------------------------------------------------------------
-void CPakFile::AddPointer(int pageIdx, int pageOffset)
+void CPakFileBuilder::AddPointer(PakPageLump_s& pointerLump, const size_t pointerOffset,
+	const PakPageLump_s& dataLump, const size_t dataOffset)
 {
-	m_vPakDescriptors.push_back({ pageIdx, pageOffset });
+	m_pagePointers.push_back(pointerLump.GetPointer(pointerOffset));
+
+	// Set the pointer field in the struct to the page index and page offset.
+	char* const pointerField = &pointerLump.data[pointerOffset];
+	*reinterpret_cast<PagePtr_t*>(pointerField) = dataLump.GetPointer(dataOffset);
 }
 
-void CPakFile::AddPointer(PagePtr_t ptr)
+void CPakFileBuilder::AddPointer(PakPageLump_s& pointerLump, const size_t pointerOffset)
 {
-	m_vPakDescriptors.push_back(ptr);
-}
-
-//-----------------------------------------------------------------------------
-// purpose: adds guid descriptor
-//-----------------------------------------------------------------------------
-void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, int idx, int offset)
-{
-	guids->push_back({ idx, offset });
-}
-
-void CPakFile::AddGuidDescriptor(std::vector<PakGuidRefHdr_t>* guids, const PagePtr_t& ptr)
-{
-	guids->push_back(ptr);
+	m_pagePointers.push_back(pointerLump.GetPointer(pointerOffset));
 }
 
 //-----------------------------------------------------------------------------
 // purpose: adds new starpak file path to be used by the rpak
 //-----------------------------------------------------------------------------
-void CPakFile::AddStarpakReference(const std::string& path)
+void CPakFileBuilder::AddStarpakReference(const std::string& path)
 {
-	for (auto& it : m_vStarpakPaths)
+	for (auto& it : m_mandatoryStreamFilePaths)
 	{
 		if (it == path)
 			return;
 	}
-	m_vStarpakPaths.push_back(path);
+	m_mandatoryStreamFilePaths.push_back(path);
 }
 
 //-----------------------------------------------------------------------------
 // purpose: adds new optional starpak file path to be used by the rpak
 //-----------------------------------------------------------------------------
-void CPakFile::AddOptStarpakReference(const std::string& path)
+void CPakFileBuilder::AddOptStarpakReference(const std::string& path)
 {
-	for (auto& it : m_vOptStarpakPaths)
+	for (auto& it : m_optionalStreamFilePaths)
 	{
 		if (it == path)
 			return;
 	}
-	m_vOptStarpakPaths.push_back(path);
+	m_optionalStreamFilePaths.push_back(path);
 }
 
 //-----------------------------------------------------------------------------
 // purpose: adds new starpak data entry
-// returns: starpak data entry descriptor
 //-----------------------------------------------------------------------------
-StreamableDataEntry CPakFile::AddStarpakDataEntry(StreamableDataEntry block)
+void CPakFileBuilder::AddStreamingDataEntry(PakStreamSetEntry_s& block, const uint8_t* const data, const PakStreamSet_e set)
 {
-	const std::string starpakPath = this->GetPrimaryStarpakPath();
+	const bool isMandatory = set == STREAMING_SET_MANDATORY;
+	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
 
-	if (starpakPath.length() == 0)
-		Error("attempted to create a streaming asset without a starpak assigned. add 'starpakPath' as a global rpak variable to fix\n");
+	if (!out.IsWritable())
+		Error("Attempted to write %s streaming asset without a stream file handle.\n", Pak_StreamSetToName(set));
 
-	// try to add starpak path. AddStarpakReference will handle duplicates so no need to do it here
-	this->AddStarpakReference(starpakPath);
+	out.Write(data, block.dataSize);
+	const size_t paddedSize = IALIGN(block.dataSize, STARPAK_DATABLOCK_ALIGNMENT);
 
-	// starpak data is aligned to 4096 bytes
-	const size_t ns = Utils::PadBuffer((char**)&block.pData, block.dataSize, 4096);
+	// starpak data is aligned to 4096 bytes, pad the remainder out for the next asset.
+	if (paddedSize > block.dataSize)
+	{
+		const size_t paddingRemainder = paddedSize - block.dataSize;
+		out.Pad(paddingRemainder);
+	}
 
-	block.dataSize = ns;
-	block.offset = m_NextStarpakOffset;
+	size_t& nextOffsetCounter = isMandatory ? m_nextMandatoryStarpakOffset : m_nextOptionalStarpakOffset;
 
-	m_vStarpakDataBlocks.push_back(block);
+	block.offset = nextOffsetCounter;
+	block.dataSize = paddedSize;
 
-	m_NextStarpakOffset += block.dataSize;
+	nextOffsetCounter += paddedSize;
 
-	return block;
+	auto& vecBlocks = isMandatory ? m_mandatoryStreamingDataBlocks : m_optionalStreamingDataBlocks;
+	vecBlocks.push_back(block);
 }
 
 //-----------------------------------------------------------------------------
 // purpose: writes header to file stream
 //-----------------------------------------------------------------------------
-void CPakFile::WriteHeader(BinaryIO& io)
+void CPakFileBuilder::WriteHeader(BinaryIO& io)
 {
-	assert(m_vVirtualSegments.size() <= UINT16_MAX);
-	m_Header.virtualSegmentCount = static_cast<uint16_t>(m_vVirtualSegments.size());
+	m_Header.memSlabCount = m_pageBuilder.GetSlabCount();
+	m_Header.memPageCount = m_pageBuilder.GetPageCount();
 
-	assert(m_vPages.size() <= UINT16_MAX);
-	m_Header.pageCount = static_cast<uint16_t>(m_vPages.size());
+	assert(m_pagePointers.size() <= UINT32_MAX);
+	m_Header.pointerCount = static_cast<uint32_t>(m_pagePointers.size());
 
-	assert(m_vPakDescriptors.size() <= UINT32_MAX);
-	m_Header.descriptorCount = static_cast<uint32_t>(m_vPakDescriptors.size());
-
-	assert(m_vGuidDescriptors.size() <= UINT32_MAX);
-	m_Header.guidDescriptorCount = static_cast<uint32_t>(m_vGuidDescriptors.size());
-
-	assert(m_vFileRelations.size() <= UINT32_MAX);
-	m_Header.relationCount = static_cast<uint32_t>(m_vFileRelations.size());
-
-	short version = m_Header.fileVersion;
+	const uint16_t version = m_Header.fileVersion;
 
 	io.Write(m_Header.magic);
 	io.Write(m_Header.fileVersion);
@@ -189,17 +219,17 @@ void CPakFile::WriteHeader(BinaryIO& io)
 	if (version == 8)
 		io.Write(m_Header.optStarpakPathsSize);
 
-	io.Write(m_Header.virtualSegmentCount);
-	io.Write(m_Header.pageCount);
+	io.Write(m_Header.memSlabCount);
+	io.Write(m_Header.memPageCount);
 	io.Write(m_Header.patchIndex);
 
 	if (version == 8)
 		io.Write(m_Header.alignment);
 
-	io.Write(m_Header.descriptorCount);
+	io.Write(m_Header.pointerCount);
 	io.Write(m_Header.assetCount);
-	io.Write(m_Header.guidDescriptorCount);
-	io.Write(m_Header.relationCount);
+	io.Write(m_Header.usesCount);
+	io.Write(m_Header.dependentsCount);
 
 	if (version == 7)
 	{
@@ -213,9 +243,9 @@ void CPakFile::WriteHeader(BinaryIO& io)
 //-----------------------------------------------------------------------------
 // purpose: writes assets to file stream
 //-----------------------------------------------------------------------------
-void CPakFile::WriteAssets(BinaryIO& io)
+void CPakFileBuilder::WriteAssetDescriptors(BinaryIO& io)
 {
-	for (auto& it : m_Assets)
+	for (PakAsset_t& it : m_assets)
 	{
 		io.Write(it.guid);
 		io.Write(it.unk0);
@@ -232,11 +262,11 @@ void CPakFile::WriteAssets(BinaryIO& io)
 		uint16_t pageEnd = static_cast<uint16_t>(it.pageEnd);
 		io.Write(pageEnd);
 
-		io.Write(it.remainingDependencyCount);
+		io.Write(it.internalDependencyCount);
 		io.Write(it.dependentsIndex);
-		io.Write(it.dependenciesIndex);
+		io.Write(it.usesIndex);
 		io.Write(it.dependentsCount);
-		io.Write(it.dependenciesCount);
+		io.Write(it.usesCount);
 		io.Write(it.headDataSize);
 		io.Write(it.version);
 		io.Write(it.id);
@@ -244,326 +274,146 @@ void CPakFile::WriteAssets(BinaryIO& io)
 		it.SetPublicData<void*>(nullptr);
 	}
 
-	assert(m_Assets.size() <= UINT32_MAX);
+	assert(m_assets.size() <= UINT32_MAX);
 	// update header asset count with the assets we've just written
-	this->m_Header.assetCount = static_cast<uint32_t>(m_Assets.size());
-}
-
-//-----------------------------------------------------------------------------
-// purpose: writes raw data blocks to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WritePageData(BinaryIO& out)
-{
-	for (auto& page : m_vPages)
-	{
-		for (auto& chunk : page.chunks)
-		{
-			// should never happen
-			if (chunk.IsReleased()) [[unlikely]]
-			{
-				assert(0);
-				continue;
-			}
-
-			if(chunk.Data())
-				out.Write(chunk.Data(), chunk.GetSize());
-			else // if chunk is padding to realign the page
-			{
-				//printf("aligning by %i bytes at %zu\n", chunk.GetSize(), out.tell());
-
-				out.SeekPut(chunk.GetSize(), std::ios::cur);
-			}
-
-			chunk.Release();
-		}
-	}
+	this->m_Header.assetCount = static_cast<uint32_t>(m_assets.size());
 }
 
 //-----------------------------------------------------------------------------
 // purpose: writes starpak paths to file stream
 // returns: total length of written path vector
 //-----------------------------------------------------------------------------
-size_t CPakFile::WriteStarpakPaths(BinaryIO& out, const bool optional)
+size_t CPakFileBuilder::WriteStarpakPaths(BinaryIO& out, const PakStreamSet_e set)
 {
-	return Utils::WriteStringVector(out, optional ? m_vOptStarpakPaths : m_vStarpakPaths);
-}
-
-//-----------------------------------------------------------------------------
-// purpose: writes virtual segments to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WriteSegmentHeaders(BinaryIO& out)
-{
-	for (auto& segment : m_vVirtualSegments)
-	{
-		PakSegmentHdr_t segmentHdr = segment.GetHeader();
-		out.Write(segmentHdr);
-	}
-}
-
-//-----------------------------------------------------------------------------
-// purpose: writes page headers to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WriteMemPageHeaders(BinaryIO& out)
-{
-	for (auto& page : m_vPages)
-	{
-		PakPageHdr_t pageHdr = page.GetHeader();
-		out.Write(pageHdr);
-	}
+	const auto& vecPaths = set == STREAMING_SET_MANDATORY ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
+	return Utils::WriteStringVector(out, vecPaths);
 }
 
 //-----------------------------------------------------------------------------
 // purpose: writes pak descriptors to file stream
 //-----------------------------------------------------------------------------
-void CPakFile::WritePakDescriptors(BinaryIO& out)
+void CPakFileBuilder::WritePagePointers(BinaryIO& out)
 {
-	// pointers must be written in order otherwise resolving them causes an access violation
-	std::sort(m_vPakDescriptors.begin(), m_vPakDescriptors.end());
+	// pointers must be written in order otherwise the runtime crashes as the
+	// decoding depends on their order.
+	std::sort(m_pagePointers.begin(), m_pagePointers.end());
 
-	WRITE_VECTOR(out, m_vPakDescriptors);
+	for (const PagePtr_t& ptr : m_pagePointers)
+		out.Write(ptr);
 }
 
-//-----------------------------------------------------------------------------
-// purpose: writes starpak data blocks to file stream
-//-----------------------------------------------------------------------------
-void CPakFile::WriteStarpakDataBlocks(BinaryIO& out)
+void CPakFileBuilder::WriteAssetUses(BinaryIO& out)
 {
-	for (auto& it : m_vStarpakDataBlocks)
+	for (const PakAsset_t& it : m_assets)
 	{
-		out.Write((const char*)it.pData, it.dataSize);
+		for (const PakGuidRef_s& ref : it._uses)
+			out.Write(ref.ptr);
+	}
+}
+
+void CPakFileBuilder::WriteAssetDependents(BinaryIO& out)
+{
+	for (const PakAsset_t& it : m_assets)
+	{
+		for (const unsigned int dependent : it._dependents)
+			out.Write(dependent);
 	}
 }
 
 //-----------------------------------------------------------------------------
-// purpose: writes starpak sorts table to file stream
+// purpose: counts the number of internal dependencies for each asset and sets
+// them dependent from another. internal dependencies reside in the same pak!
 //-----------------------------------------------------------------------------
-void CPakFile::WriteStarpakSortsTable(BinaryIO& out)
+void CPakFileBuilder::GenerateInternalDependencies()
 {
-	// starpaks have a table of sorts at the end of the file, containing the offsets and data sizes for every data block
-	for (auto& it : m_vStarpakDataBlocks)
+	for (size_t i = 0; i < m_assets.size(); i++)
 	{
-		SRPkFileEntry fe{};
-		fe.m_nOffset = it.offset;
-		fe.m_nSize = it.dataSize;
+		PakAsset_t& it = m_assets[i];
+		std::set<PakGuid_t> processed;
 
-		out.Write(fe);
+		for (const PakGuidRef_s& ref : it._uses)
+		{
+			// an asset can use a dependency more than once, but we should only
+			// increment the dependency counter once per unique dependency!
+			if (!processed.insert(ref.guid).second)
+				continue;
+
+			PakAsset_t* const dependency = GetAssetByGuid(ref.guid, nullptr, true);
+
+			if (dependency)
+			{
+				dependency->AddDependent(i);
+				it.internalDependencyCount++;
+			}
+		}
 	}
 }
 
 //-----------------------------------------------------------------------------
-// purpose: frees the starpak data blocks memory
+// purpose: 
 //-----------------------------------------------------------------------------
-void CPakFile::FreeStarpakDataBlocks()
+void CPakFileBuilder::GenerateAssetUses()
 {
-	for (auto& it : m_vStarpakDataBlocks)
+	size_t totalUsesCount = 0;
+
+	for (PakAsset_t& it : m_assets)
 	{
-		delete[] it.pData;
+		const size_t numUses = it._uses.size();
+
+		if (numUses > 0)
+		{
+			assert(numUses <= UINT32_MAX);
+
+			it.usesIndex = static_cast<uint32_t>(totalUsesCount);
+			it.usesCount = static_cast<uint32_t>(numUses);
+
+			// pointers must be sorted, same principle as WritePagePointers.
+			std::sort(it._uses.begin(), it._uses.end());
+			totalUsesCount += numUses;
+		}
 	}
+
+	m_Header.usesCount = static_cast<uint32_t>(totalUsesCount);
 }
 
 //-----------------------------------------------------------------------------
 // purpose: populates file relations vector with combined asset relation data
 //-----------------------------------------------------------------------------
-void CPakFile::GenerateFileRelations()
+void CPakFileBuilder::GenerateAssetDependents()
 {
-	for (auto& it : m_Assets)
+	size_t totalDependentsCount = 0;
+
+	for (PakAsset_t& it : m_assets)
 	{
-		assert(it._relations.size() <= UINT32_MAX);
-		it.dependentsCount = static_cast<uint32_t>(it._relations.size());
+		const size_t numDependents = it._dependents.size();
 
-		// todo: check why this is different to dependencies index
-		it.dependentsIndex = static_cast<uint32_t>(m_vFileRelations.size());
-
-		for (int i = 0; i < it._relations.size(); ++i)
-			m_vFileRelations.push_back(it._relations[i]);
-	}
-
-	assert(m_vFileRelations.size() <= UINT32_MAX);
-
-	m_Header.relationCount = static_cast<uint32_t>(m_vFileRelations.size());
-}
-
-//-----------------------------------------------------------------------------
-// purpose: 
-//-----------------------------------------------------------------------------
-void CPakFile::GenerateGuidData()
-{
-	for (auto& it : m_Assets)
-	{
-		assert(it._guids.size() <= UINT32_MAX);
-		it.dependenciesCount = static_cast<uint32_t>(it._guids.size());
-
-		it.dependenciesIndex = it.dependenciesCount == 0 ? 0 : static_cast<uint32_t>(m_vGuidDescriptors.size());
-
-		std::sort(it._guids.begin(), it._guids.end());
-
-		for (int i = 0; i < it._guids.size(); ++i)
-			m_vGuidDescriptors.push_back({ it._guids[i] });
-	}
-
-	assert(m_vGuidDescriptors.size() <= UINT32_MAX);
-
-	m_Header.guidDescriptorCount = static_cast<uint32_t>(m_vGuidDescriptors.size());
-}
-
-//-----------------------------------------------------------------------------
-// purpose: creates page and segment with the specified parameters
-// returns: 
-//-----------------------------------------------------------------------------
-CPakVSegment& CPakFile::FindOrCreateSegment(int flags, int alignment)
-{
-	int i = 0;
-	for (auto& it : m_vVirtualSegments)
-	{
-		if (it.GetFlags() == flags)
+		if (numDependents > 0)
 		{
-			// if the segment's alignment is less than our requested alignment, we can increase it
-			// as increasing the alignment will still allow the previous data to be aligned to the same boundary
-			// (all alignments are powers of two)
-			if (it.GetAlignment() < alignment)
-				it.alignment = alignment;
+			assert(numDependents <= UINT32_MAX);
 
-			return it;
-		}
-		i++;
-	}
+			it.dependentsIndex = static_cast<uint32_t>(totalDependentsCount);
+			it.dependentsCount = static_cast<uint32_t>(numDependents);
 
-	CPakVSegment newSegment{ i, flags, alignment, 0 };
-
-	return m_vVirtualSegments.emplace_back(newSegment);
-}
-
-// find the last page that matches the required flags and check if there is room for new data to be added
-CPakPage& CPakFile::FindOrCreatePage(int flags, int alignment, size_t newDataSize)
-{
-	for (size_t i = m_vPages.size(); i > 0; --i)
-	{
-		CPakPage& page = m_vPages[i-1];
-		if (page.GetFlags() == flags)
-		{
-			if (page.GetSize() + newDataSize <= MAX_PAK_PAGE_SIZE)
-			{
-				if (page.GetAlignment() < alignment)
-				{
-					page.alignment = alignment;
-					
-					// we have to check this because otherwise we can end up with vsegs with lower alignment than their pages
-					// and that's probably not supposed to happen
-					CPakVSegment& seg = m_vVirtualSegments[page.segmentIndex];
-					if (seg.alignment < alignment)
-					{
-						int j = 0;
-						bool updated = false;
-						for (auto& it : m_vVirtualSegments)
-						{
-							if (it.GetFlags() == seg.flags && it.GetAlignment() == alignment)
-							{
-								//it.dataSize += seg.dataSize;
-
-								//int oldSegIdx = page.segmentIndex;
-
-								//for (auto& pg : m_vPages)
-								//{
-								//	if (pg.segmentIndex == oldSegIdx)
-								//		pg.segmentIndex = j;
-
-								//	// we are about to remove the old segment so anything referencing a higher segment
-								//	// needs to be adjusted
-								//	if (pg.segmentIndex > oldSegIdx)
-								//		pg.segmentIndex--;
-								//}
-
-								//m_vVirtualSegments.erase(m_vVirtualSegments.begin() + oldSegIdx);
-
-								seg.dataSize -= page.dataSize;
-								it.dataSize += page.dataSize;
-
-								page.segmentIndex = j;
-
-								updated = true;
-								break;
-							}
-
-							j++;
-						}
-
-						if (!updated) // if a segment has not been found matching the new alignment, update the page's existing segment
-							seg.alignment = alignment;
-					}
-				}
-
-				return page;
-			}
+			totalDependentsCount += numDependents;
 		}
 	}
 
-	CPakVSegment& segment = FindOrCreateSegment(flags, alignment);
-
-	CPakPage p{ this, segment.GetIndex(), static_cast<int>(m_vPages.size()), flags, alignment };
-
-	return m_vPages.emplace_back(p);
+	m_Header.dependentsCount = static_cast<uint32_t>(totalDependentsCount);
 }
 
-void CPakPage::AddDataChunk(CPakDataChunk& chunk)
+PakPageLump_s CPakFileBuilder::CreatePageLump(const size_t size, const int flags, const int alignment, void* const buf)
 {
-	assert(this->alignment > 0 && this->alignment < UINT8_MAX);
-	this->PadPageToChunkAlignment(static_cast<uint8_t>(this->alignment));
-
-	chunk.pageIndex = this->GetIndex();
-	chunk.pageOffset = this->GetSize();
-
-	this->dataSize += chunk.size;
-
-	this->pak->m_vVirtualSegments[this->segmentIndex].AddToDataSize(chunk.size);
-
-	this->chunks.emplace_back(chunk);
-}
-
-
-void CPakPage::PadPageToChunkAlignment(uint8_t chunkAlignment)
-{
-	uint32_t alignAmount = IALIGN(this->dataSize, static_cast<uint32_t>(chunkAlignment)) - this->dataSize;
-
-	if (alignAmount > 0)
-	{
-		//printf("Aligning by %i bytes...\n", alignAmount);
-		this->dataSize += alignAmount;
-		this->pak->m_vVirtualSegments[this->segmentIndex].AddToDataSize(alignAmount);
-
-		// create null chunk with size of the alignment amount
-		// these chunks are handled specially when writing to file,
-		// writing only null bytes for the size of the chunk when no data ptr is present
-		CPakDataChunk chunk{ 0, 0, alignAmount, 0, nullptr };
-
-		this->chunks.emplace_back(chunk);
-	}	
-}
-
-CPakDataChunk CPakFile::CreateDataChunk(size_t size, int flags, int alignment)
-{
-	// this assert is replicated in r5sdk
-	assert(alignment != 0 && alignment < UINT8_MAX);
-
-	CPakPage& page = FindOrCreatePage(flags, alignment, size);
-
-	char* buf = new char[size];
-
-	memset(buf, 0, size);
-
-	CPakDataChunk chunk{ size, static_cast<uint8_t>(alignment), buf };
-	page.AddDataChunk(chunk);
-
-	return chunk;
+	return m_pageBuilder.CreatePageLump(static_cast<int>(size), flags, alignment, buf);
 }
 
 //-----------------------------------------------------------------------------
 // purpose: 
 // returns: 
 //-----------------------------------------------------------------------------
-PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/, bool silent /*= false*/)
+PakAsset_t* CPakFileBuilder::GetAssetByGuid(const PakGuid_t guid, uint32_t* const idx /*= nullptr*/, const bool silent /*= false*/)
 {
 	uint32_t i = 0;
-	for (auto& it : m_Assets)
+	for (PakAsset_t& it : m_assets)
 	{
 		if (it.guid == guid)
 		{
@@ -575,8 +425,23 @@ PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/,
 		i++;
 	}
 	if(!silent)
-		Debug("failed to find asset with guid %llX\n", guid);
+		Debug("Failed to find asset with guid %llX.\n", guid);
 	return nullptr;
+}
+
+//-----------------------------------------------------------------------------
+// purpose: gets the pak file header size based on pak version
+//-----------------------------------------------------------------------------
+static inline size_t Pak_GetHeaderSize(const uint16_t version)
+{
+	switch (version)
+	{
+		// todo(amos): we probably should import headers for both
+		// versions and do a sizeof here.
+	case 7: return 0x58;
+	case 8: return 0x80;
+	default: assert(0); return 0;
+	};
 }
 
 //-----------------------------------------------------------------------------
@@ -585,13 +450,13 @@ PakAsset_t* CPakFile::GetAssetByGuid(uint64_t guid, uint32_t* idx /*= nullptr*/,
 // note(amos): unlike the pak file header, the zstd frame header needs to know
 // the uncompressed size without the file header.
 //-----------------------------------------------------------------------------
-static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const int compressLevel, const int workerCount)
+static ZSTD_CCtx* Pak_InitEncoderContext(const size_t uncompressedBlockSize, const int compressLevel, const int workerCount)
 {
 	ZSTD_CCtx* const cctx = ZSTD_createCCtx();
 
 	if (!cctx)
 	{
-		Warning("Failed to create encoder context\n", workerCount);
+		Warning("Failed to create encoder context.\n");
 		return nullptr;
 	}
 
@@ -599,7 +464,7 @@ static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const i
 
 	if (ZSTD_isError(result))
 	{
-		Warning("Failed to set pledged source size %zu: [%s]\n", uncompressedBlockSize, ZSTD_getErrorName(result));
+		Warning("Failed to set pledged source size %zu: [%s].\n", uncompressedBlockSize, ZSTD_getErrorName(result));
 		ZSTD_freeCCtx(cctx);
 
 		return nullptr;
@@ -609,7 +474,7 @@ static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const i
 
 	if (ZSTD_isError(result))
 	{
-		Warning("Failed to set compression level %i: [%s]\n", compressLevel, ZSTD_getErrorName(result));
+		Warning("Failed to set compression level %i: [%s].\n", compressLevel, ZSTD_getErrorName(result));
 		ZSTD_freeCCtx(cctx);
 
 		return nullptr;
@@ -619,7 +484,7 @@ static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const i
 
 	if (ZSTD_isError(result))
 	{
-		Warning("Failed to set worker count %i: [%s]\n", workerCount, ZSTD_getErrorName(result));
+		Warning("Failed to set worker count %i: [%s].\n", workerCount, ZSTD_getErrorName(result));
 		ZSTD_freeCCtx(cctx);
 
 		return nullptr;
@@ -631,13 +496,12 @@ static ZSTD_CCtx* InitEncoderContext(const size_t uncompressedBlockSize, const i
 //-----------------------------------------------------------------------------
 // Purpose: stream encode pak file with given level and worker count
 //-----------------------------------------------------------------------------
-bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, const int compressLevel, const int workerCount)
+static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, const size_t headerSize, const int compressLevel, const int workerCount)
 {
 	// only the data past the main header gets compressed.
-	const size_t headerSize = GetHeaderSize();
 	const size_t decodedFrameSize = (static_cast<size_t>(inStream.GetSize()) - headerSize);
 
-	ZSTD_CCtx* const cctx = InitEncoderContext(decodedFrameSize, compressLevel, workerCount);
+	ZSTD_CCtx* const cctx = Pak_InitEncoderContext(decodedFrameSize, compressLevel, workerCount);
 
 	if (!cctx)
 	{
@@ -649,7 +513,7 @@ bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, con
 
 	if (!buffInPtr)
 	{
-		Warning("Failed to allocate input stream buffer of size %zu\n", buffInSize);
+		Warning("Failed to allocate input stream buffer of size %zu.\n", buffInSize);
 		ZSTD_freeCCtx(cctx);
 
 		return false;
@@ -660,7 +524,7 @@ bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, con
 
 	if (!buffOutPtr)
 	{
-		Warning("Failed to allocate output stream buffer of size %zu\n", buffOutSize);
+		Warning("Failed to allocate output stream buffer of size %zu.\n", buffOutSize);
 		ZSTD_freeCCtx(cctx);
 
 		return false;
@@ -679,7 +543,7 @@ bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, con
 		const bool lastChunk = (bytesLeft < buffInSize);
 		const size_t numBytesToRead = lastChunk ? bytesLeft : buffInSize;
 
-		inStream.Read((uint8_t*)buffIn, numBytesToRead);
+		inStream.Read(reinterpret_cast<uint8_t*>(buffIn), numBytesToRead);
 		bytesLeft -= numBytesToRead;
 
 		ZSTD_EndDirective const mode = lastChunk ? ZSTD_e_end : ZSTD_e_continue;
@@ -692,14 +556,14 @@ bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, con
 
 			if (ZSTD_isError(remaining))
 			{
-				Warning("Failed to compress frame at %zu to frame at %zu: [%s]\n",
+				Warning("Failed to compress frame at %zd to frame at %zd: [%s].\n",
 					inStream.TellGet(), outStream.TellPut(), ZSTD_getErrorName(remaining));
 
 				ZSTD_freeCCtx(cctx);
 				return false;
 			}
 
-			outStream.Write((uint8_t*)buffOut, outputFrame.pos);
+			outStream.Write(reinterpret_cast<uint8_t*>(buffOut), outputFrame.pos);
 
 			finished = lastChunk ? (remaining == 0) : (inputFrame.pos == inputFrame.size);
 		} while (!finished);
@@ -712,18 +576,18 @@ bool CPakFile::StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, con
 //-----------------------------------------------------------------------------
 // Purpose: stream encode pak file to new stream and swap old stream with new
 //-----------------------------------------------------------------------------
-size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount)
+size_t CPakFileBuilder::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount)
 {
 	BinaryIO outCompressed;
-	const std::string outCompressedPath = GetPath() + "_encoded";
+	const std::string outCompressedPath = m_pakFilePath + "_encoded";
 
 	if (!outCompressed.Open(outCompressedPath, BinaryIO::Mode_e::Write))
 	{
-		Warning("Failed to open output pak file '%s' for compression\n", outCompressedPath.c_str());
+		Warning("Failed to open output pak file \"%s\" for compression.\n", outCompressedPath.c_str());
 		return 0;
 	}
 
-	if (!StreamToStreamEncode(io, outCompressed, compressLevel, workerCount))
+	if (!Pak_StreamToStreamEncode(io, outCompressed, Pak_GetHeaderSize(m_Header.fileVersion), compressLevel, workerCount))
 		return 0;
 
 	const size_t compressedSize = outCompressed.TellPut();
@@ -734,29 +598,29 @@ size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, cons
 	// note(amos): we must reopen the file in ReadWrite mode as otherwise
 	// the file gets truncated.
 
-	if (!std::filesystem::remove(m_Path))
+	if (!std::filesystem::remove(m_pakFilePath))
 	{
-		Warning("Failed to remove uncompressed pak file '%s' for swap\n", outCompressedPath.c_str());
+		Warning("Failed to remove uncompressed pak file \"%s\" for swap.\n", outCompressedPath.c_str());
 		
 		// reopen and continue uncompressed.
-		if (io.Open(m_Path, BinaryIO::Mode_e::ReadWrite))
-			Error("Failed to reopen pak file '%s'\n", m_Path.c_str());
+		if (io.Open(m_pakFilePath, BinaryIO::Mode_e::ReadWrite))
+			Error("Failed to reopen pak file \"%s\".\n", m_pakFilePath.c_str());
 
 		return 0;
 	}
 
-	std::filesystem::rename(outCompressedPath, m_Path);
+	std::filesystem::rename(outCompressedPath, m_pakFilePath);
 
 	// either the rename failed or something holds an open handle to the
 	// newly renamed compressed file, irrecoverable.
-	if (!io.Open(m_Path, BinaryIO::Mode_e::ReadWrite))
-		Error("Failed to reopen pak file '%s'\n", m_Path.c_str());
+	if (!io.Open(m_pakFilePath, BinaryIO::Mode_e::ReadWrite))
+		Error("Failed to reopen pak file \"%s\".\n", m_pakFilePath.c_str());
 
 	const size_t reopenedPakSize = io.GetSize();
 
 	if (reopenedPakSize != compressedSize)
-		Error("Reopened pak file '%s' appears truncated or corrupt; compressed size: %zu expected: %zu\n",
-			m_Path.c_str(), reopenedPakSize, compressedSize);
+		Error("Reopened pak file \"%s\" appears truncated or corrupt; compressed size: %zu expected: %zu.\n",
+			m_pakFilePath.c_str(), reopenedPakSize, compressedSize);
 
 	// set the header flags indicating this pak is compressed.
 	m_Header.flags |= (PAK_HEADER_FLAGS_COMPRESSED | PAK_HEADER_FLAGS_ZSTREAM_ENCODED);
@@ -765,9 +629,90 @@ size_t CPakFile::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, cons
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: creates the stream file stream and sets the header up
+//-----------------------------------------------------------------------------
+void CPakFileBuilder::CreateStreamFileStream(const char* const streamFilePath, const PakStreamSet_e set)
+{
+	const bool isMandatory = set == STREAMING_SET_MANDATORY;
+	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
+
+	const char* streamFileName = strrchr(streamFilePath, '/');
+
+	if (!streamFileName)
+		streamFileName = streamFilePath;
+	else
+		streamFileName += 1; // advance from '/' to start of filename.
+
+	const std::string fullFilePath = m_outputPath + streamFileName;
+
+	if (!out.Open(fullFilePath, BinaryIO::Mode_e::Write))
+		Error("Failed to open %s streaming file \"%s\".\n", Pak_StreamSetToName(set), fullFilePath.c_str());
+
+	// write out the header and pad it out for the first asset entry.
+	const PakStreamSetFileHeader_s srpkHeader{ STARPAK_MAGIC, STARPAK_VERSION };
+	out.Write(srpkHeader);
+
+	char initialPadding[STARPAK_DATABLOCK_ALIGNMENT - sizeof(PakStreamSetFileHeader_s)];
+	memset(initialPadding, STARPAK_DATABLOCK_ALIGNMENT_PADDING, sizeof(initialPadding));
+
+	out.Write(initialPadding, sizeof(initialPadding));
+
+	auto& vecName = isMandatory ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
+	vecName.push_back(streamFilePath);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: writes the sorts table and finishes the stream file stream
+//-----------------------------------------------------------------------------
+void CPakFileBuilder::FinishStreamFileStream(const PakStreamSet_e set)
+{
+	const bool isMandatory = set == STREAMING_SET_MANDATORY;
+	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
+
+	if (!out.IsWritable())
+		Error("Unable to finish %s streaming file without a stream file handle.\n", Pak_StreamSetToName(set));
+
+	// starpaks have a table of sorts at the end of the file, containing the offsets and data sizes for every data block
+	const auto& vecData = isMandatory ? m_mandatoryStreamingDataBlocks : m_optionalStreamingDataBlocks;
+
+	for (const PakStreamSetEntry_s& it : vecData)
+		out.Write(it);
+
+	const size_t entryCount = isMandatory ? GetMandatoryStreamingAssetCount() : GetOptionalStreamingAssetCount();
+	out.Write(entryCount);
+
+	const auto& vecName = isMandatory ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
+
+	Log("Written %s streaming file \"%s\" with %zu assets, totaling %zd bytes.\n",
+		Pak_StreamSetToName(set), vecName[0].c_str(), entryCount, (ssize_t)out.GetSize());
+
+	out.Close();
+}
+
+static void ResolvePath(std::string& outPath, const std::filesystem::path& mapPath, const bool input)
+{
+	fs::path outputDirPath(outPath);
+
+	if (outputDirPath.is_relative() && mapPath.has_parent_path())
+	{
+		try {
+			outPath = fs::canonical(mapPath.parent_path() / outputDirPath).string();
+		}
+		catch (const fs::filesystem_error& e) {
+			Error("Failed to resolve %s path: %s.\n", input ? "input" : "output", e.what());
+		}
+	}
+	else
+		outPath = outputDirPath.string();
+
+	// ensure that the path has a slash at the end
+	Utils::AppendSlash(outPath);
+}
+
+//-----------------------------------------------------------------------------
 // purpose: builds rpak and starpak from input map file
 //-----------------------------------------------------------------------------
-void CPakFile::BuildFromMap(const string& mapPath)
+void CPakFileBuilder::BuildFromMap(const string& mapPath)
 {
 	// load and parse map file, this file is essentially the
 	// control file; deciding what is getting packed, etc..
@@ -775,98 +720,93 @@ void CPakFile::BuildFromMap(const string& mapPath)
 	fs::path inputPath(mapPath);
 	Utils::ParseMapDocument(doc, inputPath);
 
-	string pakName = JSON_GET_STR(doc, "name", DEFAULT_RPAK_NAME);
-
 	// determine source asset directory from map file
-	if (!JSON_IS_STR(doc, "assetsDir"))
+	if (!JSON_GetValue(doc, "assetsDir", m_assetPath))
 	{
-		Warning("No assetsDir field provided. Assuming that everything is relative to the working directory.\n");
-		if (inputPath.has_parent_path())
-			m_AssetPath = inputPath.parent_path().string();
-		else
-			m_AssetPath = ".\\";
+		Warning("No \"assetsDir\" field provided; assuming that everything is relative to the working directory.\n");
+		m_assetPath = ".\\";
 	}
 	else
-	{
-		fs::path assetsDirPath(doc["assetsDir"].GetStdString());
-		if (assetsDirPath.is_relative() && inputPath.has_parent_path())
-			m_AssetPath = std::filesystem::canonical(inputPath.parent_path() / assetsDirPath).string();
-		else
-			m_AssetPath = assetsDirPath.string();
-
-		// ensure that the path has a slash at the end
-		Utils::AppendSlash(m_AssetPath);
-	}
-
+		ResolvePath(m_assetPath, inputPath, true);
 
 	// determine final build path from map file
-	std::string outputPath(DEFAULT_RPAK_PATH);
-	if (JSON_IS_STR(doc, "outputDir"))
-	{
-		fs::path outputDirPath(doc["outputDir"].GetString());
+	if (JSON_GetValue(doc, "outputDir", m_outputPath))
+		ResolvePath(m_outputPath, inputPath, false);
+	else
+		m_outputPath = DEFAULT_RPAK_PATH;
 
-		if (outputDirPath.is_relative() && inputPath.has_parent_path())
-			outputPath = fs::canonical(inputPath.parent_path() / outputDirPath).string();
-		else
-			outputPath = outputDirPath.string();
+	// create output directory if it does not exist yet.
+	fs::create_directories(m_outputPath);
 
-		// ensure that the path has a slash at the end
-		Utils::AppendSlash(outputPath);
-	}
+	const int pakVersion = JSON_GetValueOrDefault(doc, "version", -1);
 
-	if (!JSON_IS_INT(doc, "version"))
-		Warning("No version field provided; assuming version 8 (r5)\n");
+	if (pakVersion < 0)
+		Error("No \"version\" field provided.\n");
 
-	this->SetVersion(JSON_GET_INT(doc, "version", 8));
+	this->SetVersion(static_cast<uint16_t>(pakVersion));
+	const char* const pakName = JSON_GetValueOrDefault(doc, "name", DEFAULT_RPAK_NAME);
 
 	// print parsed settings
 	Log("build settings:\n");
 	Log("version: %i\n", GetVersion());
-	Log("fileName: %s.rpak\n", pakName.c_str());
-	Log("assetsDir: %s\n", m_AssetPath.c_str());
-	Log("outputDir: %s\n\n", outputPath.c_str());
-
-	// create output directory if it does not exist yet.
-	fs::create_directories(outputPath);
+	Log("fileName: %s.rpak\n", pakName);
+	Log("assetsDir: %s\n", m_assetPath.c_str());
+	Log("outputDir: %s\n\n", m_outputPath.c_str());
 
 	// set build path
-	SetPath(outputPath + pakName + ".rpak");
+	SetPath(m_outputPath + pakName + ".rpak");
 
 	// should dev-only data be kept - e.g. texture asset names, uimg texture names
-	if (JSON_GET_BOOL(doc, "keepDevOnly"))
+	if (JSON_GetValueOrDefault(doc, "keepDevOnly", false))
 		AddFlags(PF_KEEP_DEV);
 
-	if (JSON_IS_STR(doc, "starpakPath"))
-		SetPrimaryStarpakPath(doc["starpakPath"].GetStdString());
+	if (JSON_GetValueOrDefault(doc, "keepServerOnly", true))
+		AddFlags(PF_KEEP_SERVER);
 
-	// build asset data;
-	// loop through all assets defined in the map file
-	for (auto& file : doc["files"].GetArray())
-	{
-		AddAsset(file);
-	}
+	if (JSON_GetValueOrDefault(doc, "keepClientOnly", true))
+		AddFlags(PF_KEEP_CLIENT);
 
 	// create file stream from path created above
 	BinaryIO out;
-	const std::string outPath = GetPath();
-	
-	if (!out.Open(outPath, BinaryIO::Mode_e::ReadWriteCreate))
-	{
-		Error("Failed to open output pak file '%s'\n", outPath.c_str());
-	}
+	if (!out.Open(m_pakFilePath, BinaryIO::Mode_e::ReadWriteCreate))
+		Error("Failed to open output pak file \"%s\".\n", m_pakFilePath.c_str());
 
 	// write a placeholder header so we can come back and complete it
 	// when we have all the info
-	WriteHeader(out);
+	out.Pad(pakVersion >= 8 ? 0x80 : 0x58);
+
+	const char* streamFileMandatory = nullptr;
+	const char* streamFileOptional = nullptr;
+
+	// Server-only paks never uses streaming assets.
+	if (IsFlagSet(PF_KEEP_CLIENT))
+	{
+		if (JSON_GetValue(doc, "streamFileMandatory", streamFileMandatory))
+			CreateStreamFileStream(streamFileMandatory, STREAMING_SET_MANDATORY);
+
+		if (pakVersion >= 8 && JSON_GetValue(doc, "streamFileOptional", streamFileOptional))
+			CreateStreamFileStream(streamFileOptional, STREAMING_SET_OPTIONAL);
+	}
+
+	// build asset data;
+	// loop through all assets defined in the map file
+
+	rapidjson::Value::ConstMemberIterator filesIt;
+
+	if (JSON_GetIterator(doc, "files", JSONFieldType_e::kArray, filesIt))
+	{
+		for (const auto& file : filesIt->value.GetArray())
+			AddAsset(file);
+	}
 
 	{
 		// write string vectors for starpak paths and get the total length of each vector
-		size_t starpakPathsLength = WriteStarpakPaths(out, false);
-		size_t optStarpakPathsLength = WriteStarpakPaths(out, true);
-		size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
+		size_t starpakPathsLength = WriteStarpakPaths(out, STREAMING_SET_MANDATORY);
+		size_t optStarpakPathsLength = WriteStarpakPaths(out, STREAMING_SET_OPTIONAL);
+		const size_t combinedPathsLength = starpakPathsLength + optStarpakPathsLength;
 
-		size_t aligned = IALIGN8(combinedPathsLength);
-		__int8 padBytes = static_cast<__int8>(aligned - combinedPathsLength);
+		const size_t aligned = IALIGN8(combinedPathsLength);
+		const int8_t padBytes = static_cast<int8_t>(aligned - combinedPathsLength);
 
 		// align starpak paths to 
 		if (optStarpakPathsLength != 0)
@@ -875,91 +815,71 @@ void CPakFile::BuildFromMap(const string& mapPath)
 			starpakPathsLength += padBytes;
 
 		out.Seek(padBytes, std::ios::end);
-
 		SetStarpakPathsSize(static_cast<uint16_t>(starpakPathsLength), static_cast<uint16_t>(optStarpakPathsLength));
 	}
 
+	GenerateInternalDependencies();
+
 	// generate file relation vector to be written
-	GenerateFileRelations();
-	GenerateGuidData();
+	GenerateAssetUses();
+	GenerateAssetDependents();
+
+	m_pageBuilder.PadSlabsAndPages();
 
 	// write the non-paged data to the file first
-	WriteSegmentHeaders(out);
-	WriteMemPageHeaders(out);
-	WritePakDescriptors(out);
-	WriteAssets(out);
+	m_pageBuilder.WriteSlabHeaders(out);
+	m_pageBuilder.WritePageHeaders(out);
 
-	WRITE_VECTOR(out, m_vGuidDescriptors);
-	WRITE_VECTOR(out, m_vFileRelations);
+	WritePagePointers(out);
+	WriteAssetDescriptors(out);
+
+	WriteAssetUses(out);
+	WriteAssetDependents(out);
 
 	// now the actual paged data
-	WritePageData(out);
-
-	// set header descriptors
-	SetFileTime(Utils::GetSystemFileTime());
+	m_pageBuilder.WritePageData(out);
 
 	// We are done building the data of the pack, this is the actual size.
 	const size_t decompressedFileSize = out.GetSize();
 	size_t compressedFileSize = 0;
 
-	const int compressLevel = JSON_GET_INT(doc, "compressLevel", 0);
+	const int compressLevel = JSON_GetValueOrDefault(doc, "compressLevel", 0);
 
-	if (compressLevel > 0 && decompressedFileSize > GetHeaderSize())
+	if (compressLevel > 0 && decompressedFileSize > Pak_GetHeaderSize(m_Header.fileVersion))
 	{
-		const int workerCount = JSON_GET_INT(doc, "compressWorkers", 0);
+		const int workerCount = JSON_GetValueOrDefault(doc, "compressWorkers", 0);
+
+		Log("Encoding pak file with compress level %i and %i workers.\n", compressLevel, workerCount);
 		compressedFileSize = EncodeStreamAndSwap(out, compressLevel, workerCount);
 	}
 
 	SetCompressedSize(compressedFileSize == 0 ? decompressedFileSize : compressedFileSize);
 	SetDecompressedSize(decompressedFileSize);
 
-	out.SeekPut(0); // go back to the beginning to finally write the rpakHeader now
-	WriteHeader(out); out.Close();
-
-	Debug("written rpak file with size %zu\n", GetCompressedSize());
-
 	// !TODO: we really should add support for multiple starpak files and share existing
 	// assets across rpaks. e.g. if the base 'pc_all.opt.starpak' already contains the
-	// highest mip level for 'ola_sewer_grate', don't copy it into 'sdk_all.opt.starpak'.
+	// highest mip level for 'ola_sewer_grate', don't copy it into 'pc_sdk.opt.starpak'.
 	// the sort table at the end of the file (see WriteStarpakSortsTable) contains offsets
 	// to the asset with their respective sizes. this could be used in combination of a
 	// static database (who's name is to be selected from a hint provided by the map file)
 	// to map assets among various rpaks avoiding extraneous copies of the same streamed data.
-	if (GetNumStarpakPaths() == 1)
-	{
-		fs::path path(GetStarpakPath(0));
-		std::string filename = path.filename().string();
 
-		Debug("writing starpak %s with %zu data entries\n", filename.c_str(), GetStreamingAssetCount());
-		BinaryIO srpkOut;
+	if (streamFileMandatory)
+		FinishStreamFileStream(STREAMING_SET_MANDATORY);
 
-		const std::string fullFilePath = outputPath + filename;
+	if (streamFileOptional)
+		FinishStreamFileStream(STREAMING_SET_OPTIONAL);
 
-		if (!srpkOut.Open(fullFilePath, BinaryIO::Mode_e::Write))
-		{
-			Error("Failed to open output streaming file '%s'\n", outPath.c_str());
-		}
+	// set header descriptors
+	SetFileTime(Utils::GetSystemFileTime());
 
-		StarpakFileHeader_t srpkHeader{ STARPAK_MAGIC , STARPAK_VERSION };
-		srpkOut.Write(srpkHeader);
+	out.SeekPut(0); // go back to the beginning to finally write the rpakHeader now
+	WriteHeader(out);
 
-		int padSize = (STARPAK_DATABLOCK_ALIGNMENT - sizeof(StarpakFileHeader_t));
+	const ssize_t totalPakSize = out.GetSize();
 
-		char* initialPad = new char[padSize];
-		memset(initialPad, STARPAK_DATABLOCK_ALIGNMENT_PADDING, padSize);
+	Log("Written pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
+		m_pakFilePath.c_str(), GetAssetCount(), totalPakSize);
 
-		srpkOut.Write(initialPad, padSize);
-		delete[] initialPad;
-
-		WriteStarpakDataBlocks(srpkOut);
-		WriteStarpakSortsTable(srpkOut);
-
-		uint64_t entryCount = GetStreamingAssetCount();
-		srpkOut.Write(entryCount);
-
-		Debug("written starpak file with size %zu\n", srpkOut.TellPut());
-
-		FreeStarpakDataBlocks();
-		srpkOut.Close();
-	}
+	out.Close();
 }
