@@ -208,8 +208,22 @@ struct studiohdr_t
 	int vvwsize;
 };
 
+struct mstudioevent_t
+{
+	float cycle;
+	int	event;
+	int type; // this will be 0 if old style I'd imagine
+	char options[256];
+	int szeventindex;
+};
+
 struct mstudioseqdesc_t
 {
+	inline const mstudioevent_t* pEvent(int i) const
+	{
+		return reinterpret_cast<const mstudioevent_t*>((char*)this + eventindex) + i;
+	}
+
 	int baseptr;
 
 	int	szlabelindex;
