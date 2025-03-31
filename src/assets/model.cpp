@@ -293,7 +293,7 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
             Error("Physics file \"%s\" appears truncated.\n", physicsFile.c_str());
 
         if (physicsRequired && (studiohdr->vphysize != phyFileSize))
-            Error("Physics file \"%s\" has a size of %zu, but the model expected a size of %zu.\n", physicsFile.c_str(), (size_t)studiohdr->vphysize, phyFileSize);
+            Error("Physics file \"%s\" has a size of %zu, but the model expected a size of %zu.\n", physicsFile.c_str(), phyFileSize, (size_t)studiohdr->vphysize);
 
         PakPageLump_s phyChunk = pak->CreatePageLump(phyFileSize, SF_CPU | SF_TEMP, 1);
         phyInput.Read(phyChunk.data, phyFileSize);
