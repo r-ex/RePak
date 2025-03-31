@@ -90,7 +90,7 @@ static void AnimRecording_InternalAddAnimRecording(CPakFileBuilder* const pak, c
 		std::string poseParamName;
 
 		if (!bio.ReadString(poseParamName))
-			Error("");
+			Error("Failed to read pose parameter name #%i\n", i);
 
 		const size_t stringBufLen = poseParamName.length() + 1;
 		memcpy(&cpuLump.data[cpuBufIt], poseParamName.c_str(), stringBufLen);
@@ -109,7 +109,7 @@ static void AnimRecording_InternalAddAnimRecording(CPakFileBuilder* const pak, c
 		std::string sequenceName;
 
 		if (!bio.ReadString(sequenceName))
-			Error("");
+			Error("Failed to read animation sequence name #%i\n", i);
 
 		const size_t stringBufLen = sequenceName.length() + 1;
 		memcpy(&cpuLump.data[cpuBufIt], sequenceName.c_str(), stringBufLen);
