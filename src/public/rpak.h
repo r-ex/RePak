@@ -21,6 +21,7 @@
 // pak uses more than one set, this number would be used per set.
 #define PAK_MAX_STREAMING_FILE_HANDLES_PER_SET 4
 
+#define TYPE_ANIR	MAKE_FOURCC('a', 'n', 'i', 'r') // anir
 #define TYPE_TXTR	MAKE_FOURCC('t', 'x', 't', 'r') // txtr
 #define TYPE_TXAN	MAKE_FOURCC('t', 'x', 'a', 'n') // txan
 #define TYPE_RMDL	MAKE_FOURCC('m', 'd', 'l', '_') // mdl_
@@ -39,6 +40,7 @@ enum class AssetType : uint32_t
 {
 	NONE = 0, // !!!INVALID TYPE!!!
 
+	ANIR = TYPE_ANIR, // animation recording
 	TXTR = TYPE_TXTR, // texture
 	TXAN = TYPE_TXAN, // texture animation
 	RMDL = TYPE_RMDL, // model

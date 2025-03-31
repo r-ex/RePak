@@ -96,6 +96,8 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 
 	g_currentAsset = assetPath;
 
+	HANDLE_ASSET_TYPE("anir", assetType, assetPath, AssetScope_e::kServerOnly, file, nullptr, Assets::AddAnimRecording_v1);
+
 	HANDLE_ASSET_TYPE("txtr", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
 	HANDLE_ASSET_TYPE("txan", assetType, assetPath, AssetScope_e::kClientOnly, file, nullptr, Assets::AddTextureAnimAsset_v1);
 	HANDLE_ASSET_TYPE("uimg", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
