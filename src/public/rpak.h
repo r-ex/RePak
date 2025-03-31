@@ -12,6 +12,9 @@
 #define RPAK_MAGIC	MAKE_FOURCC('R', 'P', 'a', 'k')
 #define RPAK_EXTENSION ".rpak"
 
+#define PAK_HEADER_FLAGS_COMPRESSED      (1<<8)
+#define PAK_HEADER_FLAGS_ZSTREAM_ENCODED (1<<9) // use the ZStd decoder instead of the RTech one
+
 #define STARPAK_MAGIC	MAKE_FOURCC('S', 'R', 'P', 'k')
 #define STARPAK_VERSION	1
 #define STARPAK_EXTENSION ".starpak"
@@ -78,7 +81,7 @@ struct PakHdr_t
 	DWORD magic = 0x6b615052;
 
 	short fileVersion = 0x8;
-	char  flags[0x2];
+	uint16_t flags;
 	FILETIME fileTime;
 	char  unk0[0x8];
 	uint64_t compressedSize; // size of the rpak file on disk before decompression

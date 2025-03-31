@@ -11,7 +11,7 @@ char* AnimRig_ReadRigFile(const std::string& path)
     const size_t fileSize = Utils::GetFileSize(path);
 
     if (fileSize < sizeof(studiohdr_t))
-        Error("invalid animrig file '%s'. must be at least %i bytes, found %lld\n", path.c_str(), sizeof(studiohdr_t), fileSize);
+        Error("invalid animrig file '%s'. must be at least %i bytes, found %zu\n", path.c_str(), sizeof(studiohdr_t), fileSize);
 
     char* const buf = new char[fileSize];
 

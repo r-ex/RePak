@@ -1,273 +1,116 @@
 #pragma once
 
-//
-// adapted from https://karlboghossian.com/2012/12/29/how-to-mimic-csharp-binaryreader-binarywriter-in-cplusplus/
-//
-enum class FileMode
-{
-	Open = 0,
-	Create,
-	Append
-};
-
-enum class BinaryIOMode
-{
-	None = 0,
-	Read,
-	Write
-};
-
 class BinaryIO
 {
-	// the output file stream to write onto a file
-	std::ofstream writer;
-	// the input file stream to read from a file
-	std::ifstream reader;
-	// the filepath of the file we're working with
-	std::string filePath;
-	// the current active mode.
-	BinaryIOMode currentMode;
-
 public:
-	BinaryIO()
+	enum class Mode_e
 	{
-		currentMode = BinaryIOMode::None;
+		None = 0,
+		Read,
+		Write,
+		ReadWrite, // For existing files only.
+		ReadWriteCreate
+	};
+
+	BinaryIO();
+	~BinaryIO();
+
+	bool Open(const char* const filePath, const Mode_e mode);
+	inline bool Open(const std::string& filePath, const Mode_e mode) { return Open(filePath.c_str(), mode); };
+
+	void Close();
+	void Flush();
+
+	std::streampos TellGet();
+	std::streampos TellPut();
+
+	void SeekGet(const std::streampos offset, const std::ios_base::seekdir way = std::ios::beg);
+	void SeekPut(const std::streampos offset, const std::ios_base::seekdir way = std::ios::beg);
+	void Seek(const std::streampos offset, const std::ios_base::seekdir way = std::ios::beg);
+
+	const std::filebuf* GetData() const;
+	const std::streampos GetSize() const;
+
+	bool IsReadMode() const;
+	bool IsWriteMode() const;
+
+	bool IsReadable() const;
+	bool IsWritable() const;
+
+	bool IsEof() const;
+
+	//-----------------------------------------------------------------------------
+	// Purpose: reads any value from the file
+	//-----------------------------------------------------------------------------
+	template<typename T>
+	void Read(T& value)
+	{
+		if (IsReadable())
+			m_stream.read(reinterpret_cast<char*>(&value), sizeof(value));
 	}
 
-	BinaryIO(const std::string& path, BinaryIOMode mode)
+	//-----------------------------------------------------------------------------
+	// Purpose: reads any value from the file with specified size
+	//-----------------------------------------------------------------------------
+	template<typename T>
+	void Read(T* const value, const size_t size)
 	{
-		open(path, mode);
+		if (IsReadable())
+			m_stream.read(reinterpret_cast<char*>(value), size);
+	}
+	template<typename T>
+	void Read(T& value, const size_t size)
+	{
+		if (IsReadable())
+			m_stream.read(reinterpret_cast<char*>(&value), size);
 	}
 
-	BinaryIO(const std::filesystem::path& path, BinaryIOMode mode)
+	//-----------------------------------------------------------------------------
+	// Purpose: reads any value from the file and returns it
+	//-----------------------------------------------------------------------------
+	template<typename T>
+	T Read()
 	{
-		open(path.string(), mode);
-	}
+		T value{};
+		if (!IsReadable())
+			return value;
 
-	// the destructor will be responsible for checking if we forgot to close
-	// the file
-	~BinaryIO()
-	{
-		if (writer.is_open())
-		{
-			writer.close();
-		}
-
-		if (reader.is_open())
-		{
-			reader.close();
-		}
-	}
-
-	// opens a file with either read or write mode. Returns whether
-	// the open operation was successful
-	bool open(const std::string& fileFullPath, BinaryIOMode mode)
-	{
-		filePath = fileFullPath;
-
-		// Write mode
-		if (mode == BinaryIOMode::Write)
-		{
-			currentMode = mode;
-			// check if we had a previously opened file to close it
-			if (writer.is_open())
-				writer.close();
-
-			writer.open(filePath.c_str(), std::ios::binary);
-			if (!writer.is_open())
-			{
-				currentMode = BinaryIOMode::None;
-			}
-		}
-		// Read mode
-		else if (mode == BinaryIOMode::Read)
-		{
-			currentMode = mode;
-			// check if we had a previously opened file to close it
-			if (reader.is_open())
-				reader.close();
-
-			reader.open(filePath.c_str(), std::ios::binary);
-			if (!reader.is_open())
-			{
-				currentMode = BinaryIOMode::None;
-			}
-		}
-
-		// if the mode is still the NONE/initial one -> we failed
-		return currentMode == BinaryIOMode::None ? false : true;
-	}
-
-	// closes the file
-	void close()
-	{
-		if (currentMode == BinaryIOMode::Write)
-		{
-			writer.close();
-		}
-		else if (currentMode == BinaryIOMode::Read)
-		{
-			reader.close();
-		}
-	}
-
-	// checks whether we're allowed to write or not.
-	bool checkWritabilityStatus()
-	{
-		if (currentMode != BinaryIOMode::Write)
-		{
-			return false;
-		}
-		return true;
-	}
-
-	// helper to check if we're allowed to read
-	bool checkReadabilityStatus()
-	{
-		if (currentMode != BinaryIOMode::Read)
-		{
-			return false;
-		}
-
-		// check if we hit the end of the file.
-		if (reader.eof())
-		{
-			reader.close();
-			currentMode = BinaryIOMode::None;
-			return false;
-		}
-
-		return true;
-	}
-
-	// so we can check if we hit the end of the file
-	bool eof()
-	{
-		return reader.eof();
-	}
-
-	// Generic write method that will write any value to a file (except a string,
-	// for strings use writeString instead)
-	template <typename T>
-	void write(T& value)
-	{
-		if (!checkWritabilityStatus())
-			return;
-
-		// write the value to the file.
-		writer.write((const char*)&value, sizeof(value));
-	}
-
-	// Writes a string to the file
-	void writeString(std::string str)
-	{
-		if (!checkWritabilityStatus())
-			return;
-
-		// first add a \0 at the end of the string so we can detect
-		// the end of string when reading it
-		str += '\0';
-
-		// create char pointer from string.
-		char* text = (char*)(str.c_str());
-		// find the length of the string.
-		size_t size = str.size();
-
-		// write the whole string including the null.
-		writer.write((const char*)text, size);
-	}
-
-	// reads any type of value except strings.
-	template <typename T>
-	T read()
-	{
-		checkReadabilityStatus();
-
-		T value;
-		reader.read((char*)&value, sizeof(value));
+		m_stream.read(reinterpret_cast<char*>(&value), sizeof(value));
 		return value;
 	}
+	bool ReadString(std::string& svOut);
+	bool ReadString(char* const pBuf, const size_t nLen);
 
-	// reads any type of value except strings.
-	template <typename T>
-	void read(T& value)
+	//-----------------------------------------------------------------------------
+	// Purpose: writes any value to the file
+	//-----------------------------------------------------------------------------
+	template<typename T>
+	void Write(const T& value)
 	{
-		if (checkReadabilityStatus())
-		{
-			reader.read((char*)&value, sizeof(value));
-		}
+		if (!IsWritable())
+			return;
+
+		m_stream.write(reinterpret_cast<const char*>(&value), sizeof(value));
+		m_size += sizeof(value);
 	}
 
-	std::ifstream* getReader() {
-		if (currentMode != BinaryIOMode::Read) {
-			return NULL;
-		}
-		return &reader;
-	}
-	std::ofstream* getWriter() {
-		if (currentMode != BinaryIOMode::Write) {
-			return NULL;
-		}
-		return &writer;
-	}
-
-	// read a string value
-	std::string readString()
+	//-----------------------------------------------------------------------------
+	// Purpose: writes any value to the file with specified size
+	//-----------------------------------------------------------------------------
+	template<typename T>
+	void Write(const T* const value, const size_t size)
 	{
-		if (checkReadabilityStatus())
-		{
-			char c;
-			std::string result = "";
-			while (!reader.eof() && (c = read<char>()) != '\0')
-			{
-				result += c;
-			}
+		if (!IsWritable())
+			return;
 
-			return result;
-		}
-		return "";
+		m_stream.write(reinterpret_cast<const char*>(value), size);
+		m_size += size;
 	}
+	bool WriteString(const std::string& svInput);
 
-	// read a string value
-	void readString(std::string& result)
-	{
-		if (checkReadabilityStatus())
-		{
-			char c;
-			result = "";
-			while (!reader.eof() && (c = read<char>()) != '\0')
-			{
-				result += c;
-			}
-		}
-	}
-
-	size_t tell()
-	{
-		switch (currentMode)
-		{
-		case BinaryIOMode::Write:
-			return writer.tellp();
-		case BinaryIOMode::Read:
-			return reader.tellg();
-		default:
-			assert(0); // Code bug: no mode selected.
-			return 0;
-		}
-	}
-
-	void seek(size_t off, std::ios::seekdir dir = std::ios::beg)
-	{
-		switch (currentMode)
-		{
-		case BinaryIOMode::Write:
-			writer.seekp(off, dir);
-			break;
-		case BinaryIOMode::Read:
-			reader.seekg(off, dir);
-			break;
-		default:
-			break;
-		}
-	}
+private:
+	std::fstream            m_stream; // I/O stream.
+	std::streampos          m_size;   // File size.
+	std::ios_base::openmode m_flags;  // Stream flags.
+	Mode_e                  m_mode;   // Stream mode.
 };
