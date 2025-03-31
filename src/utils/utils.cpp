@@ -85,60 +85,6 @@ std::string Utils::ChangeExtension(const std::string& in, const std::string& ext
 	return std::filesystem::path(in).replace_extension(ext).string();
 }
 
-//-----------------------------------------------------------------------------
-// purpose: parse json document and handle parsing errors
-//-----------------------------------------------------------------------------
-void Utils::ParseMapDocument(js::Document& doc, const char* const path)
-{
-    std::ifstream ifs(path);
-
-    if (!ifs.is_open())
-        Error("Couldn't open map file \"%s\".\n", path);
-
-    // begin json parsing
-    js::IStreamWrapper jsonStreamWrapper{ ifs };
-    doc.ParseStream<js::ParseFlag::kParseCommentsFlag | js::ParseFlag::kParseTrailingCommasFlag>(jsonStreamWrapper);
-
-    // handle parse errors
-    if (doc.HasParseError()) {
-        int lineNum = 1;
-        int columnNum = 0;
-        std::string lastLine = "";
-        std::string curLine = "";
-
-        size_t offset = doc.GetErrorOffset();
-        ifs.clear();
-        ifs.seekg(0, std::ios::beg);
-        js::IStreamWrapper isw{ ifs };
-
-        for (int i = 0; ; i++)
-        {
-            const char c = isw.Take();
-            curLine.push_back(c);
-            if (c == '\n')
-            {
-                if (i >= offset)
-                    break;
-                lastLine = curLine;
-                curLine = "";
-                lineNum++;
-                columnNum = 0;
-            }
-            else
-            {
-                if (i < offset)
-                    columnNum++;
-            }
-        }
-
-        // this could probably be formatted nicer
-        Error("Failed to parse map file %s: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n",
-            path, lineNum, columnNum,
-            GetParseError_En(doc.GetParseError()),
-            lastLine.c_str(), curLine.c_str(), (std::string(columnNum, ' ') += '^').c_str());
-    }
-}
-
 void Utils::ResolvePath(std::string& outPath, const std::filesystem::path& mapPath)
 {
     fs::path outputDirPath(outPath);
@@ -206,7 +152,7 @@ PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success)
     return 0;
 }
 
-PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, const char* const member, bool* const success)
+PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, rapidjson::Value::StringRefType member, bool* const success)
 {
     rapidjson::Value::ConstMemberIterator it;
 
@@ -217,7 +163,7 @@ PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, const char* const member, b
     return 0;
 }
 
-PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const PakGuid_t fallback)
+PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, rapidjson::Value::StringRefType member, const PakGuid_t fallback)
 {
     bool success;
     const PakGuid_t guid = Pak_ParseGuid(val, member, &success);
@@ -228,7 +174,7 @@ PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const me
     return fallback;
 }
 
-PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const char* const fallback)
+PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, rapidjson::Value::StringRefType member, const char* const fallback)
 {
     bool success;
     const PakGuid_t guid = Pak_ParseGuid(val, member, &success);
@@ -239,13 +185,13 @@ PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const me
     return RTech::StringToGuid(fallback);
 }
 
-PakGuid_t Pak_ParseGuidRequired(const rapidjson::Value& val, const char* const member)
+PakGuid_t Pak_ParseGuidRequired(const rapidjson::Value& val, rapidjson::Value::StringRefType member)
 {
     bool success;
     const PakGuid_t guid = Pak_ParseGuid(val, member, &success);
 
     if (!success)
-        Error("%s: failed to parse field \"%s\".\n", __FUNCTION__, member);
+        Error("%s: failed to parse field \"%s\".\n", __FUNCTION__, member.s);
 
     return guid;
 }
@@ -291,7 +237,7 @@ PakGuid_t Pak_ParseGuidFromObject(const rapidjson::Value& val, const char* const
     return RTech::StringToGuid(outAssetName);
 }
 
-PakGuid_t Pak_ParseGuidFromMap(const rapidjson::Value& mapEntry, const char* const fieldName,
+PakGuid_t Pak_ParseGuidFromMap(const rapidjson::Value& mapEntry, rapidjson::Value::StringRefType fieldName,
     const char* const debugName, const char*& outAssetName, const bool requiredField)
 {
     rapidjson::Value::ConstMemberIterator it;

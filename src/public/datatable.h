@@ -28,7 +28,7 @@ static inline const std::unordered_map<std::string, dtblcoltype_t> s_dataTableCo
 // gets enum value from type string
 // e.g. "string" to dtblcoltype::StringT
 
-dtblcoltype_t DataTable_GetTypeFromString(const std::string& sType)
+inline dtblcoltype_t DataTable_GetTypeFromString(const std::string& sType)
 {
 	for (const auto& [key, value] : s_dataTableColumnTypeMap) // get each element in the type map
 	{
@@ -37,6 +37,26 @@ dtblcoltype_t DataTable_GetTypeFromString(const std::string& sType)
 	}
 
 	return dtblcoltype_t::INVALID;
+}
+
+inline size_t DataTable_GetAlignmentForType(const dtblcoltype_t type)
+{
+	switch (type)
+	{
+	case dtblcoltype_t::Bool:
+		return sizeof(char);
+	case dtblcoltype_t::Int:
+		return sizeof(int32_t);
+	case dtblcoltype_t::Float:
+		return sizeof(float);
+	case dtblcoltype_t::Vector:
+		return sizeof(Vector3);
+	case dtblcoltype_t::String:
+	case dtblcoltype_t::Asset:
+	case dtblcoltype_t::AssetNoPrecache:
+		return sizeof(PagePtr_t);
+	default: assert(0); return 0;
+	}
 }
 
 inline const char* DataTable_GetStringFromType(const dtblcoltype_t type)
@@ -125,6 +145,7 @@ struct datatable_v1_t
 struct datatable_asset_t
 {
 	// previously func vars
+	size_t guidRefBufSize;
 	size_t rowPodValueBufSize;
 	size_t rowStringValueBufSize;
 

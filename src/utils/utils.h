@@ -11,24 +11,22 @@ namespace Utils
 	void AppendSlash(std::string& in);
 	std::string ChangeExtension(const std::string& in, const std::string& ext);
 
-	void ParseMapDocument(js::Document& doc, const char* const path);
 	void ResolvePath(std::string& outPath, const std::filesystem::path& mapPath);
-
 	const char* ExtractFileName(const char* const string);
 };
 
 extern PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success = nullptr);
-extern PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, const char* const member, bool* const success = nullptr);
-extern PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const PakGuid_t fallback);
-extern PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, const char* const member, const char* const fallback);
-extern PakGuid_t Pak_ParseGuidRequired(const rapidjson::Value& val, const char* const member);
+extern PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, rapidjson::Value::StringRefType member, bool* const success = nullptr);
+extern PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, rapidjson::Value::StringRefType member, const PakGuid_t fallback);
+extern PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, rapidjson::Value::StringRefType member, const char* const fallback);
+extern PakGuid_t Pak_ParseGuidRequired(const rapidjson::Value& val, rapidjson::Value::StringRefType member);
 
 extern PakGuid_t Pak_GetGuidOverridable(const rapidjson::Value& mapEntry, const char* const assetPath);
 
 extern PakGuid_t Pak_ParseGuidFromObject(const rapidjson::Value& val, const char* const debugName,
 	const char*& outAssetName);
 
-extern PakGuid_t Pak_ParseGuidFromMap(const rapidjson::Value& mapEntry, const char* const fieldName,
+extern PakGuid_t Pak_ParseGuidFromMap(const rapidjson::Value& mapEntry, rapidjson::Value::StringRefType fieldName,
 	const char* const debugName, const char*& outAssetName, const bool requiredField);
 
 extern size_t Pak_ExtractAssetStem(const char* const assetPath, char* const outBuf, const size_t outBufLen);

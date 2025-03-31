@@ -7,6 +7,8 @@
 #define TXAN_VERSION 1
 #define UIMG_VERSION 10
 //#define DTBL_VERSION 1
+#define STLT_VERSION 0
+#define STGS_VERSION 1
 #define RMDL_VERSION 10
 #define ARIG_VERSION 4
 #define ASEQ_VERSION 7
@@ -25,6 +27,9 @@ namespace Assets
 	void AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
 
 	void AddDataTableAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
+	void AddSettingsLayout_v0(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
+	void AddSettingsAsset_v1(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
+
 	void AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
 
 	void AddAnimSeqAsset_v7(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);

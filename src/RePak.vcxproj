@@ -18,6 +18,8 @@
     <ClCompile Include="assets\material.cpp" />
     <ClCompile Include="assets\model.cpp" />
     <ClCompile Include="assets\patch.cpp" />
+    <ClCompile Include="assets\settings.cpp" />
+    <ClCompile Include="assets\settings_layout.cpp" />
     <ClCompile Include="assets\shader.cpp" />
     <ClCompile Include="assets\shaderset.cpp" />
     <ClCompile Include="assets\texture_anim.cpp" />
@@ -117,6 +119,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="thirdparty\zstd\compress\zstd_preSplit.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="thirdparty\zstd\decompress\huf_decompress.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -172,6 +178,7 @@
     <ClInclude Include="logic\streamcache.h" />
     <ClInclude Include="logic\streamfile.h" />
     <ClInclude Include="math\color.h" />
+    <ClInclude Include="math\common.h" />
     <ClInclude Include="math\vector.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="public\animrig.h" />
@@ -179,6 +186,8 @@
     <ClInclude Include="public\materialflags.h" />
     <ClInclude Include="public\multishader.h" />
     <ClInclude Include="public\rpak.h" />
+    <ClInclude Include="public\settings.h" />
+    <ClInclude Include="public\settings_layout.h" />
     <ClInclude Include="public\shader.h" />
     <ClInclude Include="public\shaderset.h" />
     <ClInclude Include="public\starpak.h" />
@@ -256,6 +265,7 @@
     <ClInclude Include="thirdparty\zstd\compress\zstd_ldm.h" />
     <ClInclude Include="thirdparty\zstd\compress\zstd_ldm_geartab.h" />
     <ClInclude Include="thirdparty\zstd\compress\zstd_opt.h" />
+    <ClInclude Include="thirdparty\zstd\compress\zstd_preSplit.h" />
     <ClInclude Include="thirdparty\zstd\decompress\zstd_ddict.h" />
     <ClInclude Include="thirdparty\zstd\decompress\zstd_decompress_block.h" />
     <ClInclude Include="thirdparty\zstd\decompress\zstd_decompress_internal.h" />
@@ -334,7 +344,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)\;$(ProjectDir)thirdparty\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "RAPIDJSON_PARSE_DEFAULT_FLAGS=kParseIterativeFlag|kParseValidateEncodingFlag" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "RAPIDJSON_PARSE_DEFAULT_FLAGS=kParseTrailingCommasFlag|kParseCommentsFlag|kParseIterativeFlag|kParseValidateEncodingFlag" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -358,7 +368,7 @@
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "RAPIDJSON_PARSE_DEFAULT_FLAGS=kParseIterativeFlag|kParseValidateEncodingFlag" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/D "RAPIDJSON_SSE2" /D "RAPIDJSON_PARSE_DEFAULT_FLAGS=kParseTrailingCommasFlag|kParseCommentsFlag|kParseIterativeFlag|kParseValidateEncodingFlag" /D "ZSTD_MULTITHREAD" /D "DEBUGLEVEL=0" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

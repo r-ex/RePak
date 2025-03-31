@@ -55,7 +55,7 @@ bool BinaryIO::Open(const char* const filePath, const Mode_e mode)
 		m_stream.close();
 	}
 
-	m_stream.open(filePath, GetInternalStreamMode(mode));
+	m_stream.open(filePath, m_flags);
 
 	if (!m_stream.is_open() || !m_stream.good())
 	{
@@ -294,7 +294,7 @@ void BinaryIO::Pad(const size_t count)
 
 	while (remainder)
 	{
-		const size_t writeCount = (std::min)(count, PAD_BUF_SIZE);
+		const size_t writeCount = (std::min)(remainder, PAD_BUF_SIZE);
 		Write(s_padBuf, writeCount);
 
 		remainder -= writeCount;
