@@ -47,6 +47,9 @@ static void AnimRecording_ParseFromANIR(const char* const assetPath, BinaryIO& b
 	totalBufSize = stringBufSize + animFramesBufSize + animOverlaysBufSize;
 }
 
+// page chunk structure and order:
+// - header HEAD        (align=8)
+// - data   CPU         (align=4)
 static void AnimRecording_InternalAddAnimRecording(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath)
 {
 	const std::string anirPath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, "anir");
