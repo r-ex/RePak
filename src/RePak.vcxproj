@@ -14,6 +14,7 @@
     <ClCompile Include="application\repak.cpp" />
     <ClCompile Include="assets\animrig.cpp" />
     <ClCompile Include="assets\animseq.cpp" />
+    <ClCompile Include="assets\anim_recording.cpp" />
     <ClCompile Include="assets\datatable.cpp" />
     <ClCompile Include="assets\material.cpp" />
     <ClCompile Include="assets\model.cpp" />
@@ -182,6 +183,7 @@
     <ClInclude Include="math\vector.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="public\animrig.h" />
+    <ClInclude Include="public\anim_recording.h" />
     <ClInclude Include="public\material.h" />
     <ClInclude Include="public\materialflags.h" />
     <ClInclude Include="public\multishader.h" />

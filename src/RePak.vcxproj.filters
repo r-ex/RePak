@@ -234,6 +234,9 @@
     <ClCompile Include="thirdparty\zstd\compress\zstd_preSplit.c">
       <Filter>thirdparty\zstandard\compress</Filter>
     </ClCompile>
+    <ClCompile Include="assets\anim_recording.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -577,6 +580,9 @@
     </ClInclude>
     <ClInclude Include="thirdparty\zstd\compress\zstd_preSplit.h">
       <Filter>thirdparty\zstandard\compress</Filter>
+    </ClInclude>
+    <ClInclude Include="public\anim_recording.h">
+      <Filter>public</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
