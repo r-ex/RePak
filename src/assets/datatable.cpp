@@ -289,7 +289,6 @@ static void DataTable_AddDataTable(CPakFileBuilder* const pak, const PakGuid_t a
     asset.InitAsset(
         hdrChunk.GetPointer(), pakVersion <= 7 ? sizeof(datatable_v0_t) : sizeof(datatable_v1_t),
         dataChunk.GetPointer(rowPodValuesBase), // points to datatable_asset_t::pRow
-        -1, -1, 
         // rpak v7: v0
         // rpak v8: v1
         pakVersion <= 7 ? 0 : 1,

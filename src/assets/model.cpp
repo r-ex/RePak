@@ -32,14 +32,14 @@ char* Model_ReadRMDLFile(const std::string& path, const uint64_t alignment = 64)
     return buf;
 }
 
-static char* Model_ReadVGFile(const std::string& path, size_t* const pFileSize)
+static char* Model_ReadVGFile(const std::string& path, int64_t* const pFileSize)
 {
     BinaryIO vgFile;
 
     if (!vgFile.Open(path, BinaryIO::Mode_e::Read))
         Error("Failed to open vertex group file \"%s\".\n", path.c_str());
 
-    const size_t fileSize = vgFile.GetSize();
+    const int64_t fileSize = vgFile.GetSize();
 
     if (fileSize < sizeof(VertexGroupHeader_t))
         Error("Invalid vertex group file \"%s\"; must be at least %zu bytes, found %zu.\n", path.c_str(), sizeof(VertexGroupHeader_t), fileSize);
@@ -155,7 +155,7 @@ static void Model_AllocateIntermediateDataChunk(CPakFileBuilder* const pak, PakP
     }
 }
 
-static uint64_t Model_InternalAddVertexGroupData(CPakFileBuilder* const pak, PakPageLump_s* const hdrChunk, ModelAssetHeader_t* const modelHdr, studiohdr_t* const studiohdr, const std::string& rmdlFilePath)
+static void Model_InternalAddVertexGroupData(CPakFileBuilder* const pak, PakPageLump_s* const hdrChunk, ModelAssetHeader_t* const modelHdr, studiohdr_t* const studiohdr, const std::string& rmdlFilePath, PakStreamSetEntry_s& de)
 {
     modelHdr->totalVertexDataSize = studiohdr->vtxsize + studiohdr->vvdsize + studiohdr->vvcsize + studiohdr->vvwsize;
 
@@ -165,14 +165,14 @@ static uint64_t Model_InternalAddVertexGroupData(CPakFileBuilder* const pak, Pak
     // this data is a combined mutated version of the data from .vtx and .vvd in regular source models
     const std::string vgFilePath = Utils::ChangeExtension(rmdlFilePath, ".vg");
 
-    size_t vgFileSize = 0;
+    int64_t vgFileSize = 0;
     char* const vgBuf = Model_ReadVGFile(vgFilePath, &vgFileSize);
 
-    PakStreamSetEntry_s de{ 0, vgFileSize };
-    pak->AddStreamingDataEntry(de, (uint8_t*)vgBuf, STREAMING_SET_MANDATORY);
+    de = pak->AddStreamingDataEntry(vgFileSize, (uint8_t*)vgBuf, STREAMING_SET_MANDATORY);
+    const int64_t vgSizeAligned = IALIGN(vgFileSize, STARPAK_DATABLOCK_ALIGNMENT);
 
-    assert(de.dataSize <= UINT32_MAX);
-    modelHdr->streamedVertexDataSize = static_cast<uint32_t>(de.dataSize);
+    assert(vgSizeAligned <= UINT32_MAX);
+    modelHdr->streamedVertexDataSize = static_cast<uint32_t>(vgSizeAligned);
 
     // static props must have their vertex group data copied as permanent data in the pak file.
     if (studiohdr->IsStaticProp())
@@ -182,80 +182,11 @@ static uint64_t Model_InternalAddVertexGroupData(CPakFileBuilder* const pak, Pak
     }
     else
         delete[] vgBuf;
-
-    return de.offset;
 }
 
-extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFileBuilder* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
-
-// page chunk structure and order:
-// - header        HEAD        (align=8)
-// - intermediate  CPU         (align=1?8) name, animrig refs then animseqs refs. aligned to 1 if we don't have any refs.
-// - vphysics      TEMP        (align=1)
-// - vertex groups TEMP_CLIENT (align=1)
-// - rmdl          CPU         (align=64) 64 bit aligned because collision data is loaded with aligned SIMD instructions.
-void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+static void Model_InternalHandleMaterials(CPakFileBuilder* const pak, const rapidjson::Value& mapEntry, 
+    PakAsset_t& asset, studiohdr_t* const studiohdr, PakPageLump_s& dataChunk)
 {
-    // deal with dependencies first; auto-add all animation sequences.
-    uint32_t sequenceCount = 0;
-    PakGuid_t* const sequenceRefs = AnimSeq_AutoAddSequenceRefs(pak, &sequenceCount, mapEntry);
-
-    // this function only creates the arig guid refs, it does not auto-add.
-    uint32_t animrigCount = 0;
-    PakGuid_t* const animrigRefs = Model_AddAnimRigRefs(&animrigCount, mapEntry);
-
-    // from here we start with creating lumps for the target model asset.
-    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
-
-    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(ModelAssetHeader_t), SF_HEAD, 8);
-    ModelAssetHeader_t* const pHdr = reinterpret_cast<ModelAssetHeader_t*>(hdrChunk.data);
-
-    //
-    // Name, Anim Rigs and Animseqs, these all share 1 data chunk.
-    //
-    Model_AllocateIntermediateDataChunk(pak, hdrChunk, pHdr, animrigRefs, animrigCount, sequenceRefs, sequenceCount, assetPath, asset);
-
-    const std::string rmdlFilePath = pak->GetAssetPath() + assetPath;
-
-    char* const rmdlBuf = Model_ReadRMDLFile(rmdlFilePath);
-    studiohdr_t* const studiohdr = reinterpret_cast<studiohdr_t*>(rmdlBuf);
-
-    //
-    // Physics
-    //
-    if (studiohdr->vphysize)
-    {
-        BinaryIO phyInput;
-        const std::string physicsFile = Utils::ChangeExtension(rmdlFilePath, ".phy");
-
-        if (!phyInput.Open(physicsFile, BinaryIO::Mode_e::Read))
-            Error("Failed to open physics asset \"%s\".\n", physicsFile.c_str());
-
-        const size_t phyFileSize = phyInput.GetSize();
-
-        if (studiohdr->vphysize != phyFileSize)
-            Error("Expected physics file size is %zu, found physics asset of size %zu.\n", (size_t)studiohdr->vphysize, phyFileSize);
-
-        PakPageLump_s phyChunk = pak->CreatePageLump(phyFileSize, SF_CPU | SF_TEMP, 1);
-        phyInput.Read(phyChunk.data, phyFileSize);
-
-        pak->AddPointer(hdrChunk, offsetof(ModelAssetHeader_t, pPhyData), phyChunk, 0);
-    }
-
-    //
-    // Starpak
-    //
-    uint64_t streamedVgOffset;
-
-    if (pak->IsFlagSet(PF_KEEP_CLIENT))
-        streamedVgOffset = Model_InternalAddVertexGroupData(pak, &hdrChunk, pHdr, studiohdr, rmdlFilePath);
-    else
-        streamedVgOffset = UINT64_MAX;
-
-    // the last chunk is the actual data chunk that contains the rmdl
-    PakPageLump_s dataChunk = pak->CreatePageLump(studiohdr->length, SF_CPU, 64, rmdlBuf);
-    pak->AddPointer(hdrChunk, offsetof(ModelAssetHeader_t, pData), dataChunk, 0);
-
     // Material Overrides Handling
     rapidjson::Value::ConstMemberIterator materialsIt;
 
@@ -307,8 +238,89 @@ void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetG
             }
         }
     }
+}
 
-    asset.InitAsset(hdrChunk.GetPointer(), sizeof(ModelAssetHeader_t), PagePtr_t::NullPtr(), streamedVgOffset, -1, RMDL_VERSION, AssetType::RMDL);
+extern PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFileBuilder* const pak, uint32_t* const sequenceCount, const rapidjson::Value& mapEntry);
+
+// page chunk structure and order:
+// - header        HEAD        (align=8)
+// - intermediate  CPU         (align=1?8) name, animrig refs then animseqs refs. aligned to 1 if we don't have any refs.
+// - vphysics      TEMP        (align=1)
+// - vertex groups TEMP_CLIENT (align=1)
+// - rmdl          CPU         (align=64) 64 bit aligned because collision data is loaded with aligned SIMD instructions.
+void Assets::AddModelAsset_v9(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
+{
+    // deal with dependencies first; auto-add all animation sequences.
+    uint32_t sequenceCount = 0;
+    PakGuid_t* const sequenceRefs = AnimSeq_AutoAddSequenceRefs(pak, &sequenceCount, mapEntry);
+
+    // this function only creates the arig guid refs, it does not auto-add.
+    uint32_t animrigCount = 0;
+    PakGuid_t* const animrigRefs = Model_AddAnimRigRefs(&animrigCount, mapEntry);
+
+    // from here we start with creating lumps for the target model asset.
+    PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
+
+    PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(ModelAssetHeader_t), SF_HEAD, 8);
+    ModelAssetHeader_t* const pHdr = reinterpret_cast<ModelAssetHeader_t*>(hdrChunk.data);
+
+    //
+    // Name, Anim Rigs and Animseqs, these all share 1 data chunk.
+    //
+    Model_AllocateIntermediateDataChunk(pak, hdrChunk, pHdr, animrigRefs, animrigCount, sequenceRefs, sequenceCount, assetPath, asset);
+
+    const std::string rmdlFilePath = pak->GetAssetPath() + assetPath;
+
+    char* const rmdlBuf = Model_ReadRMDLFile(rmdlFilePath);
+    studiohdr_t* const studiohdr = reinterpret_cast<studiohdr_t*>(rmdlBuf);
+
+    //
+    // Physics
+    //
+    const bool physicsRequired = studiohdr->vphysize != 0;
+
+    BinaryIO phyInput;
+    const std::string physicsFile = Utils::ChangeExtension(rmdlFilePath, ".phy");
+
+    if (phyInput.Open(physicsFile, BinaryIO::Mode_e::Read))
+    {
+        const size_t phyFileSize = phyInput.GetSize();
+
+        // If it exists, but is 0, then the file is truncated/corrupt.
+        // Still report the error even if physicsRequired is false as
+        // this is an indication there's more wrong.
+        if (!phyFileSize)
+            Error("Physics file \"%s\" appears truncated.\n", physicsFile.c_str());
+
+        if (physicsRequired && (studiohdr->vphysize != phyFileSize))
+            Error("Physics file \"%s\" has a size of %zu, but the model expected a size of %zu.\n", physicsFile.c_str(), phyFileSize, (size_t)studiohdr->vphysize);
+
+        PakPageLump_s phyChunk = pak->CreatePageLump(phyFileSize, SF_CPU | SF_TEMP, 1);
+        phyInput.Read(phyChunk.data, phyFileSize);
+
+        pak->AddPointer(hdrChunk, offsetof(ModelAssetHeader_t, pPhyData), phyChunk, 0);
+    }
+    else if (physicsRequired)
+        Error("Failed to open physics file \"%s\".\n", physicsFile.c_str());
+
+    //
+    // Starpak
+    //
+    PakStreamSetEntry_s streamedVg;
+
+    const bool keepClientOnly = pak->IsFlagSet(PF_KEEP_CLIENT);
+
+    if (keepClientOnly)
+        Model_InternalAddVertexGroupData(pak, &hdrChunk, pHdr, studiohdr, rmdlFilePath, streamedVg);
+
+    // the last chunk is the actual data chunk that contains the rmdl
+    PakPageLump_s dataChunk = pak->CreatePageLump(studiohdr->length, SF_CPU, 64, rmdlBuf);
+    pak->AddPointer(hdrChunk, offsetof(ModelAssetHeader_t, pData), dataChunk, 0);
+
+    if (keepClientOnly)
+        Model_InternalHandleMaterials(pak, mapEntry, asset, studiohdr, dataChunk);
+
+    asset.InitAsset(hdrChunk.GetPointer(), sizeof(ModelAssetHeader_t), PagePtr_t::NullPtr(), RMDL_VERSION, AssetType::RMDL, streamedVg.streamOffset, streamedVg.streamIndex);
     asset.SetHeaderPointer(hdrChunk.data);
 
     pak->FinishAsset();

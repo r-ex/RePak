@@ -3,18 +3,117 @@
 #include "utils/dxutils.h"
 #include "public/texture.h"
 
+#define TEXTURE_RESOURCE_FLAGS_FIELD "resourceFlags"
 #define TEXTURE_USAGE_FLAGS_FIELD "usageFlags"
 #define TEXTURE_MIP_INFO_FIELD "mipInfo"
+#define TEXTURE_STREAM_LAYOUT_FIELD "streamLayout"
+
+static void Texture_ValidateMetadataArray(const rapidjson::Value& arrayValue, const int totalMipCount, const char* const fieldName)
+{
+    if (!JSON_IsOfType(arrayValue, JSONFieldType_e::kArray))
+        Error("Field \"%s\" in texture metadata must be an array.\n", fieldName);
+
+    const rapidjson::Value::ConstArray& arrayData = arrayValue.GetArray();
+
+    if (arrayData.Empty())
+        Error("Array \"%s\" was found empty in texture metadata.\n", fieldName);
+
+    const size_t arraySize = arrayData.Size();
+
+    if (arraySize != totalMipCount - 1)
+        Error("Array \"%s\" in texture metadata must cover all mips except the base (expected %i, got %i).\n", fieldName,
+            totalMipCount - 1, static_cast<int>(arraySize));
+}
+
+static mipType_e Texture_GetMipTypeFromName(const char* const typeName)
+{
+    if (strcmp(typeName, "permanent") == 0)
+        return mipType_e::STATIC;
+    if (strcmp(typeName, "mandatory") == 0)
+        return mipType_e::STREAMED;
+    if (strcmp(typeName, "optional") == 0)
+        return mipType_e::STREAMED_OPT;
+
+    return mipType_e::INVALID;
+}
 
 // If the texture has additional metadata, parse it.
 static void Texture_ProcessMetaData(CPakFileBuilder* const pak, const char* const assetPath, 
-                                    TextureAssetHeader_t* const hdr, const int totalMipCount)
+                                    TextureAssetHeader_t* const hdr, const int totalMipCount, std::vector<mipType_e>& streamLayout)
 {
     const std::string metaFilePath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
     rapidjson::Document document;
 
     if (!JSON_ParseFromFile(metaFilePath.c_str(), "texture metadata", document))
         return;
+
+    rapidjson::Value::ConstMemberIterator streamLayoutIt;
+
+    if (JSON_GetIterator(document, TEXTURE_STREAM_LAYOUT_FIELD, streamLayoutIt))
+    {
+        Texture_ValidateMetadataArray(streamLayoutIt->value, totalMipCount, TEXTURE_STREAM_LAYOUT_FIELD);
+        const rapidjson::Value::ConstArray& streamLayoutArray = streamLayoutIt->value.GetArray();
+
+        // -1 because the first mip isn't counted, it is always permanent.
+        streamLayout.resize(totalMipCount-1);
+
+        // note: unclamped loop and write into dynamic sized array because we
+        // have already confirmed that the texture mip count is sane.
+        uint32_t index = 0;
+
+        for (const js::Value& streamLayoutEntry : streamLayoutArray)
+        {
+            if (!streamLayoutEntry.IsString())
+                Error("Expected type %s for \"" TEXTURE_MIP_INFO_FIELD "\" #%u, got %s.\n",
+                    JSON_TypeToString(JSONFieldType_e::kString), index, JSON_TypeToString(streamLayoutEntry));
+
+            const char* const mipTypeName = streamLayoutEntry.GetString();
+            const mipType_e mipType = Texture_GetMipTypeFromName(mipTypeName);
+
+            if (mipType == mipType_e::INVALID)
+                Error("Invalid texture mip type \"%s\" in \"" TEXTURE_MIP_INFO_FIELD "\" #%u; expected one of the following: permanent:mandatory:optional\n.",
+                    mipTypeName, index);
+
+            // The lookup in Texture_InternalAddTexture happens in reverse,
+            // write it out in reverse here.
+            const uint32_t idx = (totalMipCount - 2) - index++;
+            streamLayout[idx] = mipType;
+        }
+    }
+
+    rapidjson::Value::ConstMemberIterator mipInfoIt;
+
+    if (JSON_GetIterator(document, TEXTURE_MIP_INFO_FIELD, mipInfoIt))
+    {
+        Texture_ValidateMetadataArray(mipInfoIt->value, totalMipCount, TEXTURE_MIP_INFO_FIELD);
+        const rapidjson::Value::ConstArray& mipInfoArray = mipInfoIt->value.GetArray();
+
+        // note: unclamped loop and write into static sized array because we
+        // have already confirmed that the texture mip count is sane.
+        uint32_t index = 0;
+
+        for (const js::Value& mipInfoEntry : mipInfoArray)
+        {
+            int32_t mipInfo;
+
+            if (!JSON_ParseNumber(mipInfoEntry, mipInfo))
+                Error("Failed to parse \"" TEXTURE_MIP_INFO_FIELD "\" #%u from texture metadata.\n", index);
+
+            hdr->unkPerMip[index++] = static_cast<uint8_t>(mipInfo);
+        }
+    }
+
+    rapidjson::Value::ConstMemberIterator resourceFlagsIt;
+
+    if (JSON_GetIterator(document, TEXTURE_RESOURCE_FLAGS_FIELD, resourceFlagsIt))
+    {
+        int32_t resourceFlags;
+
+        if (!JSON_ParseNumber(resourceFlagsIt->value, resourceFlags))
+            Error("Failed to parse \"" TEXTURE_RESOURCE_FLAGS_FIELD "\" from texture metadata.\n");
+
+        hdr->resourceFlags = static_cast<uint8_t>(resourceFlags);
+    }
 
     rapidjson::Value::ConstMemberIterator usageFlagsIt;
 
@@ -26,39 +125,6 @@ static void Texture_ProcessMetaData(CPakFileBuilder* const pak, const char* cons
             Error("Failed to parse \"" TEXTURE_USAGE_FLAGS_FIELD "\" from texture metadata.\n");
 
         hdr->usageFlags = static_cast<uint8_t>(usageFlags);
-    }
-
-    rapidjson::Value::ConstMemberIterator mipInfoIt;
-
-    if (JSON_GetIterator(document, TEXTURE_MIP_INFO_FIELD, mipInfoIt))
-    {
-        if (!JSON_IsOfType(mipInfoIt->value, JSONFieldType_e::kArray))
-            Error("Field \"" TEXTURE_MIP_INFO_FIELD "\" in texture metadata must be an array.\n");
-
-        const rapidjson::Value::ConstArray& mipInfoArray = mipInfoIt->value.GetArray();
-
-        if (mipInfoArray.Empty())
-            Error("Array \"" TEXTURE_MIP_INFO_FIELD "\" was found empty in texture metadata.\n");
-
-        const size_t arraySize = mipInfoArray.Size();
-
-        if (arraySize != totalMipCount-1)
-            Error("Array \"" TEXTURE_MIP_INFO_FIELD "\" in texture metadata must cover all mips except the base (expected %i, got %i).\n", 
-                totalMipCount-1, static_cast<int>(arraySize));
-
-        // note: unclamped loop and write into static sized array because we
-        // have already confirmed that the texture mip count is sane.
-        uint32_t index = 0;
-
-        for (const auto& mipInfoEntry : mipInfoArray)
-        {
-            int32_t mipInfo;
-
-            if (!JSON_ParseNumber(mipInfoEntry, mipInfo))
-                Error("Failed to parse \"" TEXTURE_MIP_INFO_FIELD "\" #%u from texture metadata.\n", index);
-
-            hdr->unkPerMip[index++] = static_cast<uint8_t>(mipInfo);
-        }
     }
 }
 
@@ -78,9 +144,9 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
 
     // used for creating data buffers
     struct {
-        size_t staticSize;
-        size_t streamedSize;
-        size_t streamedOptSize;
+        int64_t staticSize;
+        int64_t streamedSize;
+        int64_t streamedOptSize;
     } mipSizes{};
 
     // parse input image file
@@ -96,7 +162,8 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     if (ddsh.dwMipMapCount > MAX_MIPS_PER_TEXTURE)
         Error("Attempted to add a texture asset with too many mipmaps (max %u, got %u).\n", MAX_MIPS_PER_TEXTURE, ddsh.dwMipMapCount);
 
-    Texture_ProcessMetaData(pak, assetPath, hdr, ddsh.dwMipMapCount);
+    std::vector<mipType_e> streamLayout;
+    Texture_ProcessMetaData(pak, assetPath, hdr, ddsh.dwMipMapCount, streamLayout);
 
     DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN;
 
@@ -127,11 +194,11 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
         Error("Attempted to add a texture asset using an unsupported format type \"%s\".\n", pDxgiFormat);
 
     hdr->imageFormat = imageFormat;
-    Log("-> fmt: %s\n", pDxgiFormat);
+    Debug("-> fmt: %s\n", pDxgiFormat);
 
     hdr->width = static_cast<uint16_t>(ddsh.dwWidth);
     hdr->height = static_cast<uint16_t>(ddsh.dwHeight);
-    Log("-> dimensions: %ux%u\n", ddsh.dwWidth, ddsh.dwHeight);
+    Debug("-> dimensions: %ux%u\n", ddsh.dwWidth, ddsh.dwHeight);
 
     bool isStreamable = false; // does this texture require streaming? true if total size of mip levels would exceed 64KiB. can be forced to false.
     bool isStreamableOpt = false; // can this texture use optional starpaks? can only be set if pak is version v8
@@ -151,8 +218,6 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
         mips.resize(ddsh.dwMipMapCount);
 
     size_t mipOffset = isDX10 ? 0x94 : 0x80; // add header length
-    unsigned int streamedMipCount = 0;
-
     bool firstTexture = true;
 
     for (auto& mips : textureArray)
@@ -196,35 +261,36 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
             // - texture arrays cannot be streamed, the mips for each texture
             //   must be equally mapped and they can only be stored permanently.
             // 
-            // - we cannot have more than 4 streamed mip levels; the engine can
-            //   only store up to 4 streamable mip handles per texture, anything
-            //   else must be stored as a permanent mip!
-            //
             // - there must always be at least 1 permanent mip level, regardless
             //   of its size. not adhering to this rule will result in a failure
             //   in ID3D11Device::CreateTexture2D during the runtime. we make
             //   sure that the smallest mip is always permanent (static) here.
-            if (arraySize == 1 && (streamedMipCount < MAX_STREAMED_TEXTURE_MIPS) && (mipLevel != (ddsh.dwMipMapCount - 1)))
+            if (arraySize == 1 && (mipLevel != (ddsh.dwMipMapCount - 1)))
             {
-                // if opt streamable textures are enabled, check if this mip is supposed to be opt streamed
-                if (isStreamableOpt && alignedSize > MAX_STREAM_MIP_SIZE)
+                const mipType_e override = streamLayout.empty() 
+                    ? mipType_e::INVALID 
+                    : streamLayout[mipLevel];
+
+                if (override != mipType_e::STATIC)
                 {
-                    mipSizes.streamedOptSize += alignedSize; // only reason this is done is to create the data buffers
-                    hdr->optStreamedMipLevels++; // add a streamed mip level
+                    // if opt streamable textures are enabled, check if this mip is supposed to be opt streamed
+                    if (isStreamableOpt && (override == mipType_e::INVALID ? (alignedSize > MAX_STREAM_MIP_SIZE) : (override == mipType_e::STREAMED_OPT)))
+                    {
+                        mipSizes.streamedOptSize += alignedSize; // only reason this is done is to create the data buffers
+                        hdr->optStreamedMipLevels++; // add a streamed mip level
 
-                    mipMap.mipType = mipType_e::STREAMED_OPT;
+                        mipMap.mipType = mipType_e::STREAMED_OPT;
+                    }
+
+                    // if streamable textures are enabled, check if this mip is supposed to be streamed
+                    else if (isStreamable && (override == mipType_e::INVALID ? (alignedSize > MAX_PERM_MIP_SIZE) : (override == mipType_e::STREAMED)))
+                    {
+                        mipSizes.streamedSize += alignedSize; // only reason this is done is to create the data buffers
+                        hdr->streamedMipLevels++; // add a streamed mip level
+
+                        mipMap.mipType = mipType_e::STREAMED;
+                    }
                 }
-
-                // if streamable textures are enabled, check if this mip is supposed to be streamed
-                else if (isStreamable && alignedSize > MAX_PERM_MIP_SIZE)
-                {
-                    mipSizes.streamedSize += alignedSize; // only reason this is done is to create the data buffers
-                    hdr->streamedMipLevels++; // add a streamed mip level
-
-                    mipMap.mipType = mipType_e::STREAMED;
-                }
-
-                streamedMipCount++;
             }
 
             // texture was not streamed, make it permanent.
@@ -248,7 +314,7 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     }
 
     hdr->guid = assetGuid;
-    Log("-> total mipmaps permanent:mandatory:optional : %hhu:%hhu:%hhu\n", hdr->mipLevels, hdr->streamedMipLevels, hdr->optStreamedMipLevels);
+    Debug("-> total mipmaps permanent:mandatory:optional : %hhu:%hhu:%hhu\n", hdr->mipLevels, hdr->streamedMipLevels, hdr->optStreamedMipLevels);
 
     if (pak->IsFlagSet(PF_KEEP_DEV))
     {
@@ -316,31 +382,23 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     }
 
     // now time to add the higher level asset entry
-    uint64_t mandatoryStreamDataOffset = UINT64_MAX;
+    PakStreamSetEntry_s mandatoryStreamData;
 
     if (isStreamable && hdr->streamedMipLevels > 0)
-    {
-        PakStreamSetEntry_s de{ 0, mipSizes.streamedSize };
-        pak->AddStreamingDataEntry(de, (uint8_t*)streamedbuf, STREAMING_SET_MANDATORY);
-
-        mandatoryStreamDataOffset = de.offset;
-    }
+        mandatoryStreamData = pak->AddStreamingDataEntry(mipSizes.streamedSize, (uint8_t*)streamedbuf, STREAMING_SET_MANDATORY);
 
     delete[] streamedbuf;
 
-    uint64_t optionalStreamDataOffset = UINT64_MAX;
+    PakStreamSetEntry_s optionalStreamData;
 
     if (isStreamableOpt && hdr->optStreamedMipLevels > 0)
-    {
-        PakStreamSetEntry_s de{ 0, mipSizes.streamedOptSize };
-        pak->AddStreamingDataEntry(de, (uint8_t*)optstreamedbuf, STREAMING_SET_OPTIONAL);
-
-        optionalStreamDataOffset = de.offset;
-    }
+        optionalStreamData = pak->AddStreamingDataEntry(mipSizes.streamedOptSize, (uint8_t*)optstreamedbuf, STREAMING_SET_OPTIONAL);
 
     delete[] optstreamedbuf;
 
-    asset.InitAsset(hdrChunk.GetPointer(), sizeof(TextureAssetHeader_t), dataChunk.GetPointer(), mandatoryStreamDataOffset, optionalStreamDataOffset, TXTR_VERSION, AssetType::TXTR);
+    asset.InitAsset(hdrChunk.GetPointer(), sizeof(TextureAssetHeader_t), dataChunk.GetPointer(), TXTR_VERSION, AssetType::TXTR,
+        mandatoryStreamData.streamOffset, mandatoryStreamData.streamIndex, optionalStreamData.streamOffset, optionalStreamData.streamIndex);
+
     asset.SetHeaderPointer(hdrChunk.data);
 
     pak->FinishAsset();
@@ -353,7 +411,7 @@ bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGui
     if (existingAsset)
         return false; // already present in the pak.
 
-    Log("Auto-adding 'txtr' asset \"%s\".\n", assetPath);
+    Debug("Auto-adding 'txtr' asset \"%s\".\n", assetPath);
     Texture_InternalAddTexture(pak, assetGuid, assetPath, forceDisableStreaming);
 
     return true;

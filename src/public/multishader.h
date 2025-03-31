@@ -35,8 +35,9 @@
 
 enum class MultiShaderWrapperFileType_e : unsigned char
 {
-	SHADER = 0,
-	SHADERSET = 1,
+	SHADER,
+	SHADERSET,
+	INVALID = 0xFF
 };
 
 enum class MultiShaderWrapperShaderType_e : unsigned char
@@ -228,6 +229,7 @@ public:
 		ShaderCache_t()
 			: shader(0)
 			, type(MultiShaderWrapperFileType_e::SHADER)
+			, deleteShader(false)
 		{}
 
 		~ShaderCache_t()
@@ -243,7 +245,10 @@ public:
 		bool deleteShader;
 	};
 public:
-	CMultiShaderWrapperIO() = default;
+	CMultiShaderWrapperIO()
+		: _fileType(MultiShaderWrapperFileType_e::INVALID)
+		, writtenAnything(false)
+	{}
 
 	inline void SetFileType(MultiShaderWrapperFileType_e type) { _fileType = type; };
 

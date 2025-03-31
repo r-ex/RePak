@@ -207,6 +207,24 @@
     <ClCompile Include="utils\binaryio.cpp">
       <Filter>utils</Filter>
     </ClCompile>
+    <ClCompile Include="utils\MurmurHash3.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="logic\pakpage.cpp">
+      <Filter>logic</Filter>
+    </ClCompile>
+    <ClCompile Include="logic\streamcache.cpp">
+      <Filter>logic</Filter>
+    </ClCompile>
+    <ClCompile Include="assets\texture_anim.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
+    <ClCompile Include="logic\streamfile.cpp">
+      <Filter>logic</Filter>
+    </ClCompile>
+    <ClCompile Include="logic\buildsettings.cpp">
+      <Filter>logic</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -521,12 +539,29 @@
     <ClInclude Include="thirdparty\zstd\zdict.h">
       <Filter>thirdparty\zstandard</Filter>
     </ClInclude>
+    <ClInclude Include="utils\MurmurHash3.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="logic\pakpage.h">
+      <Filter>logic</Filter>
+    </ClInclude>
+    <ClInclude Include="logic\streamcache.h">
+      <Filter>logic</Filter>
+    </ClInclude>
+    <ClInclude Include="public\texture_anim.h">
+      <Filter>assets</Filter>
+    </ClInclude>
+    <ClInclude Include="logic\streamfile.h">
+      <Filter>logic</Filter>
+    </ClInclude>
+    <ClInclude Include="logic\buildsettings.h">
+      <Filter>logic</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
     <None Include="thirdparty\zstd\decompress\huf_decompress_amd64.S">
       <Filter>thirdparty\zstandard\decompress</Filter>
     </None>
-    <None Include="thirdparty\zstd\decompress\huf_decompress_amd64.S.vsspell" />
   </ItemGroup>
 </Project>

@@ -162,7 +162,7 @@ static void Shader_InternalAddShader(CPakFileBuilder* const pak, const char* con
 
 	asset.InitAsset(
 		hdrChunk.GetPointer(), sizeof(ShaderAssetHeader_t),
-		dataChunk.GetPointer(), -1, -1, assetVersion, AssetType::SHDR);
+		dataChunk.GetPointer(), assetVersion, AssetType::SHDR);
 
 	asset.SetHeaderPointer(hdrChunk.data);
 	asset.SetPublicData(shaderData);
@@ -187,7 +187,7 @@ bool Shader_AutoAddShader(CPakFileBuilder* const pak, const char* const assetPat
 	if (existingAsset)
 		return false;
 
-	Log("Auto-adding 'shdr' asset \"%s\".\n", assetPath);
+	Debug("Auto-adding 'shdr' asset \"%s\".\n", assetPath);
 
 	const auto func = shaderAssetVersion == 8 ? Shader_AddShaderV8 : Shader_AddShaderV12;
 	func(pak, assetPath, shader, shaderGuid);

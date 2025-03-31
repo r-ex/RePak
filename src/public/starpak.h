@@ -22,10 +22,10 @@ struct PakStreamSetFileHeader_s
 // 
 // there is an array of these structures at the end of the file that point to each data entry
 // array size is equal to the value of the 64-bit unsigned integer in the last 8 bytes of the file
-struct PakStreamSetEntry_s
+struct PakStreamSetAssetEntry_s
 {
-	uint64_t offset;
-	uint64_t dataSize;
+	int64_t offset; // The offset of the data in the starpak, should always be >= STARPAK_DATABLOCK_ALIGNMENT.
+	int64_t size; // The size of the data in the starpak, aligned to STARPAK_DATABLOCK_ALIGNMENT.
 };
 
 enum PakStreamSet_e

@@ -1,6 +1,5 @@
 #pragma once
 
-#define MAX_STREAMED_TEXTURE_MIPS 4
 #define MAX_MIPS_PER_TEXTURE 13 // max total mips per texture
 
 #define MAX_PERM_MIP_SIZE	0x3FFF // "Any MIP below 64kiB is permanent."
@@ -118,7 +117,7 @@ struct TextureAssetHeader_t : public TextureDesc_t
 
 	// d3d11 texture desc params
 	uint8_t  arraySize;
-	uint8_t  layerCount;
+	uint8_t  resourceFlags;
 
 	uint8_t  usageFlags;
 	uint8_t  mipLevels;

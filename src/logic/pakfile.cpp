@@ -11,6 +11,12 @@
 #include "thirdparty/zstd/zstd.h"
 #include "thirdparty/zstd/decompress/zstd_decompress_internal.h"
 
+CPakFileBuilder::CPakFileBuilder(const CBuildSettings* const buildSettings, CStreamFileBuilder* const streamBuilder)
+{
+	m_buildSettings = buildSettings;
+	m_streamBuilder = streamBuilder;
+}
+
 bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* const assetType, const char* const assetPath,
 							const AssetScope_e assetScope, const rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
 {
@@ -48,7 +54,7 @@ bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* con
 
 	if (targetFunc)
 	{
-		Log("Adding '%s' asset \"%s\".\n", assetType, assetPath);
+		Debug("Adding '%s' asset \"%s\".\n", assetType, assetPath);
 
 		const steady_clock::time_point start = high_resolution_clock::now();
 		const PakGuid_t assetGuid = Pak_GetGuidOverridable(file, assetPath);
@@ -63,7 +69,7 @@ bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* con
 		const steady_clock::time_point stop = high_resolution_clock::now();
 
 		const microseconds duration = duration_cast<microseconds>(stop - start);
-		Log("...done; took %lld ms.\n", duration.count());
+		Debug("...done; took %lld ms.\n", duration.count());
 	}
 	else
 		Error("Asset type '%.4s' is not supported on pak version %hu.\n", assetType, fileVersion);
@@ -88,6 +94,8 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 	if (!assetPath)
 		Error("No path provided for an asset of type '%.4s'.\n", assetType);
 
+	g_currentAsset = assetPath;
+
 	HANDLE_ASSET_TYPE("txtr", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
 	HANDLE_ASSET_TYPE("txan", assetType, assetPath, AssetScope_e::kClientOnly, file, nullptr, Assets::AddTextureAnimAsset_v1);
 	HANDLE_ASSET_TYPE("uimg", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
@@ -103,6 +111,8 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 	HANDLE_ASSET_TYPE("arig", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddAnimRigAsset_v4);
 
 	HANDLE_ASSET_TYPE("Ptch", assetType, assetPath, AssetScope_e::kAll, file, Assets::AddPatchAsset, Assets::AddPatchAsset);
+
+	g_currentAsset = nullptr;
 
 	// If the function has not returned by this point, we have an unhandled asset type.
 	Error("Unhandled asset type '%.4s' provided for asset \"%s\".\n", assetType, assetPath);
@@ -129,59 +139,49 @@ void CPakFileBuilder::AddPointer(PakPageLump_s& pointerLump, const size_t pointe
 //-----------------------------------------------------------------------------
 // purpose: adds new starpak file path to be used by the rpak
 //-----------------------------------------------------------------------------
-void CPakFileBuilder::AddStarpakReference(const std::string& path)
+int64_t CPakFileBuilder::AddStreamingFileReference(const char* const path, const bool mandatory)
 {
-	for (auto& it : m_mandatoryStreamFilePaths)
-	{
-		if (it == path)
-			return;
-	}
-	m_mandatoryStreamFilePaths.push_back(path);
-}
+	auto& vec = mandatory ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
+	const int64_t count = static_cast<int64_t>(vec.size());
 
-//-----------------------------------------------------------------------------
-// purpose: adds new optional starpak file path to be used by the rpak
-//-----------------------------------------------------------------------------
-void CPakFileBuilder::AddOptStarpakReference(const std::string& path)
-{
-	for (auto& it : m_optionalStreamFilePaths)
+	for (int64_t index = 0; index < count; index++)
 	{
-		if (it == path)
-			return;
+		const std::string& it = vec[index];
+
+		if (it.compare(path) == 0)
+			return index;
 	}
-	m_optionalStreamFilePaths.push_back(path);
+
+	// Check if we don't overflow the maximum the runtime supports per set.
+	// mandatory and optional are separate sets.
+	const size_t newSize = vec.size() + 1;
+
+	if (newSize > PAK_MAX_STREAMING_FILE_HANDLES_PER_SET)
+	{
+		const char* const streamSetName = Pak_StreamSetToName(mandatory ? PakStreamSet_e::STREAMING_SET_MANDATORY : PakStreamSet_e::STREAMING_SET_OPTIONAL);
+
+		Error("Out of room while adding %s streaming file \"%s\"; runtime has a limit of %zu, got %zu.\n",
+			streamSetName, path, PAK_MAX_STREAMING_FILE_HANDLES_PER_SET, newSize);
+	}
+
+	vec.push_back(path);
+	return count;
 }
 
 //-----------------------------------------------------------------------------
 // purpose: adds new starpak data entry
 //-----------------------------------------------------------------------------
-void CPakFileBuilder::AddStreamingDataEntry(PakStreamSetEntry_s& block, const uint8_t* const data, const PakStreamSet_e set)
+PakStreamSetEntry_s CPakFileBuilder::AddStreamingDataEntry(const int64_t size, const uint8_t* const data, const PakStreamSet_e set)
 {
-	const bool isMandatory = set == STREAMING_SET_MANDATORY;
-	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
+	StreamAddEntryResults_s results;
+	m_streamBuilder->AddStreamingDataEntry(size, data, set, results);
 
-	if (!out.IsWritable())
-		Error("Attempted to write %s streaming asset without a stream file handle.\n", Pak_StreamSetToName(set));
+	PakStreamSetEntry_s block;
 
-	out.Write(data, block.dataSize);
-	const size_t paddedSize = IALIGN(block.dataSize, STARPAK_DATABLOCK_ALIGNMENT);
+	block.streamOffset = results.offset;
+	block.streamIndex = AddStreamingFileReference(results.streamFile, set == STREAMING_SET_MANDATORY);
 
-	// starpak data is aligned to 4096 bytes, pad the remainder out for the next asset.
-	if (paddedSize > block.dataSize)
-	{
-		const size_t paddingRemainder = paddedSize - block.dataSize;
-		out.Pad(paddingRemainder);
-	}
-
-	size_t& nextOffsetCounter = isMandatory ? m_nextMandatoryStarpakOffset : m_nextOptionalStarpakOffset;
-
-	block.offset = nextOffsetCounter;
-	block.dataSize = paddedSize;
-
-	nextOffsetCounter += paddedSize;
-
-	auto& vecBlocks = isMandatory ? m_mandatoryStreamingDataBlocks : m_optionalStreamingDataBlocks;
-	vecBlocks.push_back(block);
+	return block;
 }
 
 //-----------------------------------------------------------------------------
@@ -253,10 +253,10 @@ void CPakFileBuilder::WriteAssetDescriptors(BinaryIO& io)
 		io.Write(it.headPtr.offset);
 		io.Write(it.cpuPtr.index);
 		io.Write(it.cpuPtr.offset);
-		io.Write(it.starpakOffset);
+		io.Write(it.GetPackedStreamOffset());
 
 		if (this->m_Header.fileVersion == 8)
-			io.Write(it.optStarpakOffset);
+			io.Write(it.GetPackedOptStreamOffset());
 
 		assert(it.pageEnd <= UINT16_MAX);
 		uint16_t pageEnd = static_cast<uint16_t>(it.pageEnd);
@@ -629,164 +629,36 @@ size_t CPakFileBuilder::EncodeStreamAndSwap(BinaryIO& io, const int compressLeve
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: creates the stream file stream and sets the header up
-//-----------------------------------------------------------------------------
-void CPakFileBuilder::CreateStreamFileStream(const char* const streamFilePath, const PakStreamSet_e set)
-{
-	const bool isMandatory = set == STREAMING_SET_MANDATORY;
-	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
-
-	const char* streamFileName = strrchr(streamFilePath, '/');
-
-	if (!streamFileName)
-		streamFileName = streamFilePath;
-	else
-		streamFileName += 1; // advance from '/' to start of filename.
-
-	const std::string fullFilePath = m_outputPath + streamFileName;
-
-	if (!out.Open(fullFilePath, BinaryIO::Mode_e::Write))
-		Error("Failed to open %s streaming file \"%s\".\n", Pak_StreamSetToName(set), fullFilePath.c_str());
-
-	// write out the header and pad it out for the first asset entry.
-	const PakStreamSetFileHeader_s srpkHeader{ STARPAK_MAGIC, STARPAK_VERSION };
-	out.Write(srpkHeader);
-
-	char initialPadding[STARPAK_DATABLOCK_ALIGNMENT - sizeof(PakStreamSetFileHeader_s)];
-	memset(initialPadding, STARPAK_DATABLOCK_ALIGNMENT_PADDING, sizeof(initialPadding));
-
-	out.Write(initialPadding, sizeof(initialPadding));
-
-	auto& vecName = isMandatory ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
-	vecName.push_back(streamFilePath);
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: writes the sorts table and finishes the stream file stream
-//-----------------------------------------------------------------------------
-void CPakFileBuilder::FinishStreamFileStream(const PakStreamSet_e set)
-{
-	const bool isMandatory = set == STREAMING_SET_MANDATORY;
-	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
-
-	if (!out.IsWritable())
-		Error("Unable to finish %s streaming file without a stream file handle.\n", Pak_StreamSetToName(set));
-
-	// starpaks have a table of sorts at the end of the file, containing the offsets and data sizes for every data block
-	const auto& vecData = isMandatory ? m_mandatoryStreamingDataBlocks : m_optionalStreamingDataBlocks;
-
-	for (const PakStreamSetEntry_s& it : vecData)
-		out.Write(it);
-
-	const size_t entryCount = isMandatory ? GetMandatoryStreamingAssetCount() : GetOptionalStreamingAssetCount();
-	out.Write(entryCount);
-
-	const auto& vecName = isMandatory ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
-
-	Log("Written %s streaming file \"%s\" with %zu assets, totaling %zd bytes.\n",
-		Pak_StreamSetToName(set), vecName[0].c_str(), entryCount, (ssize_t)out.GetSize());
-
-	out.Close();
-}
-
-static void ResolvePath(std::string& outPath, const std::filesystem::path& mapPath, const bool input)
-{
-	fs::path outputDirPath(outPath);
-
-	if (outputDirPath.is_relative() && mapPath.has_parent_path())
-	{
-		try {
-			outPath = fs::canonical(mapPath.parent_path() / outputDirPath).string();
-		}
-		catch (const fs::filesystem_error& e) {
-			Error("Failed to resolve %s path: %s.\n", input ? "input" : "output", e.what());
-		}
-	}
-	else
-		outPath = outputDirPath.string();
-
-	// ensure that the path has a slash at the end
-	Utils::AppendSlash(outPath);
-}
-
-//-----------------------------------------------------------------------------
 // purpose: builds rpak and starpak from input map file
 //-----------------------------------------------------------------------------
-void CPakFileBuilder::BuildFromMap(const string& mapPath)
+void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 {
-	// load and parse map file, this file is essentially the
-	// control file; deciding what is getting packed, etc..
-	js::Document doc{ };
-	fs::path inputPath(mapPath);
-	Utils::ParseMapDocument(doc, inputPath);
-
 	// determine source asset directory from map file
-	if (!JSON_GetValue(doc, "assetsDir", m_assetPath))
-	{
-		Warning("No \"assetsDir\" field provided; assuming that everything is relative to the working directory.\n");
-		m_assetPath = ".\\";
-	}
-	else
-		ResolvePath(m_assetPath, inputPath, true);
+	m_assetPath = JSON_GetValueRequired<const char*>(doc, "assetsDir");
+	Utils::ResolvePath(m_assetPath, m_buildSettings->GetBuildMapPath());
 
-	// determine final build path from map file
-	if (JSON_GetValue(doc, "outputDir", m_outputPath))
-		ResolvePath(m_outputPath, inputPath, false);
-	else
-		m_outputPath = DEFAULT_RPAK_PATH;
-
-	// create output directory if it does not exist yet.
-	fs::create_directories(m_outputPath);
-
-	const int pakVersion = JSON_GetValueOrDefault(doc, "version", -1);
-
-	if (pakVersion < 0)
-		Error("No \"version\" field provided.\n");
-
-	this->SetVersion(static_cast<uint16_t>(pakVersion));
+	this->SetVersion(static_cast<uint16_t>(m_buildSettings->GetPakVersion()));
 	const char* const pakName = JSON_GetValueOrDefault(doc, "name", DEFAULT_RPAK_NAME);
 
 	// print parsed settings
-	Log("build settings:\n");
-	Log("version: %i\n", GetVersion());
-	Log("fileName: %s.rpak\n", pakName);
-	Log("assetsDir: %s\n", m_assetPath.c_str());
-	Log("outputDir: %s\n\n", m_outputPath.c_str());
+	Debug("build settings:\n");
+	Debug("version: %i\n", GetVersion());
+	Debug("fileName: %s.rpak\n", pakName);
+	Debug("assetsDir: %s\n", m_assetPath.c_str());
 
 	// set build path
-	SetPath(m_outputPath + pakName + ".rpak");
-
-	// should dev-only data be kept - e.g. texture asset names, uimg texture names
-	if (JSON_GetValueOrDefault(doc, "keepDevOnly", false))
-		AddFlags(PF_KEEP_DEV);
-
-	if (JSON_GetValueOrDefault(doc, "keepServerOnly", true))
-		AddFlags(PF_KEEP_SERVER);
-
-	if (JSON_GetValueOrDefault(doc, "keepClientOnly", true))
-		AddFlags(PF_KEEP_CLIENT);
+	SetPath(std::string(m_buildSettings->GetOutputPath()) + pakName + ".rpak");
 
 	// create file stream from path created above
 	BinaryIO out;
 	if (!out.Open(m_pakFilePath, BinaryIO::Mode_e::ReadWriteCreate))
 		Error("Failed to open output pak file \"%s\".\n", m_pakFilePath.c_str());
 
+	Log("Building pak file \"%s\".\n", m_pakFilePath.c_str());
+
 	// write a placeholder header so we can come back and complete it
 	// when we have all the info
-	out.Pad(pakVersion >= 8 ? 0x80 : 0x58);
-
-	const char* streamFileMandatory = nullptr;
-	const char* streamFileOptional = nullptr;
-
-	// Server-only paks never uses streaming assets.
-	if (IsFlagSet(PF_KEEP_CLIENT))
-	{
-		if (JSON_GetValue(doc, "streamFileMandatory", streamFileMandatory))
-			CreateStreamFileStream(streamFileMandatory, STREAMING_SET_MANDATORY);
-
-		if (pakVersion >= 8 && JSON_GetValue(doc, "streamFileOptional", streamFileOptional))
-			CreateStreamFileStream(streamFileOptional, STREAMING_SET_OPTIONAL);
-	}
+	out.Pad(GetVersion() >= 8 ? 0x80 : 0x58);
 
 	// build asset data;
 	// loop through all assets defined in the map file
@@ -843,11 +715,11 @@ void CPakFileBuilder::BuildFromMap(const string& mapPath)
 	const size_t decompressedFileSize = out.GetSize();
 	size_t compressedFileSize = 0;
 
-	const int compressLevel = JSON_GetValueOrDefault(doc, "compressLevel", 0);
+	const int compressLevel = m_buildSettings->GetCompressLevel();
 
 	if (compressLevel > 0 && decompressedFileSize > Pak_GetHeaderSize(m_Header.fileVersion))
 	{
-		const int workerCount = JSON_GetValueOrDefault(doc, "compressWorkers", 0);
+		const int workerCount = m_buildSettings->GetNumCompressWorkers();
 
 		Log("Encoding pak file with compress level %i and %i workers.\n", compressLevel, workerCount);
 		compressedFileSize = EncodeStreamAndSwap(out, compressLevel, workerCount);
@@ -855,20 +727,6 @@ void CPakFileBuilder::BuildFromMap(const string& mapPath)
 
 	SetCompressedSize(compressedFileSize == 0 ? decompressedFileSize : compressedFileSize);
 	SetDecompressedSize(decompressedFileSize);
-
-	// !TODO: we really should add support for multiple starpak files and share existing
-	// assets across rpaks. e.g. if the base 'pc_all.opt.starpak' already contains the
-	// highest mip level for 'ola_sewer_grate', don't copy it into 'pc_sdk.opt.starpak'.
-	// the sort table at the end of the file (see WriteStarpakSortsTable) contains offsets
-	// to the asset with their respective sizes. this could be used in combination of a
-	// static database (who's name is to be selected from a hint provided by the map file)
-	// to map assets among various rpaks avoiding extraneous copies of the same streamed data.
-
-	if (streamFileMandatory)
-		FinishStreamFileStream(STREAMING_SET_MANDATORY);
-
-	if (streamFileOptional)
-		FinishStreamFileStream(STREAMING_SET_OPTIONAL);
 
 	// set header descriptors
 	SetFileTime(Utils::GetSystemFileTime());
@@ -878,7 +736,7 @@ void CPakFileBuilder::BuildFromMap(const string& mapPath)
 
 	const ssize_t totalPakSize = out.GetSize();
 
-	Log("Written pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
+	Log("Built pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
 		m_pakFilePath.c_str(), GetAssetCount(), totalPakSize);
 
 	out.Close();

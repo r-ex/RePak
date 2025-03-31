@@ -88,12 +88,12 @@ std::string Utils::ChangeExtension(const std::string& in, const std::string& ext
 //-----------------------------------------------------------------------------
 // purpose: parse json document and handle parsing errors
 //-----------------------------------------------------------------------------
-void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
+void Utils::ParseMapDocument(js::Document& doc, const char* const path)
 {
     std::ifstream ifs(path);
 
     if (!ifs.is_open())
-        Error("Couldn't open map file \"%s\".\n", path.string().c_str());
+        Error("Couldn't open map file \"%s\".\n", path);
 
     // begin json parsing
     js::IStreamWrapper jsonStreamWrapper{ ifs };
@@ -133,11 +133,55 @@ void Utils::ParseMapDocument(js::Document& doc, const fs::path& path)
 
         // this could probably be formatted nicer
         Error("Failed to parse map file %s: \n\nLine %i, Column %i\n%s\n\n%s%s%s\n",
-            path.string().c_str(),
-            lineNum, columnNum,
+            path, lineNum, columnNum,
             GetParseError_En(doc.GetParseError()),
             lastLine.c_str(), curLine.c_str(), (std::string(columnNum, ' ') += '^').c_str());
     }
+}
+
+void Utils::ResolvePath(std::string& outPath, const std::filesystem::path& mapPath)
+{
+    fs::path outputDirPath(outPath);
+
+    if (outputDirPath.is_relative() && mapPath.has_parent_path())
+    {
+        try {
+            outPath = fs::canonical(mapPath.parent_path() / outputDirPath).string();
+        }
+        catch (const fs::filesystem_error& e) {
+            Error("Failed to resolve path \"%s\": %s.\n", mapPath.string().c_str(), e.what());
+        }
+    }
+    // else we just use whatever is in outPath.
+
+    if (!strrchr(outPath.c_str(), '.'))
+    {
+        // ensure that the path has a slash at the end
+        Utils::AppendSlash(outPath);
+    }
+}
+
+const char* Utils::ExtractFileName(const char* const string)
+{
+    const size_t len = strlen(string);
+    const char* result = nullptr;
+
+    for (size_t i = (len - 1); i-- > 0;)
+    {
+        const char c = string[i];
+
+        if (c == '/' || c == '\\')
+        {
+            result = &string[i] + 1; // +1 to advance from slash.
+            break;
+        }
+    }
+
+    // No path, this is already the file name.
+    if (!result)
+        result = string;
+
+    return result;
 }
 
 PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success)

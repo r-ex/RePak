@@ -11,7 +11,10 @@ namespace Utils
 	void AppendSlash(std::string& in);
 	std::string ChangeExtension(const std::string& in, const std::string& ext);
 
-	void ParseMapDocument(js::Document& doc, const fs::path& path);
+	void ParseMapDocument(js::Document& doc, const char* const path);
+	void ResolvePath(std::string& outPath, const std::filesystem::path& mapPath);
+
+	const char* ExtractFileName(const char* const string);
 };
 
 extern PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success = nullptr);

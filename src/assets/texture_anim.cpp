@@ -60,7 +60,7 @@ static void TextureAnim_InternalAddTextureAnim(CPakFileBuilder* const pak, const
 
 	pHdr->layerCount = layerCount;
 
-	asset.InitAsset(hdrLump.GetPointer(), sizeof(TextureAnimAssetHeader_t), PagePtr_t::NullPtr(), -1, -1, TXAN_VERSION, AssetType::TXAN);
+	asset.InitAsset(hdrLump.GetPointer(), sizeof(TextureAnimAssetHeader_t), PagePtr_t::NullPtr(), TXAN_VERSION, AssetType::TXAN);
 	asset.SetHeaderPointer(hdrLump.data);
 
 	pak->FinishAsset();
@@ -73,7 +73,7 @@ bool TextureAnim_AutoAddTextureAnim(CPakFileBuilder* const pak, const PakGuid_t 
 	if (existingAsset)
 		return false; // already present in the pak.
 
-	Log("Auto-adding 'txan' asset \"%s\".\n", assetPath);
+	Debug("Auto-adding 'txan' asset \"%s\".\n", assetPath);
 	TextureAnim_InternalAddTextureAnim(pak, assetGuid, assetPath);
 
 	return true;

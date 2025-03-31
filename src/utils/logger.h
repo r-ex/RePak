@@ -1,5 +1,8 @@
 #pragma once
 
+extern const char* g_currentAsset;
+extern bool g_showDebugLogs;
+
 // non-fatal errors/issues
 void Warning(_Printf_format_string_ const char* fmt, ...);
 // fatal errors
