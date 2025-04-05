@@ -2,7 +2,9 @@
 #include "assets.h"
 #include "public/studio.h"
 
-static void AnimSeq_ParseDependencies(const uint8_t* const data, std::set<PakGuid_t>& dependencies)
+// This parses all dependencies from the animation data itself, currently the
+// data only exists in animation sequence events.
+static void AnimSeq_ParseDependenciesFromData(const uint8_t* const data, std::set<PakGuid_t>& dependencies)
 {
     const mstudioseqdesc_t& seqdesc = *reinterpret_cast<const mstudioseqdesc_t*>(data);
 
@@ -36,6 +38,46 @@ static void AnimSeq_ParseDependencies(const uint8_t* const data, std::set<PakGui
     }
 }
 
+// This parses all dependencies from a metadata file alongside the animation
+// file. If a sequence relies on another sequence, it must be added in this
+// metadata file in order for the game to precache it on time.
+static void AnimSeq_ParseDependenciesFromMap(CPakFileBuilder* const pak, const char* const assetPath, std::set<PakGuid_t>& dependencies)
+{
+    const std::string metaFilePath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
+    rapidjson::Document document;
+
+    if (!JSON_ParseFromFile(metaFilePath.c_str(), "animation metadata", document, false))
+        return;
+
+    // Parse manually added entries here.
+    rapidjson::Value::ConstMemberIterator dependenciesIt;
+
+    if (!JSON_GetIterator(document, "dependencies", JSONFieldType_e::kArray, dependenciesIt))
+        return;
+
+    const rapidjson::Value::ConstArray dependencyArray = dependenciesIt->value.GetArray();
+
+    if (dependencyArray.Empty())
+        return;
+
+    int depIndex = -1;
+    for (const auto& dependency : dependencyArray)
+    {
+        depIndex++;
+
+        char buffer[32]; const char* base = "dependency #";
+        char* current = std::copy(base, base + 12, buffer);
+        std::to_chars_result result = std::to_chars(current, buffer + sizeof(buffer), depIndex);
+
+        *result.ptr = '\0';
+
+        const char* dependencyName = nullptr;
+        const PakGuid_t guid = Pak_ParseGuidFromObject(dependency, buffer, dependencyName);
+
+        dependencies.insert(guid);
+    }
+}
+
 // page chunk structure and order:
 // - header HEAD        (align=8)
 // - data   CPU         (align=1?8) dependencies, name, then rmdl. unlike models, this is aligned to 1 since we don't have BVH4 collision data here, aligned to 8 if we have dependencies.
@@ -66,7 +108,8 @@ static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid
     // NOTE: original paks duplicate the dependencies for animation
     // sequences, but this is not necessary, so we drop duplicates.
     std::set<PakGuid_t> dependencies;
-    AnimSeq_ParseDependencies(tempAseqBuf, dependencies);
+    AnimSeq_ParseDependenciesFromData(tempAseqBuf, dependencies);
+    AnimSeq_ParseDependenciesFromMap(pak, assetPath, dependencies);
 
     const size_t numDependencies = dependencies.size();
 
@@ -74,6 +117,7 @@ static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid
     const size_t rseqNameBufLen = strlen(assetPath) + 1;
 
     PakPageLump_s dataLump = pak->CreatePageLump((dependenciesBufSize + rseqNameBufLen + rseqFileSize), SF_CPU, numDependencies > 0 ? 8 : 1);
+    asset.ExpandGuidBuf(numDependencies);
 
     for (size_t i = 0; i < numDependencies; i++)
     {
