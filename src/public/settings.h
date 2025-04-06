@@ -1,6 +1,47 @@
 #pragma once
 //#include <pch.h>
 
+enum SettingsModType_e : unsigned short
+{
+	kIntPlus = 0x0,
+	kIntMultiply = 0x1,
+	kFloatPlus = 0x2,
+	kFloatMultiply = 0x3,
+	kBool = 0x4,
+	kNumber = 0x5,
+	kString = 0x6,
+
+	SETTINGS_MOD_COUNT
+};
+
+inline const char* const g_settingsModType[SETTINGS_MOD_COUNT] =
+{
+	"int_plus",
+	"int_multipy",
+	"float_plus",
+	"float_multipy",
+	"bool",
+	"number",
+	"string"
+};
+
+union SettingsModValue_u
+{
+	bool boolValue;
+	int intValue;
+	float floatValue;
+	uint32_t stringOffset;
+};
+
+struct SettingsMod_s
+{
+	unsigned char nameIndex; // Index into mod names array.
+	unsigned char pad;
+	SettingsModType_e type;
+	int valueOffset;
+	SettingsModValue_u value;
+};
+
 struct SettingsAssetHeader_s
 {
 	// This field becomes a pointer to the settings layout
@@ -13,16 +54,15 @@ struct SettingsAssetHeader_s
 	char* stringData;
 	uint32_t uniqueId;
 
-	char unk_24[4]; // padding most likely
+	char padding[4]; // padding most likely
 
 	const char** modNames;
-
-	void* unk_30;
+	SettingsMod_s* modValues;
 
 	uint32_t valueBufSize;
-	int unknown1;
+	uint32_t modCountSinglePlayer;
 	uint32_t modNameCount;
-	int unknown3;
+	uint32_t modValuesCount;
 };
 static_assert(sizeof(SettingsAssetHeader_s) == 72);
 
