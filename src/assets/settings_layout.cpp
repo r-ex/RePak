@@ -64,7 +64,7 @@ SettingsFieldType_e SettingsLayout_GetFieldTypeForString(const char* const typeN
     return SettingsFieldType_e::ST_Invalid;
 }
 
-bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& result)
+bool SettingsLayout_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& result)
 {
     for (size_t i = 0; i < layout.rootLayout.typeMap.size(); i++)
     {
@@ -105,7 +105,7 @@ bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const
                 result.currentBase = IALIGN(absoluteFieldOffset, subLayout.rootLayout.alignment);
 
                 // Recurse into sub-layout for array elements.
-                if (SettingsLayout_FindFieldByOffset(subLayout, targetOffset, result))
+                if (SettingsLayout_FindFieldByAbsoluteOffset(subLayout, targetOffset, result))
                 {
                     result.fieldAccessPath.insert(0, Utils::VFormat("%s[%zu].", layout.rootLayout.fieldNames[i].c_str(), currArrayIdx));
                     return true;

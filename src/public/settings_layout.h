@@ -134,7 +134,7 @@ struct SettingsLayoutFindByOffsetResult_s
 
 	std::string fieldAccessPath;
 	SettingsFieldType_e type;
-	uint32_t currentBase;  // Only used by SettingsLayout_GetFieldForOffset internally.
+	uint32_t currentBase;  // Only used by SettingsLayout_FindFieldByAbsoluteOffset internally.
 };
 
-extern bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& result);
+extern bool SettingsLayout_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& result);
