@@ -138,4 +138,4 @@ struct SettingsLayoutFindByOffsetResult_s
 	SettingsFieldType_e type;
 };
 
-extern bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& out);
+extern bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& result);

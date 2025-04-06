@@ -64,14 +64,14 @@ SettingsFieldType_e SettingsLayout_GetFieldTypeForString(const char* const typeN
     return SettingsFieldType_e::ST_Invalid;
 }
 
-bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& out)
+bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& result)
 {
     for (size_t i = 0; i < layout.rootLayout.typeMap.size(); i++)
     {
         const uint32_t totalValueBufSizeAligned = IALIGN(layout.rootLayout.totalValueBufferSize, layout.rootLayout.alignment);
-        const uint32_t originalBase = out.currentBase;
+        const uint32_t originalBase = result.currentBase;
 
-        if (targetOffset > out.currentBase + (layout.rootLayout.arrayElemCount * totalValueBufSizeAligned))
+        if (targetOffset > result.currentBase + (layout.rootLayout.arrayElemCount * totalValueBufSizeAligned))
             return false; // Beyond this layout.
 
         const uint32_t fieldOffset = layout.rootLayout.offsetMap[i];
@@ -81,7 +81,7 @@ bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const
 
         for (int currArrayIdx = 0; currArrayIdx < layout.rootLayout.arrayElemCount; currArrayIdx++)
         {
-            const uint32_t elementBase = out.currentBase + (currArrayIdx * totalValueBufSizeAligned);
+            const uint32_t elementBase = result.currentBase + (currArrayIdx * totalValueBufSizeAligned);
             const uint32_t absoluteFieldOffset = elementBase + fieldOffset;
 
             if (targetOffset == absoluteFieldOffset)
@@ -89,8 +89,8 @@ bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const
                 // note(amos): we use `i` here instead of `currArrayIdx`
                 //             because array fields descriptors are only
                 //             stored once in a given layout.
-                out.name = layout.rootLayout.fieldNames[i].c_str();
-                out.type = layout.rootLayout.typeMap[i];
+                result.name = layout.rootLayout.fieldNames[i].c_str();
+                result.type = layout.rootLayout.typeMap[i];
 
                 return true;
             }
@@ -102,13 +102,13 @@ bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const
             if (fieldType == ST_StaticArray)
             {
                 const SettingsLayoutAsset_s& subLayout = layout.subLayouts[layout.rootLayout.indexMap[i]];
-                out.currentBase = IALIGN(absoluteFieldOffset, subLayout.rootLayout.alignment);
+                result.currentBase = IALIGN(absoluteFieldOffset, subLayout.rootLayout.alignment);
 
                 // Recurse into sub-layout for array elements.
-                if (SettingsLayout_FindFieldByOffset(subLayout, targetOffset, out))
+                if (SettingsLayout_FindFieldByOffset(subLayout, targetOffset, result))
                     return true;
 
-                out.currentBase = originalBase;
+                result.currentBase = originalBase;
             }
         }
     }
