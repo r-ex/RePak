@@ -64,6 +64,59 @@ SettingsFieldType_e SettingsLayout_GetFieldTypeForString(const char* const typeN
     return SettingsFieldType_e::ST_Invalid;
 }
 
+bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& out)
+{
+    for (size_t i = 0; i < layout.rootLayout.typeMap.size(); i++)
+    {
+        const uint32_t totalValueBufSizeAligned = IALIGN(layout.rootLayout.totalValueBufferSize, layout.rootLayout.alignment);
+        const uint32_t originalBase = out.currentBase;
+
+        if (targetOffset > out.currentBase + (layout.rootLayout.arrayElemCount * totalValueBufSizeAligned))
+            return false; // Beyond this layout.
+
+        const uint32_t fieldOffset = layout.rootLayout.offsetMap[i];
+
+        if (targetOffset < fieldOffset)
+            return false; // Invalid offset (i.e. we have 2 ints at 4 and 8, but target was 5).
+
+        for (int currArrayIdx = 0; currArrayIdx < layout.rootLayout.arrayElemCount; currArrayIdx++)
+        {
+            const uint32_t elementBase = out.currentBase + (currArrayIdx * totalValueBufSizeAligned);
+            const uint32_t absoluteFieldOffset = elementBase + fieldOffset;
+
+            if (targetOffset == absoluteFieldOffset)
+            {
+                // note(amos): we use `i` here instead of `currArrayIdx`
+                //             because array fields descriptors are only
+                //             stored once in a given layout.
+                out.name = layout.rootLayout.fieldNames[i].c_str();
+                out.type = layout.rootLayout.typeMap[i];
+
+                return true;
+            }
+
+            const SettingsFieldType_e fieldType = layout.rootLayout.typeMap[i];
+
+            // note(amos): getting offsets to dynamic arrays items outside the
+            //             game's runtime is not supported! Only static arrays.
+            if (fieldType == ST_StaticArray)
+            {
+                const SettingsLayoutAsset_s& subLayout = layout.subLayouts[layout.rootLayout.indexMap[i]];
+                out.currentBase = IALIGN(absoluteFieldOffset, subLayout.rootLayout.alignment);
+
+                // Recurse into sub-layout for array elements.
+                if (SettingsLayout_FindFieldByOffset(subLayout, targetOffset, out))
+                    return true;
+
+                out.currentBase = originalBase;
+            }
+        }
+    }
+
+    // Not found.
+    return false;
+}
+
 static uint32_t SettingsFieldFinder_HashFieldName(const char* const name, const uint32_t stepScale, const uint32_t seed)
 {
     uint32_t hash = 0;

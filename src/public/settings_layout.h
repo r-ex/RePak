@@ -123,3 +123,19 @@ static const char* s_settingsFieldTypeNames[] = {
 extern uint32_t SettingsLayout_GetFieldSizeForType(const SettingsFieldType_e type);
 extern uint32_t SettingsLayout_GetFieldAlignmentForType(const SettingsFieldType_e type);
 extern SettingsFieldType_e SettingsLayout_GetFieldTypeForString(const char* const typeName);
+
+struct SettingsLayoutFindByOffsetResult_s
+{
+	SettingsLayoutFindByOffsetResult_s()
+	{
+		name = nullptr;
+		currentBase = 0;
+		type = SettingsFieldType_e::ST_Invalid;
+	}
+
+	const char* name;
+	uint32_t currentBase; // Only used by SettingsLayout_GetFieldForOffset internally.
+	SettingsFieldType_e type;
+};
+
+extern bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& out);
