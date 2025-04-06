@@ -342,31 +342,57 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
         if (isStringType)
             settingsMemory.stringBufSize += value.GetStringLength() + 1;
 
-        const char* const targetFieldName = JSON_GetValueRequired<const char*>(elem, "field");
-        bool fieldNameFound = false;
-        size_t fieldNameIndex = 0;
+        const char* targetFieldName;
+        SettingsFieldType_e fieldTypeExpected;
 
-        // TODO: add support for array field lookup.
-        for (const std::string& fieldName : layout.rootLayout.fieldNames)
+        rapidjson::Value::ConstMemberIterator fieldDescIt;
+        if (JSON_GetIterator(elem, "offset", fieldDescIt)) // Use offset instead of field names if available.
         {
-            if (fieldName.compare(targetFieldName) == 0)
+            uint32_t targetOffset;
+
+            if (!JSON_ParseNumber(fieldDescIt->value, targetOffset))
+                Error("Settings mod value #%zu has an invalid offset.\n", elemIndex);
+
+            SettingsLayoutFindByOffsetResult_s searchResult;
+
+            if (!SettingsLayout_FindFieldByOffset(layout, targetOffset, searchResult))
+                Error("Settings mod value #%zu has an offset of %u which doesn't map to a field in the given settings layout.\n", elemIndex, targetOffset);
+
+            targetFieldName = searchResult.name;
+            fieldTypeExpected = searchResult.type;
+
+            cache.valueOffset = targetOffset;
+        }
+        else // Parse it from the field name.
+        {
+            targetFieldName = JSON_GetValueRequired<const char*>(elem, "field");
+
+            bool fieldNameFound = false;
+            size_t fieldNameIndex = 0;
+
+            for (const std::string& fieldName : layout.rootLayout.fieldNames)
             {
-                fieldNameFound = true;
-                break;
+                if (fieldName.compare(targetFieldName) == 0)
+                {
+                    fieldNameFound = true;
+                    break;
+                }
+
+                fieldNameIndex++;
             }
 
-            fieldNameIndex++;
-        }
+            if (!fieldNameFound)
+            {
+                Error("Settings mod value #%zu is a modifier for field \"%s\", but this field does not exist in the given settings layout.\n",
+                    elemIndex, targetFieldName);
+            }
 
-        if (!fieldNameFound)
-        {
-            Error("Settings mod value #%zu is a modifier for field \"%s\", but this field does not exist in the given settings layout.\n",
-                elemIndex, targetFieldName);
+            fieldTypeExpected = layout.rootLayout.typeMap[fieldNameIndex];
+            cache.valueOffset = layout.rootLayout.offsetMap[fieldNameIndex];
         }
 
         // Make sure the mod type is compatible with the settings field type.
         bool fieldTypeMismatch = false;
-        const SettingsFieldType_e fieldTypeExpected = layout.rootLayout.typeMap[fieldNameIndex];
 
         if (isNumericType)
         {
@@ -403,8 +429,6 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
             Error("Settings mod value #%zu is a modifier for field \"%s\" which is of type %s, but the given value classifies as type %s.\n",
                 elemIndex, targetFieldName, s_settingsFieldTypeNames[fieldTypeExpected], s_settingsFieldTypeNames[fieldTypeRequested]);
         }
-
-        cache.valueOffset = layout.rootLayout.offsetMap[fieldNameIndex];
 
         settingsMemory.modValuesBufSize += sizeof(SettingsMod_s);
         elemIndex++;
