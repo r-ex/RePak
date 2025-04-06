@@ -185,6 +185,13 @@ static void SettingsLayout_ParseTable(CPakFileBuilder* const pak, const char* co
         Error("Failed to open settings layout table \"%s\".\n", settingsLayoutFile.c_str());
 
     rapidcsv::Document document(datatableStream);
+    const size_t columnCount = document.GetColumnCount();
+
+    // Rows: fieldName, dataType, layoutIndex, helpText.
+    constexpr size_t expectedColumnCount = 4;
+
+    if (columnCount != expectedColumnCount)
+        Error("Settings layout table \"%s\" has %zu columns, but %zu were expected.\n", settingsLayoutFile.c_str(), columnCount, expectedColumnCount);
 
     result.fieldNames = document.GetColumn<std::string>(0);
     const size_t numFieldNames = result.fieldNames.size();
