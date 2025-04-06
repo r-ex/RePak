@@ -89,7 +89,7 @@ bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const
                 // note(amos): we use `i` here instead of `currArrayIdx`
                 //             because array fields descriptors are only
                 //             stored once in a given layout.
-                result.name = layout.rootLayout.fieldNames[i].c_str();
+                result.fieldAccessPath.insert(0, layout.rootLayout.fieldNames[i]);
                 result.type = layout.rootLayout.typeMap[i];
 
                 return true;
@@ -106,7 +106,10 @@ bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const
 
                 // Recurse into sub-layout for array elements.
                 if (SettingsLayout_FindFieldByOffset(subLayout, targetOffset, result))
+                {
+                    result.fieldAccessPath.insert(0, Utils::VFormat("%s[%zu].", layout.rootLayout.fieldNames[i].c_str(), currArrayIdx));
                     return true;
+                }
 
                 result.currentBase = originalBase;
             }

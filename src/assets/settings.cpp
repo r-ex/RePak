@@ -345,6 +345,8 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
         const char* targetFieldName;
         SettingsFieldType_e fieldTypeExpected;
 
+        SettingsLayoutFindByOffsetResult_s findByOffset;
+
         rapidjson::Value::ConstMemberIterator fieldDescIt;
         if (JSON_GetIterator(elem, "offset", fieldDescIt)) // Use offset instead of field names if available.
         {
@@ -353,13 +355,11 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
             if (!JSON_ParseNumber(fieldDescIt->value, targetOffset))
                 Error("Settings mod value #%zu has an invalid offset.\n", elemIndex);
 
-            SettingsLayoutFindByOffsetResult_s searchResult;
-
-            if (!SettingsLayout_FindFieldByOffset(layout, targetOffset, searchResult))
+            if (!SettingsLayout_FindFieldByOffset(layout, targetOffset, findByOffset))
                 Error("Settings mod value #%zu has an offset of %u which doesn't map to a field in the given settings layout.\n", elemIndex, targetOffset);
 
-            targetFieldName = searchResult.name;
-            fieldTypeExpected = searchResult.type;
+            targetFieldName = findByOffset.fieldAccessPath.c_str();
+            fieldTypeExpected = findByOffset.type;
 
             cache.valueOffset = targetOffset;
         }

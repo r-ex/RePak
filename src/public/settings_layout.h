@@ -128,14 +128,13 @@ struct SettingsLayoutFindByOffsetResult_s
 {
 	SettingsLayoutFindByOffsetResult_s()
 	{
-		name = nullptr;
-		currentBase = 0;
 		type = SettingsFieldType_e::ST_Invalid;
+		currentBase = 0;
 	}
 
-	const char* name;
-	uint32_t currentBase; // Only used by SettingsLayout_GetFieldForOffset internally.
+	std::string fieldAccessPath;
 	SettingsFieldType_e type;
+	uint32_t currentBase;  // Only used by SettingsLayout_GetFieldForOffset internally.
 };
 
 extern bool SettingsLayout_FindFieldByOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& result);
