@@ -370,14 +370,16 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
 
         if (isNumericType)
         {
-            if (fieldTypeExpected == SettingsFieldType_e::ST_Int && fieldTypeRequested != SettingsFieldType_e::ST_Int)
+            if (fieldTypeExpected == SettingsFieldType_e::ST_Int)
             {
-                fieldTypeMismatch = true;
+                fieldTypeMismatch = fieldTypeRequested != SettingsFieldType_e::ST_Int;
             }
-            else if (fieldTypeExpected == SettingsFieldType_e::ST_Float && fieldTypeRequested != SettingsFieldType_e::ST_Float)
+            else if (fieldTypeExpected == SettingsFieldType_e::ST_Float)
             {
-                fieldTypeMismatch = true;
+                fieldTypeMismatch = fieldTypeRequested != SettingsFieldType_e::ST_Float;
             }
+            else
+                fieldTypeMismatch = true; // Not a numeric type.
         }
         else if (isStringType)
         {
