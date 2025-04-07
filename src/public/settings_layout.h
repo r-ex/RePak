@@ -130,11 +130,13 @@ struct SettingsLayoutFindByOffsetResult_s
 	{
 		type = SettingsFieldType_e::ST_Invalid;
 		currentBase = 0;
+		lastArrayIdx = 0;
 	}
 
 	std::string fieldAccessPath;
 	SettingsFieldType_e type;
-	uint32_t currentBase;  // Only used by SettingsLayout_FindFieldByAbsoluteOffset internally.
+	uint32_t currentBase;  // Only used by SettingsFieldFinder_FindFieldByAbsoluteOffset internally.
+	int lastArrayIdx;      // Only used by SettingsFieldFinder_FindFieldByAbsoluteOffset internally.
 };
 
 extern bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& result);

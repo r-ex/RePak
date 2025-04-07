@@ -92,6 +92,7 @@ bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& 
                 //             stored once in a given layout.
                 result.fieldAccessPath.insert(0, layout.rootLayout.fieldNames[i]);
                 result.type = layout.rootLayout.typeMap[i];
+                result.lastArrayIdx = currArrayIdx;
 
                 return true;
             }
@@ -108,7 +109,9 @@ bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& 
                 // Recurse into sub-layout for array elements.
                 if (SettingsFieldFinder_FindFieldByAbsoluteOffset(subLayout, targetOffset, result))
                 {
-                    result.fieldAccessPath.insert(0, Utils::VFormat("%s[%zu].", layout.rootLayout.fieldNames[i].c_str(), currArrayIdx));
+                    result.fieldAccessPath.insert(0, Utils::VFormat("%s[%i].", layout.rootLayout.fieldNames[i].c_str(), result.lastArrayIdx));
+                    result.lastArrayIdx = currArrayIdx;
+
                     return true;
                 }
 
