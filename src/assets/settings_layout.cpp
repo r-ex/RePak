@@ -390,7 +390,7 @@ static void SettingsLayout_BuildOffsetMap(SettingsLayoutAsset_s& layoutAsset)
     // Padding is only allowed on static arrays to make sure we align the next
     // field to its boundary, since the only alternative is to force the user
     // to pad it out manually.
-    bool verifyPadding = false;
+    bool verifyPadding = true;
     uint32_t lastFieldAlign = 0;
 
     for (size_t i = 0; i < numFields; i++)
@@ -401,12 +401,23 @@ static void SettingsLayout_BuildOffsetMap(SettingsLayoutAsset_s& layoutAsset)
         if (typeToUse == SettingsFieldType_e::ST_StaticArray)
         {
             const uint32_t subLayoutIndex = root.indexMap[i];
-            SettingsLayoutParseResult_s& sub = layoutAsset.subLayouts[subLayoutIndex].rootLayout;
 
-            sub.totalValueBufferSize = IALIGN(sub.totalValueBufferSize, sub.alignment);
-            typeSize = sub.arrayElemCount * sub.totalValueBufferSize;
+            SettingsLayoutAsset_s& subLayout = layoutAsset.subLayouts[subLayoutIndex];
+            SettingsLayoutParseResult_s& subRoot = subLayout.rootLayout;
 
-            verifyPadding = true;
+            // If we have sub-layouts in our static array, the root of our
+            // current sub-layout must be aligned to the nested sub-layout
+            // with the highest alignment.
+            for (const SettingsLayoutAsset_s& nestedSubLayouts : subLayout.subLayouts)
+            {
+                if (nestedSubLayouts.rootLayout.alignment > subRoot.alignment)
+                    subRoot.alignment = nestedSubLayouts.rootLayout.alignment;
+            }
+
+            subRoot.totalValueBufferSize = IALIGN(subRoot.totalValueBufferSize, subRoot.alignment);
+            typeSize = subRoot.arrayElemCount * subRoot.totalValueBufferSize;
+
+            verifyPadding = false;
         }
         else
         {
@@ -427,10 +438,10 @@ static void SettingsLayout_BuildOffsetMap(SettingsLayoutAsset_s& layoutAsset)
             if (curTypeAlign > root.alignment)
                 root.alignment = curTypeAlign;
 
-            if (verifyPadding)
+            if (!verifyPadding)
             {
                 root.totalValueBufferSize = IALIGN(root.totalValueBufferSize, curTypeAlign);
-                verifyPadding = false;
+                verifyPadding = true;
             }
             else
             {
