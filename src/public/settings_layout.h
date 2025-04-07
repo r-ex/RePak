@@ -49,10 +49,9 @@ struct SettingsLayoutHeader_s
 	uint32_t hashStepScale;
 	uint32_t hashSeed;
 
-	// -1 on dynamic arrays?
-	int arrayElemCount;
+	int arrayElemCount; // Always -1 on dynamic arrays.
 	int layoutSize;
-	int unk_34; // seems unused, needs research, always 0, most likely padding.
+	int pad34; // seems unused, needs research, always 0, most likely padding.
 	PagePtr_t fieldNames;
 	PagePtr_t subHeaders; // points to an array of SettingsLayoutHeader_s
 };
