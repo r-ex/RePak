@@ -139,3 +139,19 @@ struct SettingsLayoutFindByOffsetResult_s
 };
 
 extern bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& result);
+
+struct SettingsLayoutFindByNameResult_s
+{
+	SettingsLayoutFindByNameResult_s()
+	{
+		valueOffset = 0;
+		type = SettingsFieldType_e::ST_Invalid;
+		currentBase = 0;
+	}
+
+	uint32_t valueOffset;
+	SettingsFieldType_e type;
+	uint32_t currentBase;  // Only used by SettingsFieldFinder_FindFieldByAbsoluteName internally.
+};
+
+extern bool SettingsFieldFinder_FindFieldByAbsoluteName(const SettingsLayoutAsset_s& layout, const char* const targetName, SettingsLayoutFindByNameResult_s& result);

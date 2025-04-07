@@ -346,8 +346,8 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
         SettingsFieldType_e fieldTypeExpected;
 
         SettingsLayoutFindByOffsetResult_s findByOffset;
-
         rapidjson::Value::ConstMemberIterator fieldDescIt;
+
         if (JSON_GetIterator(elem, "offset", fieldDescIt)) // Use offset instead of field names if available.
         {
             uint32_t targetOffset;
@@ -366,29 +366,13 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
         else // Parse it from the field name.
         {
             targetFieldName = JSON_GetValueRequired<const char*>(elem, "field");
+            SettingsLayoutFindByNameResult_s findByName;
 
-            bool fieldNameFound = false;
-            size_t fieldNameIndex = 0;
+            if (!SettingsFieldFinder_FindFieldByAbsoluteName(layout, targetFieldName, findByName))
+                Error("Settings mod value #%zu has an absolute field name of \"%s\" which doesn't exist in the given settings layout.\n", elemIndex, targetFieldName);
 
-            for (const std::string& fieldName : layout.rootLayout.fieldNames)
-            {
-                if (fieldName.compare(targetFieldName) == 0)
-                {
-                    fieldNameFound = true;
-                    break;
-                }
-
-                fieldNameIndex++;
-            }
-
-            if (!fieldNameFound)
-            {
-                Error("Settings mod value #%zu is a modifier for field \"%s\", but this field does not exist in the given settings layout.\n",
-                    elemIndex, targetFieldName);
-            }
-
-            fieldTypeExpected = layout.rootLayout.typeMap[fieldNameIndex];
-            cache.valueOffset = layout.rootLayout.offsetMap[fieldNameIndex];
+            fieldTypeExpected = findByName.type;
+            cache.valueOffset = findByName.valueOffset;
         }
 
         // Make sure the mod type is compatible with the settings field type.

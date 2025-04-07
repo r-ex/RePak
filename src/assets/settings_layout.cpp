@@ -133,6 +133,131 @@ bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& 
     return false;
 }
 
+bool SettingsFieldFinder_FindFieldByAbsoluteName(const SettingsLayoutAsset_s& layout, const char* const targetName, SettingsLayoutFindByNameResult_s& result)
+{
+    const char* lookupName = targetName;
+    const char* nextLookup = nullptr;
+
+    std::string lookupCapture;
+
+    const char* const brackBegin = strchr(targetName, '[');
+    int lookupLayoutIndex = 0;
+
+    // If we have a bracket, parse the subscript out and recursively process
+    // the rest. I.e. we have "itemNames[2].flavorDesc[1].featureFlags", then
+    // only "itemNames[2]." gets consumed here, the rest is tokenized as one
+    // solid string and consumed in the subsequent recursive calls.
+    if (brackBegin)
+    {
+        if (brackBegin == targetName)
+        {
+            Error("%s: expected an identifier before '[' token in \"%s\".\n", __FUNCTION__, targetName);
+            return false;
+        }
+
+        const char* const numStart = brackBegin + 1;
+        const char* const brackEnd = strchr(numStart, ']');
+
+        if (!brackEnd)
+        {
+            Error("%s: expected a ']' token after expression in \"%s\".\n", __FUNCTION__, targetName);
+            return false;
+        }
+
+        if (brackEnd == numStart)
+        {
+            Error("%s: expected an expression inside array subscript operator in \"%s\".\n", __FUNCTION__, targetName);
+            return false;
+        }
+
+        char* endptr;
+        lookupLayoutIndex = strtol(numStart, &endptr, 0);
+
+        if (endptr != brackEnd)
+        {
+            Error("%s: failed to parse expression inside array subscript operator in \"%s\".\n", __FUNCTION__, targetName);
+            return false;
+        }
+
+        if (brackEnd[1] != '.')
+        {
+            Error("%s: expected a '.' token after array subscript operator in \"%s\".\n", __FUNCTION__, targetName);
+            return false;
+        }
+
+        if (brackEnd[2] == '\0')
+        {
+            Error("%s: expected an identifier after member access operator in \"%s\".\n", __FUNCTION__, targetName);
+            return false;
+        }
+
+        nextLookup = &brackEnd[2];
+
+        lookupCapture.assign(targetName, brackBegin);
+        lookupName = lookupCapture.c_str();
+    }
+
+    // Look the field name up.
+    for (size_t i = 0; i < layout.rootLayout.fieldNames.size(); i++)
+    {
+        const std::string& currFieldName = layout.rootLayout.fieldNames[i];
+
+        if (currFieldName.compare(lookupName) != 0)
+            continue;
+
+        const SettingsFieldType_e currFieldType = layout.rootLayout.typeMap[i];
+        const uint32_t fieldOffset = layout.rootLayout.offsetMap[i];
+
+        if (brackBegin)
+        {
+            if (currFieldType == SettingsFieldType_e::ST_DynamicArray)
+            {
+                Error("%s: field \"%s\" is a dynamic array; dynamic array lookup can only be done at runtime.\n",
+                    __FUNCTION__, lookupName);
+                return false;
+            }
+
+            if (currFieldType != SettingsFieldType_e::ST_StaticArray)
+            {
+                Error("%s: field \"%s\" is of type %s, but an array subscript was used.\n",
+                    __FUNCTION__, lookupName, s_settingsFieldTypeNames[currFieldType]);
+                return false;
+            }
+
+            const SettingsLayoutAsset_s& subLayout = layout.subLayouts[layout.rootLayout.indexMap[i]];
+            const int arrayElemCount = subLayout.rootLayout.arrayElemCount;
+
+            if (lookupLayoutIndex < 0 || lookupLayoutIndex >= arrayElemCount)
+            {
+                Error("%s: field \"%s\" is an array with range interval [0,%d), but provided array subscript was %d.\n",
+                    __FUNCTION__, lookupName, arrayElemCount-1, lookupLayoutIndex);
+                return false;
+            }
+
+            // note(amos): no alignment needed on `fieldOffset` because it will
+            //             already be on an offset aligned to its root alignment.
+            const uint32_t totalValueBufSizeAligned = IALIGN(subLayout.rootLayout.totalValueBufferSize, subLayout.rootLayout.alignment);
+            const uint32_t accum = fieldOffset + (lookupLayoutIndex * totalValueBufSizeAligned);
+
+            result.currentBase += accum;
+
+            // Look into the array.
+            if (SettingsFieldFinder_FindFieldByAbsoluteName(subLayout, nextLookup, result))
+                return true;
+
+            result.currentBase -= accum;
+        }
+
+        result.valueOffset = result.currentBase + fieldOffset;
+        result.type = currFieldType;
+
+        return true;
+    }
+
+    // Not found.
+    return false;
+}
+
 static uint32_t SettingsFieldFinder_HashFieldName(const char* const name, const uint32_t stepScale, const uint32_t seed)
 {
     uint32_t hash = 0;
