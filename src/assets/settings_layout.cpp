@@ -85,7 +85,18 @@ bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& 
             const uint32_t elementBase = result.currentBase + (currArrayIdx * totalValueBufSizeAligned);
             const uint32_t absoluteFieldOffset = elementBase + fieldOffset;
 
-            if (targetOffset == absoluteFieldOffset)
+            const SettingsFieldType_e fieldType = layout.rootLayout.typeMap[i];
+            const bool isStaticArray = fieldType == SettingsFieldType_e::ST_StaticArray;
+
+            // note(amos): the first member of an element in a static array
+            // will always share the same offset as the static array its
+            // contained in. Delay it off to the next recursion so we return
+            // the name of the member of the element in the array instead since
+            // this function does a lookup by absolute offsets, and static
+            // arrays technically don't exist in that context. This is also
+            // required for constructing the field access path correctly for
+            // a given offset.
+            if (!isStaticArray && targetOffset == absoluteFieldOffset)
             {
                 // note(amos): we use `i` here instead of `currArrayIdx`
                 //             because array fields descriptors are only
@@ -97,11 +108,9 @@ bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& 
                 return true;
             }
 
-            const SettingsFieldType_e fieldType = layout.rootLayout.typeMap[i];
-
             // note(amos): getting offsets to dynamic arrays items outside the
             //             game's runtime is not supported! Only static arrays.
-            if (fieldType == ST_StaticArray)
+            if (isStaticArray)
             {
                 const SettingsLayoutAsset_s& subLayout = layout.subLayouts[layout.rootLayout.indexMap[i]];
                 result.currentBase = IALIGN(absoluteFieldOffset, subLayout.rootLayout.alignment);
