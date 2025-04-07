@@ -137,4 +137,4 @@ struct SettingsLayoutFindByOffsetResult_s
 	uint32_t currentBase;  // Only used by SettingsLayout_FindFieldByAbsoluteOffset internally.
 };
 
-extern bool SettingsLayout_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& result);
+extern bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& result);

@@ -355,8 +355,8 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
             if (!JSON_ParseNumber(fieldDescIt->value, targetOffset))
                 Error("Settings mod value #%zu has an invalid offset.\n", elemIndex);
 
-            if (!SettingsLayout_FindFieldByAbsoluteOffset(layout, targetOffset, findByOffset))
-                Error("Settings mod value #%zu has an offset of %u which doesn't map to a field in the given settings layout.\n", elemIndex, targetOffset);
+            if (!SettingsFieldFinder_FindFieldByAbsoluteOffset(layout, targetOffset, findByOffset))
+                Error("Settings mod value #%zu has an absolute offset of %u which doesn't map to a field in the given settings layout.\n", elemIndex, targetOffset);
 
             targetFieldName = findByOffset.fieldAccessPath.c_str();
             fieldTypeExpected = findByOffset.type;
