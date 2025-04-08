@@ -9,7 +9,7 @@ enum SettingsFieldType_e : unsigned short
 	ST_Float3,
 	ST_String,
 	ST_Asset,
-	ST_Asset_2,
+	ST_AssetNoPrecache,
 	ST_StaticArray,
 	ST_DynamicArray,
 

@@ -49,7 +49,7 @@ static JSONFieldType_e GetJsonMemberTypeForSettingsType(const SettingsFieldType_
     case SettingsFieldType_e::ST_Float3:
     case SettingsFieldType_e::ST_String:
     case SettingsFieldType_e::ST_Asset:
-    case SettingsFieldType_e::ST_Asset_2:
+    case SettingsFieldType_e::ST_AssetNoPrecache:
         return JSONFieldType_e::kString;
 
     case SettingsFieldType_e::ST_StaticArray:
@@ -397,7 +397,7 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
             // of type string, so it can match any of these.
             if (fieldTypeExpected != SettingsFieldType_e::ST_String &&
                 fieldTypeExpected != SettingsFieldType_e::ST_Asset &&
-                fieldTypeExpected != SettingsFieldType_e::ST_Asset_2)
+                fieldTypeExpected != SettingsFieldType_e::ST_AssetNoPrecache)
             {
                 fieldTypeMismatch = true;
             }
@@ -505,7 +505,7 @@ static void SettingsAsset_WriteValues(const SettingsLayoutAsset_s& layoutAsset, 
             SettingsAsset_WriteAssetValue(it.value.GetString(), it.value.GetStringLength(), targetOffset, asset, pak, dataLump, settingsMemory);
             break;
         case SettingsFieldType_e::ST_String:
-        case SettingsFieldType_e::ST_Asset_2:
+        case SettingsFieldType_e::ST_AssetNoPrecache:
             SettingsAsset_WriteStringValue(it.value.GetString(), it.value.GetStringLength(), targetOffset, pak, dataLump, settingsMemory);
             break;
         case SettingsFieldType_e::ST_StaticArray:

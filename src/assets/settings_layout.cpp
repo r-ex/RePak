@@ -22,7 +22,7 @@ uint32_t SettingsLayout_GetFieldSizeForType(const SettingsFieldType_e type)
         return sizeof(float) * 3;
     case SettingsFieldType_e::ST_String:
     case SettingsFieldType_e::ST_Asset:
-    case SettingsFieldType_e::ST_Asset_2:
+    case SettingsFieldType_e::ST_AssetNoPrecache:
         return sizeof(PagePtr_t);
     case SettingsFieldType_e::ST_DynamicArray:
         return sizeof(SettingsDynamicArray_s);
@@ -46,7 +46,7 @@ uint32_t SettingsLayout_GetFieldAlignmentForType(const SettingsFieldType_e type)
         return sizeof(float);
     case SettingsFieldType_e::ST_String:
     case SettingsFieldType_e::ST_Asset:
-    case SettingsFieldType_e::ST_Asset_2:
+    case SettingsFieldType_e::ST_AssetNoPrecache:
         return sizeof(void*);
 
     default: assert(0); return 0;
