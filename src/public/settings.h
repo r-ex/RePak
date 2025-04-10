@@ -60,7 +60,7 @@ struct SettingsAssetHeader_s
 	SettingsMod_s* modValues;
 
 	uint32_t valueBufSize;
-	uint32_t modCountSinglePlayer;
+	uint32_t modFlags;
 	uint32_t modNameCount;
 	uint32_t modValuesCount;
 };

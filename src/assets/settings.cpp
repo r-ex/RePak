@@ -4,8 +4,8 @@
 #include "public/settings.h"
 
 #undef GetObject
-#define SETTINGS_MODS_NAMES_FIELD "modNames"
-#define SETTINGS_MODS_VALUES_FIELD "modValues"
+#define SETTINGS_MODS_NAMES_FIELD "$modNames"
+#define SETTINGS_MODS_VALUES_FIELD "$modValues"
 
 static void SettingsAsset_OpenFile(CPakFileBuilder* const pak, const char* const assetPath, rapidjson::Document& document)
 {
@@ -232,15 +232,7 @@ static bool SettingsAsset_ModStringToType(const char* const typeName, SettingsMo
     return false;
 }
 
-union SettingsModValueCached_s
-{
-    bool boolValue;
-    int intValue;
-    float floatValue;
-    const char* stringValue;
-};
-
-struct SettingsModCached_s
+struct SettingsModValueItem_s
 {
     unsigned char nameIndex;
     bool isNumericInt;
@@ -249,13 +241,19 @@ struct SettingsModCached_s
     rapidjson::Value::ConstMemberIterator valueIt;
 };
 
+struct SettingsModCache_s
+{
+    const rapidjson::Value* nameValues;
+    std::vector<SettingsModValueItem_s> modValues;
+};
+
 static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modValuesValue, const uint32_t modNamesCount,
-    const SettingsLayoutAsset_s& layout, std::vector<SettingsModCached_s>& modCache, SettingsAssetMemory_s& settingsMemory)
+    const SettingsLayoutAsset_s& layout, SettingsModCache_s& modCache, SettingsAssetMemory_s& settingsMemory)
 {
     const rapidjson::Value::ConstArray array = modValuesValue.GetArray();
     size_t elemIndex = 0;
 
-    modCache.resize(modValuesValue.Size());
+    modCache.modValues.resize(modValuesValue.Size());
 
     for (const rapidjson::Value& elem : array)
     {
@@ -265,7 +263,7 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
                 elemIndex, JSON_TypeToString(JSON_ExtractType(elem)), JSON_TypeToString(JSONFieldType_e::kObject));
         }
 
-        SettingsModCached_s& cache = modCache[elemIndex];
+        SettingsModValueItem_s& item = modCache.modValues[elemIndex];
 
         uint32_t nameIndex;
         JSON_ParseNumberRequired(elem, "index", nameIndex);
@@ -273,18 +271,18 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
         if (nameIndex > UINT8_MAX)
             Error("Settings mod value #%zu has a mod name index of %u which exceeds the maximum of %u.\n", elemIndex, nameIndex, UINT8_MAX);
 
-        cache.nameIndex = static_cast<unsigned char>(nameIndex);
+        item.nameIndex = static_cast<unsigned char>(nameIndex);
 
-        if (cache.nameIndex > modNamesCount)
-            Error("Settings mod value #%zu indexes outside mod names array (%u > %u).\n", elemIndex, cache.nameIndex, modNamesCount);
+        if (item.nameIndex > modNamesCount)
+            Error("Settings mod value #%zu indexes outside mod names array (%u > %u).\n", elemIndex, item.nameIndex, modNamesCount);
 
         const char* const typeName = JSON_GetValueRequired<const char*>(elem, "type");
 
-        if (!SettingsAsset_ModStringToType(typeName, cache.modType))
+        if (!SettingsAsset_ModStringToType(typeName, item.modType))
             Error("Settings mod value #%zu has an invalid type (\"%s\").\n", elemIndex, typeName);
 
-        JSON_GetRequired(elem, "value", cache.valueIt);
-        const rapidjson::Value& value = cache.valueIt->value;
+        JSON_GetRequired(elem, "value", item.valueIt);
+        const rapidjson::Value& value = item.valueIt->value;
 
         JSONFieldType_e valueTypeRequested = JSONFieldType_e::kInvalid;
         SettingsFieldType_e fieldTypeRequested = SettingsFieldType_e::ST_Invalid;
@@ -292,7 +290,7 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
         bool isNumericType = false;
         bool isStringType = false;
 
-        switch (cache.modType)
+        switch (item.modType)
         {
         case SettingsModType_e::kIntPlus:
         case SettingsModType_e::kIntMultiply:
@@ -312,12 +310,12 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
             valueTypeRequested = JSONFieldType_e::kNumber;
             if (value.IsInt())
             {
-                cache.isNumericInt = true;
+                item.isNumericInt = true;
                 fieldTypeRequested = SettingsFieldType_e::ST_Int;
             }
             else if (value.IsFloat())
             {
-                cache.isNumericInt = false;
+                item.isNumericInt = false;
                 fieldTypeRequested = SettingsFieldType_e::ST_Float;
             }
             // else if its neither, keep it invalid as we will error with it.
@@ -361,7 +359,7 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
             targetFieldName = findByOffset.fieldAccessPath.c_str();
             fieldTypeExpected = findByOffset.type;
 
-            cache.valueOffset = targetOffset;
+            item.valueOffset = targetOffset;
         }
         else // Parse it from the field name.
         {
@@ -372,7 +370,7 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
                 Error("Settings mod value #%zu has an absolute field name of \"%s\" which doesn't exist in the given settings layout.\n", elemIndex, targetFieldName);
 
             fieldTypeExpected = findByName.type;
-            cache.valueOffset = findByName.valueOffset;
+            item.valueOffset = findByName.valueOffset;
         }
 
         // Make sure the mod type is compatible with the settings field type.
@@ -557,9 +555,10 @@ static void SettingsAsset_WriteValues(const SettingsLayoutAsset_s& layoutAsset, 
     }
 }
 
-static void SettingsLayout_WriteModNames(CPakFileBuilder* const pak, const rapidjson::Value& modNamesValue, SettingsAssetMemory_s& settingsMemory, PakPageLump_s& dataLump)
+static void SettingsAsset_WriteModNames(const SettingsModCache_s& modCache, CPakFileBuilder* const pak, 
+    SettingsAssetMemory_s& settingsMemory, PakPageLump_s& dataLump)
 {
-    const rapidjson::Value::ConstArray array = modNamesValue.GetArray();
+    const rapidjson::Value::ConstArray array = modCache.nameValues->GetArray();
 
     for (const rapidjson::Value& elem : array)
     {
@@ -573,40 +572,40 @@ static void SettingsLayout_WriteModNames(CPakFileBuilder* const pak, const rapid
     }
 }
 
-static void SettingsLayout_WriteModValues(const std::vector<SettingsModCached_s>& modCache,
-    const size_t stringBufferBase, SettingsAssetMemory_s& settingsMemory, PakPageLump_s& dataLump)
+static void SettingsAsset_WriteModValues(const SettingsModCache_s& modCache, const size_t stringBufferBase,
+    SettingsAssetMemory_s& settingsMemory, PakPageLump_s& dataLump)
 {
-    for (const SettingsModCached_s& cache : modCache)
+    for (const SettingsModValueItem_s& item : modCache.modValues)
     {
         char* const currPtr = &dataLump.data[settingsMemory.curModValuesBufIndex];
         SettingsMod_s* const mod = reinterpret_cast<SettingsMod_s*>(currPtr);
 
-        mod->nameIndex = cache.nameIndex;
-        mod->type = cache.modType;
-        mod->valueOffset = cache.valueOffset;
+        mod->nameIndex = item.nameIndex;
+        mod->type = item.modType;
+        mod->valueOffset = item.valueOffset;
 
-        switch (cache.modType)
+        switch (item.modType)
         {
         case SettingsModType_e::kIntPlus:
         case SettingsModType_e::kIntMultiply:
-            mod->value.intValue = cache.valueIt->value.GetInt();
+            mod->value.intValue = item.valueIt->value.GetInt();
             break;
         case SettingsModType_e::kFloatPlus:
         case SettingsModType_e::kFloatMultiply:
-            mod->value.floatValue = cache.valueIt->value.GetFloat();
+            mod->value.floatValue = item.valueIt->value.GetFloat();
             break;
         case SettingsModType_e::kBool:
-            mod->value.boolValue = cache.valueIt->value.GetBool();
+            mod->value.boolValue = item.valueIt->value.GetBool();
             break;
         case SettingsModType_e::kNumber:
-            if (cache.isNumericInt)
-                mod->value.intValue = cache.valueIt->value.GetInt();
+            if (item.isNumericInt)
+                mod->value.intValue = item.valueIt->value.GetInt();
             else
-                mod->value.floatValue = cache.valueIt->value.GetFloat();
+                mod->value.floatValue = item.valueIt->value.GetFloat();
             break;
         case SettingsModType_e::kString:
         {
-            const rapidjson::Value& val = cache.valueIt->value;
+            const rapidjson::Value& val = item.valueIt->value;
             const size_t strBufLen = val.GetStringLength() + 1; // +1 for null char.
 
             memcpy(&dataLump.data[settingsMemory.curStringBufIndex], val.GetString(), strBufLen);
@@ -619,6 +618,54 @@ static void SettingsLayout_WriteModValues(const std::vector<SettingsModCached_s>
 
         settingsMemory.curModValuesBufIndex += sizeof(SettingsMod_s);
     }
+}
+
+static bool SettingsAsset_ParseMods(SettingsAssetHeader_s* const setHdr, const SettingsLayoutAsset_s& layoutAsset,
+    SettingsAssetMemory_s& settingsMemory, SettingsModCache_s& modCache, const rapidjson::Document& settings)
+{
+    rapidjson::Value::ConstMemberIterator modNamesIt;
+    const bool hasModNames = JSON_GetIterator(settings, SETTINGS_MODS_NAMES_FIELD, modNamesIt);
+
+    rapidjson::Value::ConstMemberIterator modValuesIt;
+    const bool hasModValues = JSON_GetIterator(settings, SETTINGS_MODS_VALUES_FIELD, modValuesIt);
+
+    if (hasModNames != hasModValues)
+        Error("Settings asset contains array field \"%s\", but the corresponding array field \"%s\" is missing.\n",
+            hasModNames ? SETTINGS_MODS_NAMES_FIELD : SETTINGS_MODS_VALUES_FIELD,
+            hasModNames ? SETTINGS_MODS_VALUES_FIELD : SETTINGS_MODS_NAMES_FIELD);
+
+    if (!hasModNames || !hasModValues)
+        return false;
+
+    if (!modNamesIt->value.IsArray())
+    {
+        Error("Settings asset contains array field \"%s\" and is of type %s, but %s was expected.\n",
+            SETTINGS_MODS_NAMES_FIELD, JSON_TypeToString(JSON_ExtractType(modNamesIt->value)), JSON_TypeToString(JSONFieldType_e::kArray));
+    }
+
+    if (modNamesIt->value.GetArray().Empty())
+        Error("Settings asset contains array field \"%s\" that is empty.\n", SETTINGS_MODS_NAMES_FIELD);
+
+    modCache.nameValues = &modNamesIt->value;
+
+    SettingsAsset_CalculateModNamesBuffers(modNamesIt->value, settingsMemory);
+    setHdr->modNameCount = static_cast<uint32_t>(modNamesIt->value.GetArray().Size());
+
+    if (!modValuesIt->value.IsArray())
+    {
+        Error("Settings asset contains array field \"%s\" and is of type %s, but %s was expected.\n",
+            SETTINGS_MODS_VALUES_FIELD, JSON_TypeToString(JSON_ExtractType(modValuesIt->value)), JSON_TypeToString(JSONFieldType_e::kArray));
+    }
+
+    if (modValuesIt->value.GetArray().Empty())
+        Error("Settings asset contains array field \"%s\" that is empty.\n", SETTINGS_MODS_VALUES_FIELD);
+
+    SettingsAsset_CalculateModValuesBuffers(modValuesIt->value, setHdr->modNameCount, layoutAsset, modCache, settingsMemory);
+
+    setHdr->modValuesCount = static_cast<uint32_t>(modValuesIt->value.GetArray().Size());
+    setHdr->modFlags = JSON_GetNumberOrDefault(settings, "$modFlags", 0);
+
+    return true;
 }
 
 extern void SettingsLayout_ParseLayout(CPakFileBuilder* const pak, const char* const assetPath, SettingsLayoutAsset_s& layoutAsset);
@@ -655,43 +702,8 @@ static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, c
     SettingsAsset_InitializeAndMap(layoutAssetPath, settingsAsset, layoutAsset, entries, settingsMemory, SIZE_MAX);
     setHdr->valueBufSize = static_cast<uint32_t>(settingsMemory.valueBufSize);
 
-    rapidjson::Value::ConstMemberIterator modNamesIt;
-    const bool hasModNames = JSON_GetIterator(settings, SETTINGS_MODS_NAMES_FIELD, modNamesIt);
-
-    if (hasModNames)
-    {
-        if (!modNamesIt->value.IsArray())
-        {
-            Error("Settings asset contains mods names array field \"%s\" and is of type %s, but %s was expected.\n",
-                SETTINGS_MODS_NAMES_FIELD, JSON_TypeToString(JSON_ExtractType(modNamesIt->value)), JSON_TypeToString(JSONFieldType_e::kArray));
-        }
-
-        if (modNamesIt->value.GetArray().Empty())
-            Error("Settings asset contains mods names array field \"%s\" that is empty.\n", SETTINGS_MODS_NAMES_FIELD);
-
-        SettingsAsset_CalculateModNamesBuffers(modNamesIt->value, settingsMemory);
-        setHdr->modNameCount = static_cast<uint32_t>(modNamesIt->value.GetArray().Size());
-    }
-
-    std::vector<SettingsModCached_s> modCache;
-
-    rapidjson::Value::ConstMemberIterator modValuesIt;
-    const bool hasModValues = JSON_GetIterator(settings, SETTINGS_MODS_VALUES_FIELD, modValuesIt);
-
-    if (hasModValues)
-    {
-        if (!modValuesIt->value.IsArray())
-        {
-            Error("Settings asset contains mods values array field \"%s\" and is of type %s, but %s was expected.\n",
-                SETTINGS_MODS_VALUES_FIELD, JSON_TypeToString(JSON_ExtractType(modValuesIt->value)), JSON_TypeToString(JSONFieldType_e::kArray));
-        }
-
-        if (modValuesIt->value.GetArray().Empty())
-            Error("Settings asset contains mods values array field \"%s\" that is empty.\n", SETTINGS_MODS_VALUES_FIELD);
-
-        SettingsAsset_CalculateModValuesBuffers(modValuesIt->value, setHdr->modNameCount, layoutAsset, modCache, settingsMemory);
-        setHdr->modValuesCount = static_cast<uint32_t>(modValuesIt->value.GetArray().Size());
-    }
+    SettingsModCache_s modCache{};
+    const bool hasMods = SettingsAsset_ParseMods(setHdr, layoutAsset, settingsMemory, modCache, settings);
 
     const size_t assetNameBufLen = strlen(assetPath)+1;
     settingsMemory.stringBufSize += assetNameBufLen;
@@ -708,21 +720,16 @@ static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, c
     pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, name), dataLump, assetNameOffset);
     pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, stringData), dataLump, settingsMemory.curStringBufIndex);
 
-    const size_t stringBufferBase = settingsMemory.curStringBufIndex;
-
-    if (hasModNames)
-        pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, modNames), dataLump, settingsMemory.curModNamesPtrBufIndex);
-
-    if (hasModValues)
-        pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, modValues), dataLump, settingsMemory.curModValuesBufIndex);
-
     SettingsAsset_WriteValues(layoutAsset, settingsAsset, settingsMemory, asset, pak, dataLump);
 
-    if (hasModNames)
-        SettingsLayout_WriteModNames(pak, modNamesIt->value, settingsMemory, dataLump);
+    if (hasMods)
+    {
+        pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, modNames), dataLump, settingsMemory.curModNamesPtrBufIndex);
+        pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, modValues), dataLump, settingsMemory.curModValuesBufIndex);
 
-    if (hasModValues)
-        SettingsLayout_WriteModValues(modCache, stringBufferBase, settingsMemory, dataLump);
+        SettingsAsset_WriteModNames(modCache, pak, settingsMemory, dataLump);
+        SettingsAsset_WriteModValues(modCache, settingsMemory.curStringBufIndex, settingsMemory, dataLump);
+    }
 
     asset.InitAsset(hdrLump.GetPointer(), sizeof(SettingsAssetHeader_s), PagePtr_t::NullPtr(), STGS_VERSION, AssetType::STGS);
     asset.SetHeaderPointer(hdrLump.data);
