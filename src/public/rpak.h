@@ -12,8 +12,8 @@
 #define RPAK_MAGIC (('k'<<24)+('a'<<16)+('P'<<8)+'R')
 #define RPAK_EXTENSION ".rpak"
 
-#define PAK_HEADER_FLAGS_COMPRESSED      (1<<8)
-#define PAK_HEADER_FLAGS_ZSTREAM_ENCODED (1<<9) // use the ZStd decoder instead of the RTech one
+#define PAK_HEADER_FLAGS_RTECH_ENCODED (1<<8) // use the RTech decoder in the runtime.
+#define PAK_HEADER_FLAGS_ZSTD_ENCODED  (1<<9) // use the ZStd decoder in the runtime.
 
 #define PAK_MAX_STEM_PATH 512
 
