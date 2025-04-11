@@ -234,7 +234,7 @@ static bool SettingsAsset_ModStringToType(const char* const typeName, SettingsMo
 
 struct SettingsModValueItem_s
 {
-    unsigned char nameIndex;
+    uint16_t nameIndex;
     bool isNumericInt;
     SettingsModType_e modType;
     uint32_t valueOffset;
@@ -268,13 +268,13 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
         uint32_t nameIndex;
         JSON_ParseNumberRequired(elem, "index", nameIndex);
 
-        if (nameIndex > UINT8_MAX)
-            Error("Settings mod value #%zu has a mod name index of %u which exceeds the maximum of %u.\n", elemIndex, nameIndex, UINT8_MAX);
+        if (nameIndex > SETTINGS_MAX_MODS)
+            Error("Settings mod value #%zu has a mod name index of %u which exceeds the maximum of %hu.\n", elemIndex, nameIndex, SETTINGS_MAX_MODS);
 
-        item.nameIndex = static_cast<unsigned char>(nameIndex);
+        item.nameIndex = static_cast<uint16_t>(nameIndex);
 
         if (item.nameIndex > modNamesCount)
-            Error("Settings mod value #%zu indexes outside mod names array (%u > %u).\n", elemIndex, item.nameIndex, modNamesCount);
+            Error("Settings mod value #%zu indexes outside mod names array (%hu > %hu).\n", elemIndex, item.nameIndex, static_cast<uint16_t>(modNamesCount));
 
         const char* const typeName = JSON_GetValueRequired<const char*>(elem, "type");
 
@@ -620,6 +620,23 @@ static void SettingsAsset_WriteModValues(const SettingsModCache_s& modCache, con
     }
 }
 
+static void SettingsAsset_ValidateModsArray(rapidjson::Value::ConstMemberIterator arrayIt, const char* const fieldName)
+{
+    if (!arrayIt->value.IsArray())
+    {
+        Error("Settings asset contains array field \"%s\" and is of type %s, but %s was expected.\n",
+            fieldName, JSON_TypeToString(JSON_ExtractType(arrayIt->value)), JSON_TypeToString(JSONFieldType_e::kArray));
+    }
+
+    const size_t nameElemCount = arrayIt->value.GetArray().Size();
+
+    if (nameElemCount == 0)
+        Error("Settings asset contains array field \"%s\" that is empty.\n", fieldName);
+    else if (nameElemCount > SETTINGS_MAX_MODS)
+        Error("Settings asset contains array field \"%s\" that has too many elements (max %hu, got %zu).\n",
+            fieldName, SETTINGS_MAX_MODS, nameElemCount);
+}
+
 static bool SettingsAsset_ParseMods(SettingsAssetHeader_s* const setHdr, const SettingsLayoutAsset_s& layoutAsset,
     SettingsAssetMemory_s& settingsMemory, SettingsModCache_s& modCache, const rapidjson::Document& settings)
 {
@@ -637,34 +654,18 @@ static bool SettingsAsset_ParseMods(SettingsAssetHeader_s* const setHdr, const S
     if (!hasModNames || !hasModValues)
         return false;
 
-    if (!modNamesIt->value.IsArray())
-    {
-        Error("Settings asset contains array field \"%s\" and is of type %s, but %s was expected.\n",
-            SETTINGS_MODS_NAMES_FIELD, JSON_TypeToString(JSON_ExtractType(modNamesIt->value)), JSON_TypeToString(JSONFieldType_e::kArray));
-    }
-
-    if (modNamesIt->value.GetArray().Empty())
-        Error("Settings asset contains array field \"%s\" that is empty.\n", SETTINGS_MODS_NAMES_FIELD);
+    SettingsAsset_ValidateModsArray(modNamesIt, SETTINGS_MODS_NAMES_FIELD);
+    SettingsAsset_ValidateModsArray(modValuesIt, SETTINGS_MODS_VALUES_FIELD);
 
     modCache.nameValues = &modNamesIt->value;
 
     SettingsAsset_CalculateModNamesBuffers(modNamesIt->value, settingsMemory);
     setHdr->modNameCount = static_cast<uint32_t>(modNamesIt->value.GetArray().Size());
 
-    if (!modValuesIt->value.IsArray())
-    {
-        Error("Settings asset contains array field \"%s\" and is of type %s, but %s was expected.\n",
-            SETTINGS_MODS_VALUES_FIELD, JSON_TypeToString(JSON_ExtractType(modValuesIt->value)), JSON_TypeToString(JSONFieldType_e::kArray));
-    }
-
-    if (modValuesIt->value.GetArray().Empty())
-        Error("Settings asset contains array field \"%s\" that is empty.\n", SETTINGS_MODS_VALUES_FIELD);
-
     SettingsAsset_CalculateModValuesBuffers(modValuesIt->value, setHdr->modNameCount, layoutAsset, modCache, settingsMemory);
-
     setHdr->modValuesCount = static_cast<uint32_t>(modValuesIt->value.GetArray().Size());
-    setHdr->modFlags = JSON_GetNumberOrDefault(settings, "$modFlags", 0);
 
+    setHdr->modFlags = JSON_GetNumberOrDefault(settings, "$modFlags", 0);
     return true;
 }
 

@@ -1,5 +1,5 @@
 #pragma once
-//#include <pch.h>
+#define SETTINGS_MAX_MODS UINT16_MAX
 
 enum SettingsModType_e : unsigned short
 {
@@ -35,8 +35,7 @@ union SettingsModValue_u
 
 struct SettingsMod_s
 {
-	unsigned char nameIndex; // Index into mod names array.
-	unsigned char pad;
+	uint16_t nameIndex; // Index into mod names array.
 	SettingsModType_e type;
 	int valueOffset;
 	SettingsModValue_u value;
