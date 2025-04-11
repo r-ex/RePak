@@ -15,15 +15,9 @@ public:
 	inline const char* GetBuildMapPath() const { return m_buildMapPath.c_str(); }
 	inline const char* GetOutputPath() const { return m_outputPath.c_str(); }
 
-	inline int GetCompressLevel() const { return m_compressLevel; }
-	inline int GetNumCompressWorkers() const { return m_compressWorkers; }
-
 private:
 	int m_pakVersion;
 	int m_buildFlags;
-
-	int m_compressLevel;
-	int m_compressWorkers;
 
 	std::string m_buildMapPath;
 	std::string m_outputPath;
