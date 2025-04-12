@@ -227,14 +227,29 @@ static void Model_InternalHandleMaterials(CPakFileBuilder* const pak, const rapi
         {
             // make sure referenced asset is a material for sanity
             internalAsset->EnsureType(TYPE_MATL);
+            MaterialShaderType_e expectedMaterialType;
 
-            // model assets don't exist on r2 so we can be sure that this is a v8 pak (and therefore has v15 materials)
-            MaterialAssetHeader_v15_t* const matlHdr = reinterpret_cast<MaterialAssetHeader_v15_t*>(internalAsset->header);
+            // note(amos): `studiohdr->materialtypesindex` can be 0, in this case
+            // the engine sets the material shader type for the given model to
+            // `SKNC` if the model has more than 1 bone, else it sets it to `RGDC`.
+            // See code at [r5apex.exe + 0x45600A] (r5reloaded) for more information.
+            if (studiohdr->materialtypesindex > 0)
+                expectedMaterialType = studiohdr->materialType(i);
+            else
+            {
+                expectedMaterialType = (studiohdr->numbones > 1)
+                    ? expectedMaterialType = MaterialShaderType_e::SKNC
+                    : expectedMaterialType = MaterialShaderType_e::RGDC;
+            }
 
-            if (matlHdr->materialType != studiohdr->materialType(i))
+            // model assets don't exist on r2 so we can be sure that this is a v8 pak (and therefore has v15 materials).
+            const MaterialAssetHeader_v15_t* const matlHdr = reinterpret_cast<const MaterialAssetHeader_v15_t*>(internalAsset->header);
+            const MaterialShaderType_e foundMaterialType = matlHdr->materialType;
+
+            if (foundMaterialType != expectedMaterialType)
             {
                 Error("Unexpected shader type for material in slot #%i, expected '%s', found '%s'.\n",
-                    i, s_materialShaderTypeNames[studiohdr->materialType(i)], s_materialShaderTypeNames[matlHdr->materialType]);
+                    i, s_materialShaderTypeNames[expectedMaterialType], s_materialShaderTypeNames[foundMaterialType]);
             }
         }
     }

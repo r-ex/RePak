@@ -1,5 +1,6 @@
 #pragma once
 #include "math/vector.h"
+#include "material.h"
 
 #pragma pack(push, 1)
 // used for referencing a material from within a model
@@ -65,9 +66,9 @@ struct studiohdr_t
 		return reinterpret_cast<mstudiotexture_t*>((char*)this + textureindex) + i;
 	}
 
-	inline uint8_t materialType(int i)
+	inline MaterialShaderType_e materialType(int i)
 	{
-		return reinterpret_cast<uint8_t*>((char*)this + materialtypesindex)[i];
+		return reinterpret_cast<MaterialShaderType_e*>((char*)this + materialtypesindex)[i];
 	}
 
 	// this should always only be one, unless using vmts.
