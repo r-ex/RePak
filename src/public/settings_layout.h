@@ -9,7 +9,7 @@ enum SettingsFieldType_e : unsigned short
 	ST_Float3,
 	ST_String,
 	ST_Asset,
-	ST_Asset_2,
+	ST_AssetNoPrecache,
 	ST_StaticArray,
 	ST_DynamicArray,
 
@@ -49,10 +49,9 @@ struct SettingsLayoutHeader_s
 	uint32_t hashStepScale;
 	uint32_t hashSeed;
 
-	// -1 on dynamic arrays?
-	int arrayElemCount;
+	int arrayElemCount; // Always -1 on dynamic arrays.
 	int layoutSize;
-	int unk_34; // seems unused, needs research, always 0, most likely padding.
+	int pad34; // seems unused, needs research, always 0, most likely padding.
 	PagePtr_t fieldNames;
 	PagePtr_t subHeaders; // points to an array of SettingsLayoutHeader_s
 };
@@ -123,3 +122,36 @@ static const char* s_settingsFieldTypeNames[] = {
 extern uint32_t SettingsLayout_GetFieldSizeForType(const SettingsFieldType_e type);
 extern uint32_t SettingsLayout_GetFieldAlignmentForType(const SettingsFieldType_e type);
 extern SettingsFieldType_e SettingsLayout_GetFieldTypeForString(const char* const typeName);
+
+struct SettingsLayoutFindByOffsetResult_s
+{
+	SettingsLayoutFindByOffsetResult_s()
+	{
+		type = SettingsFieldType_e::ST_Invalid;
+		currentBase = 0;
+		lastArrayIdx = 0;
+	}
+
+	std::string fieldAccessPath;
+	SettingsFieldType_e type;
+	uint32_t currentBase;  // Only used by SettingsFieldFinder_FindFieldByAbsoluteOffset internally.
+	int lastArrayIdx;      // Only used by SettingsFieldFinder_FindFieldByAbsoluteOffset internally.
+};
+
+extern bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& layout, const uint32_t targetOffset, SettingsLayoutFindByOffsetResult_s& result);
+
+struct SettingsLayoutFindByNameResult_s
+{
+	SettingsLayoutFindByNameResult_s()
+	{
+		valueOffset = 0;
+		type = SettingsFieldType_e::ST_Invalid;
+		currentBase = 0;
+	}
+
+	uint32_t valueOffset;
+	SettingsFieldType_e type;
+	uint32_t currentBase;  // Only used by SettingsFieldFinder_FindFieldByAbsoluteName internally.
+};
+
+extern bool SettingsFieldFinder_FindFieldByAbsoluteName(const SettingsLayoutAsset_s& layout, const char* const targetName, SettingsLayoutFindByNameResult_s& result);
