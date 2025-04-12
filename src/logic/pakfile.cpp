@@ -626,8 +626,8 @@ size_t CPakFileBuilder::EncodeStreamAndSwap(BinaryIO& io, const int compressLeve
 		Error("Reopened pak file \"%s\" appears truncated or corrupt; compressed size: %zu expected: %zu.\n",
 			m_pakFilePath.c_str(), reopenedPakSize, compressedSize);
 
-	// set the header flags indicating this pak is compressed.
-	m_Header.flags |= (PAK_HEADER_FLAGS_COMPRESSED | PAK_HEADER_FLAGS_ZSTREAM_ENCODED);
+	// set the header flags indicating this pak is compressed using zstandard.
+	m_Header.flags |= PAK_HEADER_FLAGS_ZSTD_ENCODED;
 
 	return compressedSize;
 }
