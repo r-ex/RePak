@@ -12,8 +12,6 @@ CBuildSettings::CBuildSettings()
 {
 	m_pakVersion = 0;
 	m_buildFlags = 0;
-	m_compressLevel = 0;
-	m_compressWorkers = 0;
 }
 
 void CBuildSettings::Init(const js::Document& doc, const char* const buildMapFile)
@@ -41,11 +39,6 @@ void CBuildSettings::Init(const js::Document& doc, const char* const buildMapFil
 
 	if (JSON_GetValueOrDefault(doc, "keepClientOnly", true))
 		AddFlags(PF_KEEP_CLIENT);
-
-	m_compressLevel = JSON_GetValueOrDefault(doc, "compressLevel", 0);
-
-	if (m_compressLevel > 0)
-		m_compressWorkers = JSON_GetValueOrDefault(doc, "compressWorkers", 0);
 
 	g_showDebugLogs = JSON_GetValueOrDefault(doc, "showDebugInfo", false);
 }

@@ -719,11 +719,11 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 	const size_t decompressedFileSize = out.GetSize();
 	size_t compressedFileSize = 0;
 
-	const int compressLevel = m_buildSettings->GetCompressLevel();
+	const int compressLevel = JSON_GetValueOrDefault(doc, "compressLevel", 0);
 
 	if (compressLevel > 0 && decompressedFileSize > Pak_GetHeaderSize(m_Header.fileVersion))
 	{
-		const int workerCount = m_buildSettings->GetNumCompressWorkers();
+		const int workerCount = JSON_GetValueOrDefault(doc, "compressWorkers", 0);
 
 		Log("Encoding pak file with compress level %i and %i workers.\n", compressLevel, workerCount);
 		compressedFileSize = EncodeStreamAndSwap(out, compressLevel, workerCount);
