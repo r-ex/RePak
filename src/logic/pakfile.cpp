@@ -539,7 +539,7 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 
 			if (ZSTD_isError(remaining))
 			{
-				Warning("Failed to compress frame at %zd to frame at %zd: [%s].\n",
+				Warning("Failed to compress stream at %zd to stream at %zd: [%s].\n",
 					inStream.TellGet(), outStream.TellPut(), ZSTD_getErrorName(remaining));
 
 				return false;
