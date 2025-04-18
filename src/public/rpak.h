@@ -31,6 +31,7 @@
 #define TYPE_STLT	MAKE_FOURCC('s', 't', 'l', 't') // stlt
 #define TYPE_STGS	MAKE_FOURCC('s', 't', 'g', 's') // stgs
 #define TYPE_MATL	MAKE_FOURCC('m', 'a', 't', 'l') // matl
+#define TYPE_MT4A	MAKE_FOURCC('m', 't', '4', 'a') // mt4a
 #define TYPE_ASEQ	MAKE_FOURCC('a', 's', 'e', 'q') // aseq
 #define TYPE_ARIG	MAKE_FOURCC('a', 'r', 'i', 'g') // arig
 #define TYPE_SHDS	MAKE_FOURCC('s', 'h', 'd', 's') // shds
@@ -50,6 +51,7 @@ enum class AssetType : uint32_t
 	STLT = TYPE_STLT, // settings layout
 	STGS = TYPE_STGS, // settings
 	MATL = TYPE_MATL, // material
+	MT4A = TYPE_MT4A, // material for aspect
 	ASEQ = TYPE_ASEQ, // animation sequence
 	ARIG = TYPE_ARIG, // animation rig
 	SHDS = TYPE_SHDS, // shaderset

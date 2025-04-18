@@ -14,6 +14,7 @@
 #define ARIG_VERSION 4
 #define ASEQ_VERSION 7
 #define MATL_VERSION 15
+#define MT4A_VERSION 3
 
 namespace Assets
 {
@@ -26,6 +27,8 @@ namespace Assets
 
 	void AddMaterialAsset_v12(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
 	void AddMaterialAsset_v15(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
+
+	void AddMaterialForAspectAsset_v3(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
 
 	void AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
 

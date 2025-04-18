@@ -240,6 +240,9 @@
     <ClCompile Include="utils\zstdutils.cpp">
       <Filter>utils</Filter>
     </ClCompile>
+    <ClCompile Include="assets\material_for_aspect.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -589,6 +592,9 @@
     </ClInclude>
     <ClInclude Include="utils\zstdutils.h">
       <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="public\material_for_aspect.h">
+      <Filter>public</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
