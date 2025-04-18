@@ -280,6 +280,7 @@ ZSTDLIB_API int          ZSTD_defaultCLevel(void);         /*!< default compress
 typedef struct ZSTD_CCtx_s ZSTD_CCtx;
 ZSTDLIB_API ZSTD_CCtx* ZSTD_createCCtx(void);
 ZSTDLIB_API size_t     ZSTD_freeCCtx(ZSTD_CCtx* cctx);  /* compatible with NULL pointer */
+ZSTDLIB_API void       ZSTD_freeCCtxContent(ZSTD_CCtx* cctx);
 
 /*! ZSTD_compressCCtx() :
  *  Same as ZSTD_compress(), using an explicit ZSTD_CCtx.
@@ -303,6 +304,7 @@ ZSTDLIB_API size_t ZSTD_compressCCtx(ZSTD_CCtx* cctx,
 typedef struct ZSTD_DCtx_s ZSTD_DCtx;
 ZSTDLIB_API ZSTD_DCtx* ZSTD_createDCtx(void);
 ZSTDLIB_API size_t     ZSTD_freeDCtx(ZSTD_DCtx* dctx);  /* accept NULL pointer */
+ZSTDLIB_API void       ZSTD_freeDCtxContent(ZSTD_DCtx* dctx);
 
 /*! ZSTD_decompressDCtx() :
  *  Same as ZSTD_decompress(),
@@ -1818,6 +1820,9 @@ ZSTDLIB_STATIC_API size_t ZSTD_estimateDStreamSize_fromFrame(const void* src, si
 ZSTDLIB_STATIC_API size_t ZSTD_estimateCDictSize(size_t dictSize, int compressionLevel);
 ZSTDLIB_STATIC_API size_t ZSTD_estimateCDictSize_advanced(size_t dictSize, ZSTD_compressionParameters cParams, ZSTD_dictLoadMethod_e dictLoadMethod);
 ZSTDLIB_STATIC_API size_t ZSTD_estimateDDictSize(size_t dictSize, ZSTD_dictLoadMethod_e dictLoadMethod);
+
+ZSTDLIB_STATIC_API void ZSTD_initCCtx(ZSTD_CCtx* cctx);
+ZSTDLIB_STATIC_API void ZSTD_initDCtx(ZSTD_DCtx* dctx);
 
 /*! ZSTD_initStatic*() :
  *  Initialize an object using a pre-allocated fixed-size buffer.

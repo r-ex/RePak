@@ -249,7 +249,7 @@ static void ZSTD_DCtx_resetParameters(ZSTD_DCtx* dctx)
     dctx->maxBlockSizeParam = 0;
 }
 
-static void ZSTD_initDCtx_internal(ZSTD_DCtx* dctx)
+void ZSTD_initDCtx(ZSTD_DCtx* dctx)
 {
     dctx->staticSize  = 0;
     dctx->ddict       = NULL;
@@ -285,7 +285,7 @@ ZSTD_DCtx* ZSTD_initStaticDCtx(void *workspace, size_t workspaceSize)
     if ((size_t)workspace & 7) return NULL;  /* 8-aligned */
     if (workspaceSize < sizeof(ZSTD_DCtx)) return NULL;  /* minimum size */
 
-    ZSTD_initDCtx_internal(dctx);
+    ZSTD_initDCtx(dctx);
     dctx->staticSize = workspaceSize;
     dctx->inBuff = (char*)(dctx+1);
     return dctx;
@@ -297,7 +297,7 @@ static ZSTD_DCtx* ZSTD_createDCtx_internal(ZSTD_customMem customMem) {
     {   ZSTD_DCtx* const dctx = (ZSTD_DCtx*)ZSTD_customMalloc(sizeof(*dctx), customMem);
         if (!dctx) return NULL;
         dctx->customMem = customMem;
-        ZSTD_initDCtx_internal(dctx);
+        ZSTD_initDCtx(dctx);
         return dctx;
     }
 }
@@ -321,23 +321,31 @@ static void ZSTD_clearDict(ZSTD_DCtx* dctx)
     dctx->dictUses = ZSTD_dont_use;
 }
 
+void ZSTD_freeDCtxContent(ZSTD_DCtx* dctx)
+{
+    assert(cctx != NULL);
+    assert(cctx->staticSize == 0);
+    ZSTD_customMem const cMem = dctx->customMem;
+    ZSTD_clearDict(dctx);
+    ZSTD_customFree(dctx->inBuff, cMem);
+    dctx->inBuff = NULL;
+#if defined(ZSTD_LEGACY_SUPPORT) && (ZSTD_LEGACY_SUPPORT >= 1)
+    if (dctx->legacyContext)
+        ZSTD_freeLegacyStreamContext(dctx->legacyContext, dctx->previousLegacyVersion);
+#endif
+    if (dctx->ddictSet) {
+        ZSTD_freeDDictHashSet(dctx->ddictSet, cMem);
+        dctx->ddictSet = NULL;
+    }
+}
+
 size_t ZSTD_freeDCtx(ZSTD_DCtx* dctx)
 {
     if (dctx==NULL) return 0;   /* support free on NULL */
     RETURN_ERROR_IF(dctx->staticSize, memory_allocation, "not compatible with static DCtx");
-    {   ZSTD_customMem const cMem = dctx->customMem;
-        ZSTD_clearDict(dctx);
-        ZSTD_customFree(dctx->inBuff, cMem);
-        dctx->inBuff = NULL;
-#if defined(ZSTD_LEGACY_SUPPORT) && (ZSTD_LEGACY_SUPPORT >= 1)
-        if (dctx->legacyContext)
-            ZSTD_freeLegacyStreamContext(dctx->legacyContext, dctx->previousLegacyVersion);
-#endif
-        if (dctx->ddictSet) {
-            ZSTD_freeDDictHashSet(dctx->ddictSet, cMem);
-            dctx->ddictSet = NULL;
-        }
-        ZSTD_customFree(dctx, cMem);
+    {   
+        ZSTD_freeDCtxContent(dctx);
+        ZSTD_customFree(dctx, dctx->customMem);
         return 0;
     }
 }
