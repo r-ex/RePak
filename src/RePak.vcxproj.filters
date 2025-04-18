@@ -237,6 +237,9 @@
     <ClCompile Include="assets\anim_recording.cpp">
       <Filter>assets</Filter>
     </ClCompile>
+    <ClCompile Include="utils\zstdutils.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -583,6 +586,9 @@
     </ClInclude>
     <ClInclude Include="public\anim_recording.h">
       <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\zstdutils.h">
+      <Filter>utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
