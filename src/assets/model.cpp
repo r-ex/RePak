@@ -32,7 +32,7 @@ char* Model_ReadRMDLFile(const std::string& path, const uint64_t alignment = 64)
     return buf;
 }
 
-static char* Model_ReadVGFile(const std::string& path, int64_t* const pFileSize)
+static char* Model_ReadVGFile(const std::string& path, int64_t* const pFileSize, size_t* const pFileSizePageAligned)
 {
     BinaryIO vgFile;
 
@@ -44,8 +44,21 @@ static char* Model_ReadVGFile(const std::string& path, int64_t* const pFileSize)
     if (fileSize < sizeof(VertexGroupHeader_t))
         Error("Invalid vertex group file \"%s\"; must be at least %zu bytes, found %zu.\n", path.c_str(), sizeof(VertexGroupHeader_t), fileSize);
 
-    char* const buf = new char[fileSize];
+    // note(amos): need to align it to STARPAK_DATABLOCK_ALIGNMENT since the
+    // actual VG is also aligned to this value in the starpak, and the table at
+    // the end of the starpak (see struct PakStreamSetAssetEntry_s in starpak.h
+    // ), that we use for data deduplication, stores the asset's size aligned
+    // so in order to yield the same hash we need to hash the data page aligned.
+    const size_t fileSizePageAligned = IALIGN(fileSize, STARPAK_DATABLOCK_ALIGNMENT);
+
+    char* const buf = new char[fileSizePageAligned];
     vgFile.Read(buf, fileSize);
+
+    const size_t remainder = fileSizePageAligned - fileSize;
+
+    // Null the rest since this will affect the hash result.
+    if (remainder > 0)
+        memset(&buf[fileSize], 0, remainder);
 
     VertexGroupHeader_t* const pHdr = reinterpret_cast<VertexGroupHeader_t*>(buf);
 
@@ -57,6 +70,8 @@ static char* Model_ReadVGFile(const std::string& path, int64_t* const pFileSize)
         Error("Invalid vertex group file \"%s\"; expected version %i, found %i.\n", path.c_str(), 1, pHdr->version);
 
     *pFileSize = fileSize;
+    *pFileSizePageAligned = fileSizePageAligned;
+
     return buf;
 }
 
@@ -165,11 +180,10 @@ static void Model_InternalAddVertexGroupData(CPakFileBuilder* const pak, PakPage
     // this data is a combined mutated version of the data from .vtx and .vvd in regular source models
     const std::string vgFilePath = Utils::ChangeExtension(rmdlFilePath, ".vg");
 
-    int64_t vgFileSize = 0;
-    char* const vgBuf = Model_ReadVGFile(vgFilePath, &vgFileSize);
+    int64_t vgFileSize = 0; size_t vgSizeAligned = 0;
+    char* const vgBuf = Model_ReadVGFile(vgFilePath, &vgFileSize, &vgSizeAligned);
 
-    de = pak->AddStreamingDataEntry(vgFileSize, (uint8_t*)vgBuf, STREAMING_SET_MANDATORY);
-    const int64_t vgSizeAligned = IALIGN(vgFileSize, STARPAK_DATABLOCK_ALIGNMENT);
+    de = pak->AddStreamingDataEntry(vgSizeAligned, (uint8_t*)vgBuf, STREAMING_SET_MANDATORY);
 
     assert(vgSizeAligned <= UINT32_MAX);
     modelHdr->streamedVertexDataSize = static_cast<uint32_t>(vgSizeAligned);
