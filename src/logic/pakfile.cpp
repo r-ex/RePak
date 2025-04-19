@@ -99,7 +99,9 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 	HANDLE_ASSET_TYPE("txtr", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
 	HANDLE_ASSET_TYPE("txan", assetType, assetPath, AssetScope_e::kClientOnly, file, nullptr, Assets::AddTextureAnimAsset_v1);
 	HANDLE_ASSET_TYPE("uimg", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
+
 	HANDLE_ASSET_TYPE("matl", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
+	HANDLE_ASSET_TYPE("mt4a", assetType, assetPath, AssetScope_e::kClientOnly, file, nullptr, Assets::AddMaterialForAspectAsset_v3);
 
 	HANDLE_ASSET_TYPE("shdr", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
 	HANDLE_ASSET_TYPE("shds", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
