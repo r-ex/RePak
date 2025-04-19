@@ -7,9 +7,7 @@
 #include "pch.h"
 #include "pakfile.h"
 #include "assets/assets.h"
-
-#include "thirdparty/zstd/zstd.h"
-#include "thirdparty/zstd/decompress/zstd_decompress_internal.h"
+#include "utils/zstdutils.h"
 
 CPakFileBuilder::CPakFileBuilder(const CBuildSettings* const buildSettings, CStreamFileBuilder* const streamBuilder)
 {
@@ -454,24 +452,14 @@ static inline size_t Pak_GetHeaderSize(const uint16_t version)
 // note(amos): unlike the pak file header, the zstd frame header needs to know
 // the uncompressed size without the file header.
 //-----------------------------------------------------------------------------
-static ZSTD_CCtx* Pak_InitEncoderContext(const size_t uncompressedBlockSize, const int compressLevel, const int workerCount)
+static bool Pak_InitEncoderContext(ZSTD_CCtx* const cctx, const size_t uncompressedBlockSize, const int compressLevel, const int workerCount)
 {
-	ZSTD_CCtx* const cctx = ZSTD_createCCtx();
-
-	if (!cctx)
-	{
-		Warning("Failed to create encoder context.\n");
-		return nullptr;
-	}
-
 	size_t result = ZSTD_CCtx_setPledgedSrcSize(cctx, uncompressedBlockSize);
 
 	if (ZSTD_isError(result))
 	{
 		Warning("Failed to set pledged source size %zu: [%s].\n", uncompressedBlockSize, ZSTD_getErrorName(result));
-		ZSTD_freeCCtx(cctx);
-
-		return nullptr;
+		return false;
 	}
 
 	result = ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, compressLevel);
@@ -479,9 +467,7 @@ static ZSTD_CCtx* Pak_InitEncoderContext(const size_t uncompressedBlockSize, con
 	if (ZSTD_isError(result))
 	{
 		Warning("Failed to set compression level %i: [%s].\n", compressLevel, ZSTD_getErrorName(result));
-		ZSTD_freeCCtx(cctx);
-
-		return nullptr;
+		return false;
 	}
 
 	result = ZSTD_CCtx_setParameter(cctx, ZSTD_c_nbWorkers, workerCount);
@@ -489,12 +475,10 @@ static ZSTD_CCtx* Pak_InitEncoderContext(const size_t uncompressedBlockSize, con
 	if (ZSTD_isError(result))
 	{
 		Warning("Failed to set worker count %i: [%s].\n", workerCount, ZSTD_getErrorName(result));
-		ZSTD_freeCCtx(cctx);
-
-		return nullptr;
+		return false;
 	}
 
-	return cctx;
+	return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -504,10 +488,9 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 {
 	// only the data past the main header gets compressed.
 	const size_t decodedFrameSize = (static_cast<size_t>(inStream.GetSize()) - headerSize);
+	ZSTDEncoder_s encoder;
 
-	ZSTD_CCtx* const cctx = Pak_InitEncoderContext(decodedFrameSize, compressLevel, workerCount);
-
-	if (!cctx)
+	if (!Pak_InitEncoderContext(&encoder.cctx, decodedFrameSize, compressLevel, workerCount))
 	{
 		return false;
 	}
@@ -518,8 +501,6 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 	if (!buffInPtr)
 	{
 		Warning("Failed to allocate input stream buffer of size %zu.\n", buffInSize);
-		ZSTD_freeCCtx(cctx);
-
 		return false;
 	}
 
@@ -529,8 +510,6 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 	if (!buffOutPtr)
 	{
 		Warning("Failed to allocate output stream buffer of size %zu.\n", buffOutSize);
-		ZSTD_freeCCtx(cctx);
-
 		return false;
 	}
 
@@ -556,14 +535,13 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 		bool finished;
 		do {
 			ZSTD_outBuffer outputFrame = { buffOut, buffOutSize, 0 };
-			size_t const remaining = ZSTD_compressStream2(cctx, &outputFrame, &inputFrame, mode);
+			size_t const remaining = ZSTD_compressStream2(&encoder.cctx, &outputFrame, &inputFrame, mode);
 
 			if (ZSTD_isError(remaining))
 			{
-				Warning("Failed to compress frame at %zd to frame at %zd: [%s].\n",
+				Warning("Failed to compress stream at %zd to stream at %zd: [%s].\n",
 					inStream.TellGet(), outStream.TellPut(), ZSTD_getErrorName(remaining));
 
-				ZSTD_freeCCtx(cctx);
 				return false;
 			}
 
@@ -573,7 +551,6 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 		} while (!finished);
 	}
 
-	ZSTD_freeCCtx(cctx);
 	return true;
 }
 

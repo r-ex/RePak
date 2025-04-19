@@ -99,11 +99,10 @@ ZSTD_CCtx* ZSTD_createCCtx(void)
     return ZSTD_createCCtx_advanced(ZSTD_defaultCMem);
 }
 
-static void ZSTD_initCCtx(ZSTD_CCtx* cctx, ZSTD_customMem memManager)
+void ZSTD_initCCtx(ZSTD_CCtx* cctx)
 {
     assert(cctx != NULL);
     ZSTD_memset(cctx, 0, sizeof(*cctx));
-    cctx->customMem = memManager;
     cctx->bmi2 = ZSTD_cpuSupportsBmi2();
     {   size_t const err = ZSTD_CCtx_reset(cctx, ZSTD_reset_parameters);
         assert(!ZSTD_isError(err));
@@ -118,7 +117,8 @@ ZSTD_CCtx* ZSTD_createCCtx_advanced(ZSTD_customMem customMem)
     if ((!customMem.customAlloc) ^ (!customMem.customFree)) return NULL;
     {   ZSTD_CCtx* const cctx = (ZSTD_CCtx*)ZSTD_customMalloc(sizeof(ZSTD_CCtx), customMem);
         if (!cctx) return NULL;
-        ZSTD_initCCtx(cctx, customMem);
+        cctx->customMem = customMem;
+        ZSTD_initCCtx(cctx);
         return cctx;
     }
 }
@@ -167,7 +167,7 @@ static size_t ZSTD_sizeof_localDict(ZSTD_localDict dict)
     return bufferSize + cdictSize;
 }
 
-static void ZSTD_freeCCtxContent(ZSTD_CCtx* cctx)
+void ZSTD_freeCCtxContent(ZSTD_CCtx* cctx)
 {
     assert(cctx != NULL);
     assert(cctx->staticSize == 0);
@@ -5506,7 +5506,8 @@ size_t ZSTD_compress(void* dst, size_t dstCapacity,
     ZSTD_freeCCtx(cctx);
 #else
     ZSTD_CCtx ctxBody;
-    ZSTD_initCCtx(&ctxBody, ZSTD_defaultCMem);
+    ctxBody.customMem = ZSTD_defaultCMem;
+    ZSTD_initCCtx(&ctxBody);
     result = ZSTD_compressCCtx(&ctxBody, dst, dstCapacity, src, srcSize, compressionLevel);
     ZSTD_freeCCtxContent(&ctxBody);   /* can't free ctxBody itself, as it's on stack; free only heap content */
 #endif

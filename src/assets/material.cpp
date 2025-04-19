@@ -83,13 +83,13 @@ static void Material_AddTextureRefs(CPakFileBuilder* const pak, PakPageLump_s& d
         const size_t strlen = it->name.GetStringLength();
 
         if (end != &start[strlen])
-            Error("Unable to determine bind point for texture #%zu.\n", bindPoint);
+            Error("Unable to determine bind point for texture #%zu.\n", curIndex);
 
         bool success;
         const PakGuid_t textureGuid = Pak_ParseGuid(val, &success);
 
         if (!success)
-            Error("Unable to parse texture #%zu.\n", bindPoint);
+            Error("Unable to parse texture #%zu (bind point #%zu).\n", curIndex, bindPoint);
 
         reinterpret_cast<PakGuid_t*>(dataBuf)[bindPoint] = textureGuid;
         const size_t offset = alignedPathSize + (bindPoint * sizeof(PakGuid_t));
@@ -97,7 +97,7 @@ static void Material_AddTextureRefs(CPakFileBuilder* const pak, PakPageLump_s& d
         Pak_RegisterGuidRefAtOffset(textureGuid, offset, dataChunk, asset);
 
         if (!pak->GetAssetByGuid(textureGuid))
-            Warning("Unable to find texture #%zu within the local assets.\n", bindPoint);
+            Warning("Texture #%zu (bind point #%zu) not found on disk; treating as external reference.\n", curIndex, bindPoint);
     }
 }
 

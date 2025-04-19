@@ -166,6 +166,7 @@
     </ClCompile>
     <ClCompile Include="utils\strutils.cpp" />
     <ClCompile Include="utils\utils.cpp" />
+    <ClCompile Include="utils\zstdutils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h" />
@@ -283,6 +284,7 @@
     <ClInclude Include="utils\MurmurHash3.h" />
     <ClInclude Include="utils\strutils.h" />
     <ClInclude Include="utils\utils.h" />
+    <ClInclude Include="utils\zstdutils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
