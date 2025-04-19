@@ -331,8 +331,27 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     }
 
     PakPageLump_s dataChunk = pak->CreatePageLump(mipSizes.staticSize, SF_CPU | SF_TEMP, 16);
-    char* const streamedbuf = new char[mipSizes.streamedSize];
-    char* const optstreamedbuf = new char[mipSizes.streamedOptSize];
+
+    // note(amos): page align it because we need to hash this entire block and
+    // check for duplicates; starpak data is always page aligned and looked up
+    // as such.
+    const size_t pageAlignedStreamedSize = IALIGN(mipSizes.streamedSize, STARPAK_DATABLOCK_ALIGNMENT);
+    const size_t pageAlignedStreamedOptSize = IALIGN(mipSizes.streamedOptSize, STARPAK_DATABLOCK_ALIGNMENT);
+
+    char* const streamedbuf = new char[pageAlignedStreamedSize];
+    char* const optstreamedbuf = new char[pageAlignedStreamedOptSize];
+
+    { // clear the remainder as this will affect the Murmur hash result.
+        const size_t streamedbufRemainder = pageAlignedStreamedSize - mipSizes.streamedSize;
+
+        if (streamedbufRemainder > 0)
+            memset(&streamedbuf[mipSizes.streamedSize], 0, streamedbufRemainder);
+
+        const size_t optstreamedbufRemainder = pageAlignedStreamedOptSize - mipSizes.streamedOptSize;
+
+        if (optstreamedbufRemainder > 0)
+            memset(&optstreamedbuf[mipSizes.streamedOptSize], 0, optstreamedbufRemainder);
+    }
 
     for (size_t i = 0; i < textureArray.size(); i++)
     {
@@ -385,14 +404,14 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     PakStreamSetEntry_s mandatoryStreamData;
 
     if (isStreamable && hdr->streamedMipLevels > 0)
-        mandatoryStreamData = pak->AddStreamingDataEntry(mipSizes.streamedSize, (uint8_t*)streamedbuf, STREAMING_SET_MANDATORY);
+        mandatoryStreamData = pak->AddStreamingDataEntry(pageAlignedStreamedSize, (uint8_t*)streamedbuf, STREAMING_SET_MANDATORY);
 
     delete[] streamedbuf;
 
     PakStreamSetEntry_s optionalStreamData;
 
     if (isStreamableOpt && hdr->optStreamedMipLevels > 0)
-        optionalStreamData = pak->AddStreamingDataEntry(mipSizes.streamedOptSize, (uint8_t*)optstreamedbuf, STREAMING_SET_OPTIONAL);
+        optionalStreamData = pak->AddStreamingDataEntry(pageAlignedStreamedOptSize, (uint8_t*)optstreamedbuf, STREAMING_SET_OPTIONAL);
 
     delete[] optstreamedbuf;
 

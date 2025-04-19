@@ -177,6 +177,21 @@ int64_t CPakFileBuilder::AddStreamingFileReference(const char* const path, const
 //-----------------------------------------------------------------------------
 PakStreamSetEntry_s CPakFileBuilder::AddStreamingDataEntry(const int64_t size, const uint8_t* const data, const PakStreamSet_e set)
 {
+	const size_t pageAligned = IALIGN(size, STARPAK_DATABLOCK_ALIGNMENT);
+	const size_t windowRemainder = pageAligned - size;
+
+	if (windowRemainder > 0)
+	{
+		// Code bug, data must always be provided with size aligned to
+		// STARPAK_DATABLOCK_ALIGNMENT as otherwise the de-duplication
+		// code will not work. starpak data is always page aligned. We
+		// will still continue to store the data as it will get padded
+		// out in the stream file builder within the file itself.
+		Warning("%s: didn't receive enough window for page alignment! [%zu < %zu].\n",
+			__FUNCTION__, size, pageAligned);
+		assert(0);
+	}
+
 	StreamAddEntryResults_s results;
 	m_streamBuilder->AddStreamingDataEntry(size, data, set, results);
 
