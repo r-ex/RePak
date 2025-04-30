@@ -572,10 +572,11 @@ static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const Pa
 
     // register referenced assets (depth materials, colpass material, shader sets)
 
-    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[0], offsetof(MaterialAssetHeader_v12_t, passMaterials[0]), hdrChunk, asset);
-    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[1], offsetof(MaterialAssetHeader_v12_t, passMaterials[1]), hdrChunk, asset);
-    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[2], offsetof(MaterialAssetHeader_v12_t, passMaterials[2]), hdrChunk, asset);
-    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[3], offsetof(MaterialAssetHeader_v12_t, passMaterials[3]), hdrChunk, asset);
+     // [rika]: colpas is in slot 4, perhaps a legacy enum value later?
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[DEPTH_SHADOW],  offsetof(MaterialAssetHeader_v12_t, passMaterials[DEPTH_SHADOW]),   hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[DEPTH_PREPASS], offsetof(MaterialAssetHeader_v12_t, passMaterials[DEPTH_PREPASS]),  hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[DEPTH_VSM],     offsetof(MaterialAssetHeader_v12_t, passMaterials[DEPTH_VSM]),      hdrChunk, asset);
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[COL_PASS],      offsetof(MaterialAssetHeader_v12_t, passMaterials[3]),              hdrChunk, asset);
 
     Pak_RegisterGuidRefAtOffset(matlAsset.shaderSet, offsetof(MaterialAssetHeader_v12_t, shaderSet), hdrChunk, asset);
 
