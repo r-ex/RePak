@@ -214,10 +214,9 @@ void MaterialAsset_t::SetupDepthMaterials(CPakFileBuilder* const pak, const rapi
     if (this->materialTypeStr == "wld")
         Warning("WLD materials do not have generic depth materials, make sure that you have set them to 0 or have created your own.\n");
 
-    // titanfall 2 (v12) doesn't have depth_tight, so it has 1 less depth material.
-    const int depthMatCount = this->assetVersion >= 15 ? RENDER_PASS_MAT_COUNT : (RENDER_PASS_MAT_COUNT - 1);
-
-    for (int i = 0; i < depthMatCount; i++)
+    // [rika]: due to how this was previously set up, we were actually skipping the colpass field in v12 (r2) materials,
+    // it doesn't make sense to do funny business here when we can just ignore it later.
+    for (int i = 0; i < RENDER_PASS_MAT_COUNT; i++)
     {
         const RenderPassMaterial_e depthMatType = (RenderPassMaterial_e)i;
         PakGuid_t& passMaterial = passMaterials[i];
@@ -230,12 +229,9 @@ void MaterialAsset_t::SetupDepthMaterials(CPakFileBuilder* const pak, const rapi
             continue;
         }
 
-        // Titanfall 2 doesn't have depth tight, which is the last depth material,
-        // and color pass is always the last; skip depth tight if its Titanfall 2.
-        const int debugNameIndex = i == (depthMatCount - 1) ? COL_PASS : i;
         const char* materialPath = nullptr;
 
-        passMaterial = Pak_ParseGuidFromObject(it->value, s_renderPassMaterialNames[debugNameIndex], materialPath);
+        passMaterial = Pak_ParseGuidFromObject(it->value, s_renderPassMaterialNames[i], materialPath);
 
         if (!materialPath)
             continue;
@@ -513,31 +509,6 @@ static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const Pa
 
     if (matlAsset.materialType != _TYPE_LEGACY)
         Error("Material type '%s' is not supported on version 12 (Titanfall 2) assets.\n", matlAsset.materialTypeStr.c_str());
-
-    if ((matlAsset.materialTypeStr == "fix" || matlAsset.materialTypeStr == "skn"))
-    {
-        for (int i = 0; i < 2; ++i)
-        {
-            MaterialDXState_v15_t& dxState = matlAsset.dxStates[i];
-
-            dxState.blendStates[0] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-            dxState.blendStates[1] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-            dxState.blendStates[2] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-            dxState.blendStates[3] = MaterialBlendState_t(false, false, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
-        }
-    }
-    else
-    {
-        for (int i = 0; i < 2; ++i)
-        {
-            MaterialDXState_v15_t& dxState = matlAsset.dxStates[i];
-
-            dxState.blendStates[0] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-            dxState.blendStates[1] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0xF);
-            dxState.blendStates[2] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, 0xF);
-            dxState.blendStates[3] = MaterialBlendState_t(false, true, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_INV_DEST_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, 0x0);
-        }
-    }
 
     const size_t surfaceProp1Size = !matlAsset.surface.empty() ? (matlAsset.surface.length() + 1) : 0;
     const size_t surfaceProp2Size = !matlAsset.surface2.empty() ? (matlAsset.surface2.length() + 1) : 0;
