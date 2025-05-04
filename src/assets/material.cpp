@@ -219,8 +219,15 @@ void MaterialAsset_t::SetupDepthMaterials(CPakFileBuilder* const pak, const rapi
 
     for (int i = 0; i < depthMatCount; i++)
     {
-        const RenderPassMaterial_e depthMatType = (RenderPassMaterial_e)i;
-        PakGuid_t& passMaterial = passMaterials[i];
+        // Titanfall 2 doesn't have depth tight, which is the last depth material,
+        // for Apex Legends. Set the IDX to COL_PASS if we are on the last depth
+        // material for Titanfall 2, this is to skip the depth tight index that is
+        // used in code. We might want to split this logic up for Titanfall 2 in
+        // the future to avoid confusion and bugs or regressions.
+        const int actualIdx = i == (depthMatCount - 1) ? COL_PASS : i;
+
+        const RenderPassMaterial_e depthMatType = (RenderPassMaterial_e)actualIdx;
+        PakGuid_t& passMaterial = passMaterials[actualIdx];
 
         rapidjson::Value::ConstMemberIterator it;
         if (!Material_GetPassMaterialKeyForType(mapEntry, depthMatType, it))
@@ -230,12 +237,8 @@ void MaterialAsset_t::SetupDepthMaterials(CPakFileBuilder* const pak, const rapi
             continue;
         }
 
-        // Titanfall 2 doesn't have depth tight, which is the last depth material,
-        // and color pass is always the last; skip depth tight if its Titanfall 2.
-        const int debugNameIndex = i == (depthMatCount - 1) ? COL_PASS : i;
         const char* materialPath = nullptr;
-
-        passMaterial = Pak_ParseGuidFromObject(it->value, s_renderPassMaterialNames[debugNameIndex], materialPath);
+        passMaterial = Pak_ParseGuidFromObject(it->value, s_renderPassMaterialNames[actualIdx], materialPath);
 
         if (!materialPath)
             continue;
@@ -579,7 +582,9 @@ static void Material_InternalAddMaterialV12(CPakFileBuilder* const pak, const Pa
     Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[0], offsetof(MaterialAssetHeader_v12_t, passMaterials[0]), hdrChunk, asset);
     Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[1], offsetof(MaterialAssetHeader_v12_t, passMaterials[1]), hdrChunk, asset);
     Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[2], offsetof(MaterialAssetHeader_v12_t, passMaterials[2]), hdrChunk, asset);
-    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[3], offsetof(MaterialAssetHeader_v12_t, passMaterials[3]), hdrChunk, asset);
+    // NOTE: the colpass material is stored in the 4th slot, see comment in the
+    // loop within function 'MaterialAsset_t::SetupDepthMaterials' for var `actualIdx`.
+    Pak_RegisterGuidRefAtOffset(matlAsset.passMaterials[4], offsetof(MaterialAssetHeader_v12_t, passMaterials[3]), hdrChunk, asset);
 
     Pak_RegisterGuidRefAtOffset(matlAsset.shaderSet, offsetof(MaterialAssetHeader_v12_t, shaderSet), hdrChunk, asset);
 
