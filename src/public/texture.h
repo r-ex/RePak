@@ -2,7 +2,7 @@
 
 #define MAX_MIPS_PER_TEXTURE 13 // max total mips per texture
 
-#define MAX_PERM_MIP_SIZE	0x3FFF // "Any MIP below 64kiB is permanent."
+#define MAX_PERM_MIP_SIZE	0xFFFF // "Any MIP below 64kiB is permanent."
 #define MAX_STREAM_MIP_SIZE	0xFFFFF
 
 #define TEXTURE_INVALID_FORMAT_INDEX 0xFFFF

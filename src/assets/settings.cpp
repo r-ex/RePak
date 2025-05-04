@@ -292,12 +292,12 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
 
         switch (item.modType)
         {
-        case SettingsModType_e::kIntPlus:
+        case SettingsModType_e::kIntAdd:
         case SettingsModType_e::kIntMultiply:
             valueTypeRequested = JSONFieldType_e::kSint32;
             fieldTypeRequested = SettingsFieldType_e::ST_Int;
             break;
-        case SettingsModType_e::kFloatPlus:
+        case SettingsModType_e::kFloatAdd:
         case SettingsModType_e::kFloatMultiply:
             valueTypeRequested = JSONFieldType_e::kFloat;
             fieldTypeRequested = SettingsFieldType_e::ST_Float;
@@ -586,11 +586,11 @@ static void SettingsAsset_WriteModValues(const SettingsModCache_s& modCache, con
 
         switch (item.modType)
         {
-        case SettingsModType_e::kIntPlus:
+        case SettingsModType_e::kIntAdd:
         case SettingsModType_e::kIntMultiply:
             mod->value.intValue = item.valueIt->value.GetInt();
             break;
-        case SettingsModType_e::kFloatPlus:
+        case SettingsModType_e::kFloatAdd:
         case SettingsModType_e::kFloatMultiply:
             mod->value.floatValue = item.valueIt->value.GetFloat();
             break;
