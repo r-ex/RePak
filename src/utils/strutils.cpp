@@ -29,27 +29,45 @@ std::vector<std::string> Utils::StringSplit(std::string input, const char delim,
     return subStrings;
 }
 
+static string FormatV(const char* szFormat, va_list args)
+{
+    // Initialize use of the variable argument array.
+    va_list argsCopy;
+    va_copy(argsCopy, args);
+
+    // Dry run to obtain required buffer size.
+    const int iLen = std::vsnprintf(nullptr, 0, szFormat, argsCopy);
+    va_end(argsCopy);
+
+    assert(iLen >= 0);
+    string result;
+
+    if (iLen > 0)
+    {
+        // NOTE: reserve enough buffer size for the string + the terminating
+        // NULL character, then resize it to just the string len so we don't
+        // count the NULL character in the string's size (i.e. when calling
+        // string::size()).
+        result.reserve(iLen + 1);
+        result.resize(iLen);
+
+        std::vsnprintf(&result[0], iLen + 1, szFormat, args);
+    }
+
+    return result;
+}
+
 // purpose: formats a standard string with printf like syntax (see 'https://stackoverflow.com/a/49812018')
 const std::string Utils::VFormat(const char* const zcFormat, ...)
 {
-    // initialize use of the variable argument array
-    va_list vaArgs;
-    va_start(vaArgs, zcFormat);
+    string result;
 
-    // reliably acquire the size
-    // from a copy of the variable argument array
-    // and a functionally reliable call to mock the formatting
-    va_list vaArgsCopy;
-    va_copy(vaArgsCopy, vaArgs);
-    const int iLen = std::vsnprintf(NULL, 0, zcFormat, vaArgsCopy);
-    va_end(vaArgsCopy);
+    va_list args;
+    va_start(args, zcFormat);
+    result = FormatV(zcFormat, args);
+    va_end(args);
 
-    // return a formatted string without risking memory mismanagement
-    // and without assuming any compiler or platform specific behavior
-    std::vector<char> zc(iLen + 1);
-    std::vsnprintf(zc.data(), zc.size(), zcFormat, vaArgs);
-    va_end(vaArgs);
-    return std::string(zc.data(), iLen);
+    return result;
 }
 
 void Utils::FourCCToString(FourCCString_t& buf, const unsigned int n)
