@@ -3,9 +3,9 @@
 
 enum SettingsModType_e : unsigned short
 {
-	kIntPlus = 0x0,
+	kIntAdd = 0x0,
 	kIntMultiply = 0x1,
-	kFloatPlus = 0x2,
+	kFloatAdd = 0x2,
 	kFloatMultiply = 0x3,
 	kBool = 0x4,
 	kNumber = 0x5,
@@ -16,9 +16,9 @@ enum SettingsModType_e : unsigned short
 
 inline const char* const g_settingsModType[SETTINGS_MOD_COUNT] =
 {
-	"int_plus",
+	"int_add",
 	"int_multipy",
-	"float_plus",
+	"float_add",
 	"float_multipy",
 	"bool",
 	"number",
