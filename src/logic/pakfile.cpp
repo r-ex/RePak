@@ -76,7 +76,12 @@ bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* con
 	return true;
 }
 
-#define HANDLE_ASSET_TYPE(targetType, assetType, assetPath, assetScope, asset, func_r2, func_r5) if (AddJSONAsset(targetType, assetType, assetPath, assetScope, asset, func_r2, func_r5)) return;
+#define HANDLE_ASSET_TYPE(targetType, assetType, assetPath, assetScope, asset, func_r2, func_r5) \
+		if (AddJSONAsset(targetType, assetType, assetPath, assetScope, asset, func_r2, func_r5)) \
+			{ \
+				g_currentAsset = nullptr; \
+				return; \
+			}
 
 //-----------------------------------------------------------------------------
 // purpose: installs asset types and their callbacks
