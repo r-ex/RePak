@@ -25,6 +25,7 @@
     <ClCompile Include="assets\shader.cpp" />
     <ClCompile Include="assets\shaderset.cpp" />
     <ClCompile Include="assets\texture_anim.cpp" />
+    <ClCompile Include="assets\texture_list.cpp" />
     <ClCompile Include="assets\uiatlas.cpp" />
     <ClCompile Include="assets\texture.cpp" />
     <ClCompile Include="logic\buildsettings.cpp" />
@@ -200,6 +201,7 @@
     <ClInclude Include="public\datatable.h" />
     <ClInclude Include="public\texture.h" />
     <ClInclude Include="public\texture_anim.h" />
+    <ClInclude Include="public\texture_list.h" />
     <ClInclude Include="thirdparty\rapidcsv\rapidcsv.h" />
     <ClInclude Include="thirdparty\rapidjson\allocators.h" />
     <ClInclude Include="thirdparty\rapidjson\cursorstreamwrapper.h" />

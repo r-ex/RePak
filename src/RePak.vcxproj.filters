@@ -243,6 +243,9 @@
     <ClCompile Include="assets\material_for_aspect.cpp">
       <Filter>assets</Filter>
     </ClCompile>
+    <ClCompile Include="assets\texture_list.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -594,6 +597,9 @@
       <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="public\material_for_aspect.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\texture_list.h">
       <Filter>public</Filter>
     </ClInclude>
   </ItemGroup>

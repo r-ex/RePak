@@ -24,6 +24,7 @@
 #define TYPE_ANIR	MAKE_FOURCC('a', 'n', 'i', 'r') // anir
 #define TYPE_TXTR	MAKE_FOURCC('t', 'x', 't', 'r') // txtr
 #define TYPE_TXAN	MAKE_FOURCC('t', 'x', 'a', 'n') // txan
+#define TYPE_TXLS	MAKE_FOURCC('t', 'x', 'l', 's') // txls
 #define TYPE_RMDL	MAKE_FOURCC('m', 'd', 'l', '_') // mdl_
 #define TYPE_UIMG	MAKE_FOURCC('u', 'i', 'm', 'g') // uimg
 #define TYPE_PTCH	MAKE_FOURCC('P', 't', 'c', 'h') // Ptch
@@ -44,6 +45,7 @@ enum class AssetType : uint32_t
 	ANIR = TYPE_ANIR, // animation recording
 	TXTR = TYPE_TXTR, // texture
 	TXAN = TYPE_TXAN, // texture animation
+	TXLS = TYPE_TXLS, // texture list
 	RMDL = TYPE_RMDL, // model
 	UIMG = TYPE_UIMG, // ui image atlas
 	PTCH = TYPE_PTCH, // patch
