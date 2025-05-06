@@ -114,6 +114,7 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 	HANDLE_ASSET_TYPE("aseq", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddAnimSeqAsset_v7);
 	HANDLE_ASSET_TYPE("arig", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddAnimRigAsset_v4);
 
+	HANDLE_ASSET_TYPE("txls", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddTextureListAsset_v1);
 	HANDLE_ASSET_TYPE("Ptch", assetType, assetPath, AssetScope_e::kAll, file, Assets::AddPatchAsset, Assets::AddPatchAsset);
 
 	g_currentAsset = nullptr;

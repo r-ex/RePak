@@ -6,6 +6,7 @@
 #define ANIR_VERSION 1
 #define TXTR_VERSION 8
 #define TXAN_VERSION 1
+#define TXLS_VERSION 1
 #define UIMG_VERSION 10
 //#define DTBL_VERSION 1
 #define STLT_VERSION 0
@@ -24,6 +25,7 @@ namespace Assets
 
 	void AddTextureAsset_v8(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
 	void AddTextureAnimAsset_v1(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
+	void AddTextureListAsset_v1(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
 
 	void AddMaterialAsset_v12(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
 	void AddMaterialAsset_v15(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
