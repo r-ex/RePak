@@ -721,6 +721,13 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 	const size_t decompressedFileSize = out.GetSize();
 	size_t compressedFileSize = 0;
 
+	// If this is set and we have "example.rpak", the runtime will load the
+	// library `example.dll` during the load of `example.rpak`, from the same
+	// directory the pak is being loaded from. The loading of the library
+	// happens before the individual assets are being loaded and parsed.
+	if (JSON_GetValueOrDefault(doc, "hasDynamicLibrary", false))
+		m_Header.flags |= PAK_HEADER_FLAGS_HAS_MODULE;
+
 	const int compressLevel = JSON_GetValueOrDefault(doc, "compressLevel", 0);
 
 	if (compressLevel > 0 && decompressedFileSize > Pak_GetHeaderSize(m_Header.fileVersion))
