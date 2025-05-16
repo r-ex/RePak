@@ -639,6 +639,8 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 {
 	// determine source asset directory from map file
 	m_assetPath = JSON_GetValueRequired<const char*>(doc, "assetsDir");
+
+	Utils::AppendSlash(m_assetPath);
 	Utils::ResolvePath(m_assetPath, m_buildSettings->GetBuildMapPath());
 
 	this->SetVersion(static_cast<uint16_t>(m_buildSettings->GetPakVersion()));
