@@ -25,6 +25,8 @@ void CBuildSettings::Init(const js::Document& doc, const char* const buildMapFil
 
 	// Determine final build path from map file.
 	m_outputPath = JSON_GetValueRequired<const char*>(doc, "outputDir");
+
+	Utils::AppendSlash(m_outputPath);
 	Utils::ResolvePath(m_outputPath, m_buildMapPath);
 
 	// Create output directory if it does not exist yet.

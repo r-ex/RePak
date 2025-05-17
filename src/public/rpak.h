@@ -12,6 +12,7 @@
 #define RPAK_MAGIC (('k'<<24)+('a'<<16)+('P'<<8)+'R')
 #define RPAK_EXTENSION ".rpak"
 
+#define PAK_HEADER_FLAGS_HAS_MODULE    (1<<0) // instructs the runtime to load the library corresponding to this RPak.
 #define PAK_HEADER_FLAGS_RTECH_ENCODED (1<<8) // use the RTech decoder in the runtime.
 #define PAK_HEADER_FLAGS_ZSTD_ENCODED  (1<<9) // use the ZStd decoder in the runtime.
 

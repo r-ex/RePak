@@ -639,6 +639,8 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 {
 	// determine source asset directory from map file
 	m_assetPath = JSON_GetValueRequired<const char*>(doc, "assetsDir");
+
+	Utils::AppendSlash(m_assetPath);
 	Utils::ResolvePath(m_assetPath, m_buildSettings->GetBuildMapPath());
 
 	this->SetVersion(static_cast<uint16_t>(m_buildSettings->GetPakVersion()));
@@ -718,6 +720,13 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 	// We are done building the data of the pack, this is the actual size.
 	const size_t decompressedFileSize = out.GetSize();
 	size_t compressedFileSize = 0;
+
+	// If this is set and we have "example.rpak", the runtime will load the
+	// library `example.dll` during the load of `example.rpak`, from the same
+	// directory the pak is being loaded from. The loading of the library
+	// happens before the individual assets are being loaded and parsed.
+	if (JSON_GetValueOrDefault(doc, "hasDynamicLibrary", false))
+		m_Header.flags |= PAK_HEADER_FLAGS_HAS_MODULE;
 
 	const int compressLevel = JSON_GetValueOrDefault(doc, "compressLevel", 0);
 
