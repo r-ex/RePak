@@ -9,7 +9,7 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v1.1
       - name: Build
@@ -17,9 +17,9 @@ jobs:
       - name: Extract Short Commit Hash
         id: extract
         shell: bash
-        run: echo ::set-output name=commit::`git rev-parse --short HEAD`
+        run: echo "commit=`git rev-parse --short HEAD`" >> $GITHUB_OUTPUT
       - name: Upload Build Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: RePak-${{ steps.extract.outputs.commit }}
           path: |
