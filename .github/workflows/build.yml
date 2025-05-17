@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: echo ::set-output name=commit::`git rev-parse --short HEAD`
       - name: Upload Build Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: RePak-${{ steps.extract.outputs.commit }}
           path: |
