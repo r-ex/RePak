@@ -20,7 +20,8 @@
 
 // max amount of streaming files that could be opened per set for a pak, so if a
 // pak uses more than one set, this number would be used per set.
-#define PAK_MAX_STREAMING_FILE_HANDLES_PER_SET 4
+#define PAK_MAX_STREAMING_FILE_HANDLES_PER_SET_V7 13 // DLC #12 allows for max 13 streaming file handles to be loaded.
+#define PAK_MAX_STREAMING_FILE_HANDLES_PER_SET_V8 4  // Since V8, the maximum has been decreased to 4 per set.
 
 #define TYPE_ANIR	MAKE_FOURCC('a', 'n', 'i', 'r') // anir
 #define TYPE_TXTR	MAKE_FOURCC('t', 'x', 't', 'r') // txtr
