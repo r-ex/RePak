@@ -49,10 +49,10 @@ size_t Utils::WriteStringVector(BinaryIO& out, const std::vector<std::string>& d
 	for (auto it = dataVector.begin(); it != dataVector.end(); ++it)
 	{
 		// NOTE: +1 because we need to take the null char into account too.
-		const size_t lenPath = (*it).length() + 1;
+		const size_t lenPath = it->length() + 1;
 		lenTotal += lenPath;
 
-		out.Write((*it).c_str(), lenPath);
+		out.Write(it->c_str(), lenPath);
 	}
 	return lenTotal;
 }
@@ -72,9 +72,21 @@ FILETIME Utils::GetSystemFileTime()
 //-----------------------------------------------------------------------------
 void Utils::AppendSlash(std::string& in)
 {
-	char lchar = in[in.size() - 1];
+	const char lchar = in[in.size() - 1];
 	if (lchar != '\\' && lchar != '/')
 		in.append("\\");
+}
+
+//-----------------------------------------------------------------------------
+// purpose: normalizes the slash directions inside a given string
+//-----------------------------------------------------------------------------
+void Utils::FixSlashes(std::string& in, const char correctPathSeparator)
+{
+    for (char& lchar : in)
+    {
+        if (lchar == '\\' || lchar == '/')
+            lchar = correctPathSeparator;
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -107,25 +119,25 @@ void Utils::ResolvePath(std::string& outPath, const std::filesystem::path& mapPa
     }
 }
 
-const char* Utils::ExtractFileName(const char* const string)
+const char* Utils::ExtractFileName(const std::string& inPath)
 {
-    const size_t len = strlen(string);
+    const size_t len = inPath.length();
     const char* result = nullptr;
 
     for (size_t i = (len - 1); i-- > 0;)
     {
-        const char c = string[i];
+        const char c = inPath[i];
 
         if (c == '/' || c == '\\')
         {
-            result = &string[i] + 1; // +1 to advance from slash.
+            result = &inPath[i] + 1; // +1 to advance from slash.
             break;
         }
     }
 
     // No path, this is already the file name.
     if (!result)
-        result = string;
+        result = inPath.c_str();
 
     return result;
 }

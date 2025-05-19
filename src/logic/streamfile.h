@@ -7,9 +7,8 @@
 struct StreamAddEntryResults_s
 {
 	const char* streamFile;
-
-	int64_t offset : 52;
-	int64_t index : 12;
+	int64_t dataOffset : 52;
+	int64_t pathIndex : 12;
 };
 
 class CStreamFileBuilder
@@ -20,10 +19,10 @@ public:
 	void Init(const js::Document& doc, const bool useOptional);
 	void Shutdown();
 
-	void CreateStreamFileStream(const char* const path, const PakStreamSet_e set);
+	void CreateStreamFileStream(const std::string& streamFilePath, const PakStreamSet_e set);
 	void FinishStreamFileStream(const PakStreamSet_e set);
 
-	void AddStreamingDataEntry(const int64_t size, const uint8_t* const data, const PakStreamSet_e set, StreamAddEntryResults_s& results);
+	bool AddStreamingDataEntry(const int64_t size, const uint8_t* const data, const PakStreamSet_e set, StreamAddEntryResults_s& results);
 
 	inline size_t GetMandatoryStreamingAssetCount() const { return m_mandatoryStreamingDataBlocks.size(); };
 	inline size_t GetOptionalStreamingAssetCount() const { return m_optionalStreamingDataBlocks.size(); };
@@ -32,9 +31,8 @@ private:
 
 	const CBuildSettings* m_buildSettings;
 
-	const char* m_streamCacheFileName;
-	const char* m_mandatoryStreamFileName;
-	const char* m_optionalStreamFileName;
+	std::string m_mandatoryStreamFileName;
+	std::string m_optionalStreamFileName;
 
 	CStreamCache m_streamCache;
 

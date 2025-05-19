@@ -174,7 +174,7 @@ int64_t CPakFileBuilder::AddStreamingFileReference(const char* const path, const
 			streamSetName, path, PAK_MAX_STREAMING_FILE_HANDLES_PER_SET, newSize);
 	}
 
-	vec.push_back(path);
+	vec.emplace_back(path);
 	return count;
 }
 
@@ -203,7 +203,7 @@ PakStreamSetEntry_s CPakFileBuilder::AddStreamingDataEntry(const int64_t size, c
 
 	PakStreamSetEntry_s block;
 
-	block.streamOffset = results.offset;
+	block.streamOffset = results.dataOffset;
 	block.streamIndex = AddStreamingFileReference(results.streamFile, set == STREAMING_SET_MANDATORY);
 
 	return block;
