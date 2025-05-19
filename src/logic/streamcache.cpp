@@ -97,7 +97,7 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 
 		if (starpakFileHeader.magic != STARPAK_MAGIC)
 		{
-			Error("Streaming file \"%s\" has an invalid file magic; expected %x, got %x.\n", starpakPath.c_str(), starpakFileHeader.magic, STARPAK_MAGIC);
+			Error("Streaming file \"%s\" has an invalid file magic; expected %x, got %x.\n", starpakPath.c_str(), STARPAK_MAGIC, starpakFileHeader.magic);
 			continue;
 		}
 
