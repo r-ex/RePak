@@ -135,21 +135,21 @@ void CStreamFileBuilder::FinishStreamFileStream(const PakStreamSet_e set)
 //-----------------------------------------------------------------------------
 // purpose: adds new starpak data entry
 //-----------------------------------------------------------------------------
-void CStreamFileBuilder::AddStreamingDataEntry(const int64_t size, const uint8_t* const data,
+bool CStreamFileBuilder::AddStreamingDataEntry(const int64_t size, const uint8_t* const data,
 	const PakStreamSet_e set, StreamAddEntryResults_s& outResults)
 {
 	const bool isMandatory = set == STREAMING_SET_MANDATORY;
 	const char* const newStarPak = isMandatory ? m_mandatoryStreamFileName : m_optionalStreamFileName;
 
-	StreamCacheFindParams_s params = m_streamCache.CreateParams(data, size, newStarPak, !isMandatory);
+	StreamCacheFindParams_s params = m_streamCache.CreateParams(data, size, newStarPak);
 	StreamCacheFindResult_s result;
 
-	if (m_streamCache.Find(params, result))
+	if (m_streamCache.Find(params, result, !isMandatory))
 	{
-		outResults.streamFile = result.fileEntry->path.c_str();
-		outResults.offset = result.dataEntry->dataOffset;
+		outResults.streamFile = result.fileEntry->streamFilePath.c_str();
+		outResults.dataOffset = result.dataEntry->dataOffset;
 
-		return;
+		return false; // Data wasn't added, but mapped to existing data.
 	}
 
 	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
@@ -177,7 +177,8 @@ void CStreamFileBuilder::AddStreamingDataEntry(const int64_t size, const uint8_t
 	desc.size = paddedSize;
 
 	outResults.streamFile = newStarPak;
-	outResults.offset = dataOffset;
+	outResults.dataOffset = dataOffset;
 
-	m_streamCache.Add(params, dataOffset);
+	m_streamCache.Add(params, dataOffset, !isMandatory);
+	return true;
 }

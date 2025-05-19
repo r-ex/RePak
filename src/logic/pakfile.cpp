@@ -203,7 +203,7 @@ PakStreamSetEntry_s CPakFileBuilder::AddStreamingDataEntry(const int64_t size, c
 
 	PakStreamSetEntry_s block;
 
-	block.streamOffset = results.offset;
+	block.streamOffset = results.dataOffset;
 	block.streamIndex = AddStreamingFileReference(results.streamFile, set == STREAMING_SET_MANDATORY);
 
 	return block;

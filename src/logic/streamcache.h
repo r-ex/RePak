@@ -21,8 +21,8 @@ struct StreamCacheFileHeader_s
 
 struct StreamCacheFileEntry_s
 {
-	bool optional;
-	std::string path;
+	bool isOptional;
+	std::string streamFilePath;
 };
 
 struct StreamCacheDataEntry_s
@@ -37,8 +37,7 @@ struct StreamCacheFindParams_s
 {
 	__m128i hash;
 	int64_t size;
-	const char* newStarpak;
-	bool newIsOptional;
+	const char* streamFilePath;
 };
 
 struct StreamCacheFindResult_s
@@ -56,10 +55,10 @@ public:
 	int64_t AddStarpakPathToCache(const std::string& path, const bool optional);
 	StreamCacheFileHeader_s ConstructHeader() const;
 
-	static StreamCacheFindParams_s CreateParams(const uint8_t* const data, const int64_t size, const char* const newStarpak, const bool newIsOptional);
+	static StreamCacheFindParams_s CreateParams(const uint8_t* const data, const int64_t size, const char* const streamFilePath);
 
-	bool Find(const StreamCacheFindParams_s& params, StreamCacheFindResult_s& result);
-	void Add(const StreamCacheFindParams_s& params, const int64_t offset);
+	bool Find(const StreamCacheFindParams_s& params, StreamCacheFindResult_s& result, const bool optional);
+	void Add(const StreamCacheFindParams_s& params, const int64_t offset, const bool optional);
 
 	void Save(BinaryIO& io);
 

@@ -48,11 +48,11 @@ static std::vector<StreamCacheFileEntry_s> StreamCache_GetStarpakFilesFromDirect
 
 		StreamCacheFileEntry_s& entry = paths.emplace_back();
 
-		entry.optional = optional;
-		entry.path = entryPath.string();
+		entry.isOptional = optional;
+		entry.streamFilePath = entryPath.string();
 
 		// Normalize the slashes.
-		for (char& c : entry.path)
+		for (char& c : entry.streamFilePath)
 		{
 			if (c == '\\')
 				c = '/';
@@ -83,7 +83,7 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 
 	for (const StreamCacheFileEntry_s& foundEntry : foundStarpakPaths)
 	{
-		const std::string& starpakPath = foundEntry.path;
+		const std::string& starpakPath = foundEntry.streamFilePath;
 
 		BinaryIO starpakStream;
 
@@ -127,7 +127,7 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 		std::string relativeStarpakPath("paks/Win64/");
 		relativeStarpakPath.append(starpakFileName);
 
-		const int64_t pathIndex = AddStarpakPathToCache(relativeStarpakPath, foundEntry.optional);
+		const int64_t pathIndex = AddStarpakPathToCache(relativeStarpakPath, foundEntry.isOptional);
 
 		for (int64_t i = 0; i < starpakEntryCount; ++i)
 		{
@@ -242,8 +242,8 @@ void CStreamCache::ParseMap(const char* const streamCacheFile)
 	{
 		StreamCacheFileEntry_s& entry = m_streamFiles[i];
 
-		cacheFileStream.Read(entry.optional);
-		cacheFileStream.ReadString(entry.path);
+		cacheFileStream.Read(entry.isOptional);
+		cacheFileStream.ReadString(entry.streamFilePath);
 	}
 
 	m_dataEntries.resize(streamCacheHeader.dataEntryCount);
@@ -272,7 +272,7 @@ void CStreamCache::ParseMap(const char* const streamCacheFile)
 int64_t CStreamCache::AddStarpakPathToCache(const std::string& path, const bool optional)
 {
 	const int64_t index = static_cast<int64_t>(m_streamFiles.size());
-	m_streamFiles.push_back({ optional, path});
+	m_streamFiles.push_back({ optional, path });
 
 	// We store the count into 12 bits, so we cannot have more than 4096.
 	// Realistically, we shouldn't ever exceed this as we should only
@@ -294,13 +294,13 @@ StreamCacheFileHeader_s CStreamCache::ConstructHeader() const
 	size_t totStreamFileNameBufSize = 0;
 
 	for (const StreamCacheFileEntry_s& fileEntry : m_streamFiles)
-		totStreamFileNameBufSize += fileEntry.path.length() + 2; // 1 for the 'optional' bool, 1 for the null terminator.
+		totStreamFileNameBufSize += fileEntry.streamFilePath.length() + 2; // 1 for the 'optional' bool, 1 for the null terminator.
 
 	fileHeader.dataEntriesOffset = IALIGN16(sizeof(StreamCacheFileHeader_s) + totStreamFileNameBufSize);
 	return fileHeader;
 }
 
-StreamCacheFindParams_s CStreamCache::CreateParams(const uint8_t* const data, const int64_t size, const char* const newStarpak, const bool newIsOptional)
+StreamCacheFindParams_s CStreamCache::CreateParams(const uint8_t* const data, const int64_t size, const char* const streamFilePath)
 {
 	__m128i hash;
 	MurmurHash3_x64_128(data, static_cast<size_t>(size), MURMUR_SEED, &hash);
@@ -309,13 +309,12 @@ StreamCacheFindParams_s CStreamCache::CreateParams(const uint8_t* const data, co
 
 	ret.hash = hash;
 	ret.size = size;
-	ret.newStarpak = newStarpak;
-	ret.newIsOptional = newIsOptional;
+	ret.streamFilePath = streamFilePath;
 
 	return ret;
 }
 
-bool CStreamCache::Find(const StreamCacheFindParams_s& params, StreamCacheFindResult_s& result)
+bool CStreamCache::Find(const StreamCacheFindParams_s& params, StreamCacheFindResult_s& result, const bool optional)
 {
 	for (const StreamCacheDataEntry_s& entry : m_dataEntries)
 	{
@@ -324,13 +323,13 @@ bool CStreamCache::Find(const StreamCacheFindParams_s& params, StreamCacheFindRe
 
 		const StreamCacheFileEntry_s& file = m_streamFiles[entry.pathIndex];
 
-		if (file.optional != params.newIsOptional)
+		if (file.isOptional != optional)
 			continue;
 
 		if (!SIMD_CompareM128i(entry.hash, params.hash))
 			continue;
 
-		result.fileEntry = &m_streamFiles[entry.pathIndex];
+		result.fileEntry = &file;
 		result.dataEntry = &entry;
 
 		return true;
@@ -339,7 +338,7 @@ bool CStreamCache::Find(const StreamCacheFindParams_s& params, StreamCacheFindRe
 	return false;
 }
 
-void CStreamCache::Add(const StreamCacheFindParams_s& params, const int64_t offset)
+void CStreamCache::Add(const StreamCacheFindParams_s& params, const int64_t offset, const bool optional)
 {
 	const StreamCacheFileEntry_s* pNewFileEntry = nullptr;
 	int64_t newIndex = -1;
@@ -348,7 +347,7 @@ void CStreamCache::Add(const StreamCacheFindParams_s& params, const int64_t offs
 	{
 		newIndex++;
 
-		if (fileEntry.path.compare(params.newStarpak) != 0)
+		if (fileEntry.streamFilePath.compare(params.streamFilePath) != 0)
 			continue;
 
 		pNewFileEntry = &fileEntry;
@@ -360,8 +359,8 @@ void CStreamCache::Add(const StreamCacheFindParams_s& params, const int64_t offs
 		newIndex = static_cast<int64_t>(m_streamFiles.size());
 		StreamCacheFileEntry_s& newFileEntry = m_streamFiles.emplace_back();
 
-		newFileEntry.optional = params.newIsOptional;
-		newFileEntry.path = params.newStarpak;
+		newFileEntry.isOptional = optional;
+		newFileEntry.streamFilePath = params.streamFilePath;
 
 		pNewFileEntry = &newFileEntry;
 	}
@@ -383,8 +382,8 @@ void CStreamCache::Save(BinaryIO& io)
 
 	for (const StreamCacheFileEntry_s& fileEntry : m_streamFiles)
 	{
-		io.Write(fileEntry.optional);
-		io.WriteString(fileEntry.path, true);
+		io.Write(fileEntry.isOptional);
+		io.WriteString(fileEntry.streamFilePath, true);
 	}
 
 	const size_t padDelta = cacheHeader.dataEntriesOffset - io.TellPut();
