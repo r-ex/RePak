@@ -165,13 +165,14 @@ int64_t CPakFileBuilder::AddStreamingFileReference(const char* const path, const
 	// Check if we don't overflow the maximum the runtime supports per set.
 	// mandatory and optional are separate sets.
 	const size_t newSize = vec.size() + 1;
+	const size_t maxSize = GetMaxStreamingFileHandlesPerSet();
 
-	if (newSize > PAK_MAX_STREAMING_FILE_HANDLES_PER_SET)
+	if (newSize > maxSize)
 	{
 		const char* const streamSetName = Pak_StreamSetToName(mandatory ? PakStreamSet_e::STREAMING_SET_MANDATORY : PakStreamSet_e::STREAMING_SET_OPTIONAL);
 
 		Error("Out of room while adding %s streaming file \"%s\"; runtime has a limit of %zu, got %zu.\n",
-			streamSetName, path, PAK_MAX_STREAMING_FILE_HANDLES_PER_SET, newSize);
+			streamSetName, path, maxSize, newSize);
 	}
 
 	vec.emplace_back(path);

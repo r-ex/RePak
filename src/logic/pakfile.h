@@ -66,6 +66,13 @@ public:
 		m_Header.fileVersion = version;
 	}
 
+	inline size_t GetMaxStreamingFileHandlesPerSet() const
+	{
+		return GetVersion() == 7
+			? PAK_MAX_STREAMING_FILE_HANDLES_PER_SET_V7
+			: PAK_MAX_STREAMING_FILE_HANDLES_PER_SET_V8;
+	}
+
 	inline void SetStarpakPathsSize(uint16_t len, uint16_t optLen)
 	{
 		m_Header.starpakPathsSize = len;
