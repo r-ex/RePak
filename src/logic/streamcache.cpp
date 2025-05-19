@@ -153,7 +153,7 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 			// ideally we don't have entries over 2gb.
 			assert(entryHeader->size < INT32_MAX);
 
-			MurmurHash3_x64_128(entryData, static_cast<int>(entryHeader->size), MURMUR_SEED, &cacheEntry.hash);
+			MurmurHash3_x64_128(entryData, static_cast<size_t>(entryHeader->size), MURMUR_SEED, &cacheEntry.hash);
 			_aligned_free(entryData);
 		}
 
@@ -301,7 +301,7 @@ StreamCacheFileHeader_s CStreamCache::ConstructHeader() const
 StreamCacheFindParams_s CStreamCache::CreateParams(const uint8_t* const data, const int64_t size, const char* const newStarpak, const bool newIsOptional)
 {
 	__m128i hash;
-	MurmurHash3_x64_128(data, static_cast<int>(size), MURMUR_SEED, &hash);
+	MurmurHash3_x64_128(data, static_cast<size_t>(size), MURMUR_SEED, &hash);
 
 	StreamCacheFindParams_s ret;
 
