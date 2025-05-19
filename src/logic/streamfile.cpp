@@ -147,6 +147,7 @@ bool CStreamFileBuilder::AddStreamingDataEntry(const int64_t size, const uint8_t
 	if (m_streamCache.Find(params, result, !isMandatory))
 	{
 		outResults.streamFile = result.fileEntry->streamFilePath.c_str();
+		outResults.pathIndex = result.dataEntry->pathIndex;
 		outResults.dataOffset = result.dataEntry->dataOffset;
 
 		return false; // Data wasn't added, but mapped to existing data.
