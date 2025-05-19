@@ -12,9 +12,6 @@
 CStreamFileBuilder::CStreamFileBuilder(const CBuildSettings* const buildSettings)
 {
 	m_buildSettings = buildSettings;
-	m_streamCacheFileName = nullptr;
-	m_mandatoryStreamFileName = nullptr;
-	m_optionalStreamFileName = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -26,7 +23,9 @@ void CStreamFileBuilder::Init(const js::Document& doc, const bool useOptional)
 
 	if (JSON_GetIterator(doc, "streamFileMandatory", JSONFieldType_e::kString, mandatoryIt))
 	{
-		m_mandatoryStreamFileName = mandatoryIt->value.GetString();
+		m_mandatoryStreamFileName.assign(mandatoryIt->value.GetString(), mandatoryIt->value.GetStringLength());
+		Utils::FixSlashes(m_mandatoryStreamFileName);
+
 		CreateStreamFileStream(m_mandatoryStreamFileName, STREAMING_SET_MANDATORY);
 	}
 
@@ -34,13 +33,17 @@ void CStreamFileBuilder::Init(const js::Document& doc, const bool useOptional)
 
 	if (useOptional && JSON_GetIterator(doc, "streamFileOptional", JSONFieldType_e::kString, optionalIt))
 	{
-		m_optionalStreamFileName = optionalIt->value.GetString();
+		m_optionalStreamFileName.assign(optionalIt->value.GetString(), optionalIt->value.GetStringLength());
+		Utils::FixSlashes(m_optionalStreamFileName);
+
 		CreateStreamFileStream(m_optionalStreamFileName, STREAMING_SET_OPTIONAL);
 	}
 
-	if (JSON_GetValue(doc, "streamCache", m_streamCacheFileName))
+	rapidjson::Value::ConstMemberIterator streamCacheIt;
+
+	if (JSON_GetIterator(doc, "streamCache", JSONFieldType_e::kString, streamCacheIt))
 	{
-		fs::path streamCacheDirFs(m_streamCacheFileName);
+		fs::path streamCacheDirFs(std::move(std::string(streamCacheIt->value.GetString(), streamCacheIt->value.GetStringLength())));
 		std::string streamCacheDirStr = streamCacheDirFs.parent_path().string();
 
 		Utils::ResolvePath(streamCacheDirStr, m_buildSettings->GetBuildMapPath());
@@ -71,11 +74,11 @@ void CStreamFileBuilder::Init(const js::Document& doc, const bool useOptional)
 
 			if (!filterArray.Empty())
 			{
-				if (m_mandatoryStreamFileName)
-					m_streamCache.AddStreamFileToFilter(m_mandatoryStreamFileName, mandatoryIt->value.GetStringLength());
+				if (!m_mandatoryStreamFileName.empty())
+					m_streamCache.AddStreamFileToFilter(m_mandatoryStreamFileName);
 
-				if (m_optionalStreamFileName)
-					m_streamCache.AddStreamFileToFilter(m_optionalStreamFileName, optionalIt->value.GetStringLength());
+				if (!m_optionalStreamFileName.empty())
+					m_streamCache.AddStreamFileToFilter(m_optionalStreamFileName);
 			}
 		}
 	}
@@ -89,11 +92,11 @@ void CStreamFileBuilder::Shutdown()
 	FinishStreamFileStream(STREAMING_SET_MANDATORY);
 	FinishStreamFileStream(STREAMING_SET_OPTIONAL);
 
-	const char* const streamFile = m_mandatoryStreamFileName 
+	const std::string& streamFile = !m_mandatoryStreamFileName.empty()
 		? m_mandatoryStreamFileName 
 		: m_optionalStreamFileName;
 
-	if (streamFile)
+	if (!streamFile.empty())
 	{
 		const char* streamFileName = Utils::ExtractFileName(streamFile);
 		std::string fullFilePath = m_buildSettings->GetOutputPath();
@@ -116,7 +119,7 @@ void CStreamFileBuilder::Shutdown()
 //-----------------------------------------------------------------------------
 // Purpose: creates the stream file stream and sets the header up
 //-----------------------------------------------------------------------------
-void CStreamFileBuilder::CreateStreamFileStream(const char* const streamFilePath, const PakStreamSet_e set)
+void CStreamFileBuilder::CreateStreamFileStream(const std::string& streamFilePath, const PakStreamSet_e set)
 {
 	const bool isMandatory = set == STREAMING_SET_MANDATORY;
 	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
@@ -164,10 +167,10 @@ void CStreamFileBuilder::FinishStreamFileStream(const PakStreamSet_e set)
 	const size_t entryCount = isMandatory ? GetMandatoryStreamingAssetCount() : GetOptionalStreamingAssetCount();
 	out.Write(entryCount);
 
-	const char* const streamFileName = isMandatory ? m_mandatoryStreamFileName : m_optionalStreamFileName;
+	const std::string& streamFileName = isMandatory ? m_mandatoryStreamFileName : m_optionalStreamFileName;
 
 	Log("Built %s streaming file \"%s\" with %zu assets, totaling %zd bytes.\n",
-		Pak_StreamSetToName(set), streamFileName, entryCount, (ssize_t)out.GetSize());
+		Pak_StreamSetToName(set), streamFileName.c_str(), entryCount, (ssize_t)out.GetSize());
 
 	out.Close();
 }
@@ -179,9 +182,9 @@ bool CStreamFileBuilder::AddStreamingDataEntry(const int64_t size, const uint8_t
 	const PakStreamSet_e set, StreamAddEntryResults_s& outResults)
 {
 	const bool isMandatory = set == STREAMING_SET_MANDATORY;
-	const char* const newStarPak = isMandatory ? m_mandatoryStreamFileName : m_optionalStreamFileName;
+	const std::string& newStarPak = isMandatory ? m_mandatoryStreamFileName : m_optionalStreamFileName;
 
-	StreamCacheFindParams_s params = m_streamCache.CreateParams(data, size, newStarPak);
+	StreamCacheFindParams_s params = m_streamCache.CreateParams(data, size, newStarPak.c_str());
 	StreamCacheFindResult_s result;
 
 	if (m_streamCache.Find(params, result, !isMandatory))
@@ -217,7 +220,7 @@ bool CStreamFileBuilder::AddStreamingDataEntry(const int64_t size, const uint8_t
 	desc.offset = dataOffset;
 	desc.size = paddedSize;
 
-	outResults.streamFile = newStarPak;
+	outResults.streamFile = newStarPak.c_str();
 	outResults.dataOffset = dataOffset;
 
 	m_streamCache.Add(params, dataOffset, !isMandatory);

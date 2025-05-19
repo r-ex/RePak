@@ -9,10 +9,12 @@ namespace Utils
 	size_t WriteStringVector(BinaryIO& out, const std::vector<std::string>& dataVector);
 
 	void AppendSlash(std::string& in);
+	void FixSlashes(std::string& in, const char correctPathSeparator = '\\');
+
 	std::string ChangeExtension(const std::string& in, const std::string& ext);
 
 	void ResolvePath(std::string& outPath, const std::filesystem::path& mapPath);
-	const char* ExtractFileName(const char* const string);
+	const char* ExtractFileName(const std::string& inPath);
 };
 
 extern PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success = nullptr);

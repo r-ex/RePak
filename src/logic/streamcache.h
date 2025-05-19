@@ -4,7 +4,7 @@
 
 #define STREAM_CACHE_FILE_MAGIC ('S'+('R'<<8)+('M'<<16)+('p'<<24))
 #define STREAM_CACHE_FILE_MAJOR_VERSION 2
-#define STREAM_CACHE_FILE_MINOR_VERSION 3
+#define STREAM_CACHE_FILE_MINOR_VERSION 4
 
 struct StreamCacheFileHeader_s
 {
@@ -62,7 +62,9 @@ public:
 
 	void Save(BinaryIO& io);
 
+	void AddStreamFileToFilter(const std::string& streamFile);
 	void AddStreamFileToFilter(const char* const streamFile, const size_t nameLen);
+
 	bool IsStreamFileInFilter(const std::string& streamFile) const;
 
 	inline bool HasStreamFileFilter() const { return !m_cacheFilter.empty(); }

@@ -51,12 +51,8 @@ static std::vector<StreamCacheFileEntry_s> StreamCache_GetStarpakFilesFromDirect
 		entry.isOptional = optional;
 		entry.streamFilePath = entryPath.string();
 
-		// Normalize the slashes.
-		for (char& c : entry.streamFilePath)
-		{
-			if (c == '\\')
-				c = '/';
-		}
+		// Normalize the slashes; starpaks internally uses back slashes for Windows platform.
+		Utils::FixSlashes(entry.streamFilePath);
 	}
 
 	return paths;
@@ -117,14 +113,14 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 		starpakStream.Seek(starpakFileSize - (8 + starpakEntryHeadersSize), std::ios::beg);
 		starpakStream.Read(reinterpret_cast<char*>(starpakEntryHeaders.get()), starpakEntryHeadersSize);
 
-		const char* starpakFileName = strrchr(starpakPath.c_str(), '/');
+		const char* starpakFileName = strrchr(starpakPath.c_str(), '\\');
 
 		if (starpakFileName)
-			starpakFileName += 1; // Skip the '/'.
+			starpakFileName += 1; // Skip the '\\'.
 		else
 			starpakFileName = starpakPath.c_str();
 
-		std::string relativeStarpakPath("paks/Win64/");
+		std::string relativeStarpakPath("paks\\Win64\\");
 		relativeStarpakPath.append(starpakFileName);
 
 		const int64_t pathIndex = AddStarpakPathToCache(relativeStarpakPath, foundEntry.isOptional);
@@ -400,9 +396,20 @@ void CStreamCache::Save(BinaryIO& io)
 	}
 }
 
+void CStreamCache::AddStreamFileToFilter(const std::string& streamFile)
+{
+	std::string tmp(streamFile);
+	Utils::FixSlashes(tmp);
+
+	m_cacheFilter.insert(std::move(tmp));
+}
+
 void CStreamCache::AddStreamFileToFilter(const char* const streamFile, const size_t nameLen)
 {
-	m_cacheFilter.insert({ streamFile, nameLen });
+	std::string tmp(streamFile, nameLen);
+	Utils::FixSlashes(tmp);
+
+	m_cacheFilter.insert(std::move(tmp));
 }
 
 bool CStreamCache::IsStreamFileInFilter(const std::string& streamFile) const

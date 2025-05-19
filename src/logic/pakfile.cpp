@@ -174,7 +174,7 @@ int64_t CPakFileBuilder::AddStreamingFileReference(const char* const path, const
 			streamSetName, path, PAK_MAX_STREAMING_FILE_HANDLES_PER_SET, newSize);
 	}
 
-	vec.push_back(path);
+	vec.emplace_back(path);
 	return count;
 }
 

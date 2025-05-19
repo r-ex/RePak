@@ -19,7 +19,7 @@ public:
 	void Init(const js::Document& doc, const bool useOptional);
 	void Shutdown();
 
-	void CreateStreamFileStream(const char* const path, const PakStreamSet_e set);
+	void CreateStreamFileStream(const std::string& streamFilePath, const PakStreamSet_e set);
 	void FinishStreamFileStream(const PakStreamSet_e set);
 
 	bool AddStreamingDataEntry(const int64_t size, const uint8_t* const data, const PakStreamSet_e set, StreamAddEntryResults_s& results);
@@ -31,9 +31,8 @@ private:
 
 	const CBuildSettings* m_buildSettings;
 
-	const char* m_streamCacheFileName;
-	const char* m_mandatoryStreamFileName;
-	const char* m_optionalStreamFileName;
+	std::string m_mandatoryStreamFileName;
+	std::string m_optionalStreamFileName;
 
 	CStreamCache m_streamCache;
 
