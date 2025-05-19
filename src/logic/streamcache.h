@@ -62,7 +62,13 @@ public:
 
 	void Save(BinaryIO& io);
 
+	void AddStreamFileToFilter(const char* const streamFile, const size_t nameLen);
+	bool IsStreamFileInFilter(const std::string& streamFile) const;
+
+	inline bool HasStreamFileFilter() const { return !m_cacheFilter.empty(); }
+
 private:
 	std::vector<StreamCacheFileEntry_s> m_streamFiles;
 	std::vector<StreamCacheDataEntry_s> m_dataEntries;
+	std::unordered_set<std::string> m_cacheFilter;
 };

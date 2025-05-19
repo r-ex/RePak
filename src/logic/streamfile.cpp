@@ -22,11 +22,21 @@ CStreamFileBuilder::CStreamFileBuilder(const CBuildSettings* const buildSettings
 //-----------------------------------------------------------------------------
 void CStreamFileBuilder::Init(const js::Document& doc, const bool useOptional)
 {
-	if (JSON_GetValue(doc, "streamFileMandatory", m_mandatoryStreamFileName))
-		CreateStreamFileStream(m_mandatoryStreamFileName, STREAMING_SET_MANDATORY);
+	rapidjson::Value::ConstMemberIterator mandatoryIt;
 
-	if (useOptional && JSON_GetValue(doc, "streamFileOptional", m_optionalStreamFileName))
+	if (JSON_GetIterator(doc, "streamFileMandatory", JSONFieldType_e::kString, mandatoryIt))
+	{
+		m_mandatoryStreamFileName = mandatoryIt->value.GetString();
+		CreateStreamFileStream(m_mandatoryStreamFileName, STREAMING_SET_MANDATORY);
+	}
+
+	rapidjson::Value::ConstMemberIterator optionalIt;
+
+	if (useOptional && JSON_GetIterator(doc, "streamFileOptional", JSONFieldType_e::kString, optionalIt))
+	{
+		m_optionalStreamFileName = optionalIt->value.GetString();
 		CreateStreamFileStream(m_optionalStreamFileName, STREAMING_SET_OPTIONAL);
+	}
 
 	if (JSON_GetValue(doc, "streamCache", m_streamCacheFileName))
 	{
@@ -38,6 +48,36 @@ void CStreamFileBuilder::Init(const js::Document& doc, const bool useOptional)
 
 		Log("Loading cache from streaming map file \"%s\".\n", streamCacheDirStr.c_str());
 		m_streamCache.ParseMap(streamCacheDirStr.c_str());
+
+		rapidjson::Value::ConstMemberIterator filterIt;
+
+		if (JSON_GetIterator(doc, "streamCacheFilter", JSONFieldType_e::kArray, filterIt))
+		{
+			const rapidjson::Value::ConstArray filterArray = filterIt->value.GetArray();
+			int filterIdx = -1;
+
+			for (const rapidjson::Value& filtered : filterArray)
+			{
+				filterIdx++;
+
+				if (!JSON_IsOfType(filtered, JSONFieldType_e::kString))
+				{
+					Error("Element #%i in array \"%s\" must be a %s.\n",
+						filterIdx, "streamCacheFilter", JSON_TypeToString(JSONFieldType_e::kString));
+				}
+
+				m_streamCache.AddStreamFileToFilter(filtered.GetString(), filtered.GetStringLength());
+			}
+
+			if (!filterArray.Empty())
+			{
+				if (m_mandatoryStreamFileName)
+					m_streamCache.AddStreamFileToFilter(m_mandatoryStreamFileName, mandatoryIt->value.GetStringLength());
+
+				if (m_optionalStreamFileName)
+					m_streamCache.AddStreamFileToFilter(m_optionalStreamFileName, optionalIt->value.GetStringLength());
+			}
+		}
 	}
 }
 

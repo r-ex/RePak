@@ -329,6 +329,9 @@ bool CStreamCache::Find(const StreamCacheFindParams_s& params, StreamCacheFindRe
 		if (!SIMD_CompareM128i(entry.hash, params.hash))
 			continue;
 
+		if (!IsStreamFileInFilter(file.streamFilePath))
+			continue; // note(amos): don't return here, as this data can also exist in other stream files that are in the filter!
+
 		result.fileEntry = &file;
 		result.dataEntry = &entry;
 
@@ -395,4 +398,17 @@ void CStreamCache::Save(BinaryIO& io)
 	{
 		io.Write(dataEntry);
 	}
+}
+
+void CStreamCache::AddStreamFileToFilter(const char* const streamFile, const size_t nameLen)
+{
+	m_cacheFilter.insert({ streamFile, nameLen });
+}
+
+bool CStreamCache::IsStreamFileInFilter(const std::string& streamFile) const
+{
+	if (m_cacheFilter.empty())
+		return true; // No filter provided, all streaming files inside the cache will be eligible for use.
+
+	return m_cacheFilter.find(streamFile) != m_cacheFilter.end();
 }
