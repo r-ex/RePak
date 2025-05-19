@@ -49,10 +49,10 @@ size_t Utils::WriteStringVector(BinaryIO& out, const std::vector<std::string>& d
 	for (auto it = dataVector.begin(); it != dataVector.end(); ++it)
 	{
 		// NOTE: +1 because we need to take the null char into account too.
-		const size_t lenPath = (*it).length() + 1;
+		const size_t lenPath = it->length() + 1;
 		lenTotal += lenPath;
 
-		out.Write((*it).c_str(), lenPath);
+		out.Write(it->c_str(), lenPath);
 	}
 	return lenTotal;
 }
