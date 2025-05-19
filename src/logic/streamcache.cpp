@@ -278,9 +278,6 @@ int64_t CStreamCache::AddStarpakPathToCache(const std::string& path, const bool 
 	// Realistically, we shouldn't ever exceed this as we should only
 	// deduplicate data across the 'all' and 'roots' starpaks.
 	assert(m_streamFiles.size() <= 4096);
-
-	// add this path to the starpak buffer size
-	m_starpakBufSize += path.length() + 2; // 1 for the 'optional' bool, 1 for the null terminator.
 	return index;
 }
 
@@ -293,8 +290,13 @@ StreamCacheFileHeader_s CStreamCache::ConstructHeader() const
 	fileHeader.minorVersion = STREAM_CACHE_FILE_MINOR_VERSION;
 	fileHeader.streamingFileCount = m_streamFiles.size();
 	fileHeader.dataEntryCount = m_dataEntries.size();
-	fileHeader.dataEntriesOffset = IALIGN4(sizeof(StreamCacheFileHeader_s) + m_starpakBufSize);
 
+	size_t totStreamFileNameBufSize = 0;
+
+	for (const StreamCacheFileEntry_s& fileEntry : m_streamFiles)
+		totStreamFileNameBufSize += fileEntry.path.length() + 2; // 1 for the 'optional' bool, 1 for the null terminator.
+
+	fileHeader.dataEntriesOffset = IALIGN16(sizeof(StreamCacheFileHeader_s) + totStreamFileNameBufSize);
 	return fileHeader;
 }
 
@@ -361,7 +363,6 @@ void CStreamCache::Add(const StreamCacheFindParams_s& params, const int64_t offs
 		newFileEntry.optional = params.newIsOptional;
 		newFileEntry.path = params.newStarpak;
 
-		m_starpakBufSize += newFileEntry.path.size() + 2;
 		pNewFileEntry = &newFileEntry;
 	}
 
@@ -386,7 +387,10 @@ void CStreamCache::Save(BinaryIO& io)
 		io.WriteString(fileEntry.path, true);
 	}
 
-	io.Seek(cacheHeader.dataEntriesOffset);
+	const size_t padDelta = cacheHeader.dataEntriesOffset - io.TellPut();
+
+	if (padDelta > 0)
+		io.Pad(padDelta);
 
 	for (const StreamCacheDataEntry_s& dataEntry : m_dataEntries)
 	{

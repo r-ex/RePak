@@ -4,7 +4,7 @@
 
 #define STREAM_CACHE_FILE_MAGIC ('S'+('R'<<8)+('M'<<16)+('p'<<24))
 #define STREAM_CACHE_FILE_MAJOR_VERSION 2
-#define STREAM_CACHE_FILE_MINOR_VERSION 1
+#define STREAM_CACHE_FILE_MINOR_VERSION 3
 
 struct StreamCacheFileHeader_s
 {
@@ -66,6 +66,4 @@ public:
 private:
 	std::vector<StreamCacheFileEntry_s> m_streamFiles;
 	std::vector<StreamCacheDataEntry_s> m_dataEntries;
-
-	size_t m_starpakBufSize;
 };
