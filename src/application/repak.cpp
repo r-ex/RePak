@@ -131,9 +131,9 @@ static inline void RePak_ValidateArguments(const char* const argName, const int 
     if (delta > 0)
     {
         if (delta == 1)
-            Error("Invalid usage; \"%s\" requires an additional argument.\n", __FUNCTION__, argName);
+            Error("Invalid usage; \"%s\" requires an additional argument.\n", argName);
 
-        Error("Invalid usage; \"%s\" requires %i additional arguments.\n", __FUNCTION__, argName, delta);
+        Error("Invalid usage; \"%s\" requires %i additional arguments.\n", argName, delta);
     }
 }
 
