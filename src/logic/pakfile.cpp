@@ -576,7 +576,7 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 //-----------------------------------------------------------------------------
 size_t Pak_EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount, const uint16_t pakVersion, const char* const pakPath)
 {
-	Log("Encoding pak file with compress level %i and %i workers.\n", compressLevel, workerCount);
+	Log("*** encoding pak file with compress level %i and %i workers.\n", compressLevel, workerCount);
 
 	BinaryIO outCompressed;
 	std::string outCompressedPath = pakPath;
@@ -588,6 +588,8 @@ size_t Pak_EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int 
 		Warning("Failed to open output pak file \"%s\" for compression.\n", outCompressedPath.c_str());
 		return 0;
 	}
+
+	const size_t decompressedSize = (size_t)io.GetSize();
 
 	if (!Pak_StreamToStreamEncode(io, outCompressed, Pak_GetHeaderSize(pakVersion), compressLevel, workerCount))
 		return 0;
@@ -626,6 +628,7 @@ size_t Pak_EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int 
 			pakPath, reopenedPakSize, compressedSize);
 	}
 
+	Log("*** finished pak file encoding: %zu bytes (ratio: %.1f%%).\n", compressedSize, 100.0 * (decompressedSize - compressedSize) / decompressedSize);
 	return compressedSize;
 }
 
@@ -657,7 +660,7 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 	if (!out.Open(m_pakFilePath, BinaryIO::Mode_e::ReadWriteCreate))
 		Error("Failed to open output pak file \"%s\".\n", m_pakFilePath.c_str());
 
-	Log("Building pak file \"%s\".\n", m_pakFilePath.c_str());
+	Log("*** building pak file \"%s\".\n", m_pakFilePath.c_str());
 
 	// write a placeholder header so we can come back and complete it
 	// when we have all the info
@@ -747,7 +750,7 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 
 	const ssize_t totalPakSize = out.GetSize();
 
-	Log("Built pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
+	Log("*** built pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
 		m_pakFilePath.c_str(), GetAssetCount(), totalPakSize);
 
 	out.Close();

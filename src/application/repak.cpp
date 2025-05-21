@@ -34,7 +34,7 @@ static void RePak_Shutdown(CBuildSettings& settings, CStreamFileBuilder& streamB
 
 static void RePak_ParseListedDocument(js::Document& doc, const char* const docPath, const char* const docName)
 {
-    Log("Parsing listed build map \"%s\".\n", docName);
+    Log("*** parsing listed build map \"%s\".\n", docName);
     std::string finalName = docName;
 
     Utils::ResolvePath(finalName, docPath);
