@@ -4,16 +4,16 @@
 #include "logic/pakfile.h"
 #include "logic/streamfile.h"
 #include "logic/streamcache.h"
+#include "utils/zstdutils.h"
 
-const char startupVersion[] = {
-    "RePak - Built "
-    __DATE__
-    " "
-    __TIME__
-    "\n\n"
-};
+#define REPAK_DEFAULT_COMPRESS_LEVEL 6
+#define REPAK_DEFAULT_COMPRESS_WORKERS 16
 
-static void RePak_Init(const js::Document& doc, const char* const mapPath, CBuildSettings& settings, CStreamFileBuilder& streamBuilder)
+#define REPAK_STR_TO_GUID_COMMAND "-pakguid"
+#define REPAK_STR_TO_UIMG_HASH_COMMAND "-uimghash"
+#define REPAK_COMPRESS_PAK_COMMAND "-compress"
+
+static void RePak_InitBuilder(const js::Document& doc, const char* const mapPath, CBuildSettings& settings, CStreamFileBuilder& streamBuilder)
 {
     settings.Init(doc, mapPath);
 
@@ -24,7 +24,7 @@ static void RePak_Init(const js::Document& doc, const char* const mapPath, CBuil
         streamBuilder.Init(doc, settings.GetPakVersion() >= 8);
 }
 
-static void RePak_Shutdown(CBuildSettings& settings, CStreamFileBuilder& streamBuilder)
+static void RePak_ShutdownBuilder(CBuildSettings& settings, CStreamFileBuilder& streamBuilder)
 {
     const bool keepClient = settings.IsFlagSet(PF_KEEP_CLIENT);
 
@@ -46,12 +46,12 @@ static void RePak_BuildSingle(const js::Document& doc, const char* const mapPath
     CBuildSettings settings;
     CStreamFileBuilder streamBuilder(&settings);
 
-    RePak_Init(doc, mapPath, settings, streamBuilder);
+    RePak_InitBuilder(doc, mapPath, settings, streamBuilder);
 
     CPakFileBuilder pakFile(&settings, &streamBuilder);
     pakFile.BuildFromMap(doc);
 
-    RePak_Shutdown(settings, streamBuilder);
+    RePak_ShutdownBuilder(settings, streamBuilder);
 }
 
 static void RePak_BuildFromList(const js::Document& doc, const js::Value& list, const char* const mapPath)
@@ -65,7 +65,7 @@ static void RePak_BuildFromList(const js::Document& doc, const js::Value& list, 
     CBuildSettings settings;
     CStreamFileBuilder streamBuilder(&settings);
 
-    RePak_Init(doc, mapPath, settings, streamBuilder);
+    RePak_InitBuilder(doc, mapPath, settings, streamBuilder);
 
     ssize_t i = -1;
 
@@ -86,7 +86,7 @@ static void RePak_BuildFromList(const js::Document& doc, const js::Value& list, 
         pakFile.BuildFromMap(pakDoc);
     }
 
-    RePak_Shutdown(settings, streamBuilder);
+    RePak_ShutdownBuilder(settings, streamBuilder);
 }
 
 static void RePak_HandleBuild(const char* const arg)
@@ -120,8 +120,38 @@ static void RePak_HandleBuild(const char* const arg)
 
 static void RePak_ExplainUsage()
 {
-    printf(startupVersion);
-    Error("invalid usage\n");
+    Log(
+        "*** RePak ( built on " __DATE__ " at " __TIME__" ) usage guide ***\n"
+        "For building pak files, run 'repak' with the following parameter:\n"
+        "\t<%s>\t- path to a map file containing the build parameters for the pak to build\n"
+
+        "For creating stream caches, run 'repak' with the following parameter:\n"
+        "\t<%s>\t- path to a directory containing streaming files to be cached\n"
+
+        "For calculating Pak Asset guids, run 'repak %s' with the following parameter:\n"
+        "\t<%s>\t- the string to compute the asset guid from\n"
+
+        "For calculating UI Image hashes, run 'repak %s' with the following parameter:\n"
+        "\t<%s>\t- the string to compute the uimg hash from\n"
+
+        "For compressing standalone paks, run 'repak %s' with the following parameters:\n"
+        "\t<%s>\t- the target pak file to compress\n"
+        "\t<%s>\t- ( optional ) the level of compression [ %d, %d ]; default = %d\n"
+        "\t<%s>\t- ( optional ) the number of compression workers [ %d, %d ]; default = %d\n",
+
+        "buildMapPath",
+        "streamingPath",
+
+        REPAK_STR_TO_GUID_COMMAND, "strToGuid",
+        REPAK_STR_TO_UIMG_HASH_COMMAND, "strToHash",
+
+        REPAK_COMPRESS_PAK_COMMAND, "pakFilePath", "compressLevel",
+        -5, // See https://github.com/facebook/zstd/issues/3032
+        ZSTD_maxCLevel(), REPAK_DEFAULT_COMPRESS_LEVEL,
+
+        "workerCount",
+        1, ZSTDMT_NBWORKERS_MAX, REPAK_DEFAULT_COMPRESS_WORKERS
+    );
 }
 
 static inline void RePak_ValidateArguments(const char* const argName, const int argc, const int required)
@@ -206,7 +236,7 @@ static void RePak_HandleCommandLine(const int argc, char** argv)
         return;
     }
 
-    if (RePak_CheckCommandLine(argv[1], "-pakguid", argc, 3))
+    if (RePak_CheckCommandLine(argv[1], REPAK_STR_TO_GUID_COMMAND, argc, 3))
     {
         const PakGuid_t guid = RTech::StringToGuid(argv[2]);
         Log("0x%llX\n", guid);
@@ -214,7 +244,7 @@ static void RePak_HandleCommandLine(const int argc, char** argv)
         return;
     }
 
-    if (RePak_CheckCommandLine(argv[1], "-uimghash", argc, 3))
+    if (RePak_CheckCommandLine(argv[1], REPAK_STR_TO_UIMG_HASH_COMMAND, argc, 3))
     {
         const uint32_t hash = RTech::StringToUIMGHash(argv[2]);
         Log("0x%lX\n", hash);
@@ -222,15 +252,14 @@ static void RePak_HandleCommandLine(const int argc, char** argv)
         return;
     }
 
-    if (RePak_CheckCommandLine(argv[1], "-compress", argc, 3))
+    if (RePak_CheckCommandLine(argv[1], REPAK_COMPRESS_PAK_COMMAND, argc, 3))
     {
-        g_showDebugLogs = true;
-        int compressLevel = 6;
+        int compressLevel = REPAK_DEFAULT_COMPRESS_LEVEL;
 
         if ((argc > 3) && (!JSON_StringToNumber(argv[3], strlen(argv[3]), compressLevel)))
             Error("%s: failed to parse compressLevel for argument \"%s\".\n", __FUNCTION__, argv[1]);
 
-        int workerCount = 16;
+        int workerCount = REPAK_DEFAULT_COMPRESS_WORKERS;
 
         if ((argc > 4) && (!JSON_StringToNumber(argv[4], strlen(argv[4]), workerCount)))
             Error("%s: failed to parse workerCount for argument \"%s\".\n", __FUNCTION__, argv[1]);
