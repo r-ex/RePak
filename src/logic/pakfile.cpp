@@ -212,7 +212,7 @@ PakStreamSetEntry_s CPakFileBuilder::AddStreamingDataEntry(const int64_t size, c
 
 void CPakFileBuilder::SetVersion(const uint16_t version)
 {
-	if (Pak_IsVersionSupported(version))
+	if (!Pak_IsVersionSupported(version))
 		Error("Unsupported pak file version %hu.\n", version);
 
 	m_Header.fileVersion = version;
