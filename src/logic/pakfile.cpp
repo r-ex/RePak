@@ -210,6 +210,14 @@ PakStreamSetEntry_s CPakFileBuilder::AddStreamingDataEntry(const int64_t size, c
 	return block;
 }
 
+void CPakFileBuilder::SetVersion(const uint16_t version)
+{
+	if (Pak_IsVersionSupported(version))
+		Error("Unsupported pak file version %hu.\n", version);
+
+	m_Header.fileVersion = version;
+}
+
 //-----------------------------------------------------------------------------
 // purpose: writes header to file stream
 //-----------------------------------------------------------------------------
@@ -456,21 +464,6 @@ PakAsset_t* CPakFileBuilder::GetAssetByGuid(const PakGuid_t guid, uint32_t* cons
 }
 
 //-----------------------------------------------------------------------------
-// purpose: gets the pak file header size based on pak version
-//-----------------------------------------------------------------------------
-static inline size_t Pak_GetHeaderSize(const uint16_t version)
-{
-	switch (version)
-	{
-		// todo(amos): we probably should import headers for both
-		// versions and do a sizeof here.
-	case 7: return 0x58;
-	case 8: return 0x80;
-	default: assert(0); return 0;
-	};
-}
-
-//-----------------------------------------------------------------------------
 // Purpose: initialize pak encoder context
 // 
 // note(amos): unlike the pak file header, the zstd frame header needs to know
@@ -581,10 +574,14 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 //-----------------------------------------------------------------------------
 // Purpose: stream encode pak file to new stream and swap old stream with new
 //-----------------------------------------------------------------------------
-size_t CPakFileBuilder::EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount)
+size_t Pak_EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount, const uint16_t pakVersion, const char* const pakPath)
 {
+	Log("Encoding pak file with compress level %i and %i workers.\n", compressLevel, workerCount);
+
 	BinaryIO outCompressed;
-	const std::string outCompressedPath = m_pakFilePath + "_encoded";
+	std::string outCompressedPath = pakPath;
+
+	outCompressedPath.append("_encoded");
 
 	if (!outCompressed.Open(outCompressedPath, BinaryIO::Mode_e::Write))
 	{
@@ -592,7 +589,7 @@ size_t CPakFileBuilder::EncodeStreamAndSwap(BinaryIO& io, const int compressLeve
 		return 0;
 	}
 
-	if (!Pak_StreamToStreamEncode(io, outCompressed, Pak_GetHeaderSize(m_Header.fileVersion), compressLevel, workerCount))
+	if (!Pak_StreamToStreamEncode(io, outCompressed, Pak_GetHeaderSize(pakVersion), compressLevel, workerCount))
 		return 0;
 
 	const size_t compressedSize = outCompressed.TellPut();
@@ -603,32 +600,31 @@ size_t CPakFileBuilder::EncodeStreamAndSwap(BinaryIO& io, const int compressLeve
 	// note(amos): we must reopen the file in ReadWrite mode as otherwise
 	// the file gets truncated.
 
-	if (!std::filesystem::remove(m_pakFilePath))
+	if (!std::filesystem::remove(pakPath))
 	{
 		Warning("Failed to remove uncompressed pak file \"%s\" for swap.\n", outCompressedPath.c_str());
 		
 		// reopen and continue uncompressed.
-		if (io.Open(m_pakFilePath, BinaryIO::Mode_e::ReadWrite))
-			Error("Failed to reopen pak file \"%s\".\n", m_pakFilePath.c_str());
+		if (io.Open(pakPath, BinaryIO::Mode_e::ReadWrite))
+			Error("Failed to reopen pak file \"%s\".\n", pakPath);
 
 		return 0;
 	}
 
-	std::filesystem::rename(outCompressedPath, m_pakFilePath);
+	std::filesystem::rename(outCompressedPath, pakPath);
 
 	// either the rename failed or something holds an open handle to the
 	// newly renamed compressed file, irrecoverable.
-	if (!io.Open(m_pakFilePath, BinaryIO::Mode_e::ReadWrite))
-		Error("Failed to reopen pak file \"%s\".\n", m_pakFilePath.c_str());
+	if (!io.Open(pakPath, BinaryIO::Mode_e::ReadWrite))
+		Error("Failed to reopen pak file \"%s\".\n", pakPath);
 
 	const size_t reopenedPakSize = io.GetSize();
 
 	if (reopenedPakSize != compressedSize)
+	{
 		Error("Reopened pak file \"%s\" appears truncated or corrupt; compressed size: %zu expected: %zu.\n",
-			m_pakFilePath.c_str(), reopenedPakSize, compressedSize);
-
-	// set the header flags indicating this pak is compressed using zstandard.
-	m_Header.flags |= PAK_HEADER_FLAGS_ZSTD_ENCODED;
+			pakPath, reopenedPakSize, compressedSize);
+	}
 
 	return compressedSize;
 }
@@ -734,9 +730,10 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 	if (compressLevel > 0 && decompressedFileSize > Pak_GetHeaderSize(m_Header.fileVersion))
 	{
 		const int workerCount = JSON_GetValueOrDefault(doc, "compressWorkers", 0);
+		compressedFileSize = Pak_EncodeStreamAndSwap(out, compressLevel, workerCount, GetVersion(), m_pakFilePath.c_str());
 
-		Log("Encoding pak file with compress level %i and %i workers.\n", compressLevel, workerCount);
-		compressedFileSize = EncodeStreamAndSwap(out, compressLevel, workerCount);
+		// set the header flags indicating this pak is compressed using zstandard.
+		m_Header.flags |= PAK_HEADER_FLAGS_ZSTD_ENCODED;
 	}
 
 	SetCompressedSize(compressedFileSize == 0 ? decompressedFileSize : compressedFileSize);
