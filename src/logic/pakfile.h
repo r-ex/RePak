@@ -208,4 +208,14 @@ static inline bool Pak_IsVersionSupported(const int version)
 	}
 }
 
+inline const char* Pak_EncodeAlgorithmToString(const uint16_t flags)
+{
+	if (flags & PAK_HEADER_FLAGS_RTECH_ENCODED)
+		return "RTech";
+	if (flags & PAK_HEADER_FLAGS_ZSTD_ENCODED)
+		return "ZStd";
+
+	return "an unknown algorithm";
+}
+
 extern size_t Pak_EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount, const uint16_t pakVersion, const char* const pakPath);
