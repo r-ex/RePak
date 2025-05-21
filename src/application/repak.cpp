@@ -273,6 +273,9 @@ static void RePak_HandleCommandLine(const int argc, char** argv)
 
 int main(int argc, char** argv)
 {
+    extern bool Console_ColorInit();
+    Console_ColorInit();
+
     g_jsonErrorCallback = Error;
 
     RePak_HandleCommandLine(argc, argv);
