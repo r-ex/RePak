@@ -176,7 +176,8 @@ static void RePak_HandleCompressPak(const char* const pakPath, const int compres
     if (size < headerSize)
         Error("Pak file \"%s\" appears truncated! ( %zd < %zd ).\n", pakPath, size, headerSize);
 
-    char tempHdrBuf[256];
+    // Largest header is 128 bytes (v8).
+    char tempHdrBuf[128];
 
     bio.Seek(0);
     bio.Read(tempHdrBuf, headerSize);
