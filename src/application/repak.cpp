@@ -12,6 +12,7 @@
 #define REPAK_STR_TO_GUID_COMMAND "-pakguid"
 #define REPAK_STR_TO_UIMG_HASH_COMMAND "-uimghash"
 #define REPAK_COMPRESS_PAK_COMMAND "-compress"
+#define REPAK_DECOMPRESS_PAK_COMMAND "-decompress"
 
 static void RePak_InitBuilder(const js::Document& doc, const char* const mapPath, CBuildSettings& settings, CStreamFileBuilder& streamBuilder)
 {
@@ -137,7 +138,10 @@ static void RePak_ExplainUsage()
         "For compressing standalone paks, run 'repak %s' with the following parameters:\n"
         "\t<%s>\t- the target pak file to compress\n"
         "\t<%s>\t- ( optional ) the level of compression [ %d, %d ]; default = %d\n"
-        "\t<%s>\t- ( optional ) the number of compression workers [ %d, %d ]; default = %d\n",
+        "\t<%s>\t- ( optional ) the number of compression workers [ %d, %d ]; default = %d\n"
+
+        "For decompressing standalone paks, run 'repak %s' with the following parameter:\n"
+        "\t<%s>\t- the target pak file to decompress\n",
 
         "buildMapPath",
         "streamingPath",
@@ -150,7 +154,10 @@ static void RePak_ExplainUsage()
         ZSTD_maxCLevel(), REPAK_DEFAULT_COMPRESS_LEVEL,
 
         "workerCount",
-        1, ZSTDMT_NBWORKERS_MAX, REPAK_DEFAULT_COMPRESS_WORKERS
+        1, ZSTDMT_NBWORKERS_MAX, REPAK_DEFAULT_COMPRESS_WORKERS,
+
+        REPAK_DECOMPRESS_PAK_COMMAND,
+        "pakFilePath"
     );
 }
 
@@ -178,10 +185,8 @@ static bool RePak_CheckCommandLine(const char* arg, const char* const target, co
     return false;
 }
 
-static void RePak_HandleCompressPak(const char* const pakPath, const int compressLevel, const int workerCount)
+static uint16_t RePak_OpenPakAndValidateHeader(BinaryIO& bio, const char* const pakPath)
 {
-    BinaryIO bio;
-
     if (!bio.Open(pakPath, BinaryIO::Mode_e::ReadWrite))
         Error("Failed to open pak file \"%s\" for encode job.\n", pakPath);
 
@@ -189,7 +194,7 @@ static void RePak_HandleCompressPak(const char* const pakPath, const int compres
     const std::streamoff toConsume = 6; // size of magic( 4 ) + version( 2 ).
 
     if (size < toConsume)
-        Error("Short read on pak file \"%s\"; header criteria unavailable.\n", pakPath);
+        Error("Short read on pak file \"%s\"; header criteria unavailable!\n", pakPath);
 
     const uint32_t magic = bio.Read<uint32_t>();
 
@@ -206,23 +211,83 @@ static void RePak_HandleCompressPak(const char* const pakPath, const int compres
     if (size < headerSize)
         Error("Pak file \"%s\" appears truncated! ( %zd < %zd ).\n", pakPath, size, headerSize);
 
+    return version;
+}
+
+static void RePak_HandleCompressPak(const char* const pakPath, const int compressLevel, const int workerCount)
+{
+    BinaryIO bio;
+    const uint16_t version = RePak_OpenPakAndValidateHeader(bio, pakPath);
+
     // Largest header is 128 bytes (v8).
     char tempHdrBuf[128];
-
     bio.Seek(0);
+
+    const size_t headerSize = Pak_GetHeaderSize(version);
     bio.Read(tempHdrBuf, headerSize);
 
     PakHdr_t* const hdr = (PakHdr_t*)tempHdrBuf;
 
     if (hdr->flags & (PAK_HEADER_FLAGS_RTECH_ENCODED | PAK_HEADER_FLAGS_ZSTD_ENCODED))
-        Error("Pak file \"%s\" is already encoded using %s!.\n", pakPath, Pak_EncodeAlgorithmToString(hdr->flags));
+        Error("Pak file \"%s\" is already encoded using %s!\n", pakPath, Pak_EncodeAlgorithmToString(hdr->flags));
 
     const size_t newSize = Pak_EncodeStreamAndSwap(bio, compressLevel, workerCount, version, pakPath);
+
+    if (!newSize)
+        return; // Failure, don't mutate the file.
 
     // Update the header to accommodate for the compression method
     // and the new size so the runtime is aware of it.
     hdr->flags |= PAK_HEADER_FLAGS_ZSTD_ENCODED;
     hdr->compressedSize = newSize;
+
+    bio.Seek(0); // Write the new header out.
+    bio.Write(tempHdrBuf, headerSize);
+}
+
+static void RePak_HandleDecompressPak(const char* const pakPath)
+{
+    BinaryIO bio;
+    const uint16_t version = RePak_OpenPakAndValidateHeader(bio, pakPath);
+
+    // Largest header is 128 bytes (v8).
+    char tempHdrBuf[128];
+    bio.Seek(0);
+
+    const size_t headerSize = Pak_GetHeaderSize(version);
+    bio.Read(tempHdrBuf, headerSize);
+
+    PakHdr_t* const hdr = (PakHdr_t*)tempHdrBuf;
+
+    // TODO: support these are well.
+    if (hdr->flags & PAK_HEADER_FLAGS_RTECH_ENCODED)
+        Error("Pak file \"%s\" is encoded using %s which is unsupported!\n", pakPath, Pak_EncodeAlgorithmToString(hdr->flags));
+
+    if (!(hdr->flags & PAK_HEADER_FLAGS_ZSTD_ENCODED))
+        Error("Pak file \"%s\" is already decoded!\n", pakPath);
+
+    const size_t newSize = Pak_DecodeStreamAndSwap(bio, version, pakPath);
+
+    if (!newSize)
+        return; // Failure, don't mutate the file.
+
+    // Update the header to accommodate for the compression method
+    // and the new size so the runtime is aware of it.
+    hdr->flags &= ~PAK_HEADER_FLAGS_ZSTD_ENCODED;
+    hdr->compressedSize = newSize;
+
+    // Should never happen, but in case it does inform the user and
+    // equal decompressedSize to compressedSize as otherwise the
+    // runtime will crash. There is no guarantee this will fix the
+    // file and avoid undesired behavior in the runtime because the
+    // file might just be corrupt as it is!
+    if (hdr->compressedSize != hdr->decompressedSize)
+    {
+        Warning("Size mismatch after decoding \"%s\" ( pakHdr->compressedSize( %zu ) != pakHdr->decompressedSize( %zu ) ) -- correcting header... pak file may be corrupt!\n",
+            pakPath, hdr->compressedSize, hdr->decompressedSize);
+
+        hdr->decompressedSize = hdr->compressedSize;
+    }
 
     bio.Seek(0); // Write the new header out.
     bio.Write(tempHdrBuf, headerSize);
@@ -265,6 +330,12 @@ static void RePak_HandleCommandLine(const int argc, char** argv)
             Error("%s: failed to parse workerCount for argument \"%s\".\n", __FUNCTION__, argv[1]);
 
         RePak_HandleCompressPak(argv[2], compressLevel, workerCount);
+        return;
+    }
+
+    if (RePak_CheckCommandLine(argv[1], REPAK_DECOMPRESS_PAK_COMMAND, argc, 3))
+    {
+        RePak_HandleDecompressPak(argv[2]);
         return;
     }
 

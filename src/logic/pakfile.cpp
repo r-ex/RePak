@@ -471,6 +471,7 @@ PakAsset_t* CPakFileBuilder::GetAssetByGuid(const PakGuid_t guid, uint32_t* cons
 //-----------------------------------------------------------------------------
 static bool Pak_InitEncoderContext(ZSTD_CCtx* const cctx, const size_t uncompressedBlockSize, const int compressLevel, const int workerCount)
 {
+	ZSTD_CCtx_reset(cctx, ZSTD_reset_session_only);
 	size_t result = ZSTD_CCtx_setPledgedSrcSize(cctx, uncompressedBlockSize);
 
 	if (ZSTD_isError(result))
@@ -498,16 +499,24 @@ static bool Pak_InitEncoderContext(ZSTD_CCtx* const cctx, const size_t uncompres
 	return true;
 }
 
+static ZSTDEncoder_s s_zstdPakEncoder;
+
 //-----------------------------------------------------------------------------
 // Purpose: stream encode pak file with given level and worker count
+// TODO: support Oodle stream to stream compress
 //-----------------------------------------------------------------------------
 static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, const size_t headerSize, const int compressLevel, const int workerCount)
 {
 	// only the data past the main header gets compressed.
 	const size_t decodedFrameSize = (static_cast<size_t>(inStream.GetSize()) - headerSize);
-	ZSTDEncoder_s encoder;
 
-	if (!Pak_InitEncoderContext(&encoder.cctx, decodedFrameSize, compressLevel, workerCount))
+	if (!decodedFrameSize)
+	{
+		Warning("%s: pak file contains no data to be compressed.\n", __FUNCTION__);
+		return false;
+	}
+
+	if (!Pak_InitEncoderContext(&s_zstdPakEncoder.cctx, decodedFrameSize, compressLevel, workerCount))
 	{
 		return false;
 	}
@@ -517,7 +526,7 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 
 	if (!buffInPtr)
 	{
-		Warning("Failed to allocate input stream buffer of size %zu.\n", buffInSize);
+		Warning("%s: failed to allocate input stream buffer of size %zu.\n", __FUNCTION__, buffInSize);
 		return false;
 	}
 
@@ -526,7 +535,7 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 
 	if (!buffOutPtr)
 	{
-		Warning("Failed to allocate output stream buffer of size %zu.\n", buffOutSize);
+		Warning("%s: failed to allocate output stream buffer of size %zu.\n", __FUNCTION__, buffOutSize);
 		return false;
 	}
 
@@ -552,7 +561,7 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 		bool finished;
 		do {
 			ZSTD_outBuffer outputFrame = { buffOut, buffOutSize, 0 };
-			size_t const remaining = ZSTD_compressStream2(&encoder.cctx, &outputFrame, &inputFrame, mode);
+			size_t const remaining = ZSTD_compressStream2(&s_zstdPakEncoder.cctx, &outputFrame, &inputFrame, mode);
 
 			if (ZSTD_isError(remaining))
 			{
@@ -571,12 +580,100 @@ static bool Pak_StreamToStreamEncode(BinaryIO& inStream, BinaryIO& outStream, co
 	return true;
 }
 
+static bool Pak_InitDecoderContext(ZSTD_DCtx* const dctx)
+{
+	ZSTD_DCtx_reset(dctx, ZSTD_reset_session_only);
+	return true;
+}
+
+static ZSTDDecoder_s s_zstdPakDecoder;
+
+static bool Pak_StreamToStreamDecode(BinaryIO& inStream, BinaryIO& outStream, const size_t headerSize)
+{
+	// only the data past the main header gets compressed.
+	const size_t encodedFrameSize = (static_cast<size_t>(inStream.GetSize()) - headerSize);
+
+	if (!encodedFrameSize)
+	{
+		Warning("%s: pak file contains no data to be decompressed.\n", __FUNCTION__);
+		return false;
+	}
+
+	if (!Pak_InitDecoderContext(&s_zstdPakDecoder.dctx))
+	{
+		return false;
+	}
+
+	const size_t buffInSize = ZSTD_DStreamInSize();
+	std::unique_ptr<uint8_t[]> buffInPtr(new uint8_t[buffInSize]);
+
+	if (!buffInPtr)
+	{
+		Warning("%s: failed to allocate input stream buffer of size %zu.\n", __FUNCTION__, buffInSize);
+		return false;
+	}
+
+	const size_t buffOutSize = ZSTD_DStreamOutSize();
+	std::unique_ptr<uint8_t[]> buffOutPtr(new uint8_t[buffOutSize]);
+
+	if (!buffOutPtr)
+	{
+		Warning("%s: failed to allocate output stream buffer of size %zu.\n", __FUNCTION__, buffOutSize);
+		return false;
+	}
+
+	void* const buffIn = buffInPtr.get();
+	void* const buffOut = buffOutPtr.get();
+
+	inStream.SeekGet(headerSize);
+	outStream.SeekPut(headerSize);
+
+	size_t bytesLeft = encodedFrameSize;
+	size_t lastRet = 0;
+
+	while (bytesLeft)
+	{
+		const bool lastChunk = (bytesLeft < buffInSize);
+		const size_t numBytesToRead = lastChunk ? bytesLeft : buffInSize;
+
+		inStream.Read(reinterpret_cast<uint8_t*>(buffIn), numBytesToRead);
+		bytesLeft -= numBytesToRead;
+
+		ZSTD_inBuffer inputFrame = { buffIn, numBytesToRead, 0 };
+
+		while (inputFrame.pos < inputFrame.size) {
+			ZSTD_outBuffer outputFrame = { buffOut, buffOutSize, 0 };
+			size_t const ret = ZSTD_decompressStream(&s_zstdPakDecoder.dctx, &outputFrame, &inputFrame);
+
+			if (ZSTD_isError(ret))
+			{
+				Error("Failed to decompress stream at %zd to stream at %zd: [%s].\n",
+					inStream.TellGet(), outStream.TellPut(), ZSTD_getErrorName(ret));
+
+				return false;
+			}
+
+			outStream.Write(reinterpret_cast<uint8_t*>(buffOut), outputFrame.pos);
+			lastRet = ret;
+		}
+	}
+
+	if (lastRet != 0) {
+
+		Error("Failed to decompress; reached EOF before end of stream! (%zu).\n", lastRet);
+		return false;
+	}
+
+	return true;
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: stream encode pak file to new stream and swap old stream with new
 //-----------------------------------------------------------------------------
 size_t Pak_EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount, const uint16_t pakVersion, const char* const pakPath)
 {
-	Log("*** encoding pak file with compress level %i and %i workers.\n", compressLevel, workerCount);
+	Log("*** encoding pak file \"%s\" with compress level %i and %i workers.\n", pakPath, compressLevel, workerCount);
+	const steady_clock::time_point start = high_resolution_clock::now();
 
 	BinaryIO outCompressed;
 	std::string outCompressedPath = pakPath;
@@ -596,40 +693,70 @@ size_t Pak_EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int 
 
 	const size_t compressedSize = outCompressed.TellPut();
 
-	outCompressed.Close();
-	io.Close();
-
-	// note(amos): we must reopen the file in ReadWrite mode as otherwise
-	// the file gets truncated.
-
-	if (!std::filesystem::remove(pakPath))
-	{
-		Warning("Failed to remove uncompressed pak file \"%s\" for swap.\n", outCompressedPath.c_str());
-		
-		// reopen and continue uncompressed.
-		if (io.Open(pakPath, BinaryIO::Mode_e::ReadWrite))
-			Error("Failed to reopen pak file \"%s\".\n", pakPath);
-
+	if (!Util_ReplaceStream(io, outCompressed, pakPath, outCompressedPath.c_str()))
 		return 0;
-	}
-
-	std::filesystem::rename(outCompressedPath, pakPath);
-
-	// either the rename failed or something holds an open handle to the
-	// newly renamed compressed file, irrecoverable.
-	if (!io.Open(pakPath, BinaryIO::Mode_e::ReadWrite))
-		Error("Failed to reopen pak file \"%s\".\n", pakPath);
 
 	const size_t reopenedPakSize = io.GetSize();
 
 	if (reopenedPakSize != compressedSize)
 	{
-		Error("Reopened pak file \"%s\" appears truncated or corrupt; compressed size: %zu expected: %zu.\n",
+		Error("Reopened pak file \"%s\" appears malformed; compressed size: %zu expected: %zu.\n",
 			pakPath, reopenedPakSize, compressedSize);
 	}
 
-	Log("*** finished pak file encoding: %zu bytes (ratio: %.1f%%).\n", compressedSize, 100.0 * (decompressedSize - compressedSize) / decompressedSize);
+	const steady_clock::time_point stop = high_resolution_clock::now();
+	const microseconds duration = duration_cast<microseconds>(stop - start);
+
+	Log("*** finished pak file encoding; took %lld ms (%zu bytes -- %.1f%% ratio).\n",
+		duration.count(), compressedSize, 100.0 * (decompressedSize - compressedSize) / decompressedSize);
+
 	return compressedSize;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: stream decode pak file to new stream and swap old stream with new
+// TODO: support RTech and Oodle in stream wise manner as well
+//-----------------------------------------------------------------------------
+size_t Pak_DecodeStreamAndSwap(BinaryIO& io, const uint16_t pakVersion, const char* const pakPath)
+{
+	Log("*** decoding pak file \"%s\".\n", pakPath);
+	const steady_clock::time_point start = high_resolution_clock::now();
+
+	BinaryIO outDecompressed;
+	std::string outDecompressedPath = pakPath;
+
+	outDecompressedPath.append("_decoded");
+
+	if (!outDecompressed.Open(outDecompressedPath, BinaryIO::Mode_e::Write))
+	{
+		Warning("Failed to open output pak file \"%s\" for decompression.\n", outDecompressedPath.c_str());
+		return 0;
+	}
+
+	const size_t compressedSize = (size_t)io.GetSize();
+
+	if (!Pak_StreamToStreamDecode(io, outDecompressed, Pak_GetHeaderSize(pakVersion)))
+		return 0;
+
+	const size_t decompressedSize = outDecompressed.TellPut();
+
+	if (!Util_ReplaceStream(io, outDecompressed, pakPath, outDecompressedPath.c_str()))
+		return 0;
+
+	const size_t reopenedPakSize = io.GetSize();
+
+	if (reopenedPakSize != decompressedSize)
+	{
+		Error("Reopened pak file \"%s\" appears malformed; decompressed size: %zu expected: %zu.\n",
+			pakPath, reopenedPakSize, decompressedSize);
+	}
+
+	const steady_clock::time_point stop = high_resolution_clock::now();
+	const microseconds duration = duration_cast<microseconds>(stop - start);
+
+	Log("*** finished pak file decoding; took %lld ms (%zu bytes -- %.1f%% ratio).\n",
+		duration.count(), decompressedSize, 100.0 * (decompressedSize - compressedSize) / decompressedSize);
+	return decompressedSize;
 }
 
 //-----------------------------------------------------------------------------

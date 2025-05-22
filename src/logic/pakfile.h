@@ -219,3 +219,4 @@ inline const char* Pak_EncodeAlgorithmToString(const uint16_t flags)
 }
 
 extern size_t Pak_EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount, const uint16_t pakVersion, const char* const pakPath);
+extern size_t Pak_DecodeStreamAndSwap(BinaryIO& io, const uint16_t pakVersion, const char* const pakPath);
