@@ -14,7 +14,8 @@
 
 #define PAK_HEADER_FLAGS_HAS_MODULE    (1<<0) // instructs the runtime to load the library corresponding to this RPak.
 #define PAK_HEADER_FLAGS_RTECH_ENCODED (1<<8) // use the RTech decoder in the runtime.
-#define PAK_HEADER_FLAGS_ZSTD_ENCODED  (1<<9) // use the ZStd decoder in the runtime.
+#define PAK_HEADER_FLAGS_OODLE_ENCODED (1<<9) // use the Oodle decoder in the runtime.
+#define PAK_HEADER_FLAGS_ZSTD_ENCODED  (1<<15) // use the ZStd decoder in the runtime.
 
 #define PAK_MAX_STEM_PATH 512
 

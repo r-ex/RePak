@@ -228,7 +228,7 @@ static void RePak_HandleCompressPak(const char* const pakPath, const int compres
 
     PakHdr_t* const hdr = (PakHdr_t*)tempHdrBuf;
 
-    if (hdr->flags & (PAK_HEADER_FLAGS_RTECH_ENCODED | PAK_HEADER_FLAGS_ZSTD_ENCODED))
+    if (hdr->flags & (PAK_HEADER_FLAGS_RTECH_ENCODED | PAK_HEADER_FLAGS_OODLE_ENCODED | PAK_HEADER_FLAGS_ZSTD_ENCODED))
         Error("Pak file \"%s\" is already encoded using %s!\n", pakPath, Pak_EncodeAlgorithmToString(hdr->flags));
 
     const size_t newSize = Pak_EncodeStreamAndSwap(bio, compressLevel, workerCount, version, pakPath);
@@ -260,7 +260,7 @@ static void RePak_HandleDecompressPak(const char* const pakPath)
     PakHdr_t* const hdr = (PakHdr_t*)tempHdrBuf;
 
     // TODO: support these are well.
-    if (hdr->flags & PAK_HEADER_FLAGS_RTECH_ENCODED)
+    if (hdr->flags & (PAK_HEADER_FLAGS_RTECH_ENCODED | PAK_HEADER_FLAGS_OODLE_ENCODED))
         Error("Pak file \"%s\" is encoded using %s which is unsupported!\n", pakPath, Pak_EncodeAlgorithmToString(hdr->flags));
 
     if (!(hdr->flags & PAK_HEADER_FLAGS_ZSTD_ENCODED))

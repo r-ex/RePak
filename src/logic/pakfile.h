@@ -212,6 +212,8 @@ inline const char* Pak_EncodeAlgorithmToString(const uint16_t flags)
 {
 	if (flags & PAK_HEADER_FLAGS_RTECH_ENCODED)
 		return "RTech";
+	if (flags & PAK_HEADER_FLAGS_OODLE_ENCODED)
+		return "Oodle";
 	if (flags & PAK_HEADER_FLAGS_ZSTD_ENCODED)
 		return "ZStd";
 
