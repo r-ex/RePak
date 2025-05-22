@@ -142,6 +142,35 @@ const char* Utils::ExtractFileName(const std::string& inPath)
     return result;
 }
 
+bool Util_ReplaceStream(BinaryIO& mainStream, BinaryIO& toSwap, const char* const mainPath, const char* const toSwapPath)
+{
+    toSwap.Close();
+    mainStream.Close();
+
+    // note(amos): we must reopen the file in ReadWrite mode as otherwise
+    // the file gets truncated.
+
+    if (!std::filesystem::remove(mainPath))
+    {
+        Warning("%s: failed to remove file \"%s\" for swap.\n", __FUNCTION__, mainPath);
+
+        // reopen and continue uncompressed.
+        if (mainStream.Open(mainPath, BinaryIO::Mode_e::ReadWrite))
+            Error("%s: failed to reopen file \"%s\".\n", __FUNCTION__, mainPath);
+
+        return false;
+    }
+
+    std::filesystem::rename(toSwapPath, mainPath);
+
+    // either the rename failed or something holds an open handle to the
+    // newly renamed compressed file, irrecoverable.
+    if (!mainStream.Open(mainPath, BinaryIO::Mode_e::ReadWrite))
+        Error("%s: failed to reopen file \"%s\".\n", __FUNCTION__, mainPath);
+
+    return true;
+}
+
 PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success)
 {
     PakGuid_t guid;
