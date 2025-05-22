@@ -17,6 +17,8 @@ namespace Utils
 	const char* ExtractFileName(const std::string& inPath);
 };
 
+extern bool Util_ReplaceStream(BinaryIO& mainStream, BinaryIO& toSwap, const char* const mainPath, const char* const toSwapPath);
+
 extern PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, bool* const success = nullptr);
 extern PakGuid_t Pak_ParseGuid(const rapidjson::Value& val, rapidjson::Value::StringRefType member, bool* const success = nullptr);
 extern PakGuid_t Pak_ParseGuidDefault(const rapidjson::Value& val, rapidjson::Value::StringRefType member, const PakGuid_t fallback);

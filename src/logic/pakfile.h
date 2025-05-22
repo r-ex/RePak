@@ -55,16 +55,8 @@ public:
 	inline size_t GetAssetCount() const { return m_assets.size(); };
 	inline uint16_t GetNumPages() const { return m_pageBuilder.GetPageCount(); };
 
-	inline uint32_t GetVersion() const { return m_Header.fileVersion; }
-	inline void SetVersion(const uint16_t version)
-	{
-		if ((version != 7) && (version != 8))
-		{
-			Error("Unsupported pak file version %hu.\n", version);
-		}
-
-		m_Header.fileVersion = version;
-	}
+	inline uint16_t GetVersion() const { return m_Header.fileVersion; }
+	void SetVersion(const uint16_t version);
 
 	inline size_t GetMaxStreamingFileHandlesPerSet() const
 	{
@@ -104,8 +96,6 @@ public:
 
 	size_t WriteStarpakPaths(BinaryIO& out, const PakStreamSet_e set);
 	void WritePagePointers(BinaryIO& out);
-
-	size_t EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount);
 
 	void GenerateInternalDependencies();
 	void GenerateAssetDependents();
@@ -192,3 +182,41 @@ inline bool Pak_RegisterGuidRefAtOffset(const PakGuid_t guid, const size_t offse
 	asset.AddGuid(chunk.GetPointer(offset), guid);
 	return true;
 }
+
+// gets the pak file header size based on pak version
+inline size_t Pak_GetHeaderSize(const uint16_t version)
+{
+	switch (version)
+	{
+		// todo(amos): we probably should import headers for both
+		// versions and do a sizeof here.
+	case 7: return 0x58;
+	case 8: return 0x80;
+	default: assert(0); return 0;
+	};
+}
+
+static inline bool Pak_IsVersionSupported(const int version)
+{
+	switch (version)
+	{
+	case 7:
+	case 8:
+		return true;
+	default:
+		return false;
+	}
+}
+
+inline const char* Pak_EncodeAlgorithmToString(const uint16_t flags)
+{
+	if (flags & PAK_HEADER_FLAGS_RTECH_ENCODED)
+		return "RTech";
+	if (flags & PAK_HEADER_FLAGS_ZSTD_ENCODED)
+		return "ZStd";
+
+	return "an unknown algorithm";
+}
+
+extern size_t Pak_EncodeStreamAndSwap(BinaryIO& io, const int compressLevel, const int workerCount, const uint16_t pakVersion, const char* const pakPath);
+extern size_t Pak_DecodeStreamAndSwap(BinaryIO& io, const uint16_t pakVersion, const char* const pakPath);

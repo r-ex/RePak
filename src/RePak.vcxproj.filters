@@ -246,6 +246,7 @@
     <ClCompile Include="assets\texture_list.cpp">
       <Filter>assets</Filter>
     </ClCompile>
+    <ClCompile Include="application\console.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
