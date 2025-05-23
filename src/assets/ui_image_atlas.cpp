@@ -144,7 +144,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     for (const rapidjson::Value& it : imageArray)
     {
         rapidjson::Value::ConstMemberIterator pathIt;
-        JSON_GetRequired(it, "path", pathIt);
+        JSON_GetRequired(it, "path", JSONFieldType_e::kString, pathIt);
 
         const char* const imagePath = pathIt->value.GetString();
         const uint32_t pathHash = RTech::StringToUIMGHash(imagePath);
