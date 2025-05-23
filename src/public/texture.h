@@ -6,6 +6,7 @@
 #define MAX_STREAM_MIP_SIZE	0xFFFFF
 
 #define TEXTURE_INVALID_FORMAT_INDEX 0xFFFF
+#define MAX_UI_ATLAS_IMAGES 0x10000
 
 struct TextureBytesPerPixel_t
 {

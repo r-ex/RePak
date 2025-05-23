@@ -18,7 +18,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
 
     // note: we error here as we can't check if it was added as a streamed texture, and uimg doesn't support texture streaming.
     if (!Texture_AutoAddTexture(pak, atlasGuid, atlasPath, true/*streaming disabled as uimg can not be streamed*/))
-        Error("Atlas asset \"%s\" with GUID 0x%llX was already added as 'txtr' asset; it can only be added through an 'uimg' asset.\n", atlasPath, atlasGuid);
+        Error("Atlas texture \"%s\" with GUID 0x%llX was already added as Texture asset; it can only be added through an UI image atlas asset.\n", atlasPath, atlasGuid);
 
     PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
     PakAsset_t* const atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
@@ -28,7 +28,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     if (!atlasAsset) [[ unlikely ]]
     {
         assert(0);
-        Error("Atlas asset was not found when trying to add 'uimg' asset \"%s\".\n", assetPath);
+        Error("Internal failure while adding atlas texture \"%s\" with GUID 0x%llX.\n", atlasPath, assetGuid);
     }
 
     // make sure referenced asset is a texture for sanity
@@ -38,7 +38,10 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     JSON_GetRequired(mapEntry, "images", JSONFieldType_e::kArray, imagesIt);
 
     const rapidjson::Value::ConstArray& imageArray = imagesIt->value.GetArray();
-    const uint16_t imageCount = static_cast<uint16_t>(imageArray.Size());
+    const size_t imageArraySize = imageArray.Size();
+
+    if (imageArraySize > MAX_UI_ATLAS_IMAGES)
+        Error("UI image atlas contains too many images (max %zu, got %zu).\n", (size_t)MAX_UI_ATLAS_IMAGES, imageArraySize);
 
     // needs to be reversed still, not all uimg's use this! this might be
     // necessary to reverse at some point since some uimg's (especially in
@@ -58,13 +61,13 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     pHdr->heightRatio = 1.f / pHdr->height;
 
     // legion uses this to get the image count, so its probably set correctly
-    pHdr->imageCount = imageCount;
+    pHdr->imageCount = static_cast<uint16_t>(imageArraySize);
     pHdr->unkCount = unkCount;
     pHdr->atlasGUID = atlasGuid;
 
     Pak_RegisterGuidRefAtOffset(atlasGuid, offsetof(UIImageAtlasHeader_t, atlasGUID), hdrLump, asset);
 
-    const size_t imageOffsetsDataSize = sizeof(UIImageOffset) * imageCount;
+    const size_t imageOffsetsDataSize = sizeof(UIImageOffset) * imageArraySize;
 
     // ui image offset info
     PakPageLump_s offsetLump = pak->CreatePageLump(imageOffsetsDataSize, SF_CPU | SF_CLIENT, 32);
@@ -91,25 +94,89 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
         uiio.scaleRatioX = JSON_GetValueOrDefault(it, "scaleRatioX", 1.0f);
         uiio.scaleRatioY = JSON_GetValueOrDefault(it, "scaleRatioY", 1.0f);
 
-        // Original code -- incorrect? Just let the user specify these
-        // as external tools can calculate these, and it probably also
-        // is responsibility of user/external tools to calculate it.
+        // [amos]: tools like TexturePacker can automatically create entire ui image atlases.
+        // TexturePacker can also trim out transparent area's (exactly like how the original
+        // Respawn UI image atlas textures have their transparency clipped out). The purpose
+        // of this `UIImageAtlasOffset` structure is to account for this; the scaleRatioX
+        // and scaleRatioY can zoom the image back out again to reconstruct the trimmed out
+        // transparency in the runtime. This is very ideal for keeping the image atlas size
+        // as low as possible.
+        // 
+        // TexturePacker exports the following data alongside the generated atlas texture:
+        // {
+        // 	"filename": "rui/hud/tactical_icons/pilot_tactical_particle_wall",
+        // 	"frame": {"x":1921,"y":1501,"w":62,"h":80},
+        // 	"rotated": false,
+        // 	"trimmed": true,
+        // 	"spriteSourceSize": {"x":33,"y":24,"w":62,"h":80},
+        // 	"sourceSize": {"w":128,"h":128}
+        // },
+        // {
+        // 	"filename": "rui/menu/buttons/weapon_categories/marksman",
+        // 	"frame": {"x":1226,"y":1,"w":526,"h":329},
+        // 	"rotated": false,
+        // 	"trimmed": true,
+        // 	"spriteSourceSize": {"x":138,"y":55,"w":526,"h":329},
+        // 	"sourceSize": {"w":802,"h":440}
+        // },
+        // 
+        // It keeps the source sprite size and positions and provides the actual (new) size
+        // and positions of the sprite within the atlas, the idea is to figure out how to
+        // compute the scale ratios and anchors based on these values.
+        // 
+        // For scaleRatio, this seems to get very close:
+        // uiio.scaleRatioX = 1.0f + ((float)(sourceWidth - croppedWidth) / (float)croppedWidth);
+        // uiio.scaleRatioY = 1.0f + ((float)(sourceHeight - croppedHeight) / (float)croppedHeight);
+        // 
+        // I'm not sure how to calculate the anchors correctly yet, time ran out when I
+        // started to poke around with those. These need to be figured out so that the
+        // images are correctly placed again on the RUI mesh within the runtime as scaling
+        // does offset the image slightly (which the anchors need to correct).
+        // 
+        // 
+        // Also, on Respawn UI image atlases, the cropInsetLeft and cropInsetTop variables
+        // are sometimes set as well, these aren't very important, but probably need more
+        // research as well...
         /*
-        float startX = it["posX"].GetFloat() / pHdr->width;
-        float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->width;
+        uint32_t sourcePosX;
+        uint32_t sourcePosY;
+        uint32_t sourceWidth;
+        uint32_t sourceHeight;
 
-        float startY = it["posY"].GetFloat() / pHdr->height;
-        float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->height;
+        if (JSON_GetValue(it, "sourcePosX", JSONFieldType_e::kUint32, sourcePosX) &&
+            JSON_GetValue(it, "sourcePosY", JSONFieldType_e::kUint32, sourcePosY) &&
+            JSON_GetValue(it, "sourceWidth", JSONFieldType_e::kUint32, sourceWidth) &&
+            JSON_GetValue(it, "sourceHeight", JSONFieldType_e::kUint32, sourceHeight)
+            )
+        {
+            const uint16_t croppedWidth = (uint16_t)JSON_GetNumberRequired<uint32_t>(it, "width");
+            const uint16_t croppedHeight = (uint16_t)JSON_GetNumberRequired<uint32_t>(it, "height");
 
-        // this doesn't affect legion but does affect game?
-        uiio.InitUIImageOffset(startX, startY, endX, endY);
+            uiio.scaleRatioX = (float)sourceWidth / (float)croppedWidth;
+            uiio.scaleRatioY = (float)sourceHeight / (float)croppedHeight;
+
+            uiio.startAnchorX = (float)sourcePosX / (float)sourceWidth;
+            uiio.startAnchorY = (float)sourcePosY / (float)sourceHeight;
+            uiio.endAnchorX = ((float)sourcePosX + (float)croppedWidth) / (float)sourceWidth;
+            uiio.endAnchorY = ((float)sourcePosY + (float)croppedHeight) / (float)sourceHeight;
+        }
+        else // Default scale.
+        {
+            uiio.endAnchorX = 1.0f;
+            uiio.endAnchorY = 1.0f;
+
+            uiio.startAnchorX = 0.0f;
+            uiio.startAnchorY = 0.0f;
+
+            uiio.scaleRatioX = 1.0f;
+            uiio.scaleRatioY = 1.0f;
+        }
         */
-
         ofBuf.write(uiio);
     }
 
-    const size_t imageDimensionsDataSize = sizeof(uint16_t) * 2 * imageCount;
-    const size_t imageHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * imageCount;
+    const size_t imageDimensionsDataSize = sizeof(uint16_t) * 2 * imageArraySize;
+    const size_t imageHashesDataSize = (sizeof(uint32_t) + sizeof(uint32_t)) * imageArraySize;
 
     // note: aligned to 4 if we do not have UIImageAtlasHeader_t::unkCount
     // (which needs to be reversed still). Else this lump must reside in a
@@ -137,12 +204,21 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
 
     if (pak->IsFlagSet(PF_KEEP_DEV))
     {
+        int index = -1;
+
         for (const rapidjson::Value& it : imageArray)
         {
+            index++;
+
             rapidjson::Value::ConstMemberIterator pathIt;
             JSON_GetRequired(it, "path", JSONFieldType_e::kString, pathIt);
 
-            stringBufSize += pathIt->value.GetStringLength() + 1; // +1 for null terminator.
+            const size_t pathLen = pathIt->value.GetStringLength();
+
+            if (pathLen == 0)
+                Error("Image #%i has an empty name!\n", index);
+
+            stringBufSize += pathLen + 1; // +1 for null terminator.
         }
     }
 
@@ -155,13 +231,21 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     }
 
     uint32_t nextStringTableOffset = 0;
+    int index = -1;
 
     /////////////////////////
     // IMAGE HASHES/NAMES
     for (const rapidjson::Value& it : imageArray)
     {
+        index++;
+
         rapidjson::Value::ConstMemberIterator pathIt;
         JSON_GetRequired(it, "path", JSONFieldType_e::kString, pathIt);
+
+        const size_t pathLen = pathIt->value.GetStringLength();
+
+        if (pathLen == 0)
+            Error("Image #%i has an empty name!\n", index);
 
         const char* const imagePath = pathIt->value.GetString();
         const uint32_t pathHash = RTech::StringToUIMGHash(imagePath);
@@ -170,18 +254,21 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
 
         if (devLump.data)
         {
-            const size_t pathLen = pathIt->value.GetStringLength() + 1; // +1 for null terminator.
-            memcpy(&devLump.data[nextStringTableOffset], imagePath, pathLen);
+            const size_t pathBufSize = pathLen + 1; // +1 for null terminator.
+            memcpy(&devLump.data[nextStringTableOffset], imagePath, pathBufSize);
 
             ifBuf.write(nextStringTableOffset);
-            nextStringTableOffset += (uint32_t)pathLen;
+            nextStringTableOffset += (uint32_t)pathBufSize;
         }
-        else // No dev data, don't write the image path.
+        else
+        {
+            // No dev data, don't write the image path.
             ifBuf.write(0ul);
+        }
     }
 
     // cpu data
-    PakPageLump_s uvLump = pak->CreatePageLump(imageCount * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
+    PakPageLump_s uvLump = pak->CreatePageLump(imageArraySize * sizeof(UIImageUV), SF_CPU | SF_TEMP | SF_CLIENT, 4);
     rmem uvBuf(uvLump.data);
 
     //////////////
