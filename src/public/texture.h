@@ -179,30 +179,21 @@ struct UIImageUV
 // examples of changes from these values: https://imgur.com/a/l1YDXaz
 struct UIImageOffset
 {
-	void InitUIImageOffset(float flStartX, float flStartY, float flEndX, float flEndY)
-	{
-		this->startX = flStartX;
-		this->startY = flStartY;
-		this->endX = flEndX;
-		this->endY = flEndY;
-		//this->unkX = 1 - 2 * startX; // doesn't seem to always 100% of the time match up but its very close
-		//this->unkY = 1 - 2 * startY;
-	}
 	// these don't seem to matter all that much as long as they are a valid float number
-	float f0 = 0.f;
-	float f1 = 0.f;
+	float f0;
+	float f1;
 
 	// endX and endY define where the edge of the image is, with 1.f being the full length of the image and 0.5f being half of the image
-	float endX = 1.f;
-	float endY = 1.f;
+	float endAnchorX;
+	float endAnchorY;
 
 	// startX and startY define where the top left corner is in proportion to the full image dimensions
-	float startX = 0.f;
-	float startY = 0.f;
+	float startAnchorX;
+	float startAnchorY;
 
 	// changing these 2 values causes the image to be distorted on each axis
-	float unkX = 1.f;
-	float unkY = 1.f;
+	float scaleRatioX;
+	float scaleRatioY;
 };
 
 // map of dxgi format to the corresponding txtr asset format value

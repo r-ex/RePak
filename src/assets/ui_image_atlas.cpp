@@ -80,20 +80,33 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     // IMAGE OFFSETS
     for (const rapidjson::Value& it : imageArray)
     {
-        UIImageOffset uiio{};
+        UIImageOffset uiio;
+        uiio.f0 = uiio.f1 = 0.0f; // These don't do anything.
 
-        // TODO: commented as these were causing code warnings.
-        // this should be revisited at some point.
-        UNUSED(it);
+        uiio.endAnchorX = JSON_GetValueOrDefault(it, "endAnchorX", 1.0f);
+        uiio.endAnchorY = JSON_GetValueOrDefault(it, "endAnchorY", 1.0f);
 
-        //float startX = it["posX"].GetFloat() / pHdr->width;
-        //float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->width;
+        uiio.startAnchorX = JSON_GetValueOrDefault(it, "startAnchorX", 0.0f);
+        uiio.startAnchorY = JSON_GetValueOrDefault(it, "startAnchorY", 0.0f);
 
-        //float startY = it["posY"].GetFloat() / pHdr->height;
-        //float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->height;
+        // Lower means more zoomed in.
+        uiio.scaleRatioX = JSON_GetValueOrDefault(it, "scaleRatioX", 1.0f);
+        uiio.scaleRatioY = JSON_GetValueOrDefault(it, "scaleRatioY", 1.0f);
+
+        // Original code -- incorrect? Just let the user specify these
+        // as external tools can calculate these, and it probably also
+        // is responsibility of user/external tools to calculate it.
+        /*
+        float startX = it["posX"].GetFloat() / pHdr->width;
+        float endX = (it["posX"].GetFloat() + it["width"].GetFloat()) / pHdr->width;
+
+        float startY = it["posY"].GetFloat() / pHdr->height;
+        float endY = (it["posY"].GetFloat() + it["height"].GetFloat()) / pHdr->height;
 
         // this doesn't affect legion but does affect game?
-        //uiio.InitUIImageOffset(startX, startY, endX, endY);
+        uiio.InitUIImageOffset(startX, startY, endX, endY);
+        */
+
         ofBuf.write(uiio);
     }
 
