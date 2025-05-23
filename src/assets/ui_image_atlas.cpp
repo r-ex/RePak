@@ -78,7 +78,8 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     for (const rapidjson::Value& it : imageArray)
     {
         UIImageOffset uiio;
-        uiio.f0 = uiio.f1 = 0.0f; // These don't do anything.
+        uiio.cropInsetLeft = JSON_GetValueOrDefault(it, "cropInsetLeft", 0.0f);
+        uiio.cropInsetTop = JSON_GetValueOrDefault(it, "cropInsetTop", 0.0f);
 
         uiio.endAnchorX = JSON_GetValueOrDefault(it, "endAnchorX", 1.0f);
         uiio.endAnchorY = JSON_GetValueOrDefault(it, "endAnchorY", 1.0f);
