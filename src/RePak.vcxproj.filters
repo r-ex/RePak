@@ -69,9 +69,6 @@
     <ClCompile Include="assets\patch.cpp">
       <Filter>assets</Filter>
     </ClCompile>
-    <ClCompile Include="assets\uiatlas.cpp">
-      <Filter>assets</Filter>
-    </ClCompile>
     <ClCompile Include="assets\texture.cpp">
       <Filter>assets</Filter>
     </ClCompile>
@@ -247,6 +244,9 @@
       <Filter>assets</Filter>
     </ClCompile>
     <ClCompile Include="application\console.cpp" />
+    <ClCompile Include="assets\ui_image_atlas.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
