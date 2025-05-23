@@ -5,9 +5,6 @@
 
 extern bool Texture_AutoAddTexture(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const bool forceDisableStreaming);
 
-// todo:
-// - keepDevOnly names
-
 // page lump structure and order:
 // - header        HEAD        (align=8)
 // - image offsets CPU_CLIENT  (align=32)
@@ -135,9 +132,28 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
 
     // set image hashes page index and offset
     pak->AddPointer(hdrLump, offsetof(UIImageAtlasHeader_t, pImageHashes), infoLump, imageDimensionsDataSize);
+    size_t stringBufSize = 0;
 
-    // TODO: is this used?
-    //uint32_t nextStringTableOffset = 0;
+    if (pak->IsFlagSet(PF_KEEP_DEV))
+    {
+        for (const rapidjson::Value& it : imageArray)
+        {
+            rapidjson::Value::ConstMemberIterator pathIt;
+            JSON_GetRequired(it, "path", JSONFieldType_e::kString, pathIt);
+
+            stringBufSize += pathIt->value.GetStringLength() + 1; // +1 for null terminator.
+        }
+    }
+
+    PakPageLump_s devLump{};
+
+    if (stringBufSize > 0)
+    {
+        devLump = pak->CreatePageLump(stringBufSize, SF_CPU | SF_DEV, 1);
+        pak->AddPointer(hdrLump, offsetof(UIImageAtlasHeader_t, pImagesNames), devLump, 0);
+    }
+
+    uint32_t nextStringTableOffset = 0;
 
     /////////////////////////
     // IMAGE HASHES/NAMES
@@ -151,10 +167,16 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
 
         ifBuf.write(pathHash);
 
-        // offset into the path table for this image - not really needed since we don't write the image names
-        ifBuf.write(0ul);
+        if (devLump.data)
+        {
+            const size_t pathLen = pathIt->value.GetStringLength() + 1; // +1 for null terminator.
+            memcpy(&devLump.data[nextStringTableOffset], imagePath, pathLen);
 
-        //nextStringTableOffset += textIt->value.GetStringLength();
+            ifBuf.write(nextStringTableOffset);
+            nextStringTableOffset += (uint32_t)pathLen;
+        }
+        else // No dev data, don't write the image path.
+            ifBuf.write(0ul);
     }
 
     // cpu data
