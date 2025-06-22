@@ -415,7 +415,7 @@ inline bool JSON_StringToNumber(const char* const str, const size_t len, V& num)
     else
         static_assert(std::is_same_v<V, void>, "Cannot classify numeric type; unsupported.");
 
-    return (result.ptr == end) && (result.ec == std::errc());
+    return (result.ec == std::errc()) && (result.ptr == end);
 }
 
 //-----------------------------------------------------------------------------
