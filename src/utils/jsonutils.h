@@ -114,7 +114,7 @@ inline const char* JSON_TypeToString(const JSONFieldType_e type)
 }
 
 template <class T>
-inline bool JSON_TypeToString(const T& data)
+inline const char* JSON_TypeToString(const T& data)
 {
     return JSON_TypeToString(JSON_ExtractType(data));
 }
