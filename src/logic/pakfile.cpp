@@ -57,12 +57,6 @@ bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* con
 		const steady_clock::time_point start = high_resolution_clock::now();
 		const PakGuid_t assetGuid = Pak_GetGuidOverridable(file, assetPath);
 
-		uint32_t slotIndex;
-		const PakAsset_t* const existingAsset = GetAssetByGuid(assetGuid, &slotIndex, true);
-
-		if (existingAsset)
-			Error("'%s' asset \"%s\" with GUID 0x%llX was already added in slot #%u.\n", assetType, assetPath, assetGuid, slotIndex);
-
 		targetFunc(this, assetGuid, assetPath, file);
 		const steady_clock::time_point stop = high_resolution_clock::now();
 
@@ -444,9 +438,9 @@ PakPageLump_s CPakFileBuilder::CreatePageLump(const size_t size, const int flags
 // purpose: 
 // returns: 
 //-----------------------------------------------------------------------------
-PakAsset_t* CPakFileBuilder::GetAssetByGuid(const PakGuid_t guid, uint32_t* const idx /*= nullptr*/, const bool silent /*= false*/)
+PakAsset_t* CPakFileBuilder::GetAssetByGuid(const PakGuid_t guid, size_t* const idx /*= nullptr*/, const bool silent /*= false*/)
 {
-	uint32_t i = 0;
+	size_t i = 0;
 	for (PakAsset_t& it : m_assets)
 	{
 		if (it.guid == guid)
