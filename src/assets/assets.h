@@ -8,6 +8,7 @@
 #define TXAN_VERSION 1
 #define TXLS_VERSION 1
 #define UIMG_VERSION 10
+#define RLCD_VERSION 0
 //#define DTBL_VERSION 1
 #define STLT_VERSION 0
 #define STGS_VERSION 1
@@ -33,6 +34,7 @@ namespace Assets
 	void AddMaterialForAspectAsset_v3(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
 
 	void AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
+	void AddLcdScreenEffect_v0(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
 
 	void AddDataTableAsset(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
 	void AddSettingsLayout_v0(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry);
