@@ -102,14 +102,10 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 	const auto it = s_pakAssetHandlers.find({ assetType });
 
 	if (it == s_pakAssetHandlers.end())
-	{
 		Error("Unhandled asset type '%.4s' provided.\n", assetType);
-		g_currentAsset = nullptr;
+	else
+		AddJSONAsset(*it, assetPath, file);
 
-		return;
-	}
-
-	AddJSONAsset(*it, assetPath, file);
 	g_currentAsset = nullptr;
 }
 
