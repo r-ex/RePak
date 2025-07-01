@@ -16,16 +16,40 @@ struct PakStreamSetEntry_s
 	int64_t streamIndex : 12;
 };
 
+enum class PakAssetScope_e
+{
+	kServerOnly,
+	kClientOnly,
+	kAll,
+};
+
+class CPakFileBuilder;
+typedef void(*PakAssetAddFunc_t)(CPakFileBuilder*, const PakGuid_t, const char*, const rapidjson::Value&);
+
+struct PakAssetHandler_s
+{
+	inline bool operator==(const PakAssetHandler_s& rhs) const
+	{
+		return strcmp(rhs.assetType, assetType) == 0;
+	}
+
+	const char* assetType;
+	PakAssetScope_e assetScope;
+	PakAssetAddFunc_t func_r2;
+	PakAssetAddFunc_t func_r5;
+};
+
+struct PakAssetHasher_s
+{
+	std::size_t operator()(const PakAssetHandler_s& s) const
+	{
+		return std::hash<std::string_view>{}(s.assetType);
+	}
+};
+
 class CPakFileBuilder
 {
 	friend class CPakPage;
-
-	enum class AssetScope_e
-	{
-		kServerOnly,
-		kClientOnly,
-		kAll,
-	};
 
 public:
 	CPakFileBuilder(const CBuildSettings* const buildSettings, CStreamFileBuilder* const streamBuilder);
@@ -34,10 +58,7 @@ public:
 	// assets
 	//----------------------------------------------------------------------------
 
-	typedef void(*AssetTypeFunc_t)(CPakFileBuilder*, const PakGuid_t, const char*, const rapidjson::Value&);
-
-	bool AddJSONAsset(const char* const targetType, const char* const assetType, const char* const assetPath,
-			const AssetScope_e assetScope, const rapidjson::Value& file, AssetTypeFunc_t func_r2 = nullptr, AssetTypeFunc_t func_r5 = nullptr);
+	void AddJSONAsset(const PakAssetHandler_s& assetHandler, const char* const assetPath, const rapidjson::Value& file);
 	void AddAsset(const rapidjson::Value& file);
 
 	void AddPointer(PakPageLump_s& pointerLump, const size_t pointerOffset, const PakPageLump_s& dataLump, const size_t dataOffset);
