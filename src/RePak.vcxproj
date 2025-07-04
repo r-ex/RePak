@@ -17,6 +17,7 @@
     <ClCompile Include="assets\animseq.cpp" />
     <ClCompile Include="assets\anim_recording.cpp" />
     <ClCompile Include="assets\datatable.cpp" />
+    <ClCompile Include="assets\lcd_screen_effect.cpp" />
     <ClCompile Include="assets\material.cpp" />
     <ClCompile Include="assets\material_for_aspect.cpp" />
     <ClCompile Include="assets\model.cpp" />
@@ -188,6 +189,7 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="public\animrig.h" />
     <ClInclude Include="public\anim_recording.h" />
+    <ClInclude Include="public\lcd_screen_effect.h" />
     <ClInclude Include="public\material.h" />
     <ClInclude Include="public\materialflags.h" />
     <ClInclude Include="public\material_for_aspect.h" />
@@ -301,6 +303,7 @@
     <ProjectGuid>{4353f586-1a95-453b-847c-698083954dc7}</ProjectGuid>
     <RootNamespace>RePak</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>repak</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">

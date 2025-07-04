@@ -247,6 +247,9 @@
     <ClCompile Include="assets\ui_image_atlas.cpp">
       <Filter>assets</Filter>
     </ClCompile>
+    <ClCompile Include="assets\lcd_screen_effect.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -601,6 +604,9 @@
       <Filter>public</Filter>
     </ClInclude>
     <ClInclude Include="public\texture_list.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\lcd_screen_effect.h">
       <Filter>public</Filter>
     </ClInclude>
   </ItemGroup>
