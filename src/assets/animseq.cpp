@@ -2,16 +2,45 @@
 #include "assets.h"
 #include "public/studio.h"
 
+#define ASEQ_DEPENDENCY_MIN_STR_LEN 4
+
+enum AseqDependencyType_e : uint8_t
+{
+    ASEQ_DEP_GENERIC,
+    ASEQ_DEP_MODEL,
+    ASEQ_DEP_SETTINGS,
+
+    ASEQ_DEP_COUNT // Not a type!
+};
+
+static void AnimSeq_ClassifyAndAddDependency(const char* const dependency, std::set<PakGuid_t>(&dependencies)[ASEQ_DEP_COUNT])
+{
+    const PakGuid_t guid = RTech::StringToGuid(dependency);
+    const uint32_t ident = (dependency[2] << 16) + (dependency[1] << 8) + dependency[0];
+
+    switch (ident)
+    {
+    case 'tes': // set (settings).
+        dependencies[ASEQ_DEP_SETTINGS].insert(guid);
+        break;
+    case 'ldm': // mdl (models).
+        dependencies[ASEQ_DEP_MODEL].insert(guid);
+        break;
+    default: // aseq, efct, etc...
+        dependencies[ASEQ_DEP_GENERIC].insert(guid);
+        break;
+    }
+}
+
 // This parses all dependencies from the animation data itself, currently the
 // data only exists in animation sequence events.
-static void AnimSeq_ParseDependenciesFromData(const uint8_t* const data, std::set<PakGuid_t>& dependencies)
+static void AnimSeq_ParseDependenciesFromData(const uint8_t* const data, std::set<PakGuid_t>(&dependencies)[ASEQ_DEP_COUNT])
 {
     const mstudioseqdesc_t& seqdesc = *reinterpret_cast<const mstudioseqdesc_t*>(data);
 
     for (int i = 0; i < seqdesc.numevents; i++)
     {
         const mstudioevent_t* const event = seqdesc.pEvent(i);
-
         const char* const depStart = strchr(event->options, '@');
 
         if (!depStart || *(depStart + 1) == '\0')
@@ -30,18 +59,28 @@ static void AnimSeq_ParseDependenciesFromData(const uint8_t* const data, std::se
         if (!end)
             end = event->options + strlen(event->options);
 
-        if (start == end)
-            continue; // Empty dependency name.
+        const size_t nameLen = (end - start);
 
-        std::string dependencyName(start, end);
-        dependencies.insert(RTech::StringToGuid(dependencyName.c_str()));
+        if (nameLen < ASEQ_DEPENDENCY_MIN_STR_LEN)
+        {
+            Warning("Embedded animation sequence dependency #%i has a name that is too short! [%zu < %zu]\n", 
+                i, nameLen, (size_t)ASEQ_DEPENDENCY_MIN_STR_LEN);
+            continue; // Invalid dependency name.
+        }
+
+        char stack[256];
+        memcpy(stack, start, nameLen);
+
+        stack[nameLen] = '\0';
+        AnimSeq_ClassifyAndAddDependency(stack, dependencies);
     }
 }
 
 // This parses all dependencies from a metadata file alongside the animation
 // file. If a sequence relies on another sequence, it must be added in this
 // metadata file in order for the game to precache it on time.
-static void AnimSeq_ParseDependenciesFromMap(CPakFileBuilder* const pak, const char* const assetPath, std::set<PakGuid_t>& dependencies)
+static void AnimSeq_ParseDependenciesFromMap(CPakFileBuilder* const pak, const char* const assetPath,
+    std::set<PakGuid_t>(&dependencies)[ASEQ_DEP_COUNT])
 {
     const std::string metaFilePath = Utils::ChangeExtension(pak->GetAssetPath() + assetPath, ".json");
     rapidjson::Document document;
@@ -65,16 +104,34 @@ static void AnimSeq_ParseDependenciesFromMap(CPakFileBuilder* const pak, const c
     {
         depIndex++;
 
-        char buffer[32]; const char* base = "dependency #";
-        char* current = std::copy(base, base + 12, buffer);
-        std::to_chars_result result = std::to_chars(current, buffer + sizeof(buffer), depIndex);
+        if (dependency.IsString())
+        {
+            const size_t nameLen = dependency.GetStringLength();
 
-        *result.ptr = '\0';
+            if (nameLen < ASEQ_DEPENDENCY_MIN_STR_LEN)
+            {
+                Warning("Listed animation sequence dependency #%i has a name that is too short! [%zu < %zu]\n",
+                    depIndex, nameLen, (size_t)ASEQ_DEPENDENCY_MIN_STR_LEN);
+                continue; // Invalid dependency name.
+            }
 
-        const char* dependencyName = nullptr;
-        const PakGuid_t guid = Pak_ParseGuidFromObject(dependency, buffer, dependencyName);
+            AnimSeq_ClassifyAndAddDependency(dependency.GetString(), dependencies);
+        }
+        else
+        {
+            PakGuid_t guid;
 
-        dependencies.insert(guid);
+            if (JSON_ParseNumber(dependency, guid))
+            {
+                if (dependencies[ASEQ_DEP_MODEL].find(guid) != dependencies[ASEQ_DEP_MODEL].end() ||
+                    dependencies[ASEQ_DEP_SETTINGS].find(guid) != dependencies[ASEQ_DEP_SETTINGS].end())
+                    continue;
+
+                // From a numeric entry, we cannot classify what kind of asset it is.
+                // Store it as a generic dependency.
+                dependencies[ASEQ_DEP_GENERIC].insert(guid);
+            }
+        }
     }
 }
 
@@ -96,6 +153,7 @@ static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid
     }
 
     PakPageLump_s hdrLump = pak->CreatePageLump(sizeof(AnimSeqAssetHeader_t), SF_HEAD, 8);
+    AnimSeqAssetHeader_t* const hdr = reinterpret_cast<AnimSeqAssetHeader_t*>(hdrLump.data);
 
     const size_t rseqFileSize = rseqInput.GetSize();
     uint8_t* const tempAseqBuf = new uint8_t[rseqFileSize];
@@ -107,11 +165,12 @@ static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid
     // Parse out the dependencies which we need to know in advance.
     // NOTE: original paks duplicate the dependencies for animation
     // sequences, but this is not necessary, so we drop duplicates.
-    std::set<PakGuid_t> dependencies;
+    std::set<PakGuid_t> dependencies[ASEQ_DEP_COUNT];
+
     AnimSeq_ParseDependenciesFromData(tempAseqBuf, dependencies);
     AnimSeq_ParseDependenciesFromMap(pak, assetPath, dependencies);
 
-    const size_t numDependencies = dependencies.size();
+    const size_t numDependencies = dependencies[ASEQ_DEP_GENERIC].size() + dependencies[ASEQ_DEP_MODEL].size() + dependencies[ASEQ_DEP_SETTINGS].size();
 
     const size_t dependenciesBufSize = numDependencies * sizeof(PakGuid_t);
     const size_t rseqNameBufLen = strlen(assetPath) + 1;
@@ -119,15 +178,38 @@ static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid
     PakPageLump_s dataLump = pak->CreatePageLump((dependenciesBufSize + rseqNameBufLen + rseqFileSize), SF_CPU, numDependencies > 0 ? 8 : 1);
     asset.ExpandGuidBuf(numDependencies);
 
-    for (size_t i = 0; i < numDependencies; i++)
+    size_t bufferBase = 0;
+
+    for (size_t i = 0; i < ASEQ_DEP_COUNT; i++)
     {
-        std::set<PakGuid_t>::iterator it = dependencies.begin();
-        std::advance(it, i);
+        const std::set<PakGuid_t>& set = dependencies[i];
 
-        const PakGuid_t guidToCopy = *it;
-        reinterpret_cast<PakGuid_t*>(dataLump.data)[i] = guidToCopy;
+        if (set.empty())
+            continue;
 
-        Pak_RegisterGuidRefAtOffset(guidToCopy, i * sizeof(PakGuid_t), dataLump, asset);
+        if (i == ASEQ_DEP_MODEL)
+        {
+            pak->AddPointer(hdrLump, offsetof(AnimSeqAssetHeader_t, pModels), dataLump, bufferBase);
+            hdr->modelCount = (uint32_t)set.size();
+        }
+        else if (i == ASEQ_DEP_SETTINGS)
+        {
+            pak->AddPointer(hdrLump, offsetof(AnimSeqAssetHeader_t, pSettings), dataLump, bufferBase);
+            hdr->settingsCount = (uint32_t)set.size();
+        }
+
+        for (size_t j = 0; j < set.size(); j++)
+        {
+            std::set<PakGuid_t>::iterator it = set.begin();
+            std::advance(it, j);
+
+            const PakGuid_t guidToCopy = *it;
+            reinterpret_cast<PakGuid_t*>(&dataLump.data[bufferBase])[j] = guidToCopy;
+
+            Pak_RegisterGuidRefAtOffset(guidToCopy, bufferBase + (j * sizeof(PakGuid_t)), dataLump, asset);
+        }
+
+        bufferBase += set.size() * sizeof(PakGuid_t);
     }
 
     const size_t nameOffset = dependenciesBufSize;
@@ -182,7 +264,7 @@ PakGuid_t* AnimSeq_AutoAddSequenceRefs(CPakFileBuilder* const pak, uint32_t* con
     const size_t numSequences = sequencesArray.Size();
     PakGuid_t* const guidBuf = new PakGuid_t[numSequences];
 
-    int seqIndex = -1;
+    int64_t seqIndex = -1;
     for (const auto& sequence : sequencesArray)
     {
         seqIndex++;
