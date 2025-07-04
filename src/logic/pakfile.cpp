@@ -15,44 +15,61 @@ CPakFileBuilder::CPakFileBuilder(const CBuildSettings* const buildSettings, CStr
 	m_streamBuilder = streamBuilder;
 }
 
-bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* const assetType, const char* const assetPath,
-							const AssetScope_e assetScope, const rapidjson::Value& file, AssetTypeFunc_t func_r2, AssetTypeFunc_t func_r5)
+static std::unordered_set<PakAssetHandler_s, PakAssetHasher_s> s_pakAssetHandlers
 {
-	if (strcmp(targetType, assetType) != 0)
-		return false;
+	{"anir", PakAssetScope_e::kServerOnly, Assets::AddAnimRecording_v1, Assets::AddAnimRecording_v1},
+	{"txtr", PakAssetScope_e::kClientOnly, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8},
+	{"txan", PakAssetScope_e::kClientOnly, nullptr, Assets::AddTextureAnimAsset_v1},
+	{"uimg", PakAssetScope_e::kClientOnly, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10},
+	{"rlcd", PakAssetScope_e::kClientOnly, Assets::AddLcdScreenEffect_v0, Assets::AddLcdScreenEffect_v0},
+	{"matl", PakAssetScope_e::kClientOnly, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15},
+	{"mt4a", PakAssetScope_e::kClientOnly, nullptr, Assets::AddMaterialForAspectAsset_v3},
+	{"shdr", PakAssetScope_e::kClientOnly, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12},
+	{"shds", PakAssetScope_e::kClientOnly, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11},
+	{"dtbl", PakAssetScope_e::kAll, Assets::AddDataTableAsset, Assets::AddDataTableAsset},
+	{"stlt", PakAssetScope_e::kAll, nullptr, Assets::AddSettingsLayout_v0},
+	{"stgs", PakAssetScope_e::kAll, nullptr, Assets::AddSettingsAsset_v1},
+	{"mdl_", PakAssetScope_e::kAll, nullptr, Assets::AddModelAsset_v9},
+	{"aseq", PakAssetScope_e::kAll, nullptr, Assets::AddAnimSeqAsset_v7},
+	{"arig", PakAssetScope_e::kAll, nullptr, Assets::AddAnimRigAsset_v4},
+	{"txls", PakAssetScope_e::kAll, nullptr, Assets::AddTextureListAsset_v1},
+	{"Ptch", PakAssetScope_e::kAll, Assets::AddPatchAsset, Assets::AddPatchAsset}
+};
 
-	switch (assetScope)
+void CPakFileBuilder::AddJSONAsset(const PakAssetHandler_s& assetHandler, const char* const assetPath, const rapidjson::Value& file)
+{
+	switch (assetHandler.assetScope)
 	{
-	case AssetScope_e::kServerOnly:
+	case PakAssetScope_e::kServerOnly:
 		if (!IsFlagSet(PF_KEEP_SERVER))
-			return true;
+			return;
 		break;
-	case AssetScope_e::kClientOnly:
+	case PakAssetScope_e::kClientOnly:
 		if (!IsFlagSet(PF_KEEP_CLIENT))
-			return true;
+			return;
 		break;
 	}
 
-	AssetTypeFunc_t targetFunc = nullptr;
+	PakAssetAddFunc_t targetFunc = nullptr;
 	const uint16_t fileVersion = this->m_Header.fileVersion;
 
 	switch (fileVersion)
 	{
 	case 7:
 	{
-		targetFunc = func_r2;
+		targetFunc = assetHandler.func_r2;
 		break;
 	}
 	case 8:
 	{
-		targetFunc = func_r5;
+		targetFunc = assetHandler.func_r5;
 		break;
 	}
 	}
 
 	if (targetFunc)
 	{
-		Debug("Adding '%s' asset \"%s\".\n", assetType, assetPath);
+		Debug("Adding '%s' asset \"%s\".\n", assetHandler.assetType, assetPath);
 
 		const steady_clock::time_point start = high_resolution_clock::now();
 		const PakGuid_t assetGuid = Pak_GetGuidOverridable(file, assetPath);
@@ -64,18 +81,8 @@ bool CPakFileBuilder::AddJSONAsset(const char* const targetType, const char* con
 		Debug("...done; took %lld ms.\n", duration.count());
 	}
 	else
-		Error("Asset type '%.4s' is not supported on pak version %hu.\n", assetType, fileVersion);
-
-	// Asset type has been handled.
-	return true;
+		Error("Asset type '%.4s' is not supported on pak version %hu.\n", assetHandler.assetType, fileVersion);
 }
-
-#define HANDLE_ASSET_TYPE(targetType, assetType, assetPath, assetScope, asset, func_r2, func_r5) \
-		if (AddJSONAsset(targetType, assetType, assetPath, assetScope, asset, func_r2, func_r5)) \
-			{ \
-				g_currentAsset = nullptr; \
-				return; \
-			}
 
 //-----------------------------------------------------------------------------
 // purpose: installs asset types and their callbacks
@@ -92,36 +99,14 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 		Error("No path provided for an asset of type '%.4s'.\n", assetType);
 
 	g_currentAsset = assetPath;
+	const auto it = s_pakAssetHandlers.find({ assetType });
 
-	HANDLE_ASSET_TYPE("anir", assetType, assetPath, AssetScope_e::kServerOnly, file, Assets::AddAnimRecording_v1, Assets::AddAnimRecording_v1);
-
-	HANDLE_ASSET_TYPE("txtr", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddTextureAsset_v8, Assets::AddTextureAsset_v8);
-	HANDLE_ASSET_TYPE("txan", assetType, assetPath, AssetScope_e::kClientOnly, file, nullptr, Assets::AddTextureAnimAsset_v1);
-
-	HANDLE_ASSET_TYPE("uimg", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10);
-	HANDLE_ASSET_TYPE("rlcd", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddLcdScreenEffect_v0, Assets::AddLcdScreenEffect_v0);
-
-	HANDLE_ASSET_TYPE("matl", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15);
-	HANDLE_ASSET_TYPE("mt4a", assetType, assetPath, AssetScope_e::kClientOnly, file, nullptr, Assets::AddMaterialForAspectAsset_v3);
-
-	HANDLE_ASSET_TYPE("shdr", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12);
-	HANDLE_ASSET_TYPE("shds", assetType, assetPath, AssetScope_e::kClientOnly, file, Assets::AddShaderSetAsset_v8, Assets::AddShaderSetAsset_v11);
-
-	HANDLE_ASSET_TYPE("dtbl", assetType, assetPath, AssetScope_e::kAll, file, Assets::AddDataTableAsset, Assets::AddDataTableAsset);
-	HANDLE_ASSET_TYPE("stlt", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddSettingsLayout_v0);
-	HANDLE_ASSET_TYPE("stgs", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddSettingsAsset_v1);
-
-	HANDLE_ASSET_TYPE("mdl_", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddModelAsset_v9);
-	HANDLE_ASSET_TYPE("aseq", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddAnimSeqAsset_v7);
-	HANDLE_ASSET_TYPE("arig", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddAnimRigAsset_v4);
-
-	HANDLE_ASSET_TYPE("txls", assetType, assetPath, AssetScope_e::kAll, file, nullptr, Assets::AddTextureListAsset_v1);
-	HANDLE_ASSET_TYPE("Ptch", assetType, assetPath, AssetScope_e::kAll, file, Assets::AddPatchAsset, Assets::AddPatchAsset);
+	if (it == s_pakAssetHandlers.end())
+		Error("Unhandled asset type '%.4s' provided.\n", assetType);
+	else
+		AddJSONAsset(*it, assetPath, file);
 
 	g_currentAsset = nullptr;
-
-	// If the function has not returned by this point, we have an unhandled asset type.
-	Error("Unhandled asset type '%.4s' provided for asset \"%s\".\n", assetType, assetPath);
 }
 
 //-----------------------------------------------------------------------------
