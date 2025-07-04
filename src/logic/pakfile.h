@@ -102,23 +102,7 @@ public:
 	void GenerateAssetUses();
 
 	PakPageLump_s CreatePageLump(const size_t size, const int flags, const int alignment, void* const buf = nullptr);
-
-	PakAsset_t* GetAssetByGuid(const PakGuid_t guid, uint32_t* const idx = nullptr, const bool silent = false);
-
-	FORCEINLINE void RequireUniqueAssetGUID(const PakAsset_t& asset)
-	{
-		uint32_t assetIdx = UINT32_MAX;
-		PakAsset_t* match = GetAssetByGuid(asset.guid, &assetIdx, true);
-		if (match != nullptr && match != &asset)
-		{
-			Error("Attempted to create asset with a non-unique GUID.\n"
-				"Assets at index %u (%s) and %u (%s) have the same GUID (%llx).\n",
-				assetIdx, match->name.c_str(),
-				static_cast<uint32_t>(m_assets.size()), asset.name.c_str(),
-				asset.guid
-			);
-		}
-	}
+	PakAsset_t* GetAssetByGuid(const PakGuid_t guid, size_t* const idx = nullptr, const bool silent = false);
 
 	FORCEINLINE PakAsset_t& BeginAsset(const PakGuid_t assetGuid, const char* const assetPath)
 	{
@@ -126,14 +110,29 @@ public:
 		// another asset is being created while we are still working on one,
 		// or when 'FinishAsset()' wasn't called after everything was done.
 		assert(!m_processingAsset);
-		m_processingAsset = true;
 
+		size_t assetIdx = SIZE_MAX;
+		const PakAsset_t* const match = GetAssetByGuid(assetGuid, &assetIdx, true);
+
+		if (match) // Asset was already added or GUID is colliding.
+		{
+			if (match->name.compare(assetPath) == 0)
+			{
+				Error("Asset \"%s\" was already added at index #%zu!\n",
+					assetPath, assetIdx);
+			}
+			else // Collision (could be non-unique GUID override or an actual collision).
+			{
+				Error("Asset \"%s\" has GUID %llX which collides with asset \"%s\" at index #%zu!\n",
+					assetPath, assetGuid, match->name.c_str(), assetIdx);
+			}
+		}
+
+		m_processingAsset = true;
 		PakAsset_t& asset = m_assets.emplace_back();
 
 		asset.guid = assetGuid;
 		asset.name = assetPath;
-
-		RequireUniqueAssetGUID(asset);
 
 		return asset;
 	}

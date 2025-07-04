@@ -28,7 +28,7 @@ static void Material4Aspect_InternalAdd(CPakFileBuilder* const pak, const PakGui
 
 	MaterialForAspect_s* const mt4a = reinterpret_cast<MaterialForAspect_s*>(hdrLump.data);
 
-	int matIndex = -1;
+	int64_t matIndex = -1;
 	for (const auto& material : materialArray)
 	{
 		matIndex++;
