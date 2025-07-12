@@ -15,18 +15,25 @@ static void LcdScreenEffect_InternalAddRLCD(CPakFileBuilder* const pak, const Pa
 
 	LcdScreenEffect_s* const rlcd = reinterpret_cast<LcdScreenEffect_s*>(hdrLump.data);
 
-	rlcd->interlaceX = JSON_GetNumberRequired<float>(document, "interlaceX");
-	rlcd->interlaceY = JSON_GetNumberRequired<float>(document, "interlaceY");
-	rlcd->attenuation = JSON_GetNumberRequired<float>(document, "attenuation");
+	// Interlacing effects.
+	rlcd->pixelScaleX1 = JSON_GetNumberRequired<float>(document, "pixelScaleX1");
+	rlcd->pixelScaleX2 = JSON_GetNumberRequired<float>(document, "pixelScaleX2");
+	rlcd->pixelScaleY = JSON_GetNumberRequired<float>(document, "pixelScaleY");
+
+	// Image effects.
+	rlcd->brightness = JSON_GetNumberRequired<float>(document, "brightness");
 	rlcd->contrast = JSON_GetNumberRequired<float>(document, "contrast");
-	rlcd->gamma = JSON_GetNumberRequired<float>(document, "gamma");
-	rlcd->washout = JSON_GetNumberRequired<float>(document, "washout");
-	rlcd->shutterBandingIntensity = JSON_GetNumberRequired<float>(document, "shutterBandingIntensity");
-	rlcd->shutterBandingFrequency = JSON_GetNumberRequired<float>(document, "shutterBandingFrequency");
-	rlcd->shutterBandingSpacing = JSON_GetNumberRequired<float>(document, "shutterBandingSpacing");
-	rlcd->exposure = JSON_GetNumberRequired<float>(document, "exposure");
-	rlcd->reserved = JSON_GetNumberOrDefault(document, "reserved", 0);
-	rlcd->noiseAmount = JSON_GetNumberRequired<float>(document, "noiseAmount");
+
+	// Shutter banding effects.
+	rlcd->waveScale = JSON_GetNumberRequired<float>(document, "waveScale");
+	rlcd->waveOffset = JSON_GetNumberRequired<float>(document, "waveOffset");
+	rlcd->waveSpeed = JSON_GetNumberRequired<float>(document, "waveSpeed");
+	rlcd->wavePeriod = JSON_GetNumberRequired<float>(document, "wavePeriod");
+
+	// Noise effects.
+	rlcd->bloomAdd = JSON_GetNumberRequired<float>(document, "bloomAdd");
+	rlcd->reserved = JSON_GetNumberOrDefault(document, "reserved", 0u);
+	rlcd->pixelFlicker = JSON_GetNumberRequired<float>(document, "pixelFlicker");
 
 	asset.InitAsset(hdrLump.GetPointer(), sizeof(LcdScreenEffect_s), PagePtr_t::NullPtr(), RLCD_VERSION, AssetType::RLCD);
 	asset.SetHeaderPointer(hdrLump.data);
