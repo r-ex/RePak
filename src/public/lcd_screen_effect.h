@@ -7,8 +7,8 @@ struct LcdScreenEffect_s
 	float pixelScaleY;
 	float brightness;
 	float contrast;
-	float waveScale;
 	float waveOffset;
+	float waveScale;
 	float waveSpeed;
 	float wavePeriod;
 	float bloomAdd;

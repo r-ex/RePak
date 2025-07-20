@@ -25,8 +25,8 @@ static void LcdScreenEffect_InternalAddRLCD(CPakFileBuilder* const pak, const Pa
 	rlcd->contrast = JSON_GetNumberRequired<float>(document, "contrast");
 
 	// Shutter banding effects.
-	rlcd->waveScale = JSON_GetNumberRequired<float>(document, "waveScale");
 	rlcd->waveOffset = JSON_GetNumberRequired<float>(document, "waveOffset");
+	rlcd->waveScale = JSON_GetNumberRequired<float>(document, "waveScale");
 	rlcd->waveSpeed = JSON_GetNumberRequired<float>(document, "waveSpeed");
 	rlcd->wavePeriod = JSON_GetNumberRequired<float>(document, "wavePeriod");
 
