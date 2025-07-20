@@ -464,10 +464,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v12_t
 	PagePtr_t streamingTextureHandles; // Streamable TextureGUID Map
 	short numStreamingTextureHandles; // Number of textures with streamed mip levels.
 
-	char samplers[4]; // 0x503000
-
-	short unk_AE;
-	uint64_t unk_B0; // haven't observed anything here.
+	char samplers[8]; // 0x503000
 
 	// seems to be 0xFBA63181 for loadscreens
 	uint32_t features; // no clue tbh, 0xFBA63181
@@ -514,9 +511,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 
 	// array of indices into sampler states array. must be set properly to have accurate texture tiling
 	// used in CShaderGlue::SetupShader (1403B3C60)
-	char samplers[4];// = 0x1D0300;
-
-	uint32_t unk_7C;
+	char samplers[8];// = 0x1D0300;
 
 	// most materials have this set as '0x1F5A92BD', PTCS/PTCU
 	// materials have it set as 0x75C8DF6F typically, and in
@@ -568,10 +563,8 @@ struct MaterialAsset_t
 	short height;
 	short depth;
 
-	uint32_t unk_7C;
+	char samplers[8];
 	uint32_t features; // 0x1F5A92BD, REQUIRED but why?
-
-	char samplers[4];
 
 	uint32_t flags;
 	uint32_t flags2;
@@ -652,7 +645,6 @@ struct MaterialAsset_t
 			matl->height = this->height;
 			matl->depth = this->depth;
 
-			matl->unk_7C = this->unk_7C;
 			matl->features = this->features;
 
 			memcpy(matl->samplers, this->samplers, sizeof(matl->samplers));

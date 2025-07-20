@@ -416,15 +416,15 @@ void MaterialAsset_t::FromJSON(const rapidjson::Value& mapEntry)
     // used for blend materials and the like
     this->surface2 = JSON_GetValueRequired<const char*>(mapEntry, "surfaceProp2");
 
+    // Set samplers properly. Responsible for texture stretching, tiling etc.
+    *(uint64_t*)this->samplers = JSON_GetNumberRequired<uint64_t>(mapEntry, "samplers");
+
     // This seems to be set on all materials, i haven't it being used yet in
     // the engine by hardware breakpointing it. but given that it was
     // preinitialized in the pak file, and the possible fact that various
     // other flags might dictate when and if this gets used, it must be
     // provided by the user.
     this->features = JSON_GetNumberRequired<uint32_t>(mapEntry, "features");
-
-    // Set samplers properly. Responsible for texture stretching, tiling etc.
-    *(uint32_t*)this->samplers = JSON_GetNumberRequired<uint32_t>(mapEntry, "samplers");
 
     Material_SetDXStates(mapEntry, dxStates);
 }
