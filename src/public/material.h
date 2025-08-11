@@ -464,7 +464,10 @@ struct __declspec(align(16)) MaterialAssetHeader_v12_t
 	PagePtr_t streamingTextureHandles; // Streamable TextureGUID Map
 	short numStreamingTextureHandles; // Number of textures with streamed mip levels.
 
-	char samplers[8]; // 0x503000
+	char samplers[4]; // 0x503000
+
+	short unk_AE;
+	uint64_t unk_B0; // haven't observed anything here.
 
 	// seems to be 0xFBA63181 for loadscreens
 	uint32_t features; // no clue tbh, 0xFBA63181
