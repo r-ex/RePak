@@ -514,9 +514,7 @@ struct __declspec(align(16)) MaterialAssetHeader_v15_t
 
 	// array of indices into sampler states array. must be set properly to have accurate texture tiling
 	// used in CShaderGlue::SetupShader (1403B3C60)
-	char samplers[4];// = 0x1D0300;
-
-	uint32_t unk_7C;
+	char samplers[8];// = 0x1D0300;
 
 	// most materials have this set as '0x1F5A92BD', PTCS/PTCU
 	// materials have it set as 0x75C8DF6F typically, and in
@@ -568,10 +566,8 @@ struct MaterialAsset_t
 	short height;
 	short depth;
 
-	uint32_t unk_7C;
+	char samplers[8];
 	uint32_t features; // 0x1F5A92BD, REQUIRED but why?
-
-	char samplers[4];
 
 	uint32_t flags;
 	uint32_t flags2;
@@ -652,7 +648,6 @@ struct MaterialAsset_t
 			matl->height = this->height;
 			matl->depth = this->depth;
 
-			matl->unk_7C = this->unk_7C;
 			matl->features = this->features;
 
 			memcpy(matl->samplers, this->samplers, sizeof(matl->samplers));

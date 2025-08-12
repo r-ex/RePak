@@ -25,14 +25,14 @@ static void LcdScreenEffect_InternalAddRLCD(CPakFileBuilder* const pak, const Pa
 	rlcd->contrast = JSON_GetNumberRequired<float>(document, "contrast");
 
 	// Shutter banding effects.
-	rlcd->waveScale = JSON_GetNumberRequired<float>(document, "waveScale");
 	rlcd->waveOffset = JSON_GetNumberRequired<float>(document, "waveOffset");
+	rlcd->waveScale = JSON_GetNumberRequired<float>(document, "waveScale");
 	rlcd->waveSpeed = JSON_GetNumberRequired<float>(document, "waveSpeed");
 	rlcd->wavePeriod = JSON_GetNumberRequired<float>(document, "wavePeriod");
 
 	// Noise effects.
 	rlcd->bloomAdd = JSON_GetNumberRequired<float>(document, "bloomAdd");
-	rlcd->reserved = JSON_GetNumberOrDefault(document, "reserved", 0u);
+	rlcd->doBloomLuminance = JSON_GetValueRequired<bool>(document, "doBloomLuminance");
 	rlcd->pixelFlicker = JSON_GetNumberRequired<float>(document, "pixelFlicker");
 
 	asset.InitAsset(hdrLump.GetPointer(), sizeof(LcdScreenEffect_s), PagePtr_t::NullPtr(), RLCD_VERSION, AssetType::RLCD);

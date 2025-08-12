@@ -7,11 +7,11 @@ struct LcdScreenEffect_s
 	float pixelScaleY;
 	float brightness;
 	float contrast;
-	float waveScale;
 	float waveOffset;
+	float waveScale;
 	float waveSpeed;
 	float wavePeriod;
 	float bloomAdd;
-	uint32_t reserved; // [amos]: always 0 and appears to do nothing in the runtime.
+	bool doBloomLuminance;
 	float pixelFlicker;
 };
