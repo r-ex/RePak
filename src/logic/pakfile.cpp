@@ -33,7 +33,9 @@ static std::unordered_set<PakAssetHandler_s, PakAssetHasher_s> s_pakAssetHandler
 	{"aseq", PakAssetScope_e::kAll, nullptr, Assets::AddAnimSeqAsset_v7},
 	{"arig", PakAssetScope_e::kAll, nullptr, Assets::AddAnimRigAsset_v4},
 	{"txls", PakAssetScope_e::kAll, nullptr, Assets::AddTextureListAsset_v1},
-	{"Ptch", PakAssetScope_e::kAll, Assets::AddPatchAsset, Assets::AddPatchAsset}
+	{"Ptch", PakAssetScope_e::kAll, Assets::AddPatchAsset, Assets::AddPatchAsset},
+	{"ui", PakAssetScope_e::kClientOnly, Assets::AddRuiAsset_v30, nullptr}
+
 };
 
 void CPakFileBuilder::AddJSONAsset(const PakAssetHandler_s& assetHandler, const char* const assetPath, const rapidjson::Value& file)
@@ -439,7 +441,7 @@ PakAsset_t* CPakFileBuilder::GetAssetByGuid(const PakGuid_t guid, size_t* const 
 		}
 		i++;
 	}
-	if(!silent)
+	if (!silent)
 		Debug("Failed to find asset with guid %llX.\n", guid);
 	return nullptr;
 }
