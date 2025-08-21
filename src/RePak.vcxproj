@@ -30,6 +30,7 @@
     <ClCompile Include="assets\texture_list.cpp" />
     <ClCompile Include="assets\texture.cpp" />
     <ClCompile Include="assets\ui_image_atlas.cpp" />
+    <ClCompile Include="assets\rui.cpp" />
     <ClCompile Include="logic\buildsettings.cpp" />
     <ClCompile Include="logic\pakpage.cpp" />
     <ClCompile Include="logic\pakfile.cpp" />
