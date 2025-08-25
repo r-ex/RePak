@@ -29,7 +29,7 @@ static size_t DataTable_SetupRows(const rapidcsv::Document& doc, datatable_t* co
 
     // typically happens when there's an empty line in the csv file.
     if (numTypeNames != dtblHdr->numColumns)
-        Error("Expected %u columns for type name row, found %u.\n", dtblHdr->numRows, numTypeNames);
+        Error("Expected %u columns for type name row, found %u.\n", dtblHdr->numColumns, numTypeNames);
 
     // Make sure every row (including rows we don't end up storing in the pak),
     // have the same number of columns as the type row. The column count in the
