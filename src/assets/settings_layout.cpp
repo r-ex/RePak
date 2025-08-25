@@ -230,7 +230,7 @@ bool SettingsFieldFinder_FindFieldByAbsoluteName(const SettingsLayoutAsset_s& la
             if (lookupLayoutIndex < 0 || lookupLayoutIndex >= arrayElemCount)
             {
                 Error("%s: field \"%s\" is an array with range interval [0,%d), but provided array subscript was %d.\n",
-                    __FUNCTION__, lookupName, arrayElemCount-1, lookupLayoutIndex);
+                    __FUNCTION__, lookupName, arrayElemCount, lookupLayoutIndex);
                 return false;
             }
 
