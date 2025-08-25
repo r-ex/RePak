@@ -57,7 +57,10 @@ static void AnimSeq_ParseDependenciesFromData(const uint8_t* const data, std::se
 
         const char* end = strchr(start, ' ');
         if (!end)
-            end = event->options + strlen(event->options);
+        {
+            const size_t maxLen = sizeof(event->options) - (start - event->options);
+            end = start + strnlen(start, maxLen);
+        }
 
         const size_t nameLen = (end - start);
 
