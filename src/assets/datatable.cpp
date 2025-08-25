@@ -184,25 +184,12 @@ static void DataTable_SetupValues(CPakFileBuilder* const pak, PakAsset_t& asset,
             }
             case dtblcoltype_t::Vector:
             {
-                std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx, col.type);
-                std::smatch sm;
+                const std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx, col.type);
+                Vector3 vec;
 
                 // get values from format "<x,y,z>"
-                const bool result = std::regex_search(val, sm, std::regex("<(.*),(.*),(.*)>"));
-
-                // 0 - all
-                // 1 - x
-                // 2 - y
-                // 3 - z
-                if (result && (sm.size() == 4))
-                {
-                    const Vector3 vec(
-                        static_cast<float>(atof(sm[1].str().c_str())),
-                        static_cast<float>(atof(sm[2].str().c_str())),
-                        static_cast<float>(atof(sm[3].str().c_str())));
-
+                if (sscanf_s(val.c_str(), "<%f,%f,%f>", &vec.x, &vec.y, &vec.z) == 3)
                     valbuf.write(vec);
-                }
                 else
                     DataTable_ReportInvalidValueError(col.type, rowIdx, colIdx);
                 break;
