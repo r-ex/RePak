@@ -201,15 +201,13 @@ static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid
             hdr->settingsCount = (uint32_t)set.size();
         }
 
-        for (size_t j = 0; j < set.size(); j++)
+        size_t j = 0;
+
+        for (const PakGuid_t& guidToCopy : set)
         {
-            std::set<PakGuid_t>::iterator it = set.begin();
-            std::advance(it, j);
-
-            const PakGuid_t guidToCopy = *it;
             reinterpret_cast<PakGuid_t*>(&dataLump.data[bufferBase])[j] = guidToCopy;
-
             Pak_RegisterGuidRefAtOffset(guidToCopy, bufferBase + (j * sizeof(PakGuid_t)), dataLump, asset);
+            ++j;
         }
 
         bufferBase += set.size() * sizeof(PakGuid_t);
