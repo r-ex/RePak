@@ -20,6 +20,18 @@ static void DataTable_ReportInvalidDataTypeError(const char* const type, const u
     Error("Invalid data type \"%s\" at cell [%u,%u].\n", type, rowIdx, colIdx);
 }
 
+template <typename T>
+static T DataTable_ParseCellFromDocument(const rapidcsv::Document& doc, const uint32_t colIdx, const uint32_t rowIdx, const dtblcoltype_t type)
+{
+    try {
+        return doc.GetCell<T>(colIdx, rowIdx);
+    }
+    catch (const std::exception& ex) {
+        Error("Exception while parsing %s value from cell [%u,%u]: %s.\n", DataTable_GetStringFromType(type), rowIdx, colIdx, ex.what());
+        return T{};
+    }
+}
+
 template <typename datatable_t>
 static size_t DataTable_SetupRows(const rapidcsv::Document& doc, datatable_t* const dtblHdr, datatable_asset_t& tmp, std::vector<std::string>& outTypeRow)
 {
@@ -65,8 +77,8 @@ static size_t DataTable_SetupRows(const rapidcsv::Document& doc, datatable_t* co
             for (uint32_t j = 0; j < dtblHdr->numRows; ++j)
             {
                 // this can be std::string since we only deal with the string types here
-                std::vector<std::string> row = doc.GetRow<std::string>(j);
-                const size_t strLen = row[i].length();
+                const std::string cellValue = DataTable_ParseCellFromDocument<std::string>(doc, i, j, type);
+                const size_t strLen = cellValue.length();
 
                 if (isPrecachedAsset && strLen > 0)
                     tmp.guidRefBufSize += sizeof(PakGuid_t);
@@ -113,18 +125,6 @@ static void DataTable_SetupColumns(CPakFileBuilder* const pak, PakPageLump_s& da
         col.type = type;
 
         dtblHdr->rowStride += DataTable_GetValueSize(type);
-    }
-}
-
-template <typename T>
-static T DataTable_ParseCellFromDocument(rapidcsv::Document& doc, const uint32_t colIdx, const uint32_t rowIdx, const dtblcoltype_t type)
-{
-    try {
-        return doc.GetCell<T>(colIdx, rowIdx);
-    }
-    catch (const std::exception& ex) {
-        Error("Exception while parsing %s value from cell [%u,%u]: %s.\n", DataTable_GetStringFromType(type), rowIdx, colIdx, ex.what());
-        return T{};
     }
 }
 
