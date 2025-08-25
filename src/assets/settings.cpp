@@ -273,8 +273,8 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
 
         item.nameIndex = static_cast<uint16_t>(nameIndex);
 
-        if (item.nameIndex > modNamesCount)
-            Error("Settings mod value #%zu indexes outside mod names array (%hu > %hu).\n", elemIndex, item.nameIndex, static_cast<uint16_t>(modNamesCount));
+        if (item.nameIndex >= modNamesCount)
+            Error("Settings mod value #%zu indexes outside mod names array (%hu > %hu).\n", elemIndex, item.nameIndex, static_cast<uint16_t>(modNamesCount-1));
 
         const char* const typeName = JSON_GetValueRequired<const char*>(elem, "type");
 
