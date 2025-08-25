@@ -75,7 +75,7 @@ bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& 
 
         const uint32_t fieldOffset = layout.rootLayout.offsetMap[i];
 
-        if (targetOffset < fieldOffset)
+        if (targetOffset < (result.currentBase + fieldOffset))
             return false; // Invalid offset (i.e. we have 2 ints at 4 and 8, but target was 5).
 
         const uint32_t originalBase = result.currentBase;
