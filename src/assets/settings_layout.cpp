@@ -69,20 +69,19 @@ bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& 
     for (size_t i = 0; i < layout.rootLayout.typeMap.size(); i++)
     {
         const uint32_t totalValueBufSizeAligned = IALIGN(layout.rootLayout.totalValueBufferSize, layout.rootLayout.alignment);
+        const uint32_t originalBaseCurrentDepth = result.currentBase;
 
-        if (targetOffset >= result.currentBase + (layout.rootLayout.arrayElemCount * totalValueBufSizeAligned))
+        if (targetOffset >= originalBaseCurrentDepth + (layout.rootLayout.arrayElemCount * totalValueBufSizeAligned))
             return false; // Beyond this layout.
 
         const uint32_t fieldOffset = layout.rootLayout.offsetMap[i];
 
-        if (targetOffset < (result.currentBase + fieldOffset))
+        if (targetOffset < (originalBaseCurrentDepth + fieldOffset))
             return false; // Invalid offset (i.e. we have 2 ints at 4 and 8, but target was 5).
-
-        const uint32_t originalBase = result.currentBase;
 
         for (int currArrayIdx = 0; currArrayIdx < layout.rootLayout.arrayElemCount; currArrayIdx++)
         {
-            const uint32_t elementBase = result.currentBase + (currArrayIdx * totalValueBufSizeAligned);
+            const uint32_t elementBase = originalBaseCurrentDepth + (currArrayIdx * totalValueBufSizeAligned);
             const uint32_t absoluteFieldOffset = elementBase + fieldOffset;
 
             const SettingsFieldType_e fieldType = layout.rootLayout.typeMap[i];
@@ -124,7 +123,7 @@ bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& 
                     return true;
                 }
 
-                result.currentBase = originalBase;
+                result.currentBase = originalBaseCurrentDepth;
             }
         }
     }
