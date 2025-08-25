@@ -70,7 +70,7 @@ bool SettingsFieldFinder_FindFieldByAbsoluteOffset(const SettingsLayoutAsset_s& 
     {
         const uint32_t totalValueBufSizeAligned = IALIGN(layout.rootLayout.totalValueBufferSize, layout.rootLayout.alignment);
 
-        if (targetOffset > result.currentBase + (layout.rootLayout.arrayElemCount * totalValueBufSizeAligned))
+        if (targetOffset >= result.currentBase + (layout.rootLayout.arrayElemCount * totalValueBufSizeAligned))
             return false; // Beyond this layout.
 
         const uint32_t fieldOffset = layout.rootLayout.offsetMap[i];
