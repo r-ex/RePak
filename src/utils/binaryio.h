@@ -41,85 +41,99 @@ public:
 	bool IsEof() const;
 
 	//-----------------------------------------------------------------------------
-	// Purpose: reads any value from the file
+	// Reads any value from the file with specified size
 	//-----------------------------------------------------------------------------
 	template<typename T>
-	inline void Read(T& value)
+	inline bool Read(T* const value, const size_t size, size_t* const outReadCount = nullptr)
 	{
-		if (IsReadable())
-			m_stream.read(reinterpret_cast<char*>(&value), sizeof(value));
+		if (!IsReadable())
+			return false;
+
+		char* const data = reinterpret_cast<char*>(value);
+		const size_t readCount = m_stream.rdbuf()->sgetn(data, size);
+
+		if (outReadCount)
+			*outReadCount = readCount;
+
+		return readCount == size;
 	}
 
 	//-----------------------------------------------------------------------------
-	// Purpose: reads any value from the file with specified size
+	// Reads any value from the file
 	//-----------------------------------------------------------------------------
 	template<typename T>
-	inline void Read(T* const value, const size_t size)
+	inline bool Read(T& value, size_t* const outReadCount = nullptr)
 	{
-		if (IsReadable())
-			m_stream.read(reinterpret_cast<char*>(value), size);
-	}
-	template<typename T>
-	inline void Read(T& value, const size_t size)
-	{
-		if (IsReadable())
-			m_stream.read(reinterpret_cast<char*>(&value), size);
+		return Read<T>(&value, sizeof(T), outReadCount);
 	}
 
 	//-----------------------------------------------------------------------------
-	// Purpose: reads any value from the file and returns it
+	// Reads any value from the file and returns it
 	//-----------------------------------------------------------------------------
 	template<typename T>
-	inline T Read()
+	inline T Read(size_t* const outReadCount = nullptr)
 	{
 		T value{};
-		if (!IsReadable())
-			return value;
+		Read<T>(&value, sizeof(T), outReadCount);
 
-		m_stream.read(reinterpret_cast<char*>(&value), sizeof(value));
 		return value;
 	}
 	bool ReadString(std::string& svOut);
-	bool ReadString(char* const pBuf, const size_t nLen);
+	bool ReadString(char* const pBuf, const size_t nLen, size_t* const outWriteCount = nullptr);
 
 	//-----------------------------------------------------------------------------
-	// Purpose: writes any value to the file
+	// Writes any value to the file with specified size
 	//-----------------------------------------------------------------------------
 	template<typename T>
-	inline void Write(const T& value)
+	inline bool Write(const T* const value, const size_t size, size_t* const outWriteCount = nullptr)
 	{
 		if (!IsWritable())
-			return;
+			return false;
 
-		const size_t count = sizeof(value);
+		const char* const data = reinterpret_cast<const char*>(value);
+		const size_t writeCount = m_stream.rdbuf()->sputn(data, size);
 
-		m_stream.write(reinterpret_cast<const char*>(&value), count);
-		CalcAddDelta(count);
+		PostWriteUpdate(writeCount);
+
+		if (outWriteCount)
+			*outWriteCount = writeCount;
+
+		return writeCount == size;
 	}
 
 	//-----------------------------------------------------------------------------
-	// Purpose: writes any value to the file with specified size
+	// Writes any value to the file
 	//-----------------------------------------------------------------------------
 	template<typename T>
-	inline void Write(const T* const value, const size_t size)
+	inline bool Write(const T& value, size_t* const outWriteCount = nullptr)
 	{
-		if (!IsWritable())
-			return;
-
-		m_stream.write(reinterpret_cast<const char*>(value), size);
-		CalcAddDelta(size);
+		return Write<T>(&value, sizeof(T), outWriteCount);
 	}
-	bool WriteString(const std::string& svInput, const bool nullterminate);
-	void Pad(const size_t count);
+
+	//-----------------------------------------------------------------------------
+	// Writes a string to the file
+	//-----------------------------------------------------------------------------
+	inline bool WriteString(const std::string& input, const bool nullTerminate, size_t* const outWriteCount = nullptr)
+	{
+		return Write<char>(input.c_str(), input.length() + nullTerminate, outWriteCount);
+	}
+
+	bool Pad(const size_t count, size_t* const outPadCount = nullptr);
 
 protected:
-	void CalcAddDelta(const size_t count);
-	void CalcSkipDelta(const std::streamoff offset, const std::ios_base::seekdir way);
+	void UpdateSeekState(const std::streamoff offset, const std::ios_base::seekdir way);
+	void PostWriteUpdate(const size_t writeCount);
 
 private:
+	struct CursorState_s
+	{
+		std::streamoff totalSize; // Total stream output size.
+		std::streamoff skipCount; // Amount seeked into logical bounds.
+		std::streamoff seekGap;   // Amount seeked beyond logical bounds.
+	};
+
 	std::fstream            m_stream; // I/O stream.
-	std::streamoff          m_size;   // File size.
-	std::streamoff          m_skip;   // Amount skipped back.
+	CursorState_s           m_state;  // Stream state.
 	std::ios_base::openmode m_flags;  // Stream flags.
 	Mode_e                  m_mode;   // Stream mode.
 };
