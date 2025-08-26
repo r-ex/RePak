@@ -57,13 +57,10 @@ bool BinaryIO::Open(const char* const filePath, const Mode_e mode)
 
 	if (IsReadMode())
 	{
-		struct _stat64 status;
-		if (_stat64(filePath, &status) != NULL)
-		{
-			return false;
-		}
-
-		m_state.totalSize = status.st_size;
+		// Calculate the initial size.
+		m_stream.seekg(0, std::ios::end);
+		m_state.totalSize = m_stream.tellg();
+		m_stream.seekg(0, std::ios::beg);
 	}
 
 	return true;
