@@ -251,7 +251,7 @@ bool BinaryIO::ReadString(char* const buf, const size_t len, size_t* const outWr
 // limit number of io calls and allocations by just using this static buffer
 // for padding out the stream.
 static constexpr size_t PAD_BUF_SIZE = 4096;
-const static char s_padBuf[PAD_BUF_SIZE];
+const static char s_padBuf[PAD_BUF_SIZE] = {};
 
 //-----------------------------------------------------------------------------
 // Pads the out stream up to count bytes
