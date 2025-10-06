@@ -19,7 +19,10 @@ bool JSON_ParseFromFile(const char* const assetPath, const char* const debugName
         // if there are parsing or validation problems, we will still error as
         // these are considered unintentional problems.
         if (mandatory)
-            g_jsonErrorCallback("%s: couldn't open %s file.\n", __FUNCTION__, debugName);
+        {
+            if (g_jsonErrorCallback)
+                g_jsonErrorCallback("%s: couldn't open %s file.\n", __FUNCTION__, debugName);
+        }
 
         return false;
     }
@@ -28,15 +31,20 @@ bool JSON_ParseFromFile(const char* const assetPath, const char* const debugName
 
     if (document.ParseStream(jsonStreamWrapper).HasParseError())
     {
-        g_jsonErrorCallback("%s: %s parse error at position %zu: [%s].\n", __FUNCTION__, debugName,
-            document.GetErrorOffset(), rapidjson::GetParseError_En(document.GetParseError()));
+        if (g_jsonErrorCallback)
+        {
+            g_jsonErrorCallback("%s: %s parse error at position %zu: [%s].\n", __FUNCTION__, debugName,
+                document.GetErrorOffset(), rapidjson::GetParseError_En(document.GetParseError()));
+        }
 
         return false;
     }
 
     if (!document.IsObject())
     {
-        g_jsonErrorCallback("%s: %s root was not an object.\n", __FUNCTION__, debugName);
+        if (g_jsonErrorCallback)
+            g_jsonErrorCallback("%s: %s root was not an object.\n", __FUNCTION__, debugName);
+
         return false;
     }
 
