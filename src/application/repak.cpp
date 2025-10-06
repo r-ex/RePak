@@ -188,7 +188,7 @@ static bool RePak_CheckCommandLine(const char* arg, const char* const target, co
 static uint16_t RePak_OpenPakAndValidateHeader(BinaryIO& bio, const char* const pakPath)
 {
     if (!bio.Open(pakPath, BinaryIO::Mode_e::ReadWrite))
-        Error("Failed to open pak file \"%s\" for encode job.\n", pakPath);
+        Error("Failed to open pak file \"%s\"; validation not possible!\n", pakPath);
 
     const std::streamoff size = bio.GetSize();
     const std::streamoff toConsume = 6; // size of magic( 4 ) + version( 2 ).
