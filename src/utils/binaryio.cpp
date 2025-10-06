@@ -172,10 +172,7 @@ bool BinaryIO::IsWriteMode() const
 //-----------------------------------------------------------------------------
 bool BinaryIO::IsReadable() const
 {
-	if (!IsReadMode() || !m_stream || m_stream.eof())
-		return false;
-
-	return true;
+	return IsReadMode() && m_stream.good();
 }
 
 //-----------------------------------------------------------------------------
@@ -183,10 +180,7 @@ bool BinaryIO::IsReadable() const
 //-----------------------------------------------------------------------------
 bool BinaryIO::IsWritable() const
 {
-	if (!IsWriteMode() || !m_stream)
-		return false;
-
-	return true;
+	return IsWriteMode() && m_stream.good();
 }
 
 //-----------------------------------------------------------------------------
