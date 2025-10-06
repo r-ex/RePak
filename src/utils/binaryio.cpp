@@ -11,7 +11,7 @@ BinaryIO::BinaryIO()
 }
 BinaryIO::~BinaryIO()
 {
-	Close();
+	Reset();
 }
 
 //-----------------------------------------------------------------------------
@@ -38,17 +38,20 @@ static std::ios_base::openmode GetInternalStreamMode(const BinaryIO::Mode_e mode
 //-----------------------------------------------------------------------------
 // Opens the file in specified mode
 //-----------------------------------------------------------------------------
-bool BinaryIO::Open(const char* const filePath, const Mode_e mode)
+bool BinaryIO::OpenEx(const char* const filePath, const Mode_e mode, const size_t pathLen)
 {
+	assert(filePath && pathLen > 0);
+
 	m_flags = GetInternalStreamMode(mode);
 	m_mode = mode;
+	m_name.assign(filePath, pathLen);
 
 	if (m_stream.is_open())
 	{
 		m_stream.close();
 	}
 
-	m_stream.open(filePath, m_flags);
+	m_stream.open(m_name, m_flags);
 
 	if (!m_stream.is_open() || !m_stream.good())
 	{
@@ -74,8 +77,8 @@ void BinaryIO::Reset()
 	m_state.totalSize = 0;
 	m_state.skipCount = 0;
 	m_state.seekGap = 0;
-	m_mode = Mode_e::None;
 	m_flags = 0;
+	m_mode = Mode_e::None;
 }
 
 //-----------------------------------------------------------------------------
@@ -85,6 +88,7 @@ void BinaryIO::Close()
 {
 	m_stream.close();
 	Reset();
+	m_name.clear();
 }
 
 //-----------------------------------------------------------------------------
@@ -280,6 +284,62 @@ bool BinaryIO::Pad(const size_t count, size_t* const outPadCount)
 }
 
 //-----------------------------------------------------------------------------
+// Internal read function.
+//-----------------------------------------------------------------------------
+bool BinaryIO::DoRead(char* const outBuf, const size_t readCount, size_t* const outReadCount)
+{
+	if (!IsReadable())
+		return false;
+
+	const std::streamoff actualReadCount = m_stream.rdbuf()->sgetn(outBuf, readCount);
+
+	if (outReadCount)
+		*outReadCount = static_cast<size_t>(actualReadCount);
+
+	const bool wasSuccesful = actualReadCount == readCount;
+
+	if (!wasSuccesful)
+	{
+		if (g_iosmErrorCallback)
+		{
+			g_iosmErrorCallback("%s: short read on file \"%s\"; actualReadCount( %zd ) != readCount( %zu ) @ TellGet( %zi )!\n",
+				__FUNCTION__, m_name.c_str(), actualReadCount, readCount, TellGet());
+		}
+	}
+
+	return wasSuccesful;
+}
+
+//-----------------------------------------------------------------------------
+// Internal write function.
+//-----------------------------------------------------------------------------
+bool BinaryIO::DoWrite(const char* const inBuf, const size_t writeCount, size_t* const outWriteCount)
+{
+	if (!IsWritable())
+		return false;
+
+	const std::streamoff actualWriteCount = m_stream.rdbuf()->sputn(inBuf, writeCount);
+
+	PostWriteUpdate(actualWriteCount);
+
+	if (outWriteCount)
+		*outWriteCount = actualWriteCount;
+
+	const bool wasSuccesful = actualWriteCount == writeCount;
+
+	if (!wasSuccesful)
+	{
+		if (g_iosmErrorCallback)
+		{
+			g_iosmErrorCallback("%s: short write on file \"%s\"; actualWriteCount( %zd ) != writeCount( %zu ) @ TellPut( %zi )!\n",
+				__FUNCTION__, m_name.c_str(), actualWriteCount, writeCount, TellPut());
+		}
+	}
+
+	return wasSuccesful;
+}
+
+//-----------------------------------------------------------------------------
 // If we seek backwards, and then write new data, we should not add
 // this to the total output size of the stream as we modify and not
 // add. we have to keep by how much we shifted backwards and advanced
@@ -318,7 +378,7 @@ void BinaryIO::UpdateSeekState(const std::streamoff offset, const std::ios_base:
 // Updates the logical file size after a write of `writeCount` bytes.
 // This handles padding from gaps and appending new data.
 //-----------------------------------------------------------------------------
-void BinaryIO::PostWriteUpdate(const size_t writeCount)
+void BinaryIO::PostWriteUpdate(const std::streamoff writeCount)
 {
 	// if we had a gap, append it to the total size as it has been padded out.
 	if (m_state.seekGap > 0)
@@ -330,7 +390,7 @@ void BinaryIO::PostWriteUpdate(const size_t writeCount)
 	// account for overwriting/appending.
 	if (m_state.skipCount > 0)
 	{
-		if (writeCount >= (size_t)m_state.skipCount)
+		if (writeCount >= m_state.skipCount)
 		{
 			m_state.totalSize += (writeCount - m_state.skipCount);
 			m_state.skipCount = 0;

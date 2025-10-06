@@ -1,5 +1,8 @@
 #pragma once
 
+typedef void(*BinaryIOLogger_fn)(const char* fmt, ...);
+inline BinaryIOLogger_fn g_iosmErrorCallback = nullptr;
+
 class BinaryIO
 {
 public:
@@ -15,8 +18,8 @@ public:
 	BinaryIO();
 	~BinaryIO();
 
-	bool Open(const char* const filePath, const Mode_e mode);
-	inline bool Open(const std::string& filePath, const Mode_e mode) { return Open(filePath.c_str(), mode); };
+	inline bool Open(const char* const filePath, const Mode_e mode) { return OpenEx(filePath, mode, strlen(filePath)); }
+	inline bool Open(const std::string& filePath, const Mode_e mode) { return OpenEx(filePath.c_str(), mode, filePath.length()); };
 
 	void Close();
 	void Reset();
@@ -44,18 +47,9 @@ public:
 	// Reads any value from the file with specified size
 	//-----------------------------------------------------------------------------
 	template<typename T>
-	inline bool Read(T* const value, const size_t size, size_t* const outReadCount = nullptr)
+	inline bool Read(T* const outBuf, const size_t readCount, size_t* const outReadCount = nullptr)
 	{
-		if (!IsReadable())
-			return false;
-
-		char* const data = reinterpret_cast<char*>(value);
-		const size_t readCount = m_stream.rdbuf()->sgetn(data, size);
-
-		if (outReadCount)
-			*outReadCount = readCount;
-
-		return readCount == size;
+		return DoRead(reinterpret_cast<char*>(outBuf), readCount, outReadCount);
 	}
 
 	//-----------------------------------------------------------------------------
@@ -85,20 +79,9 @@ public:
 	// Writes any value to the file with specified size
 	//-----------------------------------------------------------------------------
 	template<typename T>
-	inline bool Write(const T* const value, const size_t size, size_t* const outWriteCount = nullptr)
+	inline bool Write(const T* const inBuf, const size_t writeCount, size_t* const outWriteCount = nullptr)
 	{
-		if (!IsWritable())
-			return false;
-
-		const char* const data = reinterpret_cast<const char*>(value);
-		const size_t writeCount = m_stream.rdbuf()->sputn(data, size);
-
-		PostWriteUpdate(writeCount);
-
-		if (outWriteCount)
-			*outWriteCount = writeCount;
-
-		return writeCount == size;
+		return DoWrite(reinterpret_cast<const char*>(inBuf), writeCount, outWriteCount);
 	}
 
 	//-----------------------------------------------------------------------------
@@ -121,8 +104,13 @@ public:
 	bool Pad(const size_t count, size_t* const outPadCount = nullptr);
 
 protected:
+	bool OpenEx(const char* const filePath, const Mode_e mode, const size_t pathLen);
+
 	void UpdateSeekState(const std::streamoff offset, const std::ios_base::seekdir way);
-	void PostWriteUpdate(const size_t writeCount);
+	void PostWriteUpdate(const std::streamoff writeCount);
+
+	bool DoRead(char* const outBuf, const size_t readCount, size_t* const outReadCount);
+	bool DoWrite(const char* const inBuf, const size_t writeCount, size_t* const outWriteCount);
 
 private:
 	struct CursorState_s
@@ -136,4 +124,5 @@ private:
 	CursorState_s           m_state;  // Stream state.
 	std::ios_base::openmode m_flags;  // Stream flags.
 	Mode_e                  m_mode;   // Stream mode.
+	std::string             m_name;   // Stream name.
 };
