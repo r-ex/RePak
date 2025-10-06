@@ -150,11 +150,11 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     } mipSizes{};
 
     // parse input image file
-    int magic;
+    uint32_t magic;
     input.Read(magic);
 
     if (magic != DDS_MAGIC) // b'DDS '
-        Error("Attempted to add a texture asset that was not a valid DDS file (invalid magic).\n");
+        Error("Attempted to add a texture asset that was not a valid DDS file (invalid magic %u).\n", magic);
 
     DDS_HEADER ddsh;
     input.Read(ddsh);
