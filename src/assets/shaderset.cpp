@@ -70,7 +70,7 @@ void ShaderSet_InternalCreateSet(CPakFileBuilder* const pak, const char* const a
 	if (pak->IsFlagSet(PF_KEEP_DEV))
 	{
 		char pathStem[PAK_MAX_STEM_PATH];
-		const size_t stemLen = Pak_ExtractAssetStem(assetPath, pathStem, sizeof(pathStem));
+		const size_t stemLen = Pak_ExtractAssetStem(assetPath, pathStem, sizeof(pathStem), "shaderset");
 
 		if (stemLen > 0)
 		{

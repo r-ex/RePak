@@ -33,7 +33,7 @@ extern PakGuid_t Pak_ParseGuidFromObject(const rapidjson::Value& val, const char
 extern PakGuid_t Pak_ParseGuidFromMap(const rapidjson::Value& mapEntry, rapidjson::Value::StringRefType fieldName,
 	const char* const debugName, const char*& outAssetName, const bool requiredField);
 
-extern size_t Pak_ExtractAssetStem(const char* const assetPath, char* const outBuf, const size_t outBufLen);
+extern size_t Pak_ExtractAssetStem(const char* const assetPath, char* const outBuf, const size_t outBufLen, const char* const assetPrefix);
 
 using namespace std::chrono;
 
