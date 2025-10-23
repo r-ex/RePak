@@ -319,7 +319,7 @@ static void Texture_InternalAddTexture(CPakFileBuilder* const pak, const PakGuid
     if (pak->IsFlagSet(PF_KEEP_DEV))
     {
         char pathStem[PAK_MAX_STEM_PATH];
-        const size_t stemLen = Pak_ExtractAssetStem(assetPath, pathStem, sizeof(pathStem));
+        const size_t stemLen = Pak_ExtractAssetStem(assetPath, pathStem, sizeof(pathStem), "texture");
 
         if (stemLen > 0)
         {

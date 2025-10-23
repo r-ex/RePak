@@ -294,15 +294,20 @@ PakGuid_t Pak_ParseGuidFromMap(const rapidjson::Value& mapEntry, rapidjson::Valu
     return Pak_ParseGuidFromObject(it->value, debugName, outAssetName);
 }
 
-size_t Pak_ExtractAssetStem(const char* const assetPath, char* const outBuf, const size_t outBufLen)
+size_t Pak_ExtractAssetStem(const char* const assetPath, char* const outBuf, const size_t outBufLen, const char* const assetPrefix)
 {
-    // skip 'texture/'
-    const char* bufPos = strchr(assetPath, '/');
+    const char* bufPos = assetPath;
 
-    if (!bufPos)
-        bufPos = assetPath;
-    else
-        bufPos += 1; // skip the '/'.
+    // check if the path has the desired prefix
+    if (strstr(assetPath, assetPrefix))
+    {
+        const size_t prefixLength = strnlen(assetPrefix, 32ull);
+
+        assert(bufPos[prefixLength] == '/' || bufPos[prefixLength] == '\\');
+
+        // add one to skip the (back)slash
+        bufPos += (prefixLength + 1);
+    }
 
     // copy until '.rpak' or '\0'
     size_t i = 0;
