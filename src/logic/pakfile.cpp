@@ -862,6 +862,5 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 
 	Log("*** built pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
 		m_pakFilePath.c_str(), GetAssetCount(), totalPakSize);
-
 	out.Close();
 }

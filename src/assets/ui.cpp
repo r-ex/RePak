@@ -1,13 +1,14 @@
 #include "pch.h"
 #include "assets.h"
-#include "public/rui.h"
+#include "public/ui.h"
+#include "public/rui_package.h"
 
-void Rui_loadFromPackage(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath) {
+void UI_loadFromPackage(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath) {
     
     UNUSED(assetGuid);
     const fs::path inputFilePath = pak->GetAssetPath() / fs::path(assetPath).replace_extension("ruip");
     RuiPackage rui{inputFilePath};
-
+    
     PakAsset_t& asset = pak->BeginAsset(assetGuid,assetPath);
     PakPageLump_s hdrChunk = pak->CreatePageLump(sizeof(RuiHeader_v30_s),SF_HEAD|SF_CLIENT,8);
     RuiHeader_v30_s* ruiHdr = reinterpret_cast<RuiHeader_v30_s*>(hdrChunk.data);
@@ -56,86 +57,10 @@ void Rui_loadFromPackage(CPakFileBuilder* const pak, const PakGuid_t assetGuid, 
 
 }
 
-RuiHeader_v30_s RuiPackage::CreateRuiHeader_v30() {
-    RuiHeader_v30_s ruiHdr;
-
-    ruiHdr.elementWidth = hdr.elementWidth;
-    ruiHdr.elementHeight = hdr.elementHeight;
-    ruiHdr.elementWidthRcp = hdr.elementWidthRcp;
-    ruiHdr.elementHeightRcp = hdr.elementHeightRcp;
-    
-    ruiHdr.argumentCount = hdr.argCount;
-    ruiHdr.mappingCount = hdr.mappingCount;
-    ruiHdr.dataStructSize = hdr.dataStructSize;
-    ruiHdr.dataStructInitSize = hdr.defaultValuesSize;
-    ruiHdr.styleDescriptorCount = hdr.styleDescriptorCount;
-    ruiHdr.maxTransformIndex = 0;
-    ruiHdr.renderJobCount = hdr.renderJobCount;
-    ruiHdr.argClusterCount = hdr.argClusterCount;
-
-    return ruiHdr;
-}
-
-RuiPackage::RuiPackage(const fs::path& inputPath) {
-    FILE* f = NULL;
-    errno_t errorCode = fopen_s(&f, inputPath.string().c_str(), "rb");
-    if (errorCode == 0) {
-        fread(&hdr,sizeof(hdr),1,f);
-        if(hdr.magic != RUI_PACKAGE_MAGIC)
-            Error("Attempted to load an invalid RUIP file (expected magic %x, got %x).\n", RUI_PACKAGE_MAGIC, hdr.magic);
-        if(hdr.packageVersion != RUI_PACKAGE_VERSION)
-            Error("Attempted to load an unsupported RUIP file (expected version %u, got %u).\n", RUI_PACKAGE_VERSION, hdr.packageVersion);
-        
-        fseek(f,(long)hdr.nameOffset,0);
-        name.resize(hdr.nameSize);
-        fread(name.data(), 1, hdr.nameSize, f);
-        
-        fseek(f,(long)hdr.defaultValuesOffset,0);
-        defaultData.resize(hdr.defaultValuesSize);
-        fread(defaultData.data(),1,hdr.defaultValuesSize,f);
-        
-        fseek(f,(long)hdr.defaultStringDataOffset,0);
-        defaultStrings.resize(hdr.defaultStringsDataSize);
-        fread(defaultStrings.data(),1,hdr.defaultStringsDataSize,f);
-        
-        fseek(f,(long)hdr.rpakPointersInDefaultDataOffset,0);
-        defaultStringOffsets.resize(hdr.rpakPointersInDefaltDataCount);
-        fread(defaultStringOffsets.data(),sizeof(uint16_t),hdr.rpakPointersInDefaltDataCount,f);
-        
-        fseek(f,(long)hdr.styleDescriptorOffset,0);
-        styleDescriptors.resize(hdr.styleDescriptorCount*sizeof(StyleDescriptor_v30_s));
-        fread(styleDescriptors.data(),sizeof(StyleDescriptor_v30_s),hdr.styleDescriptorCount,f);
-        
-        fseek(f,(long)hdr.renderJobOffset,0);
-        renderJobs.resize(hdr.renderJobSize);
-        fread(renderJobs.data(),1,hdr.renderJobSize,f);
-        
-        fseek(f,(long)hdr.transformDataOffset,0);
-        transformData.resize(hdr.transformDataSize);
-        fread(transformData.data(),1,hdr.transformDataSize,f);
-        
-        fseek(f,(long)hdr.argumentsOffset,0);
-        arguments.resize(hdr.argCount);
-        fread(arguments.data(),sizeof(Argument_s),hdr.argCount,f);
-
-        fseek(f,(long)hdr.argClusterOffset,0);
-        argCluster.resize(hdr.argClusterCount);
-        fread(argCluster.data(),sizeof(ArgCluster_s),hdr.argClusterCount,f);
-
-        fclose(f);
-    }
-    else {
-        Error("Could not open ruip file %s with error %x",inputPath.string().c_str(),errorCode);
-    }
-}
-
-
-
-
 
 
 void Assets::AddRuiAsset_v30(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)
 {
     UNUSED(mapEntry);
-    Rui_loadFromPackage(pak,assetGuid,assetPath);
+    UI_loadFromPackage(pak,assetGuid,assetPath);
 }
