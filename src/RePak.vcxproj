@@ -21,6 +21,8 @@
     <ClCompile Include="assets\material.cpp" />
     <ClCompile Include="assets\material_for_aspect.cpp" />
     <ClCompile Include="assets\model.cpp" />
+    <ClCompile Include="assets\particle_effect.cpp" />
+    <ClCompile Include="assets\particle_operator_params.cpp" />
     <ClCompile Include="assets\patch.cpp" />
     <ClCompile Include="assets\settings.cpp" />
     <ClCompile Include="assets\settings_layout.cpp" />
@@ -176,6 +178,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h" />
+    <ClInclude Include="assets\particle_operators_params.h" />
     <ClInclude Include="common\const.h" />
     <ClInclude Include="common\decls.h" />
     <ClInclude Include="logic\buildsettings.h" />
@@ -200,6 +203,7 @@
     <ClInclude Include="public\materialflags.h" />
     <ClInclude Include="public\material_for_aspect.h" />
     <ClInclude Include="public\multishader.h" />
+    <ClInclude Include="public\particle_effect.h" />
     <ClInclude Include="public\rpak.h" />
     <ClInclude Include="public\settings.h" />
     <ClInclude Include="public\settings_layout.h" />

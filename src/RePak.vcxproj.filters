@@ -253,8 +253,14 @@
     <ClCompile Include="utils\DmxTools.cpp">
       <Filter>utils</Filter>
     </ClCompile>
+    <ClCompile Include="assets\particle_effect.cpp">
+      <Filter>assets</Filter>
+    </ClCompile>
     <ClCompile Include="utils\dmarray.cpp">
       <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="assets\particle_operator_params.cpp">
+      <Filter>assets</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -618,6 +624,9 @@
     <ClInclude Include="utils\DmxTools.h">
       <Filter>utils</Filter>
     </ClInclude>
+    <ClInclude Include="public\particle_effect.h">
+      <Filter>public</Filter>
+    </ClInclude>
     <ClInclude Include="public\dmelement.h">
       <Filter>public</Filter>
     </ClInclude>
@@ -629,6 +638,9 @@
     </ClInclude>
     <ClInclude Include="math\vmatrix.h">
       <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="assets\particle_operators_params.h">
+      <Filter>public</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
