@@ -10,6 +10,7 @@
 #include <unordered_set>
 //#include <sysinfoapi.h>
 #include <vector>
+#include <deque>
 #include <cstdint>
 #include <string>
 #include <fstream>
