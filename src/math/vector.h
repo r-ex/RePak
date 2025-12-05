@@ -1,5 +1,28 @@
 #pragma once
 
+struct Vector4
+{
+	Vector4()
+	{
+		this->Set(0.0f, 0.0f, 0.0f, 0.0f);
+	}
+
+	Vector4(float x, float y, float z, float w)
+	{
+		this->Set(x, y, z, w);
+	}
+
+	void Set(float newX, float newY, float newZ, float newW)
+	{
+		this->x = newX;
+		this->y = newY;
+		this->z = newZ;
+		this->w = newW;
+	}
+
+	float x, y, z, w;
+};
+
 struct Vector3
 {
 	Vector3()
@@ -63,4 +86,27 @@ struct QAngle
 	}
 
 	float x, y, z;
+};
+
+struct Quaternion
+{
+	Quaternion()
+	{
+		this->Set(0.0f, 0.0f, 0.0f, 0.0f);
+	}
+
+	Quaternion(float x, float y, float z, float w)
+	{
+		this->Set(x, y, z, w);
+	}
+
+	void Set(float newX, float newY, float newZ, float newW)
+	{
+		this->x = newX;
+		this->y = newY;
+		this->z = newZ;
+		this->w = newW;
+	}
+
+	float x, y, z, w;
 };

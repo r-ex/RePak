@@ -161,6 +161,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="utils\binaryio.cpp" />
+    <ClCompile Include="utils\dmarray.cpp" />
+    <ClCompile Include="utils\DmxTools.cpp" />
     <ClCompile Include="utils\dxutils.cpp" />
     <ClCompile Include="utils\jsonutils.cpp" />
     <ClCompile Include="utils\logger.cpp" />
@@ -186,9 +188,13 @@
     <ClInclude Include="math\color.h" />
     <ClInclude Include="math\common.h" />
     <ClInclude Include="math\vector.h" />
+    <ClInclude Include="math\vmatrix.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="public\animrig.h" />
     <ClInclude Include="public\anim_recording.h" />
+    <ClInclude Include="public\dmattribute.h" />
+    <ClInclude Include="public\dmelement.h" />
+    <ClInclude Include="public\dmexchange.h" />
     <ClInclude Include="public\lcd_screen_effect.h" />
     <ClInclude Include="public\material.h" />
     <ClInclude Include="public\materialflags.h" />
@@ -285,6 +291,7 @@
     <ClInclude Include="thirdparty\zstd\zstd.h" />
     <ClInclude Include="thirdparty\zstd\zstd_errors.h" />
     <ClInclude Include="utils\binaryio.h" />
+    <ClInclude Include="utils\DmxTools.h" />
     <ClInclude Include="utils\dxutils.h" />
     <ClInclude Include="utils\jsonutils.h" />
     <ClInclude Include="utils\logger.h" />

@@ -250,6 +250,12 @@
     <ClCompile Include="assets\lcd_screen_effect.cpp">
       <Filter>assets</Filter>
     </ClCompile>
+    <ClCompile Include="utils\DmxTools.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\dmarray.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h">
@@ -608,6 +614,21 @@
     </ClInclude>
     <ClInclude Include="public\lcd_screen_effect.h">
       <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\DmxTools.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="public\dmelement.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\dmattribute.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="public\dmexchange.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="math\vmatrix.h">
+      <Filter>math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
