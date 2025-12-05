@@ -285,19 +285,20 @@ bool BinaryIO::DoRead(char* const outBuf, const size_t readCount, size_t* const 
 	if (!IsReadable())
 		return false;
 
+	const std::streamoff signedReadCount = static_cast<std::streamoff>(readCount);
 	const std::streamoff actualReadCount = m_stream.rdbuf()->sgetn(outBuf, readCount);
 
 	if (outReadCount)
 		*outReadCount = static_cast<size_t>(actualReadCount);
 
-	const bool wasSuccesful = actualReadCount == readCount;
+	const bool wasSuccesful = actualReadCount == signedReadCount;
 
 	if (!wasSuccesful)
 	{
 		if (g_iosmErrorCallback)
 		{
-			g_iosmErrorCallback("%s: short read on file \"%s\"; actualReadCount( %zd ) != readCount( %zu ) @ TellGet( %zi )!\n",
-				__FUNCTION__, m_name.c_str(), actualReadCount, readCount, TellGet());
+			g_iosmErrorCallback("%s: short read on file \"%s\"; actualReadCount( %zd ) != signedReadCount( %zd ) @ TellGet( %zi )!\n",
+				__FUNCTION__, m_name.c_str(), actualReadCount, signedReadCount, TellGet());
 		}
 	}
 
@@ -312,21 +313,22 @@ bool BinaryIO::DoWrite(const char* const inBuf, const size_t writeCount, size_t*
 	if (!IsWritable())
 		return false;
 
-	const std::streamoff actualWriteCount = m_stream.rdbuf()->sputn(inBuf, writeCount);
+	const std::streamoff signedWriteCount = static_cast<std::streamoff>(writeCount);
+	const std::streamoff actualWriteCount = m_stream.rdbuf()->sputn(inBuf, signedWriteCount);
 
 	PostWriteUpdate(actualWriteCount);
 
 	if (outWriteCount)
 		*outWriteCount = actualWriteCount;
 
-	const bool wasSuccesful = actualWriteCount == writeCount;
+	const bool wasSuccesful = actualWriteCount == signedWriteCount;
 
 	if (!wasSuccesful)
 	{
 		if (g_iosmErrorCallback)
 		{
-			g_iosmErrorCallback("%s: short write on file \"%s\"; actualWriteCount( %zd ) != writeCount( %zu ) @ TellPut( %zi )!\n",
-				__FUNCTION__, m_name.c_str(), actualWriteCount, writeCount, TellPut());
+			g_iosmErrorCallback("%s: short write on file \"%s\"; actualWriteCount( %zd ) != signedWriteCount( %zd ) @ TellPut( %zi )!\n",
+				__FUNCTION__, m_name.c_str(), actualWriteCount, signedWriteCount, TellPut());
 		}
 	}
 
