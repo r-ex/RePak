@@ -75,6 +75,16 @@ public:
 	bool ReadString(std::string& svOut);
 	bool ReadString(char* const pBuf, const size_t nLen, size_t* const outWriteCount = nullptr);
 
+	template<typename T>
+	inline bool Get(T& out)
+	{
+		m_stream.get(out);
+		return m_stream.good();
+	}
+
+	void EatWhiteSpace();
+	bool ParseToken(char* const scratch, const char* const startDelim, const char* const endDelim, const size_t maxLen);
+
 	//-----------------------------------------------------------------------------
 	// Writes any value to the file with specified size
 	//-----------------------------------------------------------------------------

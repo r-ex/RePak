@@ -248,6 +248,117 @@ bool BinaryIO::ReadString(char* const buf, const size_t len, size_t* const outWr
 	return fullRead; // if false, string too long and result is truncated.
 }
 
+//-----------------------------------------------------------------------------
+// Eat first occurring white space from current position
+//-----------------------------------------------------------------------------
+void BinaryIO::EatWhiteSpace()
+{
+	char c;
+	while (Get(c))
+	{
+		if (!isspace((unsigned char)c))
+		{
+			SeekGet(TellGet() - 1);
+			break;
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Parses a token between 2 delimiters into provided scratch buffer
+//-----------------------------------------------------------------------------
+bool BinaryIO::ParseToken(char* scratch, const char* startDelim, const char* endDelim, size_t maxLen)
+{
+	if (!endDelim || !*endDelim || maxLen == 0)
+		return false;
+
+	char emptyBuf = '\0';
+	if (!startDelim)
+		startDelim = &emptyBuf;
+
+	const size_t endLen = strlen(endDelim);
+	const size_t startPos = TellGet();
+
+	EatWhiteSpace(); // Leading whitespace.
+
+	for (size_t i = 0; startDelim[i]; ++i)
+	{
+		char c = startDelim[i];
+		if (!isspace((unsigned char)c))
+		{
+			char got;
+			if (!Get(got))
+			{
+				SeekGet(startPos);
+				scratch[0] = '\0';
+				return false;
+			}
+			if (tolower(got) != tolower(c))
+			{
+				SeekGet(startPos);
+				scratch[0] = '\0';
+				return false;
+			}
+		}
+		else
+		{
+			EatWhiteSpace();
+		}
+	}
+
+	EatWhiteSpace(); // After delim.
+	const size_t tokenStart = TellGet();
+
+	size_t endMatchPos = 0;
+	while (true)
+	{
+		char c;
+		if (!Get(c))
+		{
+			SeekGet(startPos);
+			scratch[0] = '\0';
+			return false;
+		}
+
+		if (c == endDelim[endMatchPos])
+		{
+			++endMatchPos;
+			if (endMatchPos == endLen)
+				break;
+		}
+		else
+		{
+			endMatchPos = 0;
+		}
+	}
+
+	const size_t tokenEnd = TellGet() - endLen;
+	size_t tokenLen = tokenEnd - tokenStart;
+
+	if (tokenLen >= maxLen)
+		tokenLen = maxLen - 1;
+
+	// Copy token.
+	SeekGet(tokenStart);
+	for (size_t i = 0; i < tokenLen; ++i)
+	{
+		if (!Get(scratch[i]))
+		{
+			SeekGet(startPos);
+			scratch[0] = '\0';
+			return false;
+		}
+	}
+
+	while (tokenLen > 0 && isspace((unsigned char)scratch[tokenLen - 1]))
+		--tokenLen;
+
+	scratch[tokenLen] = '\0';
+
+	SeekGet(tokenEnd + endLen);
+	return true;
+}
+
 // limit number of io calls and allocations by just using this static buffer
 // for padding out the stream.
 static constexpr size_t PAD_BUF_SIZE = 4096;
