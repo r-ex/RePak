@@ -22,6 +22,7 @@ static std::unordered_set<PakAssetHandler_s, PakAssetHasher_s> s_pakAssetHandler
 	{"txan", PakAssetScope_e::kClientOnly, nullptr, Assets::AddTextureAnimAsset_v1},
 	{"uimg", PakAssetScope_e::kClientOnly, Assets::AddUIImageAsset_v10, Assets::AddUIImageAsset_v10},
 	{"rlcd", PakAssetScope_e::kClientOnly, Assets::AddLcdScreenEffect_v0, Assets::AddLcdScreenEffect_v0},
+	{"efct", PakAssetScope_e::kClientOnly, nullptr, Assets::AddParticleEffect_v2},
 	{"matl", PakAssetScope_e::kClientOnly, Assets::AddMaterialAsset_v12, Assets::AddMaterialAsset_v15},
 	{"mt4a", PakAssetScope_e::kClientOnly, nullptr, Assets::AddMaterialForAspectAsset_v3},
 	{"shdr", PakAssetScope_e::kClientOnly, Assets::AddShaderAsset_v8, Assets::AddShaderAsset_v12},

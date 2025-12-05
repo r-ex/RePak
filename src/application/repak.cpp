@@ -347,6 +347,7 @@ int main(int argc, char** argv)
     extern bool Console_ColorInit();
     Console_ColorInit();
 
+    g_iosmErrorCallback = Error;
     g_jsonErrorCallback = Error;
 
     RePak_HandleCommandLine(argc, argv);

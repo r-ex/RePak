@@ -57,7 +57,10 @@ static void AnimSeq_ParseDependenciesFromData(const uint8_t* const data, std::se
 
         const char* end = strchr(start, ' ');
         if (!end)
-            end = event->options + strlen(event->options);
+        {
+            const size_t maxLen = sizeof(event->options) - (start - event->options);
+            end = start + strnlen(start, maxLen);
+        }
 
         const size_t nameLen = (end - start);
 
@@ -198,15 +201,13 @@ static void AnimSeq_InternalAddAnimSeq(CPakFileBuilder* const pak, const PakGuid
             hdr->settingsCount = (uint32_t)set.size();
         }
 
-        for (size_t j = 0; j < set.size(); j++)
+        size_t j = 0;
+
+        for (const PakGuid_t& guidToCopy : set)
         {
-            std::set<PakGuid_t>::iterator it = set.begin();
-            std::advance(it, j);
-
-            const PakGuid_t guidToCopy = *it;
             reinterpret_cast<PakGuid_t*>(&dataLump.data[bufferBase])[j] = guidToCopy;
-
             Pak_RegisterGuidRefAtOffset(guidToCopy, bufferBase + (j * sizeof(PakGuid_t)), dataLump, asset);
+            ++j;
         }
 
         bufferBase += set.size() * sizeof(PakGuid_t);

@@ -21,6 +21,8 @@
     <ClCompile Include="assets\material.cpp" />
     <ClCompile Include="assets\material_for_aspect.cpp" />
     <ClCompile Include="assets\model.cpp" />
+    <ClCompile Include="assets\particle_effect.cpp" />
+    <ClCompile Include="assets\particle_operator_params.cpp" />
     <ClCompile Include="assets\patch.cpp" />
     <ClCompile Include="assets\settings.cpp" />
     <ClCompile Include="assets\settings_layout.cpp" />
@@ -161,6 +163,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="utils\binaryio.cpp" />
+    <ClCompile Include="utils\dmarray.cpp" />
+    <ClCompile Include="utils\DmxTools.cpp" />
     <ClCompile Include="utils\dxutils.cpp" />
     <ClCompile Include="utils\jsonutils.cpp" />
     <ClCompile Include="utils\logger.cpp" />
@@ -174,6 +178,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="assets\assets.h" />
+    <ClInclude Include="assets\particle_operators_params.h" />
     <ClInclude Include="common\const.h" />
     <ClInclude Include="common\decls.h" />
     <ClInclude Include="logic\buildsettings.h" />
@@ -186,14 +191,19 @@
     <ClInclude Include="math\color.h" />
     <ClInclude Include="math\common.h" />
     <ClInclude Include="math\vector.h" />
+    <ClInclude Include="math\vmatrix.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="public\animrig.h" />
     <ClInclude Include="public\anim_recording.h" />
+    <ClInclude Include="public\dmattribute.h" />
+    <ClInclude Include="public\dmelement.h" />
+    <ClInclude Include="public\dmexchange.h" />
     <ClInclude Include="public\lcd_screen_effect.h" />
     <ClInclude Include="public\material.h" />
     <ClInclude Include="public\materialflags.h" />
     <ClInclude Include="public\material_for_aspect.h" />
     <ClInclude Include="public\multishader.h" />
+    <ClInclude Include="public\particle_effect.h" />
     <ClInclude Include="public\rpak.h" />
     <ClInclude Include="public\settings.h" />
     <ClInclude Include="public\settings_layout.h" />
@@ -285,6 +295,7 @@
     <ClInclude Include="thirdparty\zstd\zstd.h" />
     <ClInclude Include="thirdparty\zstd\zstd_errors.h" />
     <ClInclude Include="utils\binaryio.h" />
+    <ClInclude Include="utils\DmxTools.h" />
     <ClInclude Include="utils\dxutils.h" />
     <ClInclude Include="utils\jsonutils.h" />
     <ClInclude Include="utils\logger.h" />

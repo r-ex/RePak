@@ -3,23 +3,19 @@
 #include <sys/stat.h>
 
 //-----------------------------------------------------------------------------
-// Purpose: CIOStream constructors
+// constructors/destructors
 //-----------------------------------------------------------------------------
 BinaryIO::BinaryIO()
 {
 	Reset();
 }
-
-//-----------------------------------------------------------------------------
-// Purpose: CIOStream destructor
-//-----------------------------------------------------------------------------
 BinaryIO::~BinaryIO()
 {
-	Close();
+	Reset();
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: get internal stream mode from selected mode
+// Get internal stream mode from selected mode
 //-----------------------------------------------------------------------------
 static std::ios_base::openmode GetInternalStreamMode(const BinaryIO::Mode_e mode)
 {
@@ -40,22 +36,22 @@ static std::ios_base::openmode GetInternalStreamMode(const BinaryIO::Mode_e mode
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: opens the file in specified mode
-// Input  : *filePath - 
-//			mode - 
-// Output : true if operation is successful
+// Opens the file in specified mode
 //-----------------------------------------------------------------------------
-bool BinaryIO::Open(const char* const filePath, const Mode_e mode)
+bool BinaryIO::OpenEx(const char* const filePath, const Mode_e mode, const size_t pathLen)
 {
+	assert(filePath && pathLen > 0);
+
 	m_flags = GetInternalStreamMode(mode);
 	m_mode = mode;
+	m_name.assign(filePath, pathLen);
 
 	if (m_stream.is_open())
 	{
 		m_stream.close();
 	}
 
-	m_stream.open(filePath, m_flags);
+	m_stream.open(m_name, m_flags);
 
 	if (!m_stream.is_open() || !m_stream.good())
 	{
@@ -64,40 +60,39 @@ bool BinaryIO::Open(const char* const filePath, const Mode_e mode)
 
 	if (IsReadMode())
 	{
-		struct _stat64 status;
-		if (_stat64(filePath, &status) != NULL)
-		{
-			return false;
-		}
-
-		m_size = status.st_size;
+		// Calculate the initial size.
+		m_stream.seekg(0, std::ios::end);
+		m_state.totalSize = m_stream.tellg();
+		m_stream.seekg(0, std::ios::beg);
 	}
 
 	return true;
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: resets the state
+// Resets the internal state
 //-----------------------------------------------------------------------------
 void BinaryIO::Reset()
 {
-	m_size = 0;
-	m_skip = 0;
-	m_mode = Mode_e::None;
+	m_state.totalSize = 0;
+	m_state.skipCount = 0;
+	m_state.seekGap = 0;
 	m_flags = 0;
+	m_mode = Mode_e::None;
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: closes the stream
+// Closes the stream
 //-----------------------------------------------------------------------------
 void BinaryIO::Close()
 {
 	m_stream.close();
 	Reset();
+	m_name.clear();
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: flushes the ofstream
+// Flushes the ofstream
 //-----------------------------------------------------------------------------
 void BinaryIO::Flush()
 {
@@ -106,8 +101,7 @@ void BinaryIO::Flush()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: gets the position of the current character in the stream
-// Output : std::streampos
+// Gets the position of the current character in the stream
 //-----------------------------------------------------------------------------
 std::streamoff BinaryIO::TellGet()
 {
@@ -121,9 +115,7 @@ std::streamoff BinaryIO::TellPut()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: sets the position of the current character in the stream
-// Input  : offset - 
-//			way - 
+// Sets the position of the current character in the stream
 //-----------------------------------------------------------------------------
 void BinaryIO::SeekGet(const std::streamoff offset, const std::ios_base::seekdir way)
 {
@@ -138,7 +130,7 @@ void BinaryIO::SeekPut(const std::streamoff offset, const std::ios_base::seekdir
 {
 	assert(IsWriteMode());
 
-	CalcSkipDelta(offset, way);
+	UpdateSeekState(offset, way);
 	m_stream.seekp(offset, way);
 }
 void BinaryIO::Seek(const std::streamoff offset, const std::ios_base::seekdir way)
@@ -150,8 +142,7 @@ void BinaryIO::Seek(const std::streamoff offset, const std::ios_base::seekdir wa
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: returns the data
-// Output : std::filebuf*
+// Returns the stream buffer
 //-----------------------------------------------------------------------------
 const std::filebuf* BinaryIO::GetData() const
 {
@@ -159,12 +150,11 @@ const std::filebuf* BinaryIO::GetData() const
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: returns the data size
-// Output : std::streampos
+// Returns the data size
 //-----------------------------------------------------------------------------
 const std::streamoff BinaryIO::GetSize() const
 {
-	return m_size;
+	return m_state.totalSize;
 }
 
 bool BinaryIO::IsReadMode() const
@@ -178,32 +168,23 @@ bool BinaryIO::IsWriteMode() const
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: checks if we are able to read the file
-// Output : true on success, false otherwise
+// Checks if we are able to read the file
 //-----------------------------------------------------------------------------
 bool BinaryIO::IsReadable() const
 {
-	if (!IsReadMode() || !m_stream || m_stream.eof())
-		return false;
-
-	return true;
+	return IsReadMode() && m_stream.good();
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: checks if we are able to write to file
-// Output : true on success, false otherwise
+// Checks if we are able to write to file
 //-----------------------------------------------------------------------------
 bool BinaryIO::IsWritable() const
 {
-	if (!IsWriteMode() || !m_stream)
-		return false;
-
-	return true;
+	return IsWriteMode() && m_stream.good();
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: checks if we hit the end of file
-// Output : true on success, false otherwise
+// Checks if we hit the end of file
 //-----------------------------------------------------------------------------
 bool BinaryIO::IsEof() const
 {
@@ -211,83 +192,182 @@ bool BinaryIO::IsEof() const
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: reads a string from the file
-// Input  : &svOut - 
-// Output : true on success, false otherwise
+// Reads a string from the file
 //-----------------------------------------------------------------------------
 bool BinaryIO::ReadString(std::string& out)
 {
 	if (!IsReadable())
 		return false;
 
-	while (!m_stream.eof())
-	{
-		const char c = Read<char>();
+	char c;
 
+	while (m_stream.get(c))
+	{
 		if (c == '\0')
-			break;
+			return true;
 
 		out += c;
 	}
 
-	return true;
+	return false; // EOF or error, result is truncated.
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: reads a string from the file into a fixed size buffer
-// Input  : *buf - 
-//			len - 
-// Output : true on success, false otherwise
+// Reads a string from the file into a fixed size buffer
 //-----------------------------------------------------------------------------
-bool BinaryIO::ReadString(char* const buf, const size_t len)
+bool BinaryIO::ReadString(char* const buf, const size_t len, size_t* const outWriteCount)
 {
+	assert(buf && len > 0);
+
 	if (!IsReadable())
 		return false;
 
 	size_t i = 0;
+	char c;
+	bool fullRead = false;
 
-	while (i < len && !m_stream.eof())
+	while (i < (len - 1) && m_stream.get(c))
 	{
-		const char c = Read<char>();
-
 		if (c == '\0')
+		{
+			buf[i] = '\0';
+			fullRead = true;
+
 			break;
+		}
 
 		buf[i++] = c;
 	}
 
-	return true;
+	if (!fullRead)
+		buf[i] = '\0';
+
+	if (outWriteCount)
+		*outWriteCount = i;
+
+	return fullRead; // if false, string too long and result is truncated.
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: writes a string to the file
-// Input  : &input - 
-// Output : true on success, false otherwise
+// Eat first occurring white space from current position
 //-----------------------------------------------------------------------------
-bool BinaryIO::WriteString(const std::string& input, const bool nullterminate)
+void BinaryIO::EatWhiteSpace()
 {
-	if (!IsWritable())
+	char c;
+	while (Get(c))
+	{
+		if (!isspace((unsigned char)c))
+		{
+			SeekGet(TellGet() - 1);
+			break;
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Parses a token between 2 delimiters into provided scratch buffer
+//-----------------------------------------------------------------------------
+bool BinaryIO::ParseToken(char* scratch, const char* startDelim, const char* endDelim, size_t maxLen)
+{
+	if (!endDelim || !*endDelim || maxLen == 0)
 		return false;
 
-	const char* const text = input.c_str();
-	const size_t len = input.length() + nullterminate;
+	char emptyBuf = '\0';
+	if (!startDelim)
+		startDelim = &emptyBuf;
 
-	m_stream.write(text, len);
-	CalcAddDelta(len);
+	const size_t endLen = strlen(endDelim);
+	const size_t startPos = TellGet();
 
+	EatWhiteSpace(); // Leading whitespace.
+
+	for (size_t i = 0; startDelim[i]; ++i)
+	{
+		char c = startDelim[i];
+		if (!isspace((unsigned char)c))
+		{
+			char got;
+			if (!Get(got))
+			{
+				SeekGet(startPos);
+				scratch[0] = '\0';
+				return false;
+			}
+			if (tolower(got) != tolower(c))
+			{
+				SeekGet(startPos);
+				scratch[0] = '\0';
+				return false;
+			}
+		}
+		else
+		{
+			EatWhiteSpace();
+		}
+	}
+
+	EatWhiteSpace(); // After delim.
+	const size_t tokenStart = TellGet();
+
+	size_t endMatchPos = 0;
+	while (true)
+	{
+		char c;
+		if (!Get(c))
+		{
+			SeekGet(startPos);
+			scratch[0] = '\0';
+			return false;
+		}
+
+		if (c == endDelim[endMatchPos])
+		{
+			++endMatchPos;
+			if (endMatchPos == endLen)
+				break;
+		}
+		else
+		{
+			endMatchPos = 0;
+		}
+	}
+
+	const size_t tokenEnd = TellGet() - endLen;
+	size_t tokenLen = tokenEnd - tokenStart;
+
+	if (tokenLen >= maxLen)
+		tokenLen = maxLen - 1;
+
+	// Copy token.
+	SeekGet(tokenStart);
+	for (size_t i = 0; i < tokenLen; ++i)
+	{
+		if (!Get(scratch[i]))
+		{
+			SeekGet(startPos);
+			scratch[0] = '\0';
+			return false;
+		}
+	}
+
+	while (tokenLen > 0 && isspace((unsigned char)scratch[tokenLen - 1]))
+		--tokenLen;
+
+	scratch[tokenLen] = '\0';
+
+	SeekGet(tokenEnd + endLen);
 	return true;
 }
 
 // limit number of io calls and allocations by just using this static buffer
 // for padding out the stream.
 static constexpr size_t PAD_BUF_SIZE = 4096;
-const static char s_padBuf[PAD_BUF_SIZE];
+const static char s_padBuf[PAD_BUF_SIZE] = {};
 
 //-----------------------------------------------------------------------------
-// Purpose: pads the out stream up to count bytes
-// Input  : count - 
+// Pads the out stream up to count bytes
 //-----------------------------------------------------------------------------
-void BinaryIO::Pad(const size_t count)
+bool BinaryIO::Pad(const size_t count, size_t* const outPadCount)
 {
 	assert(count > 0);
 	size_t remainder = count;
@@ -295,88 +375,136 @@ void BinaryIO::Pad(const size_t count)
 	while (remainder)
 	{
 		const size_t writeCount = (std::min)(remainder, PAD_BUF_SIZE);
-		Write(s_padBuf, writeCount);
+		
+		if (!Write(s_padBuf, writeCount))
+			break;
 
 		remainder -= writeCount;
 	}
+
+	if (outPadCount)
+		*outPadCount = count - remainder;
+
+	return remainder == 0;
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: makes sure that the size gets incremented if we exceeded the end of
-//          the stream with the delta amount
+// Internal read function.
 //-----------------------------------------------------------------------------
-void BinaryIO::CalcAddDelta(const size_t count)
+bool BinaryIO::DoRead(char* const outBuf, const size_t readCount, size_t* const outReadCount)
 {
-	if (m_skip > 0)
-	{
-		m_skip -= count;
+	if (!IsReadable())
+		return false;
 
-		if (m_skip < 0)
+	const std::streamoff signedReadCount = static_cast<std::streamoff>(readCount);
+	const std::streamoff actualReadCount = m_stream.rdbuf()->sgetn(outBuf, readCount);
+
+	if (outReadCount)
+		*outReadCount = static_cast<size_t>(actualReadCount);
+
+	const bool wasSuccesful = actualReadCount == signedReadCount;
+
+	if (!wasSuccesful)
+	{
+		if (g_iosmErrorCallback)
 		{
-			m_size += -m_skip; // Add the overshoot to the file size.
-			m_skip = 0;
+			g_iosmErrorCallback("%s: short read on file \"%s\"; actualReadCount( %zd ) != signedReadCount( %zd ) @ TellGet( %zi )!\n",
+				__FUNCTION__, m_name.c_str(), actualReadCount, signedReadCount, TellGet());
 		}
 	}
-	else
-		m_size += count;
+
+	return wasSuccesful;
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: if we seek backwards, and then write new data, we should not add
-//          this to the total output size of the stream as we modify and not
-//          add. we have to keep by how much we shifted backwards and advanced
-//          forward until we can start adding again.
+// Internal write function.
 //-----------------------------------------------------------------------------
-void BinaryIO::CalcSkipDelta(const std::streamoff offset, const std::ios_base::seekdir way)
+bool BinaryIO::DoWrite(const char* const inBuf, const size_t writeCount, size_t* const outWriteCount)
 {
-	switch (way)
+	if (!IsWritable())
+		return false;
+
+	const std::streamoff signedWriteCount = static_cast<std::streamoff>(writeCount);
+	const std::streamoff actualWriteCount = m_stream.rdbuf()->sputn(inBuf, signedWriteCount);
+
+	PostWriteUpdate(actualWriteCount);
+
+	if (outWriteCount)
+		*outWriteCount = actualWriteCount;
+
+	const bool wasSuccesful = actualWriteCount == signedWriteCount;
+
+	if (!wasSuccesful)
+	{
+		if (g_iosmErrorCallback)
+		{
+			g_iosmErrorCallback("%s: short write on file \"%s\"; actualWriteCount( %zd ) != signedWriteCount( %zd ) @ TellPut( %zi )!\n",
+				__FUNCTION__, m_name.c_str(), actualWriteCount, signedWriteCount, TellPut());
+		}
+	}
+
+	return wasSuccesful;
+}
+
+//-----------------------------------------------------------------------------
+// If we seek backwards, and then write new data, we should not add
+// this to the total output size of the stream as we modify and not
+// add. we have to keep by how much we shifted backwards and advanced
+// forward until we can start adding again.
+//-----------------------------------------------------------------------------
+void BinaryIO::UpdateSeekState(const std::streamoff offset, const std::ios_base::seekdir way)
+{
+	std::streamoff targetPos = 0;
+
+	switch (way) // determine the abs target pos of the seek.
 	{
 	case std::ios_base::beg:
-	{
-		if (offset < 0)
-		{
-			assert(false && "Negative offset in std::ios_base::beg is invalid.");
-			return;
-		}
-
-		if (offset > m_size)
-		{
-			m_size = offset;
-			m_skip = 0;
-		}
-		else
-			m_skip = m_size - offset;
+		targetPos = offset;
 		break;
-	}
 	case std::ios_base::cur:
-	{
-		if (offset > 0)
-			CalcAddDelta(offset);
-		else
-			m_skip += -offset;
+		targetPos = (m_state.totalSize - m_state.skipCount) + offset;
 		break;
-	}
 	case std::ios_base::end:
+		targetPos = m_state.totalSize + offset;
+		break;
+	}
+
+	if (targetPos > m_state.totalSize)
 	{
-		if (offset >= 0)
+		m_state.seekGap = targetPos - m_state.totalSize;
+		m_state.skipCount = 0; // cannot have skip and gap.
+	}
+	else // seeking within logical bounds.
+	{
+		m_state.skipCount = m_state.totalSize - targetPos;
+		m_state.seekGap = 0; // cannot have skip and gap.
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Updates the logical file size after a write of `writeCount` bytes.
+// This handles padding from gaps and appending new data.
+//-----------------------------------------------------------------------------
+void BinaryIO::PostWriteUpdate(const std::streamoff writeCount)
+{
+	// if we had a gap, append it to the total size as it has been padded out.
+	if (m_state.seekGap > 0)
+	{
+		m_state.totalSize += m_state.seekGap;
+		m_state.seekGap = 0;
+	}
+
+	// account for overwriting/appending.
+	if (m_state.skipCount > 0)
+	{
+		if (writeCount >= m_state.skipCount)
 		{
-			m_size += offset;
-			m_skip = 0;
+			m_state.totalSize += (writeCount - m_state.skipCount);
+			m_state.skipCount = 0;
 		}
-		else
-			m_skip += -offset;
-		break;
+		else // Writing within the logical bounds.
+			m_state.skipCount -= writeCount;
 	}
-	default:
-		assert(false && "Unsupported seek direction.");
-		break;
-	}
-
-	// Ensure m_skip is non-negative, this can happen if you call this method
-	// with cur or end, and a negative value who's absolute value is greater
-	// than the total stream size. If you hit this, you have a bug somewhere.
-	assert(m_skip >= 0);
-
-	if (m_skip < 0)
-		m_skip = 0;
+	else
+		m_state.totalSize += writeCount;
 }

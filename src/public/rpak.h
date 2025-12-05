@@ -31,6 +31,7 @@
 #define TYPE_RMDL	MAKE_FOURCC('m', 'd', 'l', '_') // mdl_
 #define TYPE_UIMG	MAKE_FOURCC('u', 'i', 'm', 'g') // uimg
 #define TYPE_RLCD	MAKE_FOURCC('r', 'l', 'c', 'd') // rlcd
+#define TYPE_EFCT	MAKE_FOURCC('e', 'f', 'c', 't') // efct
 #define TYPE_PTCH	MAKE_FOURCC('P', 't', 'c', 'h') // Ptch
 #define TYPE_DTBL	MAKE_FOURCC('d', 't', 'b', 'l') // dtbl
 #define TYPE_STLT	MAKE_FOURCC('s', 't', 'l', 't') // stlt
@@ -53,6 +54,7 @@ enum class AssetType : uint32_t
 	RMDL = TYPE_RMDL, // model
 	UIMG = TYPE_UIMG, // ui image atlas
 	RLCD = TYPE_RLCD, // lcd screen effect
+	EFCT = TYPE_EFCT, // particle effect
 	PTCH = TYPE_PTCH, // patch
 	DTBL = TYPE_DTBL, // datatable
 	STLT = TYPE_STLT, // settings layout

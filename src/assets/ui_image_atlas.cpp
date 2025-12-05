@@ -54,6 +54,9 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     UIImageAtlasHeader_t* const pHdr = reinterpret_cast<UIImageAtlasHeader_t*>(hdrLump.data);
     const TextureAssetHeader_t* const atlasHdr = reinterpret_cast<const TextureAssetHeader_t*>(atlasAsset->header);
 
+    if (atlasHdr->width == 0 || atlasHdr->height == 0)
+        Error("UI image atlas has invalid dimensions (%hux%hu); width and height cannot be zero!\n", atlasHdr->width, atlasHdr->height);
+
     pHdr->width = atlasHdr->width;
     pHdr->height = atlasHdr->height;
 

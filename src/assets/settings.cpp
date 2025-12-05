@@ -273,8 +273,8 @@ static void SettingsAsset_CalculateModValuesBuffers(const rapidjson::Value& modV
 
         item.nameIndex = static_cast<uint16_t>(nameIndex);
 
-        if (item.nameIndex > modNamesCount)
-            Error("Settings mod value #%zu indexes outside mod names array (%hu > %hu).\n", elemIndex, item.nameIndex, static_cast<uint16_t>(modNamesCount));
+        if (item.nameIndex >= modNamesCount)
+            Error("Settings mod value #%zu indexes outside mod names array (%hu > %hu).\n", elemIndex, item.nameIndex, static_cast<uint16_t>(modNamesCount-1));
 
         const char* const typeName = JSON_GetValueRequired<const char*>(elem, "type");
 
@@ -443,23 +443,16 @@ static void SettingsAsset_WriteAssetValue(const char* const string, const size_t
 static void SettingsAsset_WriteVectorValue(const char* const value, const char* const fieldName,
     const size_t valueOffset, const bool isVec2, PakPageLump_s& dataLump)
 {
-    std::cmatch sm; // get values from format "<x,y>", or "<x,y,z>".
-    const bool result = std::regex_search(value, sm, std::regex(isVec2 ? "<(.*),(.*)>" : "<(.*),(.*),(.*)>"));
+    Vector3* const vec = reinterpret_cast<Vector3*>(&dataLump.data[valueOffset]);
+    bool success = false;
 
-    // 0 - all
-    // 1 - x
-    // 2 - y
-    // 3 - z (if !isVec2)
-    if (result && (sm.size() == (isVec2 ? 3 : 4)))
-    {
-        Vector3* const vec = reinterpret_cast<Vector3*>(&dataLump.data[valueOffset]);
-        vec->x = static_cast<float>(atof(sm[1].str().c_str()));
-        vec->y = static_cast<float>(atof(sm[2].str().c_str()));
-
-        if (!isVec2)
-            vec->z = static_cast<float>(atof(sm[3].str().c_str()));
-    }
+    // get values from format "<x,y>", or "<x,y,z>".
+    if (isVec2)
+        success = sscanf_s(value, "<%f,%f>", &vec->x, &vec->y) == 2;
     else
+        success = sscanf_s(value, "<%f,%f,%f>", &vec->x, &vec->y, &vec->z) == 3;
+
+    if (!success)
     {
         const char* const targetType = isVec2 ? "float2" : "float3";
         Error("Field \"%s\" has value '%s' that cannot be parsed as %s.\n", fieldName, value, targetType);

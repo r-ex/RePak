@@ -101,7 +101,8 @@ static void AnimRecording_InternalAddAnimRecording(CPakFileBuilder* const pak, c
 
 	for (int i = 0; i < fileHdr.numElements; i++)
 	{
-		bio.Read(pHdr->poseParamValues[i]);
+		if (!bio.Read(pHdr->poseParamValues[i]))
+			Error("Failed to read animation pose parameter value #%i\n", i);
 	}
 
 	for (int i = 0; i < fileHdr.numSequences; i++)

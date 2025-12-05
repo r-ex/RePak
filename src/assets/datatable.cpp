@@ -20,6 +20,18 @@ static void DataTable_ReportInvalidDataTypeError(const char* const type, const u
     Error("Invalid data type \"%s\" at cell [%u,%u].\n", type, rowIdx, colIdx);
 }
 
+template <typename T>
+static T DataTable_ParseCellFromDocument(const rapidcsv::Document& doc, const uint32_t colIdx, const uint32_t rowIdx, const dtblcoltype_t type)
+{
+    try {
+        return doc.GetCell<T>(colIdx, rowIdx);
+    }
+    catch (const std::exception& ex) {
+        Error("Exception while parsing %s value from cell [%u,%u]: %s.\n", DataTable_GetStringFromType(type), rowIdx, colIdx, ex.what());
+        return T{};
+    }
+}
+
 template <typename datatable_t>
 static size_t DataTable_SetupRows(const rapidcsv::Document& doc, datatable_t* const dtblHdr, datatable_asset_t& tmp, std::vector<std::string>& outTypeRow)
 {
@@ -29,7 +41,7 @@ static size_t DataTable_SetupRows(const rapidcsv::Document& doc, datatable_t* co
 
     // typically happens when there's an empty line in the csv file.
     if (numTypeNames != dtblHdr->numColumns)
-        Error("Expected %u columns for type name row, found %u.\n", dtblHdr->numRows, numTypeNames);
+        Error("Expected %u columns for type name row, found %u.\n", dtblHdr->numColumns, numTypeNames);
 
     // Make sure every row (including rows we don't end up storing in the pak),
     // have the same number of columns as the type row. The column count in the
@@ -65,8 +77,8 @@ static size_t DataTable_SetupRows(const rapidcsv::Document& doc, datatable_t* co
             for (uint32_t j = 0; j < dtblHdr->numRows; ++j)
             {
                 // this can be std::string since we only deal with the string types here
-                std::vector<std::string> row = doc.GetRow<std::string>(j);
-                const size_t strLen = row[i].length();
+                const std::string cellValue = DataTable_ParseCellFromDocument<std::string>(doc, i, j, type);
+                const size_t strLen = cellValue.length();
 
                 if (isPrecachedAsset && strLen > 0)
                     tmp.guidRefBufSize += sizeof(PakGuid_t);
@@ -113,18 +125,6 @@ static void DataTable_SetupColumns(CPakFileBuilder* const pak, PakPageLump_s& da
         col.type = type;
 
         dtblHdr->rowStride += DataTable_GetValueSize(type);
-    }
-}
-
-template <typename T>
-static T DataTable_ParseCellFromDocument(rapidcsv::Document& doc, const uint32_t colIdx, const uint32_t rowIdx, const dtblcoltype_t type)
-{
-    try {
-        return doc.GetCell<T>(colIdx, rowIdx);
-    }
-    catch (const std::exception& ex) {
-        Error("Exception while parsing %s value from cell [%u,%u]: %s.\n", DataTable_GetStringFromType(type), rowIdx, colIdx, ex.what());
-        return T{};
     }
 }
 
@@ -184,25 +184,12 @@ static void DataTable_SetupValues(CPakFileBuilder* const pak, PakAsset_t& asset,
             }
             case dtblcoltype_t::Vector:
             {
-                std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx, col.type);
-                std::smatch sm;
+                const std::string val = DataTable_ParseCellFromDocument<std::string>(doc, colIdx, rowIdx, col.type);
+                Vector3 vec;
 
                 // get values from format "<x,y,z>"
-                const bool result = std::regex_search(val, sm, std::regex("<(.*),(.*),(.*)>"));
-
-                // 0 - all
-                // 1 - x
-                // 2 - y
-                // 3 - z
-                if (result && (sm.size() == 4))
-                {
-                    const Vector3 vec(
-                        static_cast<float>(atof(sm[1].str().c_str())),
-                        static_cast<float>(atof(sm[2].str().c_str())),
-                        static_cast<float>(atof(sm[3].str().c_str())));
-
+                if (sscanf_s(val.c_str(), "<%f,%f,%f>", &vec.x, &vec.y, &vec.z) == 3)
                     valbuf.write(vec);
-                }
                 else
                     DataTable_ReportInvalidValueError(col.type, rowIdx, colIdx);
                 break;
