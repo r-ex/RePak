@@ -1,6 +1,7 @@
 #pragma once
 #include "public/rpak.h"
 
+// Maximum number of slabs that can be allocated into the runtime collection.
 #define PAK_MAX_SLAB_COUNT 20
 
 // Pages can only be merged with other pages with equal flags and an alignment
