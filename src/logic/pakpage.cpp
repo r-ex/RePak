@@ -41,6 +41,7 @@
 // Constructors/Destructors
 //-----------------------------------------------------------------------------
 CPakPageBuilder::CPakPageBuilder()
+	: m_slabCount(0)
 {
 }
 CPakPageBuilder::~CPakPageBuilder()
@@ -66,7 +67,7 @@ PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align)
 
 	// Try and find a slab that has the same flags, and the closest alignment
 	// of request.
-	for (size_t i = 0; i < m_slabs.size(); i++)
+	for (uint16_t i = 0; i < m_slabCount; i++)
 	{
 		PakSlab_s& slab = m_slabs[i];
 		PakSlabHdr_s& header = slab.header;
@@ -105,10 +106,13 @@ PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align)
 		return *toReturn;
 	}
 
-	// If we didn't have a close match, create a new slab.
-	PakSlab_s& newSlab = m_slabs.emplace_back();
+	if (m_slabCount + 1 > PAK_MAX_SLAB_COUNT)
+		Error("Out of room while adding new slab; runtime has a limit of %hu.\n", PAK_MAX_SLAB_COUNT);
 
-	newSlab.index = static_cast<int>(m_slabs.size() - 1);
+	// If we didn't have a close match, create a new slab.
+	PakSlab_s& newSlab = m_slabs[m_slabCount];
+
+	newSlab.index = m_slabCount++;
 	newSlab.header.flags = flags;
 	newSlab.header.alignment = align;
 	newSlab.header.dataSize = 0;
@@ -286,22 +290,28 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 //-----------------------------------------------------------------------------
 void CPakPageBuilder::PadSlabsAndPages()
 {
-	int lastPageSizeAligned = 0;
-	int lastPageAlign = 0;
+	struct PageAlignmentTracker_s
+	{
+		int lastPageSizeAligned = 0;
+		int lastPageAlign = 0;
+	};
+
+	PageAlignmentTracker_s alignTrack[PAK_MAX_SLAB_COUNT];
 
 	for (PakPage_s& page : m_pages)
 	{
 		PakPageHdr_s& pageHdr = page.header;
 		PakSlab_s& slab = m_slabs[pageHdr.slabIndex];
 		PakSlabHdr_s& slabHdr = slab.header;
+		PageAlignmentTracker_s& track = alignTrack[pageHdr.slabIndex];
 
 		const int pageSize = pageHdr.dataSize;
 		const int pageAlign = pageHdr.alignment;
 
 		// The runtime pads the previous page to align our current page, we have
 		// to add this extra size to the slab to accommodate for this.
-		if (lastPageSizeAligned > 0 && pageAlign > lastPageAlign)
-			slabHdr.dataSize += IALIGN(lastPageSizeAligned, pageAlign) - lastPageSizeAligned;
+		if (track.lastPageSizeAligned > 0 && pageAlign > track.lastPageAlign)
+			slabHdr.dataSize += IALIGN(track.lastPageSizeAligned, pageAlign) - track.lastPageSizeAligned;
 
 		const int pagePadAmount = IALIGN(pageSize, pageAlign) - pageSize;
 
@@ -312,8 +322,8 @@ void CPakPageBuilder::PadSlabsAndPages()
 		if (pagePadAmount > 0)
 			slabHdr.dataSize += pagePadAmount;
 
-		lastPageSizeAligned = pageSize + pagePadAmount;
-		lastPageAlign = pageAlign;
+		track.lastPageSizeAligned = pageSize + pagePadAmount;
+		track.lastPageAlign = pageAlign;
 	}
 }
 
@@ -322,8 +332,9 @@ void CPakPageBuilder::PadSlabsAndPages()
 //-----------------------------------------------------------------------------
 void CPakPageBuilder::WriteSlabHeaders(BinaryIO& out) const
 {
-	for (const PakSlab_s& slab : m_slabs)
+	for (uint16_t i = 0; i < m_slabCount; i++)
 	{
+		const PakSlab_s& slab = m_slabs[i];
 		out.Write(slab.header);
 	}
 }

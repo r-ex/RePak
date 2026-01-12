@@ -1,6 +1,9 @@
 #pragma once
 #include "public/rpak.h"
 
+// Maximum number of slabs that can be allocated into the runtime collection.
+#define PAK_MAX_SLAB_COUNT 20
+
 // Pages can only be merged with other pages with equal flags and an alignment
 // equal or higher than its own if the combined size aligned to the page's
 // new alignment is below this value.
@@ -62,7 +65,7 @@ public:
 	CPakPageBuilder();
 	~CPakPageBuilder();
 
-	inline uint16_t GetSlabCount() const { return static_cast<uint16_t>(m_slabs.size()); }
+	inline uint16_t GetSlabCount() const { return m_slabCount; }
 	inline uint16_t GetPageCount() const { return static_cast<uint16_t>(m_pages.size()); }
 
 	const PakPageLump_s CreatePageLump(const int size, const int flags, const int align, void* const buf = nullptr);
@@ -78,6 +81,8 @@ private:
 	PakPage_s& FindOrCreatePage(const int flags, const int align, const int size);
 
 private:
-	std::vector<PakSlab_s> m_slabs;
+	std::array<PakSlab_s, PAK_MAX_SLAB_COUNT> m_slabs;
+	uint16_t m_slabCount;
+
 	std::vector<PakPage_s> m_pages;
 };
