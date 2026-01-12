@@ -106,6 +106,9 @@ PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align)
 		return *toReturn;
 	}
 
+	if (m_slabCount + 1 > PAK_MAX_SLAB_COUNT)
+		Error("Out of room while adding new slab; runtime has a limit of %hu.\n", PAK_MAX_SLAB_COUNT);
+
 	// If we didn't have a close match, create a new slab.
 	PakSlab_s& newSlab = m_slabs[m_slabCount];
 
