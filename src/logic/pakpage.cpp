@@ -290,40 +290,33 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 //-----------------------------------------------------------------------------
 void CPakPageBuilder::PadSlabsAndPages()
 {
-	struct PageAlignmentTracker_s
+	struct PakSlabTracker_s
 	{
-		int lastPageSizeAligned = 0;
-		int lastPageAlign = 0;
+		size_t nextPageOffset;
+		size_t requiredAlignmentPadding;
+		size_t totalPageDataSize;
 	};
 
-	PageAlignmentTracker_s alignTrack[PAK_MAX_SLAB_COUNT];
+	PakSlabTracker_s slabTrackers[PAK_MAX_SLAB_COUNT] = {};
 
 	for (PakPage_s& page : m_pages)
 	{
-		PakPageHdr_s& pageHdr = page.header;
-		PakSlab_s& slab = m_slabs[pageHdr.slabIndex];
-		PakSlabHdr_s& slabHdr = slab.header;
-		PageAlignmentTracker_s& track = alignTrack[pageHdr.slabIndex];
+		PakSlabTracker_s& track = slabTrackers[page.header.slabIndex];
 
-		const int pageSize = pageHdr.dataSize;
-		const int pageAlign = pageHdr.alignment;
+		const size_t pageOffsetAligned = IALIGN(track.nextPageOffset, page.header.alignment);
 
-		// The runtime pads the previous page to align our current page, we have
-		// to add this extra size to the slab to accommodate for this.
-		if (track.lastPageSizeAligned > 0 && pageAlign > track.lastPageAlign)
-			slabHdr.dataSize += IALIGN(track.lastPageSizeAligned, pageAlign) - track.lastPageSizeAligned;
+		track.requiredAlignmentPadding += pageOffsetAligned - track.nextPageOffset;
+		
+		track.nextPageOffset = pageOffsetAligned + page.header.dataSize;
 
-		const int pagePadAmount = IALIGN(pageSize, pageAlign) - pageSize;
+		track.totalPageDataSize += page.header.dataSize;
+	}
 
-		// The runtime allocates the page to its alignment boundary, which means
-		// it will pad out the remainder if a page inside the pak file isn't as
-		// large as it will be when allocated to its required boundary. We have
-		// to add this extra size to the slab to accommodate for this.
-		if (pagePadAmount > 0)
-			slabHdr.dataSize += pagePadAmount;
+	for (uint16_t slabIdx = 0; slabIdx < m_slabCount; ++slabIdx)
+	{
+		const PakSlabTracker_s& track = slabTrackers[slabIdx];
 
-		track.lastPageSizeAligned = pageSize + pagePadAmount;
-		track.lastPageAlign = pageAlign;
+		m_slabs[slabIdx].header.dataSize = track.totalPageDataSize + track.requiredAlignmentPadding;
 	}
 }
 
