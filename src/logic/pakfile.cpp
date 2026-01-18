@@ -772,7 +772,7 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 
 	// write a placeholder header so we can come back and complete it
 	// when we have all the info
-	out.Pad(GetVersion() >= 8 ? 0x80 : 0x58);
+	out.Pad(GetVersion() >= 8 ? PAK_HEADER_SIZE_V8 : PAK_HEADER_SIZE_V6);
 
 	// build asset data;
 	// loop through all assets defined in the map file
