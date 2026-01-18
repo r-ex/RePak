@@ -221,13 +221,11 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 		pad.alignment = align;
 		pad.pageInfo = PagePtr_t::NullPtr();
 
-		// Grow the slab and page size to accommodate the page align padding.
+		// Grow the page size to accommodate the page align padding.
 		page.header.dataSize += pagePadAmount;
-		slab.header.dataSize += pagePadAmount;
 	}
 
 	page.header.dataSize += sizeAligned;
-	slab.header.dataSize += sizeAligned;
 
 	char* targetBuf;
 

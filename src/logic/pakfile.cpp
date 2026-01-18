@@ -806,13 +806,14 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 
 	GenerateInternalDependencies();
 
-	// generate file relation vector to be written
+	// Generate data for asset dependencies and dependents
 	GenerateAssetUses();
 	GenerateAssetDependents();
 
-	m_pageBuilder.PadSlabsAndPages();
+	// Pad all of the slabs so that they fit the alignment padding of all contained pages
+	m_pageBuilder.PadSlabSizeForPageAlignment();
 
-	// write the non-paged data to the file first
+	// Write header info for slab headers and page headers
 	m_pageBuilder.WriteSlabHeaders(out);
 	m_pageBuilder.WritePageHeaders(out);
 
