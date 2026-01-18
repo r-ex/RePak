@@ -286,7 +286,7 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 // building the pages as their alignments can change when a lump requests a
 // higher alignment.
 //-----------------------------------------------------------------------------
-void CPakPageBuilder::PadSlabsAndPages()
+void CPakPageBuilder::PadSlabSizeForPageAlignment()
 {
 	struct PakSlabTracker_s
 	{

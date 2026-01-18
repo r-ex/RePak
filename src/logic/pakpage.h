@@ -70,7 +70,7 @@ public:
 
 	const PakPageLump_s CreatePageLump(const int size, const int flags, const int align, void* const buf = nullptr);
 
-	void PadSlabsAndPages();
+	void PadSlabSizeForPageAlignment();
 
 	void WriteSlabHeaders(BinaryIO& out) const;
 	void WritePageHeaders(BinaryIO& out) const;
