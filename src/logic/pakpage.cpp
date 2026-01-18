@@ -115,7 +115,8 @@ PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align)
 	newSlab.index = m_slabCount++;
 	newSlab.header.flags = flags;
 	newSlab.header.alignment = align;
-	newSlab.header.dataSize = 0;
+	newSlab.header.dataSize = 0; // This value is set once all pages have been finalised, so we can account
+								 // for the page alignment padding within the slab
 
 	return newSlab;
 }
@@ -205,7 +206,6 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 	const int sizeAligned = IALIGN(size, align);
 
 	PakPage_s& page = FindOrCreatePage(flags, align, sizeAligned);
-	PakSlab_s& slab = m_slabs[page.header.slabIndex];
 
 	const int pagePadAmount = IALIGN(page.header.dataSize, align) - page.header.dataSize;
 
