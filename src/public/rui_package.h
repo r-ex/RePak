@@ -30,6 +30,7 @@ struct RuiPackageHeader_v1_t {
 	uint32_t renderJobSize;
 	uint32_t keyframingSize;
 	uint32_t defaultStringsSize;
+
 	uint64_t argNamesOffset;//debug only
 	uint64_t argClusterOffset;
 	uint64_t argumentsOffset;
@@ -132,5 +133,4 @@ struct RuiPackage {
 	std::vector<Argument_s> arguments;
 	std::vector<ArgCluster_s> argCluster;
 	std::vector<char> styleDescriptors;
-
 };

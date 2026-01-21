@@ -41,7 +41,7 @@
 #define TYPE_ARIG	MAKE_FOURCC('a', 'r', 'i', 'g') // arig
 #define TYPE_SHDS	MAKE_FOURCC('s', 'h', 'd', 's') // shds
 #define TYPE_SHDR	MAKE_FOURCC('s', 'h', 'd', 'r') // shdr
-#define TYPE_UI     MAKE_FOURCC('u', 'i', 0, 0)     // ui
+#define TYPE_UI     MAKE_FOURCC('u', 'i',   0,   0) // ui
 
 enum class AssetType : uint32_t
 {
@@ -64,7 +64,7 @@ enum class AssetType : uint32_t
 	ARIG = TYPE_ARIG, // animation rig
 	SHDS = TYPE_SHDS, // shaderset
 	SHDR = TYPE_SHDR, // shader
-	UI = TYPE_UI
+	UI   = TYPE_UI    // ui
 };
 
 #pragma pack(push, 1)

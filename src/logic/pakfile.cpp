@@ -35,7 +35,6 @@ static std::unordered_set<PakAssetHandler_s, PakAssetHasher_s> s_pakAssetHandler
 	{"txls", PakAssetScope_e::kAll, nullptr, Assets::AddTextureListAsset_v1},
 	{"Ptch", PakAssetScope_e::kAll, Assets::AddPatchAsset, Assets::AddPatchAsset},
 	{"ui", PakAssetScope_e::kClientOnly, Assets::AddRuiAsset_v30, nullptr}
-
 };
 
 void CPakFileBuilder::AddJSONAsset(const PakAssetHandler_s& assetHandler, const char* const assetPath, const rapidjson::Value& file)

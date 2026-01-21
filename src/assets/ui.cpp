@@ -50,13 +50,12 @@ void UI_loadFromPackage(CPakFileBuilder* const pak, const PakGuid_t assetGuid, c
     pak->AddPointer(hdrChunk,offsetof(RuiHeader_v30_s,renderJobData),renderJobChunk,0);
 
     asset.InitAsset(hdrChunk.GetPointer(),sizeof(RuiHeader_v30_s),
-        PagePtr_t::NullPtr(),30,AssetType::UI);
+        PagePtr_t::NullPtr(),R2_UI_VERSION,AssetType::UI);
     asset.SetHeaderPointer(hdrChunk.data);
 
     pak->FinishAsset();
 
 }
-
 
 
 void Assets::AddRuiAsset_v30(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath, const rapidjson::Value& mapEntry)

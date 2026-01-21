@@ -612,7 +612,7 @@
     <ClInclude Include="public\lcd_screen_effect.h">
       <Filter>public</Filter>
     </ClInclude>
-    <ClInclude Include="public\ruiPackage.h">
+    <ClInclude Include="public\rui_package.h">
       <Filter>public</Filter>
     </ClInclude>
     <ClInclude Include="public\ui.h">

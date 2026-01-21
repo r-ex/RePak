@@ -1,6 +1,6 @@
 #pragma once
 
-
+#define R2_UI_VERSION 30
 
 enum class VariableType : uint8_t {
 	NONE = 0x0,
@@ -15,7 +15,6 @@ enum class VariableType : uint8_t {
 	GAMETIME = 0x9,
 	FLOAT_UNK = 0xA,
 	IMAGE = 0xB
-
 };
 
 struct Argument_s
@@ -73,7 +72,6 @@ struct StyleDescriptor_v30_s {
 	uint16_t val_32;
 };
 
-
 struct RuiHeader_v30_s
 {
 	const char* name;
@@ -83,7 +81,7 @@ struct RuiHeader_v30_s
 	float elementHeight;
 	float elementWidthRcp;
 	float elementHeightRcp;
-	char* argNames;
+	const char* argNames;
 	ArgCluster_s* argClusters;
 	Argument_s* arguments;
 	short argumentCount; // number of slots for arguments. not all are used. has to be power of 2
