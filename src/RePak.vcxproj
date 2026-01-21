@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -30,6 +30,7 @@
     <ClCompile Include="assets\texture_list.cpp" />
     <ClCompile Include="assets\texture.cpp" />
     <ClCompile Include="assets\ui_image_atlas.cpp" />
+    <ClCompile Include="assets\ui.cpp" />
     <ClCompile Include="logic\buildsettings.cpp" />
     <ClCompile Include="logic\pakpage.cpp" />
     <ClCompile Include="logic\pakfile.cpp" />
@@ -195,6 +196,7 @@
     <ClInclude Include="public\material_for_aspect.h" />
     <ClInclude Include="public\multishader.h" />
     <ClInclude Include="public\rpak.h" />
+    <ClInclude Include="public\ui.h" />
     <ClInclude Include="public\settings.h" />
     <ClInclude Include="public\settings_layout.h" />
     <ClInclude Include="public\shader.h" />
@@ -205,6 +207,7 @@
     <ClInclude Include="public\texture.h" />
     <ClInclude Include="public\texture_anim.h" />
     <ClInclude Include="public\texture_list.h" />
+    <ClInclude Include="public\rui_package.h" />
     <ClInclude Include="thirdparty\rapidcsv\rapidcsv.h" />
     <ClInclude Include="thirdparty\rapidjson\allocators.h" />
     <ClInclude Include="thirdparty\rapidjson\cursorstreamwrapper.h" />
