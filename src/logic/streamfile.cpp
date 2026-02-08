@@ -121,8 +121,7 @@ void CStreamFileBuilder::Shutdown()
 //-----------------------------------------------------------------------------
 void CStreamFileBuilder::CreateStreamFileStream(const std::string& streamFilePath, const PakStreamSet_e set)
 {
-	const bool isMandatory = set == STREAMING_SET_MANDATORY;
-	BinaryIO& out = isMandatory ? m_mandatoryStreamFile : m_optionalStreamFile;
+	BinaryIO& out = set == STREAMING_SET_MANDATORY ? m_mandatoryStreamFile : m_optionalStreamFile;
 
 	if (out.IsWritable())
 		return; // Already opened.

@@ -90,6 +90,7 @@ void CPakFileBuilder::AddJSONAsset(const PakAssetHandler_s& assetHandler, const 
 //-----------------------------------------------------------------------------
 void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 {
+	// Get shared properties "_type" and "_path"
 	const char* const assetType = JSON_GetValueOrDefault(file, "_type", static_cast<const char*>(nullptr));
 	const char* const assetPath = JSON_GetValueOrDefault(file, "_path", static_cast<const char*>(nullptr));
 
@@ -100,10 +101,11 @@ void CPakFileBuilder::AddAsset(const rapidjson::Value& file)
 		Error("No path provided for an asset of type '%.4s'.\n", assetType);
 
 	g_currentAsset = assetPath;
+
 	const auto it = s_pakAssetHandlers.find({ assetType });
 
 	if (it == s_pakAssetHandlers.end())
-		Error("Unhandled asset type '%.4s' provided.\n", assetType);
+		Error("Asset '%s' uses unknown asset type '%.4s'.\n", assetPath, assetType);
 	else
 		AddJSONAsset(*it, assetPath, file);
 
@@ -133,7 +135,7 @@ void CPakFileBuilder::AddPointer(PakPageLump_s& pointerLump, const size_t pointe
 //-----------------------------------------------------------------------------
 int64_t CPakFileBuilder::AddStreamingFileReference(const char* const path, const bool mandatory)
 {
-	auto& vec = mandatory ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
+	std::vector<std::string>& vec = mandatory ? m_mandatoryStreamFilePaths : m_optionalStreamFilePaths;
 	const int64_t count = static_cast<int64_t>(vec.size());
 
 	for (int64_t index = 0; index < count; index++)
@@ -442,6 +444,7 @@ PakAsset_t* CPakFileBuilder::GetAssetByGuid(const PakGuid_t guid, size_t* const 
 	}
 	if (!silent)
 		Debug("Failed to find asset with guid %llX.\n", guid);
+
 	return nullptr;
 }
 
@@ -756,10 +759,10 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 	const char* const pakName = JSON_GetValueOrDefault(doc, "name", DEFAULT_RPAK_NAME);
 
 	// print parsed settings
-	Debug("build settings:\n");
-	Debug("version: %i\n", GetVersion());
-	Debug("fileName: %s.rpak\n", pakName);
-	Debug("assetsDir: %s\n", m_assetPath.c_str());
+	Debug("Build Settings:\n");
+	Debug("File Version: %i\n", GetVersion());
+	Debug("File Name: %s.rpak\n", pakName);
+	Debug("Asset Directory: %s\n", m_assetPath.c_str());
 
 	// set build path
 	SetPath(std::string(m_buildSettings->GetOutputPath()) + pakName + ".rpak");
@@ -771,12 +774,8 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 
 	Log("*** building pak file \"%s\".\n", m_pakFilePath.c_str());
 
-	// write a placeholder header so we can come back and complete it
-	// when we have all the info
+	// Skip the header data at first so we can come back and fill it in when we have all of the info
 	out.Pad(GetVersion() >= 8 ? PAK_HEADER_SIZE_V8 : PAK_HEADER_SIZE_V6);
-
-	// build asset data;
-	// loop through all assets defined in the map file
 
 	rapidjson::Value::ConstMemberIterator filesIt;
 
@@ -829,17 +828,10 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 
 	// We are done building the data of the pack, this is the actual size.
 	const size_t decompressedFileSize = out.GetSize();
-	size_t compressedFileSize = 0;
-
-	// If this is set and we have "example.rpak", the runtime will load the
-	// library `example.dll` during the load of `example.rpak`, from the same
-	// directory the pak is being loaded from. The loading of the library
-	// happens before the individual assets are being loaded and parsed.
-	if (JSON_GetValueOrDefault(doc, "hasDynamicLibrary", false))
-		m_Header.flags |= PAK_HEADER_FLAGS_HAS_MODULE;
 
 	const int compressLevel = JSON_GetValueOrDefault(doc, "compressLevel", 0);
 
+	size_t compressedFileSize = 0;
 	if (compressLevel > 0 && decompressedFileSize > Pak_GetHeaderSize(m_Header.fileVersion))
 	{
 		const int workerCount = JSON_GetValueOrDefault(doc, "compressWorkers", 0);
@@ -849,18 +841,25 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 		m_Header.flags |= PAK_HEADER_FLAGS_ZSTD_ENCODED;
 	}
 
-	SetCompressedSize(compressedFileSize == 0 ? decompressedFileSize : compressedFileSize);
-	SetDecompressedSize(decompressedFileSize);
+	this->SetCompressedSize(compressedFileSize == 0 ? decompressedFileSize : compressedFileSize);
+	this->SetDecompressedSize(decompressedFileSize);
 
 	// set header descriptors
-	SetFileTime(Utils::GetSystemFileTime());
+	this->SetFileTime(Utils::GetSystemFileTime());
 
-	out.SeekPut(0); // go back to the beginning to finally write the rpakHeader now
-	WriteHeader(out);
+	// If this is set and we have "example.rpak", the runtime will load the
+	// library `example.dll` during the load of `example.rpak`, from the same
+	// directory the pak is being loaded from. The loading of the library
+	// happens before the individual assets are being loaded and parsed.
+	if (JSON_GetValueOrDefault(doc, "hasDynamicLibrary", false))
+		m_Header.flags |= PAK_HEADER_FLAGS_HAS_MODULE;
 
-	const ssize_t totalPakSize = out.GetSize();
+	// Go back to the start of the file since now we can write the header successfully
+	out.SeekPut(0);
+
+	this->WriteHeader(out);
 
 	Log("*** built pak file \"%s\" with %zu assets, totaling %zd bytes.\n",
-		m_pakFilePath.c_str(), GetAssetCount(), totalPakSize);
+		m_pakFilePath.c_str(), GetAssetCount(), out.GetSize());
 	out.Close();
 }
