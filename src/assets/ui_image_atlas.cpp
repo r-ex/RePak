@@ -43,12 +43,6 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     if (imageArraySize > MAX_UI_ATLAS_IMAGES)
         Error("UI image atlas contains too many images (max %zu, got %zu).\n", (size_t)MAX_UI_ATLAS_IMAGES, imageArraySize);
 
-    // needs to be reversed still, not all uimg's use this! this might be
-    // necessary to reverse at some point since some uimg's (especially in
-    // world rui's) seem to flicker or glitch at certain view angles and the
-    // only data we currently do not set is this.
-    const uint16_t unkCount = 0;
-
     PakPageLump_s hdrLump = pak->CreatePageLump(sizeof(UIImageAtlasHeader_t), SF_HEAD | SF_CLIENT, 8);
 
     UIImageAtlasHeader_t* const pHdr = reinterpret_cast<UIImageAtlasHeader_t*>(hdrLump.data);
@@ -60,9 +54,14 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     pHdr->widthRatio = 1.f / pHdr->width;
     pHdr->heightRatio = 1.f / pHdr->height;
 
-    // legion uses this to get the image count, so its probably set correctly
     pHdr->imageCount = static_cast<uint16_t>(imageArraySize);
-    pHdr->unkCount = unkCount;
+
+    // needs to be reversed still, not all uimg's use this! this might be
+    // necessary to reverse at some point since some uimg's (especially in
+    // world rui's) seem to flicker or glitch at certain view angles and the
+    // only data we currently do not set is this.
+    pHdr->unkCount = JSON_GetValueOrDefault(mapEntry, "unkCount", 0);
+
     pHdr->atlasGUID = atlasGuid;
 
     Pak_RegisterGuidRefAtOffset(atlasGuid, offsetof(UIImageAtlasHeader_t, atlasGUID), hdrLump, asset);
@@ -181,7 +180,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     // note: aligned to 4 if we do not have UIImageAtlasHeader_t::unkCount
     // (which needs to be reversed still). Else this lump must reside in a
     // page that is aligned to 16.
-    PakPageLump_s infoLump = pak->CreatePageLump(imageDimensionsDataSize + imageHashesDataSize, SF_CPU | SF_CLIENT, unkCount > 0 ? 16 : 4);
+    PakPageLump_s infoLump = pak->CreatePageLump(imageDimensionsDataSize + imageHashesDataSize, SF_CPU | SF_CLIENT, pHdr->unkCount > 0 ? 16 : 4);
     rmem ifBuf(infoLump.data);
 
     ///////////////////////
