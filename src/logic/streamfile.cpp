@@ -108,7 +108,7 @@ void CStreamFileBuilder::Shutdown()
 
 		if (newCache.Open(fullFilePath, BinaryIO::Mode_e::Write))
 		{
-			m_streamCache.Save(newCache);
+			m_streamCache.WriteCacheFileToIOStream(newCache);
 			Log("Saved cache to streaming map file \"%s\".\n", fullFilePath.c_str());
 		}
 		else

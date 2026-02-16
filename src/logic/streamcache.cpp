@@ -58,14 +58,13 @@ static std::vector<StreamCacheFileEntry_s> StreamCache_GetStarpakFilesFromDirect
 	return paths;
 }
 
-void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
+void CStreamCache::BuildStarMapFromPaksDirectory(const char* const streamCacheFile)
 {
+	// Get the path of the directory that will contain the resulting StarMap file
 	std::string directoryPath(streamCacheFile);
 	directoryPath = directoryPath.substr(0, directoryPath.find_last_of("\\/"));
 
-	// open cache file at the start so we don't get thru the whole process and fail to write at the end
 	BinaryIO cacheFileStream;
-
 	if (!cacheFileStream.Open(streamCacheFile, BinaryIO::Mode_e::Write))
 		Error("Failed to create streaming map file \"%s\".\n", streamCacheFile);
 
@@ -73,10 +72,9 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 
 	Log("Found %zu streaming files to cache in directory \"%s\".\n", foundStarpakPaths.size(), directoryPath.c_str());
 
-	// Start a timer for the cache builder process so that the user is notified when the tool finishes.
-	TIME_SCOPE("StreamCacheBuilder");
 	size_t starpakIndex = 0;
 
+	TIME_SCOPE("StreamCacheBuilder");
 	for (const StreamCacheFileEntry_s& foundEntry : foundStarpakPaths)
 	{
 		const std::string& starpakPath = foundEntry.streamFilePath;
@@ -91,7 +89,7 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 
 		PakStreamSetFileHeader_s starpakFileHeader = starpakStream.Read<PakStreamSetFileHeader_s>();
 
-		if (starpakFileHeader.magic != STARPAK_MAGIC)
+		if (starpakFileHeader.magic != STARPAK_MAGIC) // SRPk
 		{
 			Error("Streaming file \"%s\" has an invalid file magic; expected %x, got %x.\n", starpakPath.c_str(), STARPAK_MAGIC, starpakFileHeader.magic);
 			continue;
@@ -101,29 +99,32 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 
 		const size_t starpakFileSize = fs::file_size(starpakPath);
 
+		// Seek to the final QWORD of the StarPak file.
+		// The last 8 bytes represent the number of stream entries in the StarPak
 		starpakStream.Seek(starpakFileSize - sizeof(int64_t), std::ios::beg);
 
-		// get the number of data entries in this starpak file
 		const int64_t starpakEntryCount = starpakStream.Read<int64_t>();
 		const size_t starpakEntryHeadersSize = sizeof(PakStreamSetAssetEntry_s) * starpakEntryCount;
 
 		std::unique_ptr<PakStreamSetAssetEntry_s> starpakEntryHeaders = std::unique_ptr<PakStreamSetAssetEntry_s>(new PakStreamSetAssetEntry_s[starpakEntryCount]);
 
-		// go to the start of the entry structs
+		// Seek to the start of the StarPak entry table.
+		// The table is (8 + (numEntries * entryHeaderSize)) bytes from the end of the file
 		starpakStream.Seek(starpakFileSize - (8 + starpakEntryHeadersSize), std::ios::beg);
 		starpakStream.Read(reinterpret_cast<char*>(starpakEntryHeaders.get()), starpakEntryHeadersSize);
 
+		// Get the position of the final backslash so we can get the starpak's file name
 		const char* starpakFileName = strrchr(starpakPath.c_str(), '\\');
 
 		if (starpakFileName)
 			starpakFileName += 1; // Skip the '\\'.
-		else
+		else // If no backslash was found, the file name is the whole path
 			starpakFileName = starpakPath.c_str();
 
 		std::string relativeStarpakPath("paks\\Win64\\");
 		relativeStarpakPath.append(starpakFileName);
 
-		const int64_t pathIndex = AddStarpakPathToCache(relativeStarpakPath, foundEntry.isOptional);
+		const int64_t pathIndex = AddStarPakPathToMapList(relativeStarpakPath, foundEntry.isOptional);
 
 		for (int64_t i = 0; i < starpakEntryCount; ++i)
 		{
@@ -156,7 +157,7 @@ void CStreamCache::BuildMapFromGamePaks(const char* const streamCacheFile)
 		starpakIndex++;
 	}
 
-	Save(cacheFileStream);
+	this->WriteCacheFileToIOStream(cacheFileStream);
 }
 
 static bool SIMD_CompareM128i(const __m128i a, const __m128i b)
@@ -265,7 +266,7 @@ void CStreamCache::ParseMap(const char* const streamCacheFile)
 #endif // CHECK_FOR_DUPLICATES
 }
 
-int64_t CStreamCache::AddStarpakPathToCache(const std::string& path, const bool optional)
+int64_t CStreamCache::AddStarPakPathToMapList(const std::string& path, const bool optional)
 {
 	const int64_t index = static_cast<int64_t>(m_streamFiles.size());
 	m_streamFiles.push_back({ optional, path });
@@ -372,7 +373,7 @@ void CStreamCache::Add(const StreamCacheFindParams_s& params, const int64_t offs
 	newDataEntry.hash = params.hash;
 }
 
-void CStreamCache::Save(BinaryIO& io)
+void CStreamCache::WriteCacheFileToIOStream(BinaryIO& io)
 {
 	assert(io.IsWritable());
 

@@ -90,32 +90,32 @@ static void RePak_BuildFromList(const js::Document& doc, const js::Value& list, 
     RePak_ShutdownBuilder(settings, streamBuilder);
 }
 
-static void RePak_HandleBuild(const char* const arg)
+static void RePak_HandleBuildFromPath(const char* const inputPath)
 {
-    fs::path starmapPath(arg);
+    fs::path starmapPath(inputPath);
 
-    // this should be changed to proper CLI handling and mode selection 
+    // If the path is a directory, we generate a StarMap manifest of all starpaks in the directory
     if (std::filesystem::is_directory(starmapPath))
     {
         starmapPath.append("pc_roots.starmap");
         const std::string starmapStreamStr = starmapPath.string();
 
         CStreamCache writeCache;
-        writeCache.BuildMapFromGamePaks(starmapStreamStr.c_str());
+        writeCache.BuildStarMapFromPaksDirectory(starmapStreamStr.c_str());
     }
     else
     {
         // load and parse map file, this file is essentially the
         // control file; deciding what is getting packed, etc..
         js::Document doc;
-        JSON_ParseFromFile(arg, "main build map", doc, true);
+        JSON_ParseFromFile(inputPath, "main build map", doc, true);
 
         js::Value::ConstMemberIterator paksIt;
 
         if (JSON_GetIterator(doc, "paks", paksIt))
-            RePak_BuildFromList(doc, paksIt->value, arg);
+            RePak_BuildFromList(doc, paksIt->value, inputPath);
         else
-            RePak_BuildSingle(doc, arg);
+            RePak_BuildSingle(doc, inputPath);
     }
 }
 
@@ -339,7 +339,7 @@ static void RePak_HandleCommandLine(const int argc, char** argv)
         return;
     }
 
-    RePak_HandleBuild(argv[1]);
+    RePak_HandleBuildFromPath(argv[1]);
 }
 
 int main(int argc, char** argv)

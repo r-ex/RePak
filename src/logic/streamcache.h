@@ -49,10 +49,10 @@ struct StreamCacheFindResult_s
 class CStreamCache
 {
 public:
-	void BuildMapFromGamePaks(const char* const streamCacheFile);
+	void BuildStarMapFromPaksDirectory(const char* const streamCacheFile);
 	void ParseMap(const char* const streamCacheFile);
 
-	int64_t AddStarpakPathToCache(const std::string& path, const bool optional);
+	int64_t AddStarPakPathToMapList(const std::string& path, const bool optional);
 	StreamCacheFileHeader_s ConstructHeader() const;
 
 	static StreamCacheFindParams_s CreateParams(const uint8_t* const data, const int64_t size, const char* const streamFilePath);
@@ -60,7 +60,7 @@ public:
 	bool Find(const StreamCacheFindParams_s& params, StreamCacheFindResult_s& result, const bool optional);
 	void Add(const StreamCacheFindParams_s& params, const int64_t offset, const bool optional);
 
-	void Save(BinaryIO& io);
+	void WriteCacheFileToIOStream(BinaryIO& io);
 
 	void AddStreamFileToFilter(const std::string& streamFile);
 	void AddStreamFileToFilter(const char* const streamFile, const size_t nameLen);
