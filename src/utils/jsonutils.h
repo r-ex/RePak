@@ -427,7 +427,11 @@ inline bool JSON_ParseNumber(const T& data, V& num)
 {
     if (JSON_IsOfType(data, JSONFieldType_e::kNumber))
     {
+#if defined(MSC_PLATFORM_TOOLSET_v145)
+        num = data.template Get<V>();
+#else
         num = data.Get<V>();
+#endif
         return true;
     }
     else if (JSON_IsOfType(data, JSONFieldType_e::kString))
