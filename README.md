@@ -6,4 +6,4 @@ RePak is a modding tool used to compile various types of game assets into RPak (
 
 > [!IMPORTANT]  
 > Full documentation for the tool is currently being written.  
-> Until then, please refer to Northstar's own guide on how to use RePak: https://r2northstar.readthedocs.io/en/latest/repak/
+> Until then, please refer to Northstar's own guide on how to use RePak: https://docs.northstar.tf/Modding/repak/
