@@ -60,7 +60,7 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     // necessary to reverse at some point since some uimg's (especially in
     // world rui's) seem to flicker or glitch at certain view angles and the
     // only data we currently do not set is this.
-    pHdr->unkCount = JSON_GetValueOrDefault(mapEntry, "unkCount", 0);
+    pHdr->unkCount = static_cast<uint16_t>(JSON_GetValueOrDefault(mapEntry, "unkCount", 0));
 
     pHdr->atlasGUID = atlasGuid;
 
