@@ -246,12 +246,14 @@
     <ClCompile Include="assets\ui.cpp">
       <Filter>assets</Filter>
     </ClCompile>
-    <ClCompile Include="application\console.cpp" />
     <ClCompile Include="assets\ui_image_atlas.cpp">
       <Filter>assets</Filter>
     </ClCompile>
     <ClCompile Include="assets\lcd_screen_effect.cpp">
       <Filter>assets</Filter>
+    </ClCompile>
+    <ClCompile Include="application\console.cpp">
+      <Filter>application</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

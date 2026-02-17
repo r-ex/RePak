@@ -76,7 +76,7 @@ struct PagePtr_t
 	int index = 0;
 	int offset = 0;
 
-	static PagePtr_t NullPtr()
+	static constexpr PagePtr_t NullPtr()
 	{
 		return { -1, 0 };
 	}

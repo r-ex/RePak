@@ -106,6 +106,8 @@ PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align)
 		return *toReturn;
 	}
 
+	// Do not change.
+	// reSource has a hard limit of 20 (PAK_MAX_SLAB_COUNT) slabs. If we go over this limit, we cause a buffer overflow on the stack.
 	if (m_slabCount + 1 > PAK_MAX_SLAB_COUNT)
 		Error("Out of room while adding new slab; runtime has a limit of %hu.\n", PAK_MAX_SLAB_COUNT);
 
@@ -115,8 +117,7 @@ PakSlab_s& CPakPageBuilder::FindOrCreateSlab(const int flags, const int align)
 	newSlab.index = m_slabCount++;
 	newSlab.header.flags = flags;
 	newSlab.header.alignment = align;
-	newSlab.header.dataSize = 0; // This value is set once all pages have been finalised, so we can account
-								 // for the page alignment padding within the slab
+	newSlab.header.dataSize = 0; // The slab data size is only set once all pages have been finalised so we can account for alignment
 
 	return newSlab;
 }
@@ -199,14 +200,16 @@ PakPage_s& CPakPageBuilder::FindOrCreatePage(const int flags, const int align, c
 //-----------------------------------------------------------------------------
 const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int flags, const int align, void* const buf)
 {
-	// this assert is replicated in r5sdk
+	// Alignment is only observed to be <= 64
 	assert(align != 0 && align < UINT8_MAX);
+
 	assert(IsPowerOfTwo(align));
 
-	const int sizeAligned = IALIGN(size, align);
+	const int alignedPageLumpSize = IALIGN(size, align);
 
-	PakPage_s& page = FindOrCreatePage(flags, align, sizeAligned);
+	PakPage_s& page = FindOrCreatePage(flags, align, alignedPageLumpSize);
 
+	// Number of bytes required to pad the page to the requested alignment
 	const int pagePadAmount = IALIGN(page.header.dataSize, align) - page.header.dataSize;
 
 	// If the requested alignment requires padding the previous asset to align
@@ -225,7 +228,7 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 		page.header.dataSize += pagePadAmount;
 	}
 
-	page.header.dataSize += sizeAligned;
+	page.header.dataSize += alignedPageLumpSize;
 
 	char* targetBuf;
 
@@ -240,7 +243,7 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 	else
 		targetBuf = reinterpret_cast<char*>(buf);
 
-	const int lumpPadAmount = sizeAligned - size;
+	const int lumpPadAmount = alignedPageLumpSize - size;
 
 	// Reserve for 2 because we need to add a padding lump afterwards to pad the
 	// data lump out to its alignment boundary, this avoids reallocation.
@@ -254,7 +257,7 @@ const PakPageLump_s CPakPageBuilder::CreatePageLump(const int size, const int fl
 	lump.alignment = page.header.alignment;
 
 	lump.pageInfo.index = page.index;
-	lump.pageInfo.offset = page.header.dataSize - sizeAligned;
+	lump.pageInfo.offset = page.header.dataSize - alignedPageLumpSize;
 
 	assert(lump.pageInfo.offset >= 0);
 
