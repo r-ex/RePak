@@ -720,11 +720,10 @@ static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, c
     pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, valueData), dataLump, settingsMemory.valueBufIndex);
     pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, name), dataLump, assetNameOffset);
 
-    const size_t initialStringBufIndex = settingsMemory.curStringBufIndex;
+    const size_t stringBufferBase = settingsMemory.curStringBufIndex;
+    pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, stringData), dataLump, stringBufferBase);
 
     SettingsAsset_WriteValues(layoutAsset, settingsAsset, settingsMemory, asset, pak, dataLump);
-
-    pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, stringData), dataLump, initialStringBufIndex);
 
     if (hasMods)
     {
@@ -732,7 +731,7 @@ static void SettingsAsset_InternalAddSettingsAsset(CPakFileBuilder* const pak, c
         pak->AddPointer(hdrLump, offsetof(SettingsAssetHeader_s, modValues), dataLump, settingsMemory.curModValuesBufIndex);
 
         SettingsAsset_WriteModNames(modCache, pak, settingsMemory, dataLump);
-        SettingsAsset_WriteModValues(modCache, initialStringBufIndex, settingsMemory, dataLump);
+        SettingsAsset_WriteModValues(modCache, stringBufferBase, settingsMemory, dataLump);
     }
 
     asset.InitAsset(hdrLump.GetPointer(), sizeof(SettingsAssetHeader_s), PagePtr_t::NullPtr(), STGS_VERSION, AssetType::STGS);
