@@ -229,6 +229,8 @@ struct PakAsset_t
 	int64_t optStarpakOffset : 52 = -1;
 	int64_t optStarpakIndex : 12 = -1;
 
+	bool HasAnyStreamedData() const { return starpakOffset != -1 || optStarpakOffset != -1; };
+
 	uint16_t pageEnd = 0; // highest mem page used by this asset
 
 	// internal asset dependency count, which counts the total number of assets
