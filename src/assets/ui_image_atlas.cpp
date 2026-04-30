@@ -16,12 +16,17 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
     const char* const atlasPath = JSON_GetValueRequired<const char*>(mapEntry, "atlas");
     const PakGuid_t atlasGuid = RTech::StringToGuid(atlasPath);
 
-    // note: we error here as we can't check if it was added as a streamed texture, and uimg doesn't support texture streaming.
+    // silently try and get the atlas asset early so we don't have to fetch it in both branches
+    PakAsset_t* atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr, true);
+
     if (!Texture_AutoAddTexture(pak, atlasGuid, atlasPath, true/*streaming disabled as uimg can not be streamed*/))
-        Error("Atlas texture \"%s\" with GUID 0x%llX was already added as Texture asset; it can only be added through an UI image atlas asset.\n", atlasPath, atlasGuid);
+    {
+        // might as well double check that we have a valid pointer!
+        if(atlasAsset && atlasAsset->HasAnyStreamedData())
+            Error("UI Atlas texture \"%s\" with GUID 0x%llX was already added as a texture with streaming data. UI Image atlases do not support streaming.\n", atlasPath, atlasGuid);
+    }
 
     PakAsset_t& asset = pak->BeginAsset(assetGuid, assetPath);
-    PakAsset_t* const atlasAsset = pak->GetAssetByGuid(atlasGuid, nullptr);
 
     // this really shouldn't be triggered, since the texture is either automatically added above, or a fatal error is thrown
     // there is no code path in AddTextureAsset in which the texture does not exist after the call and still continues execution
