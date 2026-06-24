@@ -3,8 +3,14 @@
 #include "public/ui.h"
 #include "public/rui_package.h"
 
-void UI_loadFromPackage(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath) {
-    
+void UI_loadFromPackage(CPakFileBuilder* const pak, const PakGuid_t assetGuid, const char* const assetPath)
+{
+    if ((pak->GetHeader().flags & PAK_HEADER_FLAGS_HAS_MODULE) == 0)
+    {
+        Error("UI: Failed to add UI asset because pak '%s' did not specify \"hasDynamicLibrary\": true\nAll pakfiles containing RUI assets must also include this flag\n", pak->GetPath().c_str());
+        return;
+    }
+
     UNUSED(assetGuid);
     const fs::path inputFilePath = pak->GetAssetPath() / fs::path(assetPath).replace_extension("ruip");
     RuiPackage rui{inputFilePath};

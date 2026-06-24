@@ -79,6 +79,8 @@ public:
 	inline uint16_t GetVersion() const { return m_Header.fileVersion; }
 	void SetVersion(const uint16_t version);
 
+	inline const PakHdr_t& GetHeader() const { return m_Header; };
+
 	inline size_t GetMaxStreamingFileHandlesPerSet() const
 	{
 		return GetVersion() == 7
