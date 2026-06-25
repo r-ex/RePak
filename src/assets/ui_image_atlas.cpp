@@ -261,8 +261,11 @@ void Assets::AddUIImageAsset_v10(CPakFileBuilder* const pak, const PakGuid_t ass
             const size_t pathBufSize = pathLen + 1; // +1 for null terminator.
             memcpy(&devLump.data[nextStringTableOffset], imagePath, pathBufSize);
 
-            ifBuf.write(nextStringTableOffset);
+            ifBuf.write(nextStringTableOffset << 16);
             nextStringTableOffset += (uint32_t)pathBufSize;
+
+            if (nextStringTableOffset >= UINT16_MAX)
+                Error("Failed to add UIMG asset \"%s\": Image debug names buffer exceeded the 16-bit limit (image names were too long, or too many images in one atlas)\n", assetPath);
         }
         else
         {
