@@ -45,13 +45,12 @@ struct RuiPackageHeader_v1_t {
 };
 #pragma pack(pop)
 
-#pragma pack(push, 1)
 struct RuiPackageMapping_v1_t {
 	uint32_t dataCount;
 	uint16_t nestedMappingCount;
 	uint16_t cublicSpline;
 };
-#pragma pack(pop)
+
 static_assert(sizeof(RuiPackageMapping_v1_t) == 8);
 
 
