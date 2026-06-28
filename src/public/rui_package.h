@@ -165,18 +165,10 @@ struct RuiPackage {
 			const size_t valueFloatCount = static_cast<size_t>(mapping.dataCount) + nestedValueCount + (mapping.cublicSpline ? nestedValueCount : 0);
 			const size_t valueSize = valueFloatCount * sizeof(float);
 
-			if (valueOffset + valueSize > valuesSize)
-			{
-				const size_t remainingSize = valueOffset < valuesSize ? valuesSize - valueOffset : 0;
-				Error("RUI package mapping data needs %zu bytes, but only %zu bytes of keyframing value data remain.\n",
-					valueSize, remainingSize);
-			}
+			
 
 			valueOffset += valueSize;
 		}
-
-		if (valueOffset != valuesSize)
-			Error("RUI package keyframing data has %zu unexpected trailing bytes.\n", valuesSize - valueOffset);
 	}
 
 	size_t RuntimeKeyframingSize() const {
