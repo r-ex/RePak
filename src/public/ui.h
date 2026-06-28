@@ -72,6 +72,16 @@ struct StyleDescriptor_v30_s {
 	uint16_t val_32;
 };
 
+struct RuiMapping_v30_s
+{
+	uint32_t dataCount;
+	uint16_t nestedMappingCount;
+	bool cublicSpline;
+	uint8_t pad;
+	float* data;
+};
+static_assert(sizeof(RuiMapping_v30_s) == 16);
+
 struct RuiHeader_v30_s
 {
 	const char* name;
@@ -94,6 +104,6 @@ struct RuiHeader_v30_s
 	uint16_t argClusterCount;
 	StyleDescriptor_v30_s* styleDescriptors;
 	uint8_t* renderJobData; 
-	void* keyframings; // maps values to others through linar/qubicSpline regression
+	RuiMapping_v30_s* keyframings; // maps values to others through linear/cubic spline regression
 };
 
