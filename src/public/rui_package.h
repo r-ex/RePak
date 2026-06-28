@@ -45,6 +45,14 @@ struct RuiPackageHeader_v1_t {
 };
 #pragma pack(pop)
 
+struct RuiPackageMapping_v1_t {
+	uint32_t dataCount;
+	uint16_t nestedMappingCount;
+	uint16_t cublicSpline;
+};
+
+static_assert(sizeof(RuiPackageMapping_v1_t) == 8);
+
 
 struct RuiPackage {
 	
@@ -95,6 +103,11 @@ struct RuiPackage {
 			argCluster.resize(hdr.argClusterCount);
 			fread(argCluster.data(),sizeof(ArgCluster_s),hdr.argClusterCount,f);
 
+			fseek(f, (long)hdr.keyframingOffset, 0);
+			std::vector<char> keyframingData;
+			keyframingData.resize(hdr.keyframingSize);
+			fread(keyframingData.data(), 1, hdr.keyframingSize, f);
+			ParseKeyframingData(keyframingData);
 			fclose(f);
 		}
 		else {
@@ -103,7 +116,7 @@ struct RuiPackage {
 	}
 
 	RuiHeader_v30_s CreateRuiHeader_v30() {
-		RuiHeader_v30_s ruiHdr;
+		RuiHeader_v30_s ruiHdr{};
 
 		ruiHdr.elementWidth = hdr.elementWidth;
 		ruiHdr.elementHeight = hdr.elementHeight;
@@ -122,6 +135,45 @@ struct RuiPackage {
 		return ruiHdr;
 	}
 
+	void ParseKeyframingData(const std::vector<char>& keyframingData) {
+		const size_t mappingDataSize = static_cast<size_t>(hdr.keyframingCount) * sizeof(RuiPackageMapping_v1_t);
+
+		if (hdr.keyframingSize < mappingDataSize)
+			Error("RUI package keyframing data is too small for %u mappings (%u bytes, expected at least %zu).\n",
+				hdr.keyframingCount, hdr.keyframingSize, mappingDataSize);
+
+		keyframingMappings.resize(hdr.keyframingCount);
+
+		if (!keyframingMappings.empty())
+			memcpy(keyframingMappings.data(), keyframingData.data(), mappingDataSize);
+
+		const size_t valuesSize = static_cast<size_t>(hdr.keyframingSize) - mappingDataSize;
+		keyframingValues.resize(valuesSize);
+		keyframingValueOffsets.clear();
+
+		if (valuesSize > 0)
+			memcpy(keyframingValues.data(), &keyframingData[mappingDataSize], valuesSize);
+
+		size_t valueOffset = 0;
+
+		for (const RuiPackageMapping_v1_t& mapping : keyframingMappings)
+		{
+			keyframingValueOffsets.push_back(valueOffset);
+
+			const size_t nestedValueCount = static_cast<size_t>(mapping.dataCount) * mapping.nestedMappingCount;
+			const size_t valueFloatCount = static_cast<size_t>(mapping.dataCount) + nestedValueCount + (mapping.cublicSpline ? nestedValueCount : 0);
+			const size_t valueSize = valueFloatCount * sizeof(float);
+
+			
+
+			valueOffset += valueSize;
+		}
+	}
+
+	size_t RuntimeKeyframingSize() const {
+		return (keyframingMappings.size() * sizeof(RuiMapping_v30_s)) + keyframingValues.size();
+	}
+
 	RuiPackageHeader_v1_t hdr{};
 
 	std::vector<char> name;
@@ -133,4 +185,7 @@ struct RuiPackage {
 	std::vector<Argument_s> arguments;
 	std::vector<ArgCluster_s> argCluster;
 	std::vector<char> styleDescriptors;
+	std::vector<RuiPackageMapping_v1_t> keyframingMappings;
+	std::vector<size_t> keyframingValueOffsets;
+	std::vector<char> keyframingValues;
 };

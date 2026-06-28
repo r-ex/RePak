@@ -774,6 +774,13 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 
 	Log("*** building pak file \"%s\".\n", m_pakFilePath.c_str());
 
+	// If this is set and we have "example.rpak", the runtime will load the
+	// library `example.dll` during the load of `example.rpak`, from the same
+	// directory the pak is being loaded from. The loading of the library
+	// happens before the individual assets are being loaded and parsed.
+	if (JSON_GetValueOrDefault(doc, "hasDynamicLibrary", false))
+		m_Header.flags |= PAK_HEADER_FLAGS_HAS_MODULE;
+
 	// Skip the header data at first so we can come back and fill it in when we have all of the info
 	out.Pad(GetVersion() >= 8 ? PAK_HEADER_SIZE_V8 : PAK_HEADER_SIZE_V6);
 
@@ -847,12 +854,6 @@ void CPakFileBuilder::BuildFromMap(const js::Document& doc)
 	// set header descriptors
 	this->SetFileTime(Utils::GetSystemFileTime());
 
-	// If this is set and we have "example.rpak", the runtime will load the
-	// library `example.dll` during the load of `example.rpak`, from the same
-	// directory the pak is being loaded from. The loading of the library
-	// happens before the individual assets are being loaded and parsed.
-	if (JSON_GetValueOrDefault(doc, "hasDynamicLibrary", false))
-		m_Header.flags |= PAK_HEADER_FLAGS_HAS_MODULE;
 
 	// Go back to the start of the file since now we can write the header successfully
 	out.SeekPut(0);

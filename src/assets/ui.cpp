@@ -33,9 +33,28 @@ void UI_loadFromPackage(CPakFileBuilder* const pak, const PakGuid_t assetGuid, c
     }
     pak->AddPointer(hdrChunk,offsetof(RuiHeader_v30_s,dataStructInitData),defaultValuesChunk,0);
    
-    PakPageLump_s transformDataChunk = pak->CreatePageLump(rui.transformData.size(),SF_CPU|SF_CLIENT,8);
-    memcpy(transformDataChunk.data,rui.transformData.data(),rui.transformData.size());
-    pak->AddPointer(hdrChunk,offsetof(RuiHeader_v30_s,transformData),transformDataChunk,0);
+    if (!rui.keyframingMappings.empty())
+    {
+        PakPageLump_s keyframingChunk = pak->CreatePageLump(rui.RuntimeKeyframingSize(), SF_CPU | SF_CLIENT, 8);
+        const size_t keyframingValuesOffset = rui.keyframingMappings.size() * sizeof(RuiMapping_v30_s);
+
+        if (!rui.keyframingValues.empty())
+            memcpy(&keyframingChunk.data[keyframingValuesOffset], rui.keyframingValues.data(), rui.keyframingValues.size());
+
+        for (size_t i = 0; i < rui.keyframingMappings.size(); ++i)
+        {
+            const RuiPackageMapping_v1_t& packageMapping = rui.keyframingMappings[i];
+            RuiMapping_v30_s* const mapping = reinterpret_cast<RuiMapping_v30_s*>(&keyframingChunk.data[i * sizeof(RuiMapping_v30_s)]);
+
+            mapping->dataCount = packageMapping.dataCount;
+            mapping->nestedMappingCount = packageMapping.nestedMappingCount;
+            mapping->cublicSpline = packageMapping.cublicSpline != 0;
+
+            pak->AddPointer(keyframingChunk, (i * sizeof(RuiMapping_v30_s)) + offsetof(RuiMapping_v30_s, data), keyframingChunk, keyframingValuesOffset + rui.keyframingValueOffsets[i]);
+        }
+
+        pak->AddPointer(hdrChunk, offsetof(RuiHeader_v30_s, keyframings), keyframingChunk, 0);
+    }
 
     PakPageLump_s argClustersChunk = pak->CreatePageLump(rui.argCluster.size()*sizeof(ArgCluster_s),SF_CPU|SF_CLIENT,8);
     memcpy(argClustersChunk.data,rui.argCluster.data(),rui.argCluster.size()*sizeof(ArgCluster_s));
@@ -54,6 +73,10 @@ void UI_loadFromPackage(CPakFileBuilder* const pak, const PakGuid_t assetGuid, c
     PakPageLump_s renderJobChunk = pak->CreatePageLump(rui.renderJobs.size(),SF_CPU|SF_CLIENT,8);
     memcpy(renderJobChunk.data,rui.renderJobs.data(),rui.renderJobs.size());
     pak->AddPointer(hdrChunk,offsetof(RuiHeader_v30_s,renderJobData),renderJobChunk,0);
+
+    PakPageLump_s transformDataChunk = pak->CreatePageLump(rui.transformData.size(),SF_CPU|SF_CLIENT,8);
+    memcpy(transformDataChunk.data,rui.transformData.data(),rui.transformData.size());
+    pak->AddPointer(hdrChunk,offsetof(RuiHeader_v30_s,transformData),transformDataChunk,0);
 
     asset.InitAsset(hdrChunk.GetPointer(),sizeof(RuiHeader_v30_s),
         PagePtr_t::NullPtr(),R2_UI_VERSION,AssetType::UI);
